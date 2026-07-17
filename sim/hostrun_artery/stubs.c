@@ -9,3 +9,5 @@ void* LEDControl_create(void) { static int d; return &d; }
 void  LEDControl_destroy(void* h) { (void)h; }
 int   LEDControl_controlLight(void* h, int id, int st) { (void)h; fprintf(stderr,"[stub] LED %d=%d\n",id,st); return 0; }
 int  ql_sys_log_print(int p, const char* f, ...) { (void)p;(void)f; return 0; }
+
+/* QL_MCM_SIM_GetCardStatus 挪到 sdk_stubs.c —— 那边已正确引了 SDK 头链。 */

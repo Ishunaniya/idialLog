@@ -632,7 +632,7 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
 
     // ---- 预扫:各类特征行(全部留证据指针)----
     std::vector<const LogLine*> evNeverConn, evPolicy, evRecL1, evRecL2, evRecL3,
-                                evDenied, evCpdump, evSlot, evOper, evCfun;
+                                evDenied, evCpdump, evSlot, evOper, evCfun, evNotReady;
     for (const auto& l : lines) {
         // EC200A 门控日志(ec200a/dial/dial.cpp:1615/1622)。EG25 无对应日志:
         // 其门控是静默的(eg25/dial/dial.c:974 的 has_connected_once 条件)。
@@ -653,6 +653,16 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
         if (l.tag.compare(0, 11, "RECOVERY L3") == 0)       pushEvent(evRecL3);
         // ec200a/dial/dial.cpp:1082 "[WARNING] Registration Denied! Code %d."
         if (icontains(l.msg, "Registration Denied"))        evDenied.push_back(&l);
+        /* 数据服务未就绪:AP 侧数据服务(ql_netd)没起来 → ql_data_call_init 失败。
+         * 【源码穷举】真代码实际打的就这两句(rtms_sdk HEAD, apps/modem_mng):
+         *   "[INIT] data_call_init failed, ret=%d"
+         *   "[INIT] data_call_init retrying, remaining=%d"
+         * 【样本实证】sim/hostrun 的 datacall_init_fail 场景(真代码产出)确实打出
+         *   "data_call_init retrying, remaining=200/180/160..."。
+         * 早先 C_NOTREADY 只在 enum 里有名字、**代码里从无任何赋值** —— 是死分支,
+         * 永远不可能触发(三种数据源全空不是"没样本",是它根本是死的)。 */
+        if (icontains(l.msg, "data_call_init failed") ||
+            icontains(l.msg, "data_call_init retrying"))    evNotReady.push_back(&l);
         // 只认"真的发现了 dump"这一句,不能见 [CPDUMP] 标签就报基带崩溃。
         // 【穷举证明】源码里 [CPDUMP] 共 9 种消息(rtms_sdk + open_dial 的 HEAD),
         // 只有 "Found %d existing CP dump(s)" 表示确实崩过;其余 8 种是例行挂载/卸载/
@@ -694,6 +704,23 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
     }
 
     // ---- 3. 模组 CP 崩溃 ----
+    /* 数据服务未就绪的**独立结论**(不依附于断网事件)。
+     * 【实证】真代码模拟 datacall_init_fail 场景:进程从启动就卡在 data_call_init 重试,
+     * **从未进入过已连接状态 → 一条断网记录都没有**(断网是"连上后又掉");
+     * 而根因分类是挂在"每次断网"上遍历的 → 永远轮不到它。
+     * 所以这个根因必须同时做成独立结论,否则最典型的场景反而报不出来。 */
+    if (!evNotReady.empty()) {
+        Finding f;
+        f.severity = 2;
+        f.title  = "数据服务未就绪:ql_data_call_init 失败/重试 " + std::to_string(evNotReady.size()) + " 次";
+        f.detail = "AP 侧数据服务(ql_netd)没起来,不是射频或信号问题。此时 AT 命令照样能通"
+                   "(那走 ql_atc),但数据业务起不来,表现为\"信号好好的却上不了网\"。";
+        f.advice = "查 ql_netd 守护进程是否在跑(ps);重拨/CFUN/换卡对这类故障都无效 —— "
+                   "它们治射频侧,而问题在 AP 侧的数据服务。";
+        for (size_t i = 0; i < evNotReady.size() && i < 3; ++i) f.ev.push_back(mkEv(*evNotReady[i]));
+        fs.push_back(std::move(f));
+    }
+
     if (!evCpdump.empty()) {
         Finding f;
         f.severity = 2;
@@ -727,11 +754,16 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
                 if (l->t >= lo && l->t <= hi) { sw = l; break; }
         const LogLine* dn = nullptr;
         for (const auto* l : evDenied) if (l->t >= lo && l->t <= hi) { dn = l; break; }
+        const LogLine* nr = nullptr;
+        for (const auto* l : evNotReady) if (l->t >= lo && l->t <= hi) { nr = l; break; }
 
         Cause c = C_UNKNOWN;
         const LogLine* evl = nullptr;
         const MetricRow* evm = nullptr;
         if (dn)                          { c = C_DENIED;    evl = dn; }
+        /* 服务未就绪排在信号/假死之前:数据服务没起来时,CSQ 再好也拨不上,
+         * 归因成"弱信号"会把排查引偏(见 ec200a 数据服务未就绪诊断的教训)。 */
+        else if (nr)                     { c = C_NOTREADY;  evl = nr; }
         else if (sw)                     { c = C_SWITCHING; evl = sw; }
         else if (minCsq < 10 && mWeak)   { c = C_WEAK;      evm = mWeak; }
         else if (sawZeroRx && mZero)     { c = C_DATADEAD;  evm = mZero; }
@@ -775,6 +807,13 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
         case C_DENIED:
             f.detail = "断网窗口内出现 Registration Denied。";
             f.advice = "按 SIM/账户问题处理,见上方结论。";
+            break;
+        case C_NOTREADY:
+            f.detail = "断网窗口内出现 data_call_init 失败/重试 —— **AP 侧数据服务(ql_netd)没起来**,"
+                       "不是射频或信号问题。此时 AT 命令照样能通(那走 ql_atc),但数据业务起不来,"
+                       "表现为\"信号好好的却上不了网\"。";
+            f.advice = "查 ql_netd 守护进程是否在跑(ps);这类故障靠重拨/CFUN/换卡都无效 —— "
+                       "它们治的是射频侧,而问题在 AP 侧的数据服务。";
             break;
         default:
             f.detail = "该次断网窗口内未见弱信号、ΔRX=0、切卡/选网或注册被拒的痕迹,"

@@ -19,6 +19,25 @@ E_QL_ERROR_CODE_T QL_MCM_NW_Client_Init(nw_client_handle_type *ph_nw) { return 0
 E_QL_ERROR_CODE_T QL_MCM_NW_GetRegStatus(nw_client_handle_type h_nw, QL_MCM_NW_REG_STATUS_INFO_T *pt_info) { return 0; }
 int QL_MCM_SIM_Client_Deinit(sim_client_handle_type h_sim) { return 0; }
 int QL_MCM_SIM_Client_Init(sim_client_handle_type *ph_sim) { return 0; }
-E_QL_ERROR_CODE_T QL_MCM_SIM_GetCardStatus(sim_client_handle_type h_sim, E_QL_MCM_SIM_SLOT_ID_TYPE_T simId, QL_MCM_SIM_CARD_STATUS_INFO_T *pt_info) { return 0; }
 E_QL_ERROR_CODE_T QL_MCM_SIM_GetICCID(sim_client_handle_type h_sim, E_QL_MCM_SIM_SLOT_ID_TYPE_T simId, char *iccid, size_t iccidLen) { return 0; }
 E_QL_ERROR_CODE_T QL_MCM_SIM_GetIMSI(sim_client_handle_type h_sim, QL_SIM_APP_ID_INFO_T *pt_info, char *imsi, size_t imsiLen) { return 0; }
+
+
+/* QL_MCM_SIM_GetCardStatus:artery 的 sim_check 靠它(src/nw/nw.c:63-70),不是 AT。
+ * 真代码的判据是写死的:t_info.card_app_info.app_3gpp.app_state - 0xB00 == SIM_CARD_READY(=10)
+ * → 就绪值即 0xB0A(E_QL_MCM_SIM_APP_STATE_READY)。
+ * 【实测教训】自动生成的空壳版只 return 0、不填结构体 → app_state=0 →
+ * 状态机**永久卡在 dial_stat_sim_check(实测 745 次)**,根本走不到 reg_check,
+ * reg 超时那条路自然测不到。桩"返回成功"还不够,**必须填出真代码要读的值**。 */
+E_QL_ERROR_CODE_T QL_MCM_SIM_GetCardStatus(sim_client_handle_type h,
+                                           E_QL_MCM_SIM_SLOT_ID_TYPE_T slot,
+                                           QL_MCM_SIM_CARD_STATUS_INFO_T* p_info) {
+    (void)h; (void)slot;
+    if (!p_info) return (E_QL_ERROR_CODE_T)-1;
+    memset(p_info, 0, sizeof(*p_info));
+    const char* absent = getenv("SIM_CARD_ABSENT");
+    p_info->card_app_info.app_3gpp.app_state = (absent && atoi(absent))
+        ? E_QL_MCM_SIM_APP_STATE_UNKNOWN            /* 拔卡 → 真代码自己决定怎么办 */
+        : E_QL_MCM_SIM_APP_STATE_READY;             /* 0xB0A,即 0xB00 + SIM_CARD_READY(10) */
+    return (E_QL_ERROR_CODE_T)0;
+}
