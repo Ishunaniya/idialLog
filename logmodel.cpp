@@ -113,9 +113,14 @@ static void splitTag(const std::string& rest, LogLine& L) {
     size_t e = rest.find(']');
     if (e == std::string::npos) { L.msg = rest; return; }
     std::string tag = rest.substr(1, e - 1);
-    bool ok = !tag.empty() && ((tag[0] >= 'A' && tag[0] <= 'Z') || tag[0] == '_');
+    // 首字符须字母/下划线,其余允许字母数字下划线空格。
+    // 【源码穷举】标签绝大多数全大写,但 modem_mng 有且仅有一个混合大小写的:[NetCheck]
+    // (真机 AG35 1.32.16 控制台日志实证);故不能只认 [A-Z]。
+    bool ok = !tag.empty() &&
+              (((tag[0] >= 'A' && tag[0] <= 'Z') || (tag[0] >= 'a' && tag[0] <= 'z') || tag[0] == '_'));
     if (ok) for (char c : tag)
-        if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == ' ')) { ok = false; break; }
+        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+              (c >= '0' && c <= '9') || c == '_' || c == ' ')) { ok = false; break; }
     if (!ok) { L.msg = rest; return; }
     L.tag = trim(tag);
     size_t q = e + 1;
@@ -266,11 +271,23 @@ void parseLines(const std::vector<std::string>& raw,
         //   OK                                        ← 本行无时间戳,属上一条
         // 这个"OK"是 CFUN 是否成功的证据,当成未识别丢掉就等于漏掉了诊断信息。
         // (合成夹具里没有多行条目,故此前一直没暴露。)
+        // 【样本实证】真正的续行,其上一条必定**以冒号结尾**(在宣告"下面是多行内容"):
+        //   EG25 1.31.15 : "[RECOVERY L2] AT+CFUN=0 rsp: " ⏎ "OK"
+        //   artery 1.29.13: "cfun stop response: "          ⏎ "OK"
+        // 不能只凭"无时间戳"就并入上一条 —— AG35 1.32.16 的**控制台**日志里,dial_log 与裸
+        // printf(流量库 dump、"EXEC: serial_atcmd"、"call_id : 1" 等)交织,那样会把 60 行
+        // 无关噪声糊进上一条 dial_log 的消息里。SD 卡日志文件只有 dial_log 写入、不存在此问题,
+        // 但控制台捕获是用户会拿来分析的真实输入,必须挡住。
+        // 挡不住的就老实计入未识别,由审计报出来 —— 那才是诚实的做法。
         if (!out.empty()) {
-            out.back().msg += " ⏎ ";
-            out.back().msg += line;
-            ad.continuation++;
-            continue;
+            const std::string& prev = out.back().msg;
+            size_t e2 = prev.find_last_not_of(" \t");
+            if (e2 != std::string::npos && prev[e2] == ':') {
+                out.back().msg += " ⏎ ";
+                out.back().msg += line;
+                ad.continuation++;
+                continue;
+            }
         }
 
         // 未识别:计数 + 分类 + 留样(这是“没漏消息”的唯一硬证据)

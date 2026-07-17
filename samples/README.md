@@ -7,7 +7,7 @@
 | `rtms_eg25/` | `rtms_sdk/apps/modem_mng` EG25 | `FMT_SD` | ✅ `dial_20260630_000026.log`(2861 行,ROAMLINK 通道)<br>✅ `real_eg25_1.31.15_unsynced.log`(133 行,SIM 通道 + 完整 L1/L2 恢复阶梯) | **真机实证** |
 | `dial_ec200a/` | `/home/tronlong/lyp/code/open_dial`(老框架 EC200A) | `FMT_SD` | ✅ `real_ec200a_1.28.4_unsynced.log`(36 行) | **真机实证**(2026-07-17 补入) |
 | `dial_eg25/` | `/home/tronlong/lyp/code/open_dial_for_artery`(老框架 EG25) | `FMT_SEAS` | ✅ `real_artery_1.29.13.log`(71 行,**含真实 ESC 字节**)<br>⚠️ `artery_seas_synthetic.log` | **真机实证**(2026-07-17 补入) |
-| `rtms_ag35/` | `rtms_sdk/apps/modem_mng` AG35(双卡) | `FMT_SD` | ⚠️ 仅合成 | **仅源码实证** —— 唯一仍无真机日志的分支 |
+| `rtms_ag35/` | `rtms_sdk/apps/modem_mng` AG35(双卡) | `FMT_SD` | ✅ `real_ag35_1.32.16_console.log`(144 行,**控制台捕获**:SD 未挂载,dial_log 与裸 printf 交织)<br>⚠️ `ag35_synthetic.log` | **真机实证**(2026-07-17 补入) |
 | `rtms_ec200a/` | `rtms_sdk/apps/modem_mng` EC200A | `FMT_SD` | ⚠️ 仅合成 | 行格式与心跳字段和 `dial_ec200a` **逐字段相同**(`open_dial/dial.c:518` vs `ec200a/dial/dial.cpp:1077`),后者已有真机实证 |
 
 ## 真机日志抓出了合成夹具抓不到的两个 bug(2026-07-17)
@@ -20,6 +20,21 @@
 2. **多行条目的续行被当成"未识别"**:AT 应答分行写,裸 `OK` 行没有时间戳。
    原实现丢弃并计入未识别;现并入上一条(`⏎` 分隔),审计新增 `continuation` 计数。
    那个 `OK` 是 CFUN 是否成功的证据,丢掉就是漏诊断信息。
+3. **CP dump 假阳性**:正常 EC200A 只打了 `[CPDUMP] No existing CP dumps.`,
+   旧实现见 `[CPDUMP]` 标签就报「[严重] 基带崩溃」。已改为只认 `Found N existing CP dump(s)`。
+4. **续行规则过宽 + 漏认混合大小写标签**(AG35 控制台日志暴露):
+   "无时间戳即续行"会把 60 行控制台 printf 噪声糊进上一条;已收紧为
+   **仅当上一条以冒号结尾**(那是"下面是多行内容"的宣告)才吃续行。
+   另:`[NetCheck]` 是 modem_mng **唯一**含小写字母的标签(源码穷举),旧的 `[A-Z0-9_ ]`
+   规则认不出它。
+
+## 控制台日志 vs SD 卡日志(两种真实输入,别混为一谈)
+
+- **SD 卡日志文件**(`/media/sdcard/dial_log/...`):只有 `dial_log` 往里写 → 未识别应为 0。
+- **控制台捕获**(SD 未挂载时 `Logging to console only`,或直接 `./modem_mng &` 看输出):
+  `dial_log` 与**裸 `printf`**(流量库 dump、SDK 回调、`EXEC: serial_atcmd` 等)**交织**
+  → 未识别占比会很高(AG35 真机样本:62/144 = 43%),**这是正常的** ——
+  那 62 行本来就不是 dial_log 输出。工具老实报出来,而不是硬塞进上一条。
 
 ## 为什么没有 `rtms_imx6ull/`
 

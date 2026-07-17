@@ -1,0 +1,144 @@
+[LogInit] SD card not mounted.
+[LogInit] SD card check failed. Logging to console only.
+[2026-07-17 11:22:51] [CPDUMP] Bind mounted /media/sdcard -> /sdcard for CP dump capture.
+[2026-07-17 11:22:51] [CPDUMP] No existing CP dumps.
+[2026-07-17 11:22:51] [NetCheck] Waiting for network interface 'ccinet0' (Wait max 30s)...
+[2026-07-17 11:22:51] [NetCheck] Interface 'ccinet0' is ready!
+[2026-07-17 11:22:51] ccinet0 interface is ready. Program continuing...
+[2026-07-17 11:22:51] Program started. Version: 1.32.16
+setup NanoReqHandler -->tcp://127.0.0.1:38001
+NetWorkReqHandler  Construct success sock: 0
+packet limit  0
+[2026-07-17 11:22:51] [NANOMSG] REQ/REP handler started, url=tcp://127.0.0.1:38001 sock=0
+open traffic database .........
+init ......... databasetables 
+Getting the last record from the database...
+Monthly Last record details:
+Total Value: 1.19658e+07
+Sent Value: 1.12041e+07
+Received Value: 761668
+Traffic Threshold: 0
+Record Time: 2026-07-17 10:53:52
+Hisotry Last record details:
+Total Value: 2.09985e+07
+Sent Value: 1.12023e+07
+Received Value: 9.79626e+06
+Traffic Threshold: 0
+Record Time: 2026-07-17 10:52:52
++++++++++ initial  flow bytes is 11965780
++++++++++ initial  rxflow bytes is 761668
++++++++++ initial  txflow bytes is 11202288
++++++++++ initial  init_history_FlowInBytes is 20998543
++++++++++ initial  init rx_history_FlowInBytes is 9796255
++++++++++ initial  init tx_history_FlowInBytes is 11202288
++++++++++ initial  init rx_offset_Bytes is 0
++++++++++ initial  init tx_offset_Bytes is 0
++++++++++ initial  init history rx_offset_Bytes is 0
++++++++++ initial  init history tx_offset_Bytes is 0
+[2026-07-17 11:22:52] [INIT] Fast Retry Mode: Attempt 1/3
+[2026-07-17 11:22:52] [INIT] Starting dial initialization...
+[2026-07-17 11:22:52] [INIT] Waiting for ql_data_call_init...
+[2026-07-17 11:22:52] [INIT] data_call_init OK.
+ql_sim_init ok
+[2026-07-17 11:22:52] [SIM] sim_init OK
+[2026-07-17 11:22:52] [SLOT] config: loaded /usr/dial/dualsim.json
+[2026-07-17 11:22:52] [OPER] overseas operator-select (dualsim.json oper_select): 0
+[2026-07-17 11:22:52] [SLOT] init: enable=1 primary_phy=1(eSIM) switch_after=600s denied_after=0s(0=follow) cooldown=120s budget=3 fast_boot=1 last_good_ttl=86400s data_dead_settle=120s weak_csq=6 probe_back=330s(0=off)
+[2026-07-17 11:22:52] [EVENT] DataCall[1/auto_network]: dial status none -> dial created
+[2026-07-17 11:22:52] [SLOT] fast-boot: try last-good Phy
+[2026-07-17 11:22:52] [SLOT] switch to Phy
+EXEC: serial_atcmd AT+CFUN=0
+
+OK
+EXEC: serial_atcmd AT+CFUN=1
+
+OK
+[2026-07-17 11:22:58] [SLOT] active now Phy (card READY)
+EXEC: serial_atcmd AT+COPS=0
+
+OK
+EXEC: serial_atcmd AT+COPS=0
+
+OK
+[2026-07-17 11:23:01] [SLOT] cur ICCID: 898604581824D0297297 (Phy)
+[2026-07-17 11:23:01] [APN] load from apn.json (path=/usr/dial/apn.json, count=4)
+[2026-07-17 11:23:01] [APN] matched: apn_name=, usrname=, password=, iccid=898604
+[2026-07-17 11:23:01] [EVENT] DataCall[1/auto_network]: dial created -> dial idle
+[2026-07-17 11:23:01] [EVENT] DataCall[1/auto_network]: dial idle -> dial connecting
+[2026-07-17 11:23:03] [SLOT] data start OK
+[2026-07-17 11:23:03] [EVENT] DataCall[1/auto_network]: dial connecting -> dial connected
+Failed to open file for reading: No such file or directory
+Status updated to 1.
+call_id     : 1
+call_name   : auto_network
+device_name : ccinet1
+[2026-07-17 11:23:03] [EVENT] PDP IPv4: IF=ccinet1 IP=10.125.200.52 GW=10.125.200.53 DNS=36.158.169.100/36.158.151.124
+[2026-07-17 11:23:03] [EVENT] DataCall[1/auto_network]: dial connected -> dial connected
+Status is already 1, no update needed.
+call_id     : 1
+call_name   : auto_network
+device_name : ccinet1
+[2026-07-17 11:23:03] [EVENT] PDP IPv4: IF=ccinet1 IP=10.141.209.199 GW=10.141.209.200 DNS=36.158.169.100/36.158.151.124
+[2026-07-17 11:23:04] [EVENT] DataCall[1/auto_network]: dial connected -> dial idle
+[2026-07-17 11:23:04] [EVENT] PDP Idle (was connected): IF=ccinet1
+Status updated to 0.
+[2026-07-17 11:23:06] [SLOT] fast-boot: HIT Phy (ping ok), skip other slot
+[2026-07-17 11:23:06] [SLOT] slot select done, Fast-Fail timer rebased.
+[2026-07-17 11:23:06] [INIT] ICCID: 898604581824D0297297
+[2026-07-17 11:23:06] [INIT] SIM state: READY
+[2026-07-17 11:23:06] [APN] load from apn.json (path=/usr/dial/apn.json, count=4)
+[2026-07-17 11:23:06] [APN] matched: apn_name=, usrname=, password=, iccid=898604
+[2026-07-17 11:23:06] [INIT] APN set success
+[2026-07-17 11:23:06] [INIT] set_reconnect_mode(NORMAL): OK
+[2026-07-17 11:23:06] [INIT] ql_data_call_config: OK
+[2026-07-17 11:23:06] [INIT] Starting Data Call...
+[2026-07-17 11:23:06] [EVENT] DataCall[1/auto_network]: dial idle -> dial connecting
+[2026-07-17 11:23:08] [INIT] IMEI:    866785070731723
+[2026-07-17 11:23:08] [EVENT] DataCall[1/auto_network]: dial connecting -> dial connected
+Status updated to 1.
+call_id     : 1
+call_name   : auto_network
+device_name : ccinet1
+[2026-07-17 11:23:08] [INIT] FW:      AG35EUTDAR01A12M4G_OCPU_M08_01.001.01.001
+[2026-07-17 11:23:08] [EVENT] PDP IPv4: IF=ccinet1 IP=10.141.209.199 GW=10.141.209.200 DNS=36.158.169.100/36.158.151.124
+[2026-07-17 11:23:08] [INIT] SUB:      V01
+[2026-07-17 11:23:08] [INIT] AP_FW:   OW24.10_asr1806p301_rls1383_1.057.081_20260211_15_02_bld66_SDK
+[2026-07-17 11:23:08] [EVENT] DataCall[1/auto_network]: dial connected -> dial connected
+[2026-07-17 11:23:08] [INIT] CP_FW:   FALCON_CP_SDK1.057.081_Q_car_OfficialX_Linux::FALCON_LWG_M13_A0_MSA_1.057.088.#139696.CQ00155947.yihuohuang.CQ00160316.junluxu::FalconT_AG35_EUT_DA_20240123_RFAPI_v5.53d_FEM_v5.45_RC18_RFVersion
+Status is already 1, no update needed.
+call_id     : 1
+call_name   : auto_network
+device_name : ccinet1
+[2026-07-17 11:23:08] [INIT] IMSI:    460047827907297
+[2026-07-17 11:23:08] [INIT] Operator:+COPS: 0,2,"46000",7
+[2026-07-17 11:23:08] [INIT] CFUN:    +CFUN: 1
+[2026-07-17 11:23:08] [EVENT] PDP IPv4: IF=ccinet1 IP=10.163.56.250 GW=10.163.56.251 DNS=36.158.169.100/36.158.151.124
+[2026-07-17 11:23:08] [INIT] PDP cfg: +CGDCONT: 2,"IP","","10.163.56.250",0,0,0,2,0,0
+##### VBOX type 
+[2026-07-17 11:23:08] [LED] startup, send blink
+[2026-07-17 11:23:09] [INIT] PDP connected, start Ping window (10000ms).
+[2026-07-17 11:23:09] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:32 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:23:11] [INIT] Dial success. Retry count cleared.
+[2026-07-17 11:23:11] [PING] Ping 8.8.8.8 OK
+[2026-07-17 11:23:11] [TZ] date -R response: Fri, 17 Jul 2026 11:23:11 +0800
+[EC200ADialer] Extracted timezone string: +0800
+[EC200ADialer] Parsed timezone (15-min units): 32
+tz                             = 32
+[2026-07-17 11:23:11] [TZ] Parsed timezone: tz=32 (saved to /usr/dial/tz.ini)
+now get 4g interface name ccinet1
+[2026-07-17 11:23:11] [EVENT] Network Connected. Notification sent.
+[2026-07-17 11:23:11] [SLOT] mark last-good Phy
+[2026-07-17 11:23:11] [LED] state 1 -> 2, send
+[2026-07-17 11:23:12] [HEARTBEAT] RSRP:-104 | RSRQ:-6 | CID:0d17c148 | IP:10.163.56.250
+[2026-07-17 11:23:39] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:32 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:24:09] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:32 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:24:39] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:33 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:25:09] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:33 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:25:39] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:33 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:26:09] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:33 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:26:39] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:34 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:27:09] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:34 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:27:39] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:33 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:28:09] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:34 | DownTime:0s | SLOT:Phy
+[2026-07-17 11:28:12] [HEARTBEAT] RSRP:-104 | RSRQ:-6 | CID:0d17c148 | IP:10.163.56.250
+[2026-07-17 11:28:39] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:34 | DownTime:0s | SLOT:Phy
