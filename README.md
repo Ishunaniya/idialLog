@@ -80,7 +80,8 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # 产物: dialLog.exe
+make                     # 产物: dialLog_v1.2.0.exe(文件名自带版本号)
+make version             # 只打印当前版本号
 ```
 
 ### Windows 本机 MinGW
@@ -145,8 +146,16 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 
 ## 版本
 
-版本号只在 `version.h` 里改(C++ 标题栏与 `resource.rc` 的 exe 版本资源共用同一来源,不会对不上)。
-标题栏显示 `dialLog vX.Y.Z`;Windows 右键 exe →属性→详细信息也能看到。
+版本号**只在 `version.h` 里改**这一个地方,三处自动同步(已实测:改成 9.9.9 三处全跟着变):
+
+| 处 | 表现 |
+|---|---|
+| **exe 文件名** | `dialLog_v1.2.0.exe`(Makefile 从 `version.h` 解析) |
+| exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
+| 标题栏 | `dialLog v1.2.0 — 拨号日志分析` |
+
+文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
+`make clean` 用 `dialLog_v*.exe` 通配,升版本后旧 exe 一并清掉。
 
 | 版本 | 内容 |
 |---|---|

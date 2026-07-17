@@ -28,3 +28,6 @@
 
 #define DL_APP_NAME   "dialLog"
 #define DL_APP_NAME_W L"dialLog"
+
+// "dialLog_v1.2.0.exe" —— 与 Makefile 生成的文件名保持一致(Makefile 从上面三个数字解析)
+#define DL_EXE_NAME   DL_APP_NAME "_v" DL_VER_STR ".exe"

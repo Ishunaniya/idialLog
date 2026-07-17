@@ -7,13 +7,24 @@
 # 32 位:
 #     make CXX=i686-w64-mingw32-g++ WINDRES=i686-w64-mingw32-windres
 #
-# 产物 dialLog.exe 为静态链接,不依赖任何 MinGW/MSVC 运行时 DLL,拷到 Windows 双击即用。
+# 产物 dialLog_vX.Y.Z.exe 为静态链接,不依赖任何 MinGW/MSVC 运行时 DLL,拷到 Windows 双击即用。
+# 文件名自带版本号 —— 发给别人/存档时不会搞混是哪个 build。
 
 # 注意:用 := 而非 ?=。本机环境常导出 CC/CXX(RK3576/buildroot 交叉链),
 # ?= 对“已由环境定义”的变量不生效,会误用 aarch64 编译器。命令行 `make CXX=g++` 仍可覆盖。
 CXX     := x86_64-w64-mingw32-g++
 WINDRES := x86_64-w64-mingw32-windres
-TARGET  := dialLog.exe
+
+# 版本号从 version.h 解析,保持单一来源:改 version.h 即同时改变
+# exe 文件名、exe 版本资源(右键属性)、标题栏,三者永远一致。
+VER_MAJOR := $(shell sed -n 's/^#define[ \t]\+DL_VER_MAJOR[ \t]\+\([0-9]\+\).*/\1/p' version.h)
+VER_MINOR := $(shell sed -n 's/^#define[ \t]\+DL_VER_MINOR[ \t]\+\([0-9]\+\).*/\1/p' version.h)
+VER_PATCH := $(shell sed -n 's/^#define[ \t]\+DL_VER_PATCH[ \t]\+\([0-9]\+\).*/\1/p' version.h)
+VER       := $(VER_MAJOR).$(VER_MINOR).$(VER_PATCH)
+ifeq ($(VER),..)
+$(error 无法从 version.h 解析版本号 —— 检查 DL_VER_MAJOR/MINOR/PATCH 的写法)
+endif
+TARGET    := dialLog_v$(VER).exe
 
 # -municode      : 使用 wWinMain 入口
 # -mwindows      : GUI 子系统(不弹控制台)
@@ -41,11 +52,15 @@ logmodel.o: logmodel.cpp logmodel.h
 resource.o: resource.rc app.manifest version.h
 	$(WINDRES) -c 65001 $< -O coff -o $@
 
-# 解析层自测(用本机 g++ 编译运行,与 tools/diallog.py 对拍)
+# 解析层自测:logmodel 不含 Win32 依赖,用本机 g++ 直接编译运行
 selftest: selftest.cpp logmodel.cpp logmodel.h
 	g++ -std=c++17 -O2 -Wall -Wextra -o selftest selftest.cpp logmodel.cpp
 
+# 用 dialLog_v*.exe 通配:升版本后旧版本的 exe 也一并清掉,不留残留
 clean:
-	rm -f $(OBJS) $(TARGET) selftest
+	rm -f $(OBJS) dialLog_v*.exe selftest
 
-.PHONY: all clean
+version:
+	@echo $(VER)
+
+.PHONY: all clean version

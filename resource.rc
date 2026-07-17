@@ -18,7 +18,7 @@ BEGIN
             VALUE "FileDescription", "拨号日志分析工具(modem_mng / open_dial / artery)"
             VALUE "FileVersion",     DL_VER_STR4
             VALUE "InternalName",    DL_APP_NAME
-            VALUE "OriginalFilename","dialLog.exe"
+            VALUE "OriginalFilename",DL_EXE_NAME
             VALUE "ProductName",     DL_APP_NAME
             VALUE "ProductVersion",  DL_VER_STR4
         END
