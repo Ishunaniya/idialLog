@@ -64,5 +64,15 @@ run datacall_init_fail 600 SIM_TIME_SCALE=100 SIM_DATACALL_INIT_RET=-1067 SIM_PI
 # 8) 一切正常(对照组 —— 假阳性守卫:正常设备不该报任何严重结论)
 run all_normal 300 SIM_TIME_SCALE=60 SIM_PING_OK=1 SIM_CEREG=1 SIM_CSQ=22 SIM_TEMP=35
 
+# ---- AG35 双卡(需 AG35=1 重新编译:slot_mgr.c 整文件 #ifdef QL_MODULE_PLATFORM_AG35,
+#      不加宏编出来是 0 个函数的空 TU,[SLOT] 一条都不会有)----
+if [ "${AG35:-0}" = "1" ]; then
+  echo
+  echo "════ AG35 双卡场景(driver 须用 AG35=1 make 重编)════"
+  run ag35_cold_select   600  SIM_TIME_SCALE=100 SIM_PING_OK=1 SIM_CEREG=1 SIM_CSQ=20
+  run ag35_switch_fail   900  SIM_TIME_SCALE=100 SIM_PING_OK=0 SIM_CEREG=1 SIM_CSQ=4 SIM_SLOT_SWITCH_FAIL=1
+  run ag35_weak_switch   900  SIM_TIME_SCALE=100 SIM_PING_OK=0 SIM_CEREG=1 SIM_CSQ=3
+fi
+
 echo
 echo "日志已落到 $OUT/"

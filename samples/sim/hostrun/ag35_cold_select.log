@@ -1,0 +1,77 @@
+[2026-07-17 17:08:22] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-07-17 17:08:22] [INIT] Starting dial initialization...
+[2026-07-17 17:08:22] [INIT] Waiting for ql_data_call_init...
+[2026-07-17 17:08:22] [INIT] data_call_init OK.
+ql_sim_init ok
+[2026-07-17 17:08:22] [SIM] sim_init OK
+[2026-07-17 17:08:22] [SLOT] config: no /usr/dial/dualsim.json, seed write failed, use built-in defaults
+[2026-07-17 17:08:22] [OPER] overseas operator-select (dualsim.json oper_select): 0
+[2026-07-17 17:08:22] [SLOT] init: enable=1 primary_phy=1(eSIM) switch_after=600s denied_after=0s(0=follow) cooldown=120s budget=3 fast_boot=1 last_good_ttl=86400s data_dead_settle=120s weak_csq=6 probe_back=0s(0=off)
+[2026-07-17 17:08:22] [SLOT] fast-boot: no valid last-good, fall back to cold select
+[2026-07-17 17:08:22] [SLOT] cold select: probing both physical slots (data-verified)
+[2026-07-17 17:08:22] [SLOT] switch to Phy
+[2026-07-17 17:08:22] [SLOT] active now eSIM (card READY)
+[2026-07-17 17:08:22] [SLOT] cur ICCID: (empty) (eSIM)
+[2026-07-17 17:08:22] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-07-17 17:08:22] [SLOT] data start OK
+[2026-07-17 17:08:22] [SLOT] probe RAT=0 (+0)
+[2026-07-17 17:08:22] [SLOT] probe score: REG=1 CSQ=20 -> score=6020
+[2026-07-17 17:08:22] [SLOT] cold probe Phy: score=6020
+[2026-07-17 17:08:22] [SLOT] switch to eSIM
+[2026-07-17 17:08:22] [SLOT] active now eSIM (card READY)
+[2026-07-17 17:08:22] [SLOT] cur ICCID: (empty) (eSIM)
+[2026-07-17 17:08:22] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-07-17 17:08:22] [SLOT] data start OK
+[2026-07-17 17:08:22] [SLOT] probe RAT=0 (+0)
+[2026-07-17 17:08:22] [SLOT] probe score: REG=1 CSQ=20 -> score=6020
+[2026-07-17 17:08:22] [SLOT] cold probe eSIM: score=6020
+[2026-07-17 17:08:22] [SLOT] cold select result: best=Phy (score=6020) -> drive Phy
+[2026-07-17 17:08:22] [SLOT] switch to Phy
+[2026-07-17 17:10:02] [SLOT] active now eSIM (card READY)
+[2026-07-17 17:10:02] [SLOT] slot select done, Fast-Fail timer rebased.
+[2026-07-17 17:10:02] [INIT] ICCID: (empty)
+[2026-07-17 17:10:02] [INIT] SIM state: READY
+[2026-07-17 17:10:02] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-07-17 17:10:02] [INIT] APN set success
+[2026-07-17 17:10:02] [INIT] set_reconnect_mode(NORMAL): OK
+[2026-07-17 17:10:02] [INIT] ql_data_call_config: OK
+[2026-07-17 17:10:02] [INIT] Starting Data Call...
+[2026-07-17 17:10:02] [INIT] IMEI:    865965086914080
+[2026-07-17 17:10:02] [INIT] FW:      (unknown)
+[2026-07-17 17:10:02] [INIT] SUB:     (unknown)
+[2026-07-17 17:10:02] [INIT] AP_FW:   (unknown)
+[2026-07-17 17:10:02] [INIT] CP_FW:   (unknown)
+[2026-07-17 17:10:02] [INIT] IMSI:    460089087110299
+[2026-07-17 17:10:02] [INIT] Operator:+COPS: 0,2,"46000",7
+[2026-07-17 17:10:02] [INIT] CFUN:    +CFUN: 1
+[2026-07-17 17:10:02] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
+##### PRO type 
+[2026-07-17 17:10:02] [LED] startup, send blink
+[2026-07-17 17:10:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:10:02] [INIT] Dial success. Retry count cleared.
+[2026-07-17 17:10:02] [PING] Ping 8.8.8.8 OK
+[2026-07-17 17:10:02] [TZ] date -R response: Fri, 17 Jul 2026 17:08:23 +0800
+[EC200ADialer] Extracted timezone string: +0800
+[EC200ADialer] Parsed timezone (15-min units): 32
+[2026-07-17 17:10:02] [TZ] Parsed timezone: tz=32 (saved to /usr/dial/tz.ini)
+[2026-07-17 17:10:02] [EVENT] Network Connected. Notification sent.
+[2026-07-17 17:10:02] [SLOT] mark last-good eSIM FAILED: No such file or directory (next boots fall back to cold select)
+[2026-07-17 17:10:02] [LED] state 1 -> 2, send
+[2026-07-17 17:10:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:10:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:11:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:11:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:11:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:11:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:13:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:13:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:15:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:15:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:15:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:15:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:16:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:16:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:16:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:18:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:18:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-07-17 17:18:22] [EVENT] Exit requested. Turning LED off and leaving dial_loop.

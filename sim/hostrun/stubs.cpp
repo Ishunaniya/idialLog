@@ -131,3 +131,38 @@ int  nn_errno(void)                      { return 0; }
 const char* nn_strerror(int)             { return "stub"; }
 void nn_term(void)                       {}
 }
+
+// ============================ AG35 双卡专用桩 ============================
+// 只有 -DQL_MODULE_PLATFORM_AG35 时 slot_mgr.c 才非空(否则整文件被 #ifdef 关掉,
+// 编出来是 0 个函数的空 TU)。这两个 API 只在 AG35 SDK 里有。
+// 签名逐字取自 AG35 SDK 真头(ql-sysroots/.../ql_sim.h):
+//   int ql_sim_switch_slot(QL_SIM_SLOT_E log_slot, QL_SIM_PHY_SLOT_E phy_slot);
+//   int ql_sim_get_active_slots(ql_sim_active_slots_t *p_active_slots);
+// (教训:上次猜 ql_sim_get_card_info 的签名+结构体大小 → 段错误。签名必须取真头。)
+extern "C" {
+/* 用**真类型**,不用 int/void* 猜 —— 这是第三次被真头打脸了
+ * (前两次:ql_sim_get_card_info 猜 void*+memset64 → 段错误;
+ *          ql_sim_set_card_status_cb 猜 void* → 编译器拒绝)。 */
+int ql_sim_switch_slot(QL_SIM_SLOT_E log_slot, QL_SIM_PHY_SLOT_E phy_slot) {
+    fprintf(stderr, "[stub] ql_sim_switch_slot(log=%d, phy=%d)\n", (int)log_slot, (int)phy_slot);
+    const char* f = getenv("SIM_SLOT_SWITCH_FAIL");
+    if (f && atoi(f)) return -1;                       // 切卡失败 → 真代码自己决定怎么办
+    setenv("SIM_ACTIVE_PHY", (int)phy_slot == 2 ? "2" : "1", 1);
+    return 0;
+}
+int ql_sim_get_active_slots(ql_sim_active_slots_t* p) {
+    if (!p) return -1;
+    *p = ql_sim_active_slots_t{};                      // 真类型,尺寸由编译器算
+    const char* v = getenv("SIM_ACTIVE_PHY");
+    int phy = v ? atoi(v) : 1;
+    /* 首个逻辑槽映射到当前物理槽;字段名以 AG35 SDK 头为准 */
+    memcpy(p, &phy, sizeof(int));
+    return 0;
+}
+/* EC200A 侧 AT 便捷封装(slot_mgr.c:338 发 AT+CFUN=0):转发给假 serial_atcmd */
+int Ql_SendAT(const char* atCmd) {
+    char cmd[512];
+    snprintf(cmd, sizeof cmd, "serial_atcmd %s > /dev/null 2>&1", atCmd ? atCmd : "");
+    return system(cmd);
+}
+}

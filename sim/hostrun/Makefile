@@ -30,7 +30,10 @@ INC := -I$(M) -I$(M)/ec200a -I$(M)/ec200a/dial -I$(M)/ec200a/at -I$(M)/ec200a/mi
        -I$(SK)/cjson-1.7.15/include -I$(SK)/nanomsg-1.1.5/include \
        -I$(SDK) -I$(SDKQ)
 
-DEF      := -DUSE_EC200A_DIAL
+# AG35 与 EC200A 共用 ec200a/ 源码,靠 QL_MODULE_PLATFORM_AG35 开双卡。
+# 不加这个宏 slot_mgr.c 是**空 TU**(整文件 #ifdef),AG35 的切卡逻辑根本没编进来 ——
+# 早先漏了它,却宣称"一份代码覆盖 EC200A+AG35",是错的。
+DEF      := -DUSE_EC200A_DIAL $(if $(AG35),-DQL_MODULE_PLATFORM_AG35)
 CXXFLAGS := -std=c++17 -g -O0 $(DEF) $(INC)
 CFLAGS   := -std=gnu99 -g -O0 $(DEF) $(INC)
 

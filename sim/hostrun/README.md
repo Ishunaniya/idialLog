@@ -39,9 +39,31 @@
 ## 用法
 
 ```bash
-make                 # 构建 driver + fastclock.so
-./run_scenario.sh    # 跑 8 个场景 → ../../samples/sim/hostrun/*.log
+make                    # EC200A(不含双卡)
+./run_scenario.sh       # 8 个场景 → ../../samples/sim/hostrun/*.log
+
+AG35=1 make             # AG35(**编入双卡**)
+AG35=1 ./run_scenario.sh   # 上面 8 个 + 3 个 AG35 双卡场景
 ```
+
+### ⚠️ AG35 必须加 `AG35=1`,否则双卡代码根本没编进来
+
+`ec200a/slot/slot_mgr.c` **整文件** `#ifdef QL_MODULE_PLATFORM_AG35`。不加宏时:
+
+```
+$ nm --defined-only slot_mgr.o | grep -c ' T '
+0        ← 空 TU,24 个函数一个都没有
+```
+
+我早先只加了 `-DUSE_EC200A_DIAL`,却宣称"一份代码覆盖 EC200A + AG35" —— **那是错的**,
+跑出来的日志里 `[SLOT]` 一条都没有。加上宏后 slot_mgr 有 24 个函数,真代码才会自己打出
+`[SLOT] cold select: probing both physical slots` / `[SLOT] switch to Phy` /
+`[SLOT] active now eSIM`,心跳里也才有 `SLOT:` 字段,dialLog 才会把平台识别成 AG35。
+
+AG35 双卡还需两个 **AG35 SDK 专有**的桩(`ql_sim_switch_slot` / `ql_sim_get_active_slots`),
+签名取自 AG35 SDK 真头 —— 我又先用 `int`/`void*` 猜了一次,**被编译器第三次打脸**
+(前两次:`ql_sim_get_card_info` 猜 `void*`+`memset(64)` → 段错误;
+`ql_sim_set_card_status_cb` 猜 `void*` → 拒绝)。
 
 ## 踩过的坑(都是真东西打脸打出来的,记下来免得重犯)
 
