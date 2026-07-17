@@ -25,3 +25,5 @@ sim/hostrun_open_dial/driver
 sim/hostrun_eg25/*.o
 sim/hostrun_eg25/driver
 sim/hostrun_eg25/*.so
+sim/hostrun_artery/*.o
+sim/hostrun_artery/driver
