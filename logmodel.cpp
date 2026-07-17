@@ -636,7 +636,14 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
         if (l.tag.compare(0, 11, "RECOVERY L3") == 0)       pushEvent(evRecL3);
         // ec200a/dial/dial.cpp:1082 "[WARNING] Registration Denied! Code %d."
         if (icontains(l.msg, "Registration Denied"))        evDenied.push_back(&l);
-        if (l.tag == "CPDUMP")                              evCpdump.push_back(&l);
+        // 只认"真的发现了 dump"这一句,不能见 [CPDUMP] 标签就报基带崩溃。
+        // 【穷举证明】源码里 [CPDUMP] 共 9 种消息(rtms_sdk + open_dial 的 HEAD),
+        // 只有 "Found %d existing CP dump(s)" 表示确实崩过;其余 8 种是例行挂载/卸载/
+        // "No existing CP dumps." 等。
+        // 【样本实证】真机 EC200A 1.28.4(完全正常的设备)只打了 "Bind mounted ..." 和
+        // "No existing CP dumps.",旧实现据此报出 [严重] 基带崩溃 —— 假阳性,会误导排查方向。
+        if (l.tag == "CPDUMP" && icontains(l.msg, "existing CP dump") &&
+            !icontains(l.msg, "No existing"))                evCpdump.push_back(&l);
         if (l.tag == "SLOT")                                evSlot.push_back(&l);
         if (l.tag == "OPER")                                evOper.push_back(&l);
         if (l.tag == "CFUN")                                evCfun.push_back(&l);
@@ -674,7 +681,7 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
         Finding f;
         f.severity = 2;
         f.title  = "检测到模组 CP dump(基带崩溃)";
-        f.detail = "出现 [CPDUMP] 记录,说明模组基带侧发生过崩溃转储。";
+        f.detail = "日志出现 \"[CPDUMP] Found N existing CP dump(s)\" —— 模组基带侧确实发生过崩溃转储。\n(注:仅 \"Found ... existing CP dump(s)\" 计入;例行的 bind mount / \"No existing CP dumps\" 不算。)";
         f.advice = "取回 dump 文件反馈模组厂商;纯应用层重拨/CFUN 无法根治固件崩溃。";
         for (size_t i = 0; i < evCpdump.size() && i < 3; ++i) f.ev.push_back(mkEv(*evCpdump[i]));
         fs.push_back(std::move(f));
