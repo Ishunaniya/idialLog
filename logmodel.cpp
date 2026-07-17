@@ -7,6 +7,7 @@
 #include <cstring>
 #include <regex>
 
+
 namespace dl {
 
 // ============================ 小工具 ============================
@@ -233,6 +234,7 @@ void parseLines(const std::vector<std::string>& raw,
     out.clear();
     sessions.clear();
     out.reserve(raw.size());
+    std::vector<long long> restartTs;   // 重启时刻(opened 标记 + 版本横幅,末尾合并去重)
     ParseAudit ad;
     ad.rawTotal = raw.size();
 
@@ -251,8 +253,12 @@ void parseLines(const std::vector<std::string>& raw,
             size_t a = line.find('[');
             size_t b = (a == std::string::npos) ? std::string::npos : line.find(']', a);
             if (a != std::string::npos && b != std::string::npos && b > a + 1 &&
-                line.find("Dial Log Opened") != std::string::npos)
-                sessions.push_back(line.substr(a + 1, b - a - 1));
+                line.find("Dial Log Opened") != std::string::npos) {
+                std::string ts = line.substr(a + 1, b - a - 1);  // "YYYY-MM-DD HH:MM:SS"
+                int Y,Mo,D,h,mi,s;
+                if (std::sscanf(ts.c_str(), "%4d-%2d-%2d %2d:%2d:%2d",&Y,&Mo,&D,&h,&mi,&s)==6)
+                    restartTs.push_back(mkEpoch(Y,Mo,D,h,mi,s));
+            }
             ad.session++;
             continue;
         }
@@ -261,6 +267,17 @@ void parseLines(const std::vector<std::string>& raw,
         L.lineNo = idx + 1;
         if (parseSd(line, L) || parseSeas(line, L)) {
             ad.parsed++;
+            // 进程重启横幅(每次启动恰一次,三家措辞各异,全是正常日志行):
+            //   modem_mng: "Program started. Version:" / "EG25 modem_mng Version:"
+            //   open_dial: "Program started. Main Version:"
+            //   artery   : "DIAL Version:"(seas_log,无 "=== Dial Log Opened ===" 标记)
+            // 【真机实证】real_artery_1.29.14 重启 3 次却只有 3 条 "DIAL Version",0 条 opened 标记
+            //   —— 只认 opened 标记的话 artery/AG35控制台 的重启全漏(报 0 次)。
+            if (L.msg.find("DIAL Version:") != std::string::npos ||
+                L.msg.find("modem_mng Version:") != std::string::npos ||
+                L.msg.find("Program started. Version:") != std::string::npos ||
+                L.msg.find("Program started. Main Version:") != std::string::npos)
+                restartTs.push_back(L.t);
             out.push_back(std::move(L));
             continue;
         }
@@ -296,6 +313,15 @@ void parseLines(const std::vector<std::string>& raw,
         if (ad.samples.size() < ParseAudit::kMaxSamples)
             ad.samples.push_back(UnparsedLine{idx + 1, line.substr(0, 400)});
     }
+    // 合并两种重启信号:同一次重启在 modem_mng 上既有 opened 标记又有版本横幅
+    // (相隔几秒),去重防重复计数;artery/AG35控制台 只有其一。10s 内视为同一次。
+    std::sort(restartTs.begin(), restartTs.end());
+    long long prev = -1000000000LL;   // 不用 LLONG_MIN:t-prev 会整数溢出,第一个永远被漏掉
+    for (long long t : restartTs) {
+        if (t - prev > 10) sessions.push_back(fmtTime(t, "FULL"));
+        prev = t;
+    }
+
     if (audit) *audit = std::move(ad);
 }
 

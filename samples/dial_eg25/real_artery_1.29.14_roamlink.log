@@ -1,0 +1,84 @@
+2026-07-17 10:09:48.564 [INFO] main (main.c:180) - DIAL Version: 1.29.14
+
+2026-07-17 10:09:48.659 [INFO] roamlink_read_policy (roamlink.c:337) - roamlink: network_select = 1
+2026-07-17 10:09:48.685 [INFO] roamlink_probe (roamlink.c:98) - roamlink: probe OK (RBMaster + conf.ini + license valid, size=24208 bytes)
+2026-07-17 10:09:48.692 [INFO] print_init_info (main.c:133) - [INIT] policy=1
+2026-07-17 10:09:48.709 [INFO] print_init_info (main.c:140) - [INIT] IMEI: 865167064495881
+2026-07-17 10:09:48.722 [INFO] print_init_info (main.c:144) - [INIT] FW: EG25GGBR07A08M2G_OCPU_30.200.30.200
+2026-07-17 10:09:48.750 [INFO] print_init_info (main.c:162) - [INIT] COPS: +COPS: 0 (mode=0 auto) | CEREG: +CEREG: 0,2
+2026-07-17 10:09:48.773 [INFO] dial_task (dial.c:923) - state: (start) -> none
+2026-07-17 10:09:48.800 [INFO] roamlink_is_master_running (roamlink.c:391) - roamlink: RBMaster process not found in /proc
+2026-07-17 10:09:48.800 [INFO] roamlink_start_master (roamlink.c:481) - roamlink: starting RBMaster...
+2026-07-17 10:09:48.802 [INFO] roamlink_start_master (roamlink.c:522) - roamlink: RBMaster forked (pid=1520), waiting 3s
+2026-07-17 10:09:51.803 [INFO] dial_task (dial.c:974) - dial: policy=1, initial channel: Roamlink
+2026-07-17 10:09:51.816 [INFO] roamlink_start_service (roamlink.c:676) - roamlink_start: AT+COPS=0 OK
+2026-07-17 10:09:51.818 [INFO] roamlink_send_cmd (roamlink.c:617) - roamlink_send_cmd: sent "RBstartServiceMaster" to 127.0.0.1:5568
+2026-07-17 10:09:51.820 [INFO] roamlink_start_service (roamlink.c:688) - roamlink_start: Roamlink service started, network_type=2
+2026-07-17 10:09:52.822 [INFO] dial_task (dial.c:923) - state: none -> roamlink_starting
+2026-07-17 10:09:52.824 [ERROR] nw_tcp_connectivity_test (nw.c:677) - tcp_test: connect() failed immediately: Network is unreachable
+2026-07-17 10:09:52.824 [INFO] dial_task (dial.c:1774) - Roamlink not yet connected, waited 4s / 300s
+2026-07-17 10:10:03.826 [ERROR] nw_tcp_connectivity_test (nw.c:677) - tcp_test: connect() failed immediately: Network is unreachable
+2026-07-17 10:10:15.164 [ERROR] nw_tcp_connectivity_test (nw.c:700) - tcp_test: connect failed: Connection refused
+2026-07-17 10:10:26.175 [ERROR] nw_tcp_connectivity_test (nw.c:677) - tcp_test: connect() failed immediately: Network is unreachable
+2026-07-17 10:10:37.614 [INFO] dial_task (dial.c:1699) - Roamlink connected, entering active state
+2026-07-17 10:10:49.327 [INFO] dial_task (dial.c:923) - state: roamlink_starting -> roamlink_active
+2026-07-17 10:10:49.700 [INFO] main (main.c:232) - [HEARTBEAT] state=roamlink_active csq=17 tcp_fail=0 rl_fail=0
+2026-07-17 10:11:13.605 [INFO] dial_task (dial.c:1883) - Roamlink biz OK: rx_packets 17 -> 59 (summary, interval 102s)
+2026-07-17 10:11:49.882 [INFO] main (main.c:232) - [HEARTBEAT] state=roamlink_active csq=16 tcp_fail=0 rl_fail=0
+2026-07-17 10:12:50.091 [INFO] main (main.c:232) - [HEARTBEAT] state=roamlink_active csq=16 tcp_fail=0 rl_fail=0
+2026-07-17 10:13:14.762 [INFO] main (main.c:180) - DIAL Version: 1.29.14
+
+2026-07-17 10:13:14.798 [INFO] roamlink_read_policy (roamlink.c:337) - roamlink: network_select = 1
+2026-07-17 10:13:14.798 [INFO] roamlink_probe (roamlink.c:98) - roamlink: probe OK (RBMaster + conf.ini + license valid, size=24208 bytes)
+2026-07-17 10:13:14.799 [INFO] print_init_info (main.c:133) - [INIT] policy=1
+2026-07-17 10:13:14.811 [INFO] print_init_info (main.c:140) - [INIT] IMEI: 865167064495881
+2026-07-17 10:13:14.823 [INFO] print_init_info (main.c:144) - [INIT] FW: EG25GGBR07A08M2G_OCPU_30.200.30.200
+2026-07-17 10:13:14.847 [INFO] print_init_info (main.c:162) - [INIT] COPS: +COPS: 0,0,"CHN-UNICOM",7 (mode=0 auto) | CEREG: +CEREG: 0,1
+2026-07-17 10:13:14.862 [INFO] dial_task (dial.c:923) - state: (start) -> none
+2026-07-17 10:13:14.877 [INFO] roamlink_is_master_running (roamlink.c:385) - roamlink: RBMaster running (found in /proc)
+2026-07-17 10:13:14.878 [INFO] roamlink_start_master (roamlink.c:477) - roamlink: RBMaster already running, skip
+2026-07-17 10:13:14.878 [INFO] dial_task (dial.c:974) - dial: policy=1, initial channel: Roamlink
+2026-07-17 10:13:14.889 [INFO] roamlink_start_service (roamlink.c:676) - roamlink_start: AT+COPS=0 OK
+2026-07-17 10:13:14.890 [INFO] roamlink_send_cmd (roamlink.c:617) - roamlink_send_cmd: sent "RBstartServiceMaster" to 127.0.0.1:5568
+2026-07-17 10:13:14.891 [INFO] roamlink_start_service (roamlink.c:688) - roamlink_start: Roamlink service started, network_type=2
+2026-07-17 10:13:15.891 [INFO] dial_task (dial.c:923) - state: none -> roamlink_starting
+2026-07-17 10:13:16.291 [INFO] dial_task (dial.c:1699) - Roamlink connected, entering active state
+2026-07-17 10:13:27.306 [INFO] dial_task (dial.c:923) - state: roamlink_starting -> roamlink_active
+2026-07-17 10:13:51.552 [INFO] dial_task (dial.c:1883) - Roamlink biz OK: rx_packets 120 -> 133 (summary, interval 260s)
+2026-07-17 10:14:14.857 [INFO] main (main.c:180) - DIAL Version: 1.29.14
+
+2026-07-17 10:14:14.890 [INFO] roamlink_read_policy (roamlink.c:337) - roamlink: network_select = 4
+2026-07-17 10:14:14.895 [INFO] roamlink_is_master_running (roamlink.c:385) - roamlink: RBMaster running (found in /proc)
+2026-07-17 10:14:14.895 [INFO] dial_mng_new (dial.c:78) - dial_mng_new: policy=4 (SIM), stopping Roamlink service first
+2026-07-17 10:14:14.896 [INFO] roamlink_send_cmd (roamlink.c:617) - roamlink_send_cmd: sent "RBstopServiceMaster" to 127.0.0.1:5568
+2026-07-17 10:14:14.897 [INFO] roamlink_stop_service (roamlink.c:708) - roamlink_stop: Roamlink service stopped
+2026-07-17 10:14:19.898 [INFO] roamlink_probe (roamlink.c:98) - roamlink: probe OK (RBMaster + conf.ini + license valid, size=24208 bytes)
+2026-07-17 10:14:19.925 [INFO] print_init_info (main.c:133) - [INIT] policy=4
+2026-07-17 10:14:19.940 [INFO] print_init_info (main.c:140) - [INIT] IMEI: 865167064495881
+2026-07-17 10:14:19.956 [INFO] print_init_info (main.c:144) - [INIT] FW: EG25GGBR07A08M2G_OCPU_30.200.30.200
+2026-07-17 10:14:19.983 [INFO] print_init_info (main.c:162) - [INIT] COPS: +COPS: 0 (mode=0 auto) | CEREG: +CEREG: 0,2
+2026-07-17 10:14:19.994 [INFO] dial_task (dial.c:923) - state: (start) -> none
+2026-07-17 10:14:19.995 [INFO] dial_task (dial.c:983) - dial: policy=4, initial channel: physical SIM
+2026-07-17 10:14:20.996 [INFO] dial_task (dial.c:923) - state: none -> init
+2026-07-17 10:14:22.495 [INFO] dial_task (dial.c:923) - state: init -> sim_init
+2026-07-17 10:14:24.004 [INFO] dial_task (dial.c:923) - state: sim_init -> sim_check
+2026-07-17 10:14:25.017 [INFO] dial_task (dial.c:923) - state: sim_check -> sim_op
+2026-07-17 10:14:25.025 [INFO] sim_op_handler (sim.c:210) - ICCID: 89464283216100721879
+2026-07-17 10:14:25.029 [INFO] sim_op_handler (sim.c:221) - IMSI: 240422610072187
+2026-07-17 10:14:26.030 [INFO] dial_task (dial.c:923) - state: sim_op -> reg_check
+2026-07-17 10:14:26.039 [ERROR] dial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
+2026-07-17 10:15:20.194 [INFO] main (main.c:232) - [HEARTBEAT] state=reg_check csq=17 tcp_fail=0 rl_fail=0
+2026-07-17 10:16:09.214 [INFO] dial_task (dial.c:923) - state: reg_check -> cereg_check
+2026-07-17 10:16:10.233 [INFO] dial_task (dial.c:923) - state: cereg_check -> precondition_check
+2026-07-17 10:16:11.235 [INFO] dial_task (dial.c:923) - state: precondition_check -> pre_start_call
+2026-07-17 10:16:11.267 [INFO] dial_task (dial.c:1131) - [APN] selected: apn="internet.lte.cxn" profile=1 is_oper_select=1 (iccid-match="894642")
+2026-07-17 10:16:13.423 [INFO] dial_task (dial.c:923) - state: pre_start_call -> start_call
+2026-07-17 10:16:14.575 [INFO] dial_task (dial.c:923) - state: start_call -> wait_for_connect
+2026-07-17 10:16:14.642 [INFO] dial_data_call_state_callback (dial.c:284) - Net Connected
+
+2026-07-17 10:16:14.642 [INFO] dial_data_call_state_callback (dial.c:288) - IPv4 address:        10.6.173.255
+2026-07-17 10:16:15.643 [INFO] dial_task (dial.c:1154) - net connected
+2026-07-17 10:16:15.804 [INFO] dial_task (dial.c:1240) - [COPS] connected: +COPS: 0,0,"CHN-UNICOM",7 (mode=0 auto)
+2026-07-17 10:16:16.809 [INFO] dial_task (dial.c:923) - state: wait_for_connect -> net_connected
+2026-07-17 10:16:20.406 [INFO] main (main.c:232) - [HEARTBEAT] state=net_connected csq=15 tcp_fail=0 rl_fail=0
+2026-07-17 10:17:20.623 [INFO] main (main.c:232) - [HEARTBEAT] state=net_connected csq=14 tcp_fail=0 rl_fail=0

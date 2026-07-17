@@ -156,6 +156,20 @@ int main() {
         }
     }
 
+    // ── 真机 artery 1.29.14(Roamlink 通道 + 运行期策略切换 1→1→4,重启 3 次)──
+    {
+        auto L = load("samples/dial_eg25/real_artery_1.29.14_roamlink.log");
+        std::printf("── 真机 artery 1.29.14(Roamlink+策略切换,84 行)\n");
+        if (!L.ok) { std::printf("   ✗ 打不开\n"); g_fail++; }
+        else {
+            cki((long)L.audit.unparsed, 0, "未识别行");
+            // 钉死重启=3 —— 这份日志 DIAL Version 出现 3 次(policy 1→1→4)、无 opened 标记。
+            // 只认 "=== Dial Log Opened ===" 的旧实现对 artery 全瞎(报 0)。
+            // 且修过整数溢出(prev=LLONG_MIN 时 t-prev 溢出漏掉第一次)→ 曾报 2。
+            cki((long)L.sessions.size(), 3, "重启次数(DIAL Version 横幅)");
+        }
+    }
+
     // ── 真机 EC200A 1.28.4(完全正常的设备:假阳性守卫)──
     {
         auto L = load("samples/dial_ec200a/real_ec200a_1.28.4_unsynced.log");
