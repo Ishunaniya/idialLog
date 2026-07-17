@@ -1,0 +1,7 @@
+=== Dial Log Opened [2026-07-02 09:00:00] daykey=2026-07-02 ===
+[2026-07-02 09:00:00] [SLOT] init: enable=1 primary_phy=1(eSIM) switch_after=180s
+[2026-07-02 09:00:05] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:40 | DownTime:0s | SLOT:eSIM
+[2026-07-02 09:01:00] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-07-02 09:01:30] [SLOT] switch to card
+[2026-07-02 09:02:00] [HEARTBEAT] Network recovered after 60s
+[2026-07-02 09:02:30] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:22 | TEMP:41 | DownTime:0s | SLOT:card

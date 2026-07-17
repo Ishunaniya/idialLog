@@ -1,0 +1,12 @@
+=== Dial Log Opened [2026-07-01 08:00:00] daykey=2026-07-01 ===
+[2026-07-01 08:00:00] [INIT] modem_mng version 1.31.9 starting
+[2026-07-01 08:00:05] [HEARTBEAT] SIM_AT:READY | SIM_CB:CB_UNINIT | REG:1 | CSQ:19 | TEMP:38 | DownTime:0s
+[2026-07-01 08:00:35] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:6 | TEMP:77 | DownTime:0s
+[2026-07-01 08:01:05] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-07-01 08:01:35] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:5 | TEMP:78 | DownTime:30s
+[2026-07-01 08:06:35] [RECOVERY L1] Stopping Data Call... REG=1
+[2026-07-01 08:06:36] [RECOVERY L1] Restarting Data Call...
+[2026-07-01 08:07:00] [HEARTBEAT] Network recovered after 355s
+[2026-07-01 08:07:30] [WARNING] Registration Denied! Code 3.
+[2026-07-01 08:08:00] [CPDUMP] CP crash dump captured to /media/sdcard/dial_log/dial_snap
+=== Program Exit [2026-07-01 08:09:00] ===

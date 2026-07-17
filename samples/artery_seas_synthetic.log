@@ -1,0 +1,10 @@
+2026-07-16 09:53:50.101 [INFO] [0mmain (main.c:180) - [INIT] policy=4 FORCE_SIM
+2026-07-16 09:53:51.202 [INFO] [0mmain (main.c:186) - [INIT] IMEI: 867435040000000
+2026-07-16 09:53:56.310 [ERROR] [0mdial_task (dial.c:1084) - QL_Data_Call_Start failed err=0x0
+2026-07-16 09:54:00.001 [INFO] [0mmain (main.c:217) - [HEARTBEAT] state=net_connected csq=18 tcp_fail=0 rl_fail=0
+2026-07-16 09:59:00.004 [INFO] [0mmain (main.c:239) - [HEARTBEAT] cereg=1 cellid=1D8DE0B pci=396 tac=1850 rsrp=-104 rsrq=-10 ifname=rmnet_data0 ip=10.88.1.9 rx_packets=100
+2026-07-16 10:04:00.004 [INFO] [0mmain (main.c:239) - [HEARTBEAT] cereg=1 cellid=1D8DE0B pci=396 tac=1850 rsrp=-118 rsrq=-19 ifname=rmnet_data0 ip=10.88.1.9 rx_packets=100
+2026-07-16 10:09:00.004 [INFO] [0mmain (main.c:239) - [HEARTBEAT] cereg=1 cellid=1D8DE0B pci=396 tac=1850 rsrp=-118 rsrq=-19 ifname=rmnet_data0 ip=10.88.1.9 rx_packets=100
+2026-07-16 10:10:00.500 [WARNING] [0mdial_task (dial.c:900) - [ZERO ADDR] all-zero IP after data call
+AT+CGDCONT?
++CGDCONT: 1,"IPV4V6","internet"

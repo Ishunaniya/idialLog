@@ -1,0 +1,30 @@
+#include <windows.h>
+#include "version.h"       /* 版本号单一来源:改版本只改 version.h */
+
+/* 1 = CREATEPROCESS_MANIFEST_RESOURCE_ID, 24 = RT_MANIFEST
+   嵌入清单以启用 comctl32 v6(现代控件外观)与 DPI 感知 */
+1 24 "app.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     DL_VER_MAJOR,DL_VER_MINOR,DL_VER_PATCH,0
+PRODUCTVERSION  DL_VER_MAJOR,DL_VER_MINOR,DL_VER_PATCH,0
+FILEOS          VOS__WINDOWS32
+FILETYPE        VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404b0"   /* 中文(简体) / Unicode */
+        BEGIN
+            VALUE "FileDescription", "拨号日志分析工具(modem_mng / open_dial / artery)"
+            VALUE "FileVersion",     DL_VER_STR4
+            VALUE "InternalName",    DL_APP_NAME
+            VALUE "OriginalFilename","dialLog.exe"
+            VALUE "ProductName",     DL_APP_NAME
+            VALUE "ProductVersion",  DL_VER_STR4
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x804, 1200
+    END
+END
