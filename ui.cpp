@@ -22,6 +22,7 @@
 
 #include "logmodel.h"
 #include "version.h"
+#include "theme.h"
 
 using namespace dl;
 
@@ -47,6 +48,7 @@ using namespace dl;
 #define IDC_FINDINGS  1019
 #define IDC_UNPARSED  1020
 #define IDC_PASTE     1021
+#define IDC_DASH      1022
 
 // ============================ 配色 ============================
 static const COLORREF CRED  = RGB(200, 40, 40);
@@ -60,7 +62,7 @@ static const COLORREF CTXT  = RGB(0, 0, 0);
 // ============================ 全局状态 ============================
 static HWND hMain, hTab, hStatus, hFileLbl;
 static HWND hTagBox, hGrepBox, hSinceBox, hUntilBox;
-static HWND hSummary, hTimeline, hOutage, hMetric, hTags, hRaw, hChart, hExport;
+static HWND hSummary, hTimeline, hOutage, hMetric, hTags, hRaw, hChart, hExport, hDash;
 static HWND hFindings, hUnparsed;
 static HFONT hFontUI, hFontMono;
 
@@ -161,6 +163,161 @@ static void LvSet(HWND lv, int row, int col, const std::wstring& s) {
     ListView_SetItemText(lv, row, col, (LPWSTR)s.c_str());
 }
 
+// ============================ 仪表盘(总览页顶部,自绘) ============================
+// 设计约束(照做):hero 数字每视图只允许一个(=可用率);文字一律 ink 系,绝不用数据色;
+// 条形 ≤24px 厚、数据端 4px 圆角而基线端方角;网格/轴发丝实线、退让。
+
+static HFONT hFontHero, hFontTileVal, hFontTileLbl, hFontSect;
+
+// 圆角数据端 + 方角基线端的水平条
+static void DrawBar(HDC hdc, int x, int y, int w, int h, COLORREF c) {
+    if (w <= 0) return;
+    HBRUSH br = CreateSolidBrush(c);
+    HPEN   pn = CreatePen(PS_SOLID, 1, c);
+    HGDIOBJ ob = SelectObject(hdc, br), op = SelectObject(hdc, pn);
+    if (w > 6) {
+        RoundRect(hdc, x, y, x + w, y + h, 8, 8);   // 4px 半径
+        RECT sq{ x, y, x + 5, y + h };
+        FillRect(hdc, &sq, br);                      // 基线端压回方角
+    } else {
+        RECT r{ x, y, x + w, y + h };
+        FillRect(hdc, &r, br);
+    }
+    SelectObject(hdc, ob); SelectObject(hdc, op);
+    DeleteObject(br); DeleteObject(pn);
+}
+
+static void DrawText_(HDC hdc, int x, int y, const std::wstring& s, HFONT f, COLORREF c) {
+    HGDIOBJ of = SelectObject(hdc, f);
+    SetTextColor(hdc, c);
+    TextOutW(hdc, x, y, s.c_str(), (int)s.size());
+    SelectObject(hdc, of);
+}
+static int TextW_(HDC hdc, const std::wstring& s, HFONT f) {
+    HGDIOBJ of = SelectObject(hdc, f);
+    SIZE sz{}; GetTextExtentPoint32W(hdc, s.c_str(), (int)s.size(), &sz);
+    SelectObject(hdc, of);
+    return sz.cx;
+}
+
+// 指标卡:发丝描边 + 标签(次要 ink)+ 数值(主 ink 半粗)
+static void DrawTile(HDC hdc, RECT r, const std::wstring& label, const std::wstring& val,
+                     COLORREF valColor, const std::wstring& note) {
+    HBRUSH bg = CreateSolidBrush(th::surface);
+    FillRect(hdc, &r, bg);
+    DeleteObject(bg);
+    HPEN pn = CreatePen(PS_SOLID, 1, th::border);
+    HGDIOBJ op = SelectObject(hdc, pn);
+    HGDIOBJ ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+    RoundRect(hdc, r.left, r.top, r.right, r.bottom, 6, 6);
+    SelectObject(hdc, ob); SelectObject(hdc, op);
+    DeleteObject(pn);
+
+    // 行位从 top 顺排,不用 bottom 反推 —— 反推会让 22px 的数值和注释叠在一起
+    DrawText_(hdc, r.left + 12, r.top + 8,  label, hFontTileLbl, th::inkSec);
+    DrawText_(hdc, r.left + 12, r.top + 26, val,   hFontTileVal, valColor);
+    if (!note.empty())
+        DrawText_(hdc, r.left + 12, r.top + 56, note, hFontTileLbl, th::inkMuted);
+}
+
+static LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == WM_ERASEBKGND) return 1;
+    if (msg != WM_PAINT) return DefWindowProcW(hwnd, msg, wp, lp);
+
+    PAINTSTRUCT ps;
+    HDC hw = BeginPaint(hwnd, &ps);
+    RECT rc; GetClientRect(hwnd, &rc);
+    HDC hdc = CreateCompatibleDC(hw);
+    HBITMAP bmp = CreateCompatibleBitmap(hw, rc.right, rc.bottom);
+    HGDIOBJ obm = SelectObject(hdc, bmp);
+    HBRUSH pg = CreateSolidBrush(th::page);
+    FillRect(hdc, &rc, pg);
+    DeleteObject(pg);
+    SetBkMode(hdc, TRANSPARENT);
+
+    if (g_view.empty()) {
+        DrawText_(hdc, 20, 20, L"未加载日志 —— 拖入 dial_*.log,或复制日志文本后按 Ctrl+V",
+                  hFontTileLbl, th::inkMuted);
+        BitBlt(hw, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
+        SelectObject(hdc, obm); DeleteObject(bmp); DeleteDC(hdc);
+        EndPaint(hwnd, &ps);
+        return 0;
+    }
+
+    // ---- 统计 ----
+    const long long t0 = g_view.front().t, t1 = g_view.back().t;
+    const double span = (double)(t1 - t0);
+    long long total = 0, longest = 0;
+    int b[4] = {0,0,0,0};
+    for (const auto& o : g_outages) {
+        if (!o.recovered) continue;
+        total += o.dur;
+        if (o.dur > longest) longest = o.dur;
+        if (o.dur <= 30) b[0]++; else if (o.dur <= 60) b[1]++; else if (o.dur <= 300) b[2]++; else b[3]++;
+    }
+    double avail = span > 0 ? 100.0 * (1.0 - total / span) : 0.0;
+    long long csqSum = 0; int csqN = 0, csqMin = 9999, csqMax = -1;
+    for (const auto& m : g_metrics)
+        if (m.csqVal >= 0) { csqSum += m.csqVal; csqN++;
+                             csqMin = std::min(csqMin, m.csqVal); csqMax = std::max(csqMax, m.csqVal); }
+
+    // ---- hero:可用率(每视图仅此一个大数字) ----
+    // 状态色须配文字标签,不能只靠颜色表意 —— 故旁边永远写着"可用率"
+    COLORREF heroC = avail >= 99.9 ? th::good : (avail >= 99.0 ? th::warning : th::critical);
+    const wchar_t* heroTag = avail >= 99.9 ? L"良好" : (avail >= 99.0 ? L"偏低" : L"差");
+    DrawText_(hdc, 20, 14, L"可用率", hFontTileLbl, th::inkSec);
+    std::wstring hv = FmtW(L"%.3f%%", avail);
+    DrawText_(hdc, 20, 30, hv, hFontHero, th::inkPri);       // 大数字用主 ink,不用状态色
+    int hx = 20 + TextW_(hdc, hv, hFontHero) + 12;
+    DrawBar(hdc, hx, 56, 10, 10, heroC);                      // 色块承载状态,文字在旁
+    DrawText_(hdc, hx + 16, 52, heroTag, hFontTileLbl, th::inkSec);
+    DrawText_(hdc, 20, 86,
+              FmtW(L"%s → %s   ·   %s   ·   %s",
+                   U8ToW(fmtTime(t0, "FULL")).c_str(), U8ToW(fmtTime(t1, "HM")).c_str(),
+                   U8ToW(fmtDur(t1 - t0)).c_str(), U8ToW(g_plat.name).c_str()),
+              hFontTileLbl, th::inkMuted);
+
+    // ---- 指标卡 ----
+    int pad = 20, gap = 10, ty = 112, th_ = 78;
+    int tw = (rc.right - pad * 2 - gap * 3) / 4;
+    if (tw > 60) {
+        RECT r1{ pad, ty, pad + tw, ty + th_ };
+        DrawTile(hdc, r1, L"断网次数", FmtW(L"%d", (int)g_outages.size()), th::inkPri,
+                 FmtW(L"累计 %s", U8ToW(fmtDur(total)).c_str()));
+        RECT r2{ r1.right + gap, ty, r1.right + gap + tw, ty + th_ };
+        DrawTile(hdc, r2, L"最长单次断网", U8ToW(fmtDur(longest)), th::inkPri, L"");
+        RECT r3{ r2.right + gap, ty, r2.right + gap + tw, ty + th_ };
+        DrawTile(hdc, r3, L"未识别行", FmtW(L"%d", (int)g_audit.unparsed),
+                 g_audit.unparsed ? th::inkPri : th::inkPri,
+                 g_audit.unparsed ? FmtW(L"占比 %.2f%% —— 见“未识别行”页", g_audit.unparsedRatio()*100.0)
+                                  : L"无遗漏(已全部识别)");
+        RECT r4{ r3.right + gap, ty, r3.right + gap + tw, ty + th_ };
+        DrawTile(hdc, r4, L"信号 CSQ(最小/均/最大)",
+                 csqN ? FmtW(L"%d / %.1f / %d", csqMin, (double)csqSum/csqN, csqMax) : L"—",
+                 th::inkPri, csqN ? FmtW(L"%d 个样本", csqN) : L"");
+    }
+
+    // ---- 断网时长分布(横条)----
+    int by = ty + th_ + 20;
+    DrawText_(hdc, pad, by, L"断网时长分布", hFontSect, th::inkPri);
+    by += 22;
+    const wchar_t* bl[4] = { L"≤30s", L"31-60s", L"1-5m", L">5m" };
+    int mx = std::max(1, std::max(std::max(b[0], b[1]), std::max(b[2], b[3])));
+    int labW = 56, barX = pad + labW, barMaxW = rc.right - barX - pad - 40;
+    for (int i = 0; i < 4; ++i) {
+        int y = by + i * 22;
+        DrawText_(hdc, pad, y + 1, bl[i], hFontTileLbl, th::inkSec);
+        int w = barMaxW * b[i] / mx;
+        DrawBar(hdc, barX, y, w, 14, th::s1_blue);            // 单序列 → 不需要图例
+        DrawText_(hdc, barX + std::max(w, 2) + 8, y + 1, FmtW(L"%d", b[i]), hFontTileLbl, th::inkSec);
+    }
+
+    BitBlt(hw, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
+    SelectObject(hdc, obm); DeleteObject(bmp); DeleteDC(hdc);
+    EndPaint(hwnd, &ps);
+    return 0;
+}
+
 // ============================ 图表(自绘) ============================
 static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_ERASEBKGND) return 1;   // 交给 WM_PAINT,避免闪烁
@@ -175,7 +332,7 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     HDC hdc = CreateCompatibleDC(hdcWin);
     HBITMAP bmp = CreateCompatibleBitmap(hdcWin, rcC.right, rcC.bottom);
     HGDIOBJ oldBmp = SelectObject(hdc, bmp);
-    HBRUSH bg = CreateSolidBrush(RGB(255, 255, 255));
+    HBRUSH bg = CreateSolidBrush(th::surface);
     FillRect(hdc, &rcC, bg);
     DeleteObject(bg);
 
@@ -190,12 +347,12 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return 0;
     }
 
-    SetTextColor(hdc, RGB(110, 110, 110));
+    SetTextColor(hdc, th::inkMuted);
     const wchar_t* title = L"CSQ 信号强度(0-31,越高越好;竖红带=断网;黄虚线=弱信号阈值 10)";
     TextOutW(hdc, 42, 4, title, (int)wcslen(title));
 
     if (g_csq.size() < 2) {
-        SetTextColor(hdc, RGB(170, 170, 170));
+        SetTextColor(hdc, th::inkMuted);
         const wchar_t* t = L"加载日志后显示信号趋势";
         TextOutW(hdc, r.left + 8, (r.top + r.bottom) / 2, t, (int)wcslen(t));
         BitBlt(hdcWin, 0, 0, rcC.right, rcC.bottom, hdc, 0, 0, SRCCOPY);
@@ -214,7 +371,7 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     };
 
     // 断网红带
-    HBRUSH band = CreateSolidBrush(RGB(250, 224, 224));
+    HBRUSH band = CreateSolidBrush(th::outageBand);
     for (const auto& o : g_outages) {
         long long e = o.recovered ? o.end : t1;
         int xs = X(o.start), xe = X(e);
@@ -226,9 +383,9 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     DeleteObject(band);
 
     // 网格 + Y 刻度
-    HPEN gridPen = CreatePen(PS_SOLID, 1, RGB(235, 235, 235));
+    HPEN gridPen = CreatePen(PS_SOLID, 1, th::grid);
     HGDIOBJ oldPen = SelectObject(hdc, gridPen);
-    SetTextColor(hdc, RGB(130, 130, 130));
+    SetTextColor(hdc, th::inkMuted);
     const int ticks[] = { 0, 10, 20, 31 };
     for (int i = 0; i < 4; ++i) {
         int y = Y(ticks[i]);
@@ -242,7 +399,7 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     DeleteObject(gridPen);
 
     // 边框
-    HPEN axisPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+    HPEN axisPen = CreatePen(PS_SOLID, 1, th::axis);
     oldPen = SelectObject(hdc, axisPen);
     HGDIOBJ oldBr = SelectObject(hdc, GetStockObject(NULL_BRUSH));
     Rectangle(hdc, r.left, r.top, r.right, r.bottom);
@@ -251,7 +408,7 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     DeleteObject(axisPen);
 
     // 弱信号阈值线(黄虚线)
-    HPEN weakPen = CreatePen(PS_DOT, 1, RGB(220, 160, 0));
+    HPEN weakPen = CreatePen(PS_DOT, 1, th::warning);
     oldPen = SelectObject(hdc, weakPen);
     MoveToEx(hdc, r.left, Y(10), nullptr);
     LineTo(hdc, r.right, Y(10));
@@ -259,7 +416,7 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     DeleteObject(weakPen);
 
     // CSQ 折线
-    HPEN linePen = CreatePen(PS_SOLID, 1, RGB(40, 90, 200));
+    HPEN linePen = CreatePen(PS_SOLID, 2, th::s1_blue);
     oldPen = SelectObject(hdc, linePen);
     bool first = true;
     for (const auto& c : g_csq) {
@@ -271,7 +428,7 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     DeleteObject(linePen);
 
     // X 轴两端时间
-    SetTextColor(hdc, RGB(130, 130, 130));
+    SetTextColor(hdc, th::inkMuted);
     std::wstring s0 = U8ToW(fmtTime(t0, "HM")), s1 = U8ToW(fmtTime(t1, "HM"));
     TextOutW(hdc, r.left, r.bottom + 3, s0.c_str(), (int)s0.size());
     SIZE sz{};
@@ -303,13 +460,7 @@ static void RenderSummary() {
     std::wstring o;
     if (g_view.empty()) { SetWindowTextW(hSummary, L"筛选后没有可解析的日志行。"); return; }
 
-    const long long t0 = g_view.front().t, t1 = g_view.back().t;
-    const double span = (double)(t1 - t0);
-
-    o += L"══ modem_mng 日志总览 ══\r\n";
-    o += FmtW(L"  文件跨度 : %s  →  %s   (%s)\r\n",
-              U8ToW(fmtTime(t0, "FULL")).c_str(), U8ToW(fmtTime(t1, "FULL")).c_str(),
-              U8ToW(fmtDur(t1 - t0)).c_str());
+    // 跨度/平台/可用率已在仪表盘,这里从"明细"起头(t0/t1 与 span 随之不再需要)
     o += FmtW(L"  日志行数 : %d    进程会话(重启): %d\r\n", (int)g_view.size(), (int)g_sessions.size());
     if (g_sessions.size() > 1) {
         o += FmtW(L"  ⚠ 检测到 %d 次进程重启 (L3 exit / watchdog 拉起?):\r\n", (int)g_sessions.size());
@@ -326,20 +477,15 @@ static void RenderSummary() {
         if (x.dur > longest) { longest = x.dur; longestAt = x.end; }
         if (x.dur <= 30) b0++; else if (x.dur <= 60) b1++; else if (x.dur <= 300) b2++; else b3++;
     }
-    o += L"\r\n── 断网 ──\r\n";
+    // 断网次数/累计/可用率/分布 已在上方仪表盘,这里不重复,只补仪表盘没有的
     if (!g_outages.empty()) {
-        o += FmtW(L"  断网次数 : %d   累计时长: %s   可用率≈ %.3f%%\r\n",
-                  (int)g_outages.size(), U8ToW(fmtDur(total)).c_str(),
-                  span > 0 ? 100.0 * (1.0 - total / span) : 0.0);
+        o += L"\r\n── 断网 ──\r\n";
         if (longest > 0)
-            o += FmtW(L"  最长单次 : %s  @ %s\r\n", U8ToW(fmtDur(longest)).c_str(),
+            o += FmtW(L"  最长单次 %s 发生在 %s\r\n", U8ToW(fmtDur(longest)).c_str(),
                       U8ToW(fmtTime(longestAt, "MD")).c_str());
-        o += FmtW(L"  时长分布 : ≤30s:%d  31-60s:%d  1-5m:%d  >5m:%d\r\n", b0, b1, b2, b3);
         if (!g_outages.back().recovered)
             o += FmtW(L"  ⚠ 日志结束时仍处于断网(未见恢复),始于 %s\r\n",
                       U8ToW(fmtTime(g_outages.back().start, "MD")).c_str());
-    } else {
-        o += L"  无断网记录(未出现 fault timer)\r\n";
     }
 
     // 信号/温度/通道
@@ -358,10 +504,11 @@ static void RenderSummary() {
         if (m.ch != "-") chans[m.ch]++;
         if (m.rx != "-") rxs.push_back({ m.t, atoll(m.rx.c_str()) });
     }
-    if (csqN) {
+    // CSQ 三值已在仪表盘卡片上,这里只留卡片放不下的弱信号统计
+    if (csqN && weak) {
         o += L"\r\n── 信号 CSQ ──\r\n";
-        o += FmtW(L"  min/avg/max : %d / %.1f / %d   样本:%d\r\n", csqMin, (double)csqSum / csqN, csqMax, csqN);
-        if (weak) o += FmtW(L"  弱信号(<10) : %d 次  首次 %s\r\n", weak, U8ToW(fmtTime(weakFirst, "MD")).c_str());
+        o += FmtW(L"  弱信号(<10) : %d 次 / 共 %d 样本  首次 %s\r\n",
+                  weak, csqN, U8ToW(fmtTime(weakFirst, "MD")).c_str());
     }
     if (tN) {
         o += L"\r\n── 温度 ──\r\n";
@@ -556,7 +703,7 @@ static void RenderUnparsed() {
 static void ShowPage(int page) {
     // 页序:0总览 1结论 2时间线 3断网 4指标 5标签 6原始行 7未识别行
     struct { HWND* h; int page; } items[] = {
-        { &hSummary, 0 }, { &hFindings, 1 }, { &hTimeline, 2 }, { &hOutage, 3 },
+        { &hDash, 0 }, { &hSummary, 0 }, { &hFindings, 1 }, { &hTimeline, 2 }, { &hOutage, 3 },
         { &hChart, 4 }, { &hMetric, 4 }, { &hExport, 4 },
         { &hTags, 5 }, { &hRaw, 6 }, { &hUnparsed, 7 },
     };
@@ -599,6 +746,7 @@ static void RefreshAll() {
                    (int)g_audit.unparsed, g_audit.unparsedRatio() * 100.0);
     if (bad) st += L"   ·   ⚠ 正则非法,已忽略该条件";
     SetWindowTextW(hStatus, st.c_str());
+    InvalidateRect(hDash, nullptr, TRUE);
 }
 
 // 载入的公共尾段:拿到原始行之后的处理,文件与剪贴板共用
@@ -748,7 +896,12 @@ static void Layout() {
     RECT d{ 0, tabTop, rc.right, tabTop + tabH };
     TabCtrl_AdjustRect(hTab, FALSE, &d);
 
-    MoveWindow(hSummary,  d.left, d.top, d.right - d.left, d.bottom - d.top, TRUE);
+    // 总览页:上=仪表盘(固定高),下=详情文字
+    const int DASH_H = 336;
+    int dh = std::min<int>(DASH_H, (int)(d.bottom - d.top) - 60);
+    if (dh < 80) dh = 80;
+    MoveWindow(hDash,    d.left, d.top, d.right - d.left, dh, TRUE);
+    MoveWindow(hSummary, d.left, d.top + dh, d.right - d.left, (d.bottom - d.top) - dh, TRUE);
     MoveWindow(hFindings, d.left, d.top, d.right - d.left, d.bottom - d.top, TRUE);
     MoveWindow(hTimeline, d.left, d.top, d.right - d.left, d.bottom - d.top, TRUE);
     MoveWindow(hOutage,   d.left, d.top, d.right - d.left, d.bottom - d.top, TRUE);
@@ -782,7 +935,7 @@ static HWND MkLv(int id, std::initializer_list<std::pair<const wchar_t*, int>> c
     HWND lv = CreateWindowExW(0, WC_LISTVIEWW, L"",
                               WS_CHILD | WS_BORDER | LVS_REPORT | LVS_SHOWSELALWAYS,
                               0, 0, 10, 10, hMain, (HMENU)(INT_PTR)id, GetModuleHandleW(nullptr), nullptr);
-    ListView_SetExtendedListViewStyle(lv, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
+    ListView_SetExtendedListViewStyle(lv, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);  // 不要网格线:老派且抢视觉
     SendMessageW(lv, WM_SETFONT, (WPARAM)hFontMono, TRUE);
     int i = 0;
     for (auto& c : cols) LvAddCol(lv, i++, c.first, c.second);
@@ -800,6 +953,16 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         hFontMono = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
                                 OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
                                 FIXED_PITCH | FF_MODERN, L"Consolas");
+        // 仪表盘字体。hero ≥48px;大数字用比例数字(非等宽),等宽只留给要对齐的列
+        auto mkf = [](int h, int w) {
+            return CreateFontW(h, 0, 0, 0, w, 0, 0, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+                               CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+                               L"Microsoft YaHei UI");
+        };
+        hFontHero    = mkf(-48, FW_SEMIBOLD);
+        hFontTileVal = mkf(-22, FW_SEMIBOLD);
+        hFontTileLbl = mkf(-12, FW_NORMAL);
+        hFontSect    = mkf(-14, FW_SEMIBOLD);
 
         // 顶部工具栏
         Mk(L"BUTTON", L"打开日志…", BS_PUSHBUTTON, 8, 6, 96, 26, IDC_OPEN, hFontUI);
@@ -834,6 +997,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
 
         // 各页控件
+        hDash = CreateWindowExW(0, L"dialDashCls", L"", WS_CHILD,
+                                0, 0, 10, 10, hwnd, (HMENU)(INT_PTR)IDC_DASH,
+                                GetModuleHandleW(nullptr), nullptr);
         hSummary = Mk(L"EDIT", L"", WS_BORDER | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY,
                       0, 0, 10, 10, IDC_SUMMARY, hFontMono);
         hFindings = Mk(L"EDIT", L"", WS_BORDER | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY,
@@ -951,6 +1117,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_DESTROY:
         if (hFontUI)   DeleteObject(hFontUI);
         if (hFontMono) DeleteObject(hFontMono);
+        if (hFontHero) DeleteObject(hFontHero);
+        if (hFontTileVal) DeleteObject(hFontTileVal);
+        if (hFontTileLbl) DeleteObject(hFontTileLbl);
+        if (hFontSect) DeleteObject(hFontSect);
         PostQuitMessage(0);
         return 0;
     }
@@ -962,6 +1132,14 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow) 
     icc.dwSize = sizeof(icc);
     icc.dwICC = ICC_TAB_CLASSES | ICC_LISTVIEW_CLASSES | ICC_BAR_CLASSES | ICC_STANDARD_CLASSES;
     InitCommonControlsEx(&icc);
+
+    WNDCLASSEXW wcDash{};
+    wcDash.cbSize = sizeof(wcDash);
+    wcDash.lpfnWndProc = DashProc;
+    wcDash.hInstance = hInst;
+    wcDash.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wcDash.lpszClassName = L"dialDashCls";
+    RegisterClassExW(&wcDash);
 
     WNDCLASSEXW wcChart{};
     wcChart.cbSize = sizeof(wcChart);
