@@ -1,0 +1,32 @@
+[2026-07-17 16:50:32] [ROAMLINK] /usrdata/network.ini not found, use default policy 4
+[2026-07-17 16:50:32] [ROAMLINK] RBMaster not found at /usrdata/roamlink/RBMaster → NO_PACKAGE
+[2026-07-17 16:50:32] [ROAMLINK] probe NO_PACKAGE: RBMaster missing, force SIM
+[2026-07-17 16:50:32] [ROAMLINK] RBMaster process not found in /proc
+##### PRO type 
+[2026-07-17 16:50:32] [LED] state -1 -> 1, send
+begin dial 
+[2026-07-17 16:50:32] [STATE] (start) -> none
+[2026-07-17 16:50:32] [STATE] none -> init
+[2026-07-17 16:50:32] [MODEM] Model:   (unknown)
+[2026-07-17 16:50:32] [MODEM] FW:      EG25GGBR07A08M2G_OCPU_30.200.30.200
+[2026-07-17 16:50:32] [MODEM] SubEd:   (unknown)
+[2026-07-17 16:50:32] [MODEM] CFUN:    1 (full)
+[2026-07-17 16:50:32] [MODEM] Temp:    40,35,35
+[2026-07-17 16:50:32] [STATE] init -> sim_init
+[2026-07-17 16:50:32] [STATE] sim_init -> sim_check
+Resetting module...
+[2026-07-17 16:52:12] [CELL CHANGE] init -> D17C148 | +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-07-17 16:52:12] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:0s | ConsecFail:1
+[2026-07-17 16:53:52] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:0s | ConsecFail:2
+[2026-07-17 16:55:32] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-07-17 16:55:32] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:0s | ConsecFail:3
+[2026-07-17 16:55:32] [DIAG] RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3" | +QTEMP: 40,35,35 | +CEER: 0,-1 | +CGACT: 1,1
+Resetting module...
+[2026-07-17 16:57:12] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:100s | ConsecFail:4
+[2026-07-17 16:58:52] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:200s | ConsecFail:5
+[2026-07-17 17:00:32] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:300s | ConsecFail:6
+Resetting module...
+[2026-07-17 17:02:12] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:400s | ConsecFail:7
+[2026-07-17 17:03:52] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:500s | ConsecFail:8
+[2026-07-17 17:05:32] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:600s | ConsecFail:9
+Resetting module...
