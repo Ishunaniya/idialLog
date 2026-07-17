@@ -15,3 +15,8 @@ selftest.exe
 *.swp
 *~
 .DS_Store
+
+# hostrun 的构建产物(driver / *.so / *.o):make 一下就回来
+sim/hostrun/*.o
+sim/hostrun/driver
+sim/hostrun/*.so

@@ -1,0 +1,24 @@
+#!/bin/bash
+# 假 serial_atcmd —— 真代码用 popen("serial_atcmd at+xxx") 调它,
+# 我只负责吐 AT 应答文本,**怎么解析是 at.c 的真代码在干**。
+CMD=$(echo "$*" | tr 'A-Z' 'a-z')
+case "$CMD" in
+  *csq*)     echo "+CSQ: ${SIM_CSQ:-20},99";;
+  *cereg*)   echo "+CEREG: 0,${SIM_CEREG:-1}";;
+  *creg*)    echo "+CREG: 0,${SIM_CREG:-1}";;
+  *cpin*)    if [ "${SIM_CARD_ABSENT:-0}" = "1" ]; then echo "+CME ERROR: 10"; else echo "+CPIN: READY"; fi;;
+  *qtemp*)   echo "+QTEMP: ${SIM_TEMP:-35},${SIM_TEMP:-35},${SIM_TEMP:-35}";;
+  *ceer*)    echo "+CEER: ${SIM_CEER:-0,-1}";;
+  *cgact*)   echo "+CGACT: 1,${SIM_PDP_ACT:-1}";;
+  *cgpaddr*) echo "+CGPADDR: 1,\"${SIM_IP:-10.1.2.3}\"";;
+  *cgdcont*) echo "+CGDCONT: 1,\"IP\",\"${SIM_APN:-internet}\",\"0.0.0.0\",0,0,0,0";;
+  *cops*)    echo "+COPS: 0,2,\"${SIM_PLMN:-46000}\",7";;
+  *cfun=*)   echo "";;
+  *cfun*)    echo "+CFUN: ${SIM_CFUN:-1}";;
+  *cgmr*|*ati*) echo "EC200ACNTAR02A04M2G_OCPU";;
+  *cimi*|*imsi*) echo "460089087110299";;
+  *cgsn*|*imei*) echo "865965086914080";;
+  *)         echo "";;
+esac
+echo "OK"
+exit 0

@@ -1,0 +1,16 @@
+#!/bin/bash
+# 假 ping —— 真代码 PingNetworkChecker::checkNetwork()(fault_report/NetworkMonitor.cpp:9)
+# **不看返回码,而是匹配输出文本** "1 packets transmitted, 1 received"。
+# 这点是被真代码打脸打出来的:早先只给返回码,真代码恒判"不通"。
+#
+# SIM_PING_OK=1/0          : 恒通 / 恒不通
+# SIM_PING_FAIL_AFTER=<秒> : 前 N 真实秒通(用于置上 has_connected_once),之后不通
+ok() { echo "PING 8.8.8.8 (8.8.8.8): 56 data bytes"; echo "64 bytes from 8.8.8.8: seq=0 ttl=118 time=25.0 ms"; echo "--- 8.8.8.8 ping statistics ---"; echo "1 packets transmitted, 1 received, 0% packet loss"; exit 0; }
+bad(){ echo "PING 8.8.8.8 (8.8.8.8): 56 data bytes"; echo "--- 8.8.8.8 ping statistics ---"; echo "1 packets transmitted, 0 received, 100% packet loss"; exit 1; }
+if [ -n "${SIM_PING_FAIL_AFTER:-}" ]; then
+    MARK=/tmp/.sim_ping_t0.${SIM_RUN_ID:-default}      # 用 RUN_ID 而非 PPID:popen 每次 PPID 都变
+    [ -f "$MARK" ] || date +%s > "$MARK"
+    T0=$(cat "$MARK"); NOW=$(date +%s)
+    [ $((NOW - T0)) -lt "$SIM_PING_FAIL_AFTER" ] && ok || bad
+fi
+[ "${SIM_PING_OK:-1}" = "1" ] && ok || bad

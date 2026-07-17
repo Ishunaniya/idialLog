@@ -1,0 +1,53 @@
+[2026-07-17 15:39:28] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-07-17 15:39:28] [INIT] Starting dial initialization...
+[2026-07-17 15:39:28] [INIT] Waiting for ql_data_call_init...
+[2026-07-17 15:39:28] [INIT] data_call_init OK.
+ql_sim_init ok
+[2026-07-17 15:39:28] [SIM] sim_init OK
+[2026-07-17 15:39:28] [INIT] ICCID: (empty)
+[2026-07-17 15:39:28] [INIT] SIM state: READY
+[2026-07-17 15:39:28] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-07-17 15:39:28] [INIT] APN set success
+[2026-07-17 15:39:28] [INIT] set_reconnect_mode(NORMAL): OK
+[2026-07-17 15:39:28] [INIT] ql_data_call_config: OK
+[2026-07-17 15:39:28] [INIT] Starting Data Call...
+[2026-07-17 15:39:28] [INIT] IMEI:    865965086914080
+[2026-07-17 15:39:28] [INIT] FW:      (unknown)
+[2026-07-17 15:39:28] [INIT] SUB:     (unknown)
+[2026-07-17 15:39:28] [INIT] AP_FW:   (unknown)
+[2026-07-17 15:39:28] [INIT] CP_FW:   (unknown)
+[2026-07-17 15:39:28] [INIT] IMSI:    460089087110299
+[2026-07-17 15:39:28] [INIT] Operator:+COPS: 0,2,"46000",7
+[2026-07-17 15:39:28] [INIT] CFUN:    +CFUN: 1
+[2026-07-17 15:39:28] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
+##### PRO type 
+[2026-07-17 15:39:28] [LED] startup, send blink
+[2026-07-17 15:39:28] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:39:28] [INIT] Dial success. Retry count cleared.
+[2026-07-17 15:39:28] [PING] Ping 8.8.8.8 OK
+[2026-07-17 15:39:28] [TZ] date -R response: Fri, 17 Jul 2026 15:39:28 +0800
+[EC200ADialer] Extracted timezone string: +0800
+[EC200ADialer] Parsed timezone (15-min units): 32
+[2026-07-17 15:39:28] [TZ] Parsed timezone: tz=32 (saved to /usr/dial/tz.ini)
+[2026-07-17 15:39:28] [EVENT] Network Connected. Notification sent.
+[2026-07-17 15:39:28] [LED] state 1 -> 2, send
+[2026-07-17 15:39:28] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:39:28] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:41:08] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:41:08] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:41:08] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:42:48] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:42:48] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:42:48] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:42:48] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:44:28] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:44:28] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:44:28] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:46:08] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:46:08] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:46:08] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:47:48] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:47:48] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:47:48] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:47:48] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:49:28] [EVENT] Exit requested. Turning LED off and leaving dial_loop.

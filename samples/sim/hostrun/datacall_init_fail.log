@@ -1,0 +1,56 @@
+[2026-07-17 15:39:34] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-07-17 15:39:34] [INIT] Starting dial initialization...
+[2026-07-17 15:39:34] [INIT] Waiting for ql_data_call_init...
+[2026-07-17 15:39:34] [INIT] data_call_init retrying, remaining=200
+[2026-07-17 15:39:34] [INIT] data_call_init retrying, remaining=180
+[2026-07-17 15:39:34] [INIT] data_call_init retrying, remaining=160
+[2026-07-17 15:39:34] [INIT] data_call_init retrying, remaining=140
+[2026-07-17 15:39:34] [INIT] data_call_init retrying, remaining=120
+[2026-07-17 15:39:34] [INIT] data_call_init retrying, remaining=100
+[2026-07-17 15:39:34] [INIT] data_call_init retrying, remaining=80
+[2026-07-17 15:39:34] [INIT] data_call_init retrying, remaining=60
+[2026-07-17 15:39:34] [INIT] data_call_init retrying, remaining=40
+[2026-07-17 15:39:34] [INIT] data_call_init retrying, remaining=20
+[2026-07-17 15:39:34] [INIT] data_call_init failed, ret=-1067
+ql_sim_init ok
+[2026-07-17 15:39:34] [SIM] sim_init OK
+[2026-07-17 15:39:34] [INIT] ICCID: (empty)
+[2026-07-17 15:39:34] [INIT] SIM state: READY
+[2026-07-17 15:39:34] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-07-17 15:39:34] [INIT] APN set success
+[2026-07-17 15:39:34] [INIT] set_reconnect_mode(NORMAL): OK
+[2026-07-17 15:39:34] [INIT] ql_data_call_config: OK
+[2026-07-17 15:39:34] [INIT] Starting Data Call...
+[2026-07-17 15:39:34] [INIT] IMEI:    865965086914080
+[2026-07-17 15:39:34] [INIT] FW:      (unknown)
+[2026-07-17 15:39:34] [INIT] SUB:     (unknown)
+[2026-07-17 15:39:34] [INIT] AP_FW:   (unknown)
+[2026-07-17 15:39:34] [INIT] CP_FW:   (unknown)
+[2026-07-17 15:39:34] [INIT] IMSI:    460089087110299
+[2026-07-17 15:39:34] [INIT] Operator:+COPS: 0,2,"46000",7
+[2026-07-17 15:39:34] [INIT] CFUN:    +CFUN: 1
+[2026-07-17 15:39:34] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
+##### PRO type 
+[2026-07-17 15:39:34] [LED] startup, send blink
+[2026-07-17 15:39:34] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 15:39:34] [INFO] SDK auto-reconnect phase started (interval=25s). L1 at 300s, L2 at 600s, L3 at 2100s.
+[2026-07-17 15:39:34] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
+[2026-07-17 15:39:34] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:19s
+[2026-07-17 15:41:14] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:49s
+[2026-07-17 15:41:14] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:79s
+[2026-07-17 15:41:14] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:110s
+[2026-07-17 15:42:54] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:140s
+[2026-07-17 15:42:54] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:170s
+[2026-07-17 15:42:54] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:200s
+[2026-07-17 15:42:54] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:230s
+[2026-07-17 15:44:34] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:261s
+[2026-07-17 15:44:34] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:291s
+[2026-07-17 15:44:34] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:321s
+[2026-07-17 15:46:14] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:351s
+[2026-07-17 15:46:14] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:382s
+[2026-07-17 15:46:14] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:412s
+[2026-07-17 15:47:54] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:442s
+[2026-07-17 15:47:54] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:472s
+[2026-07-17 15:47:54] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:502s
+[2026-07-17 15:47:54] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:532s
+[2026-07-17 15:49:34] [EVENT] Exit requested. Turning LED off and leaving dial_loop.
