@@ -1,0 +1,8 @@
+=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===
+[2026-07-17 09:00:00] Program started. Version: 1.31.3
+[2026-07-17 09:00:01] [INIT] ICCID: 89860000000000000000
+[2026-07-17 09:00:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:12 | TEMP:35 | DownTime:0s
+[2026-07-17 09:05:02] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-07-17 09:05:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:12 | TEMP:35 | DownTime:300s
+[2026-07-17 09:10:02] [INFO] never-connected, policy recovery (L1/L2/L3) gated. 
+[2026-07-17 09:15:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:12 | TEMP:35 | DownTime:900s

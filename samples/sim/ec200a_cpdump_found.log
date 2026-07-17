@@ -1,0 +1,4 @@
+=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===
+[2026-07-17 09:00:00] [CPDUMP] Bind mounted /media/sdcard -> /sdcard for CP dump capture.
+[2026-07-17 09:00:01] [CPDUMP] Found 2 existing CP dump(s): dump_001.bin dump_002.bin
+[2026-07-17 09:00:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:35 | DownTime:0s

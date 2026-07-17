@@ -1,0 +1,10 @@
+=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===
+[2026-07-17 09:00:00] EG25 modem_mng Version: 1.31.15
+[2026-07-17 09:00:01] [ROAMLINK] network_select = 4
+[2026-07-17 09:00:02] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[2026-07-17 09:01:00] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-07-17 09:01:00] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:60s | ConsecFail:3 | RL_FAIL:0
+[2026-07-17 09:02:00] [RECOVERY L1] LastErr: +CEER: 0,-1
+[2026-07-17 09:07:00] [RECOVERY L2] AT+CFUN=0 rsp: 
+OK
+[2026-07-17 09:31:00] [RECOVERY L3] FATAL: Network down 30mins. Exiting for watchdog to reinitialize.

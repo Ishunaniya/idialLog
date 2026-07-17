@@ -1,0 +1,17 @@
+=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===
+[2026-07-17 09:00:00] EG25 modem_mng Version: 1.31.15
+[2026-07-17 09:00:01] [ROAMLINK] network_select = 4
+[2026-07-17 09:00:02] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[2026-07-17 09:01:00] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-07-17 09:01:00] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:20 | Temp:40,35,35 | DownTime:60s | ConsecFail:3 | RL_FAIL:0
+[2026-07-17 09:02:00] [RECOVERY L1] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
+[2026-07-17 09:02:00] [RECOVERY L1] REG down, skip redial (downtime=120s)
+[2026-07-17 09:03:03] [RECOVERY L1] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
+[2026-07-17 09:03:03] [RECOVERY L1] REG down, skip redial (downtime=183s)
+[2026-07-17 09:06:00] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
+[2026-07-17 09:06:01] [RECOVERY L2] AT+CFUN=0 rsp: 
+OK
+[2026-07-17 09:06:03] [RECOVERY L2] AT+CFUN=1 rsp: 
+OK
+[2026-07-17 09:06:20] [HEARTBEAT] Network recovered after 320s
+[2026-07-17 09:06:21] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0

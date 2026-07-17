@@ -1,0 +1,5 @@
+=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===
+[2026-07-17 09:00:00] [CPDUMP] Bind mounted /media/sdcard -> /sdcard for CP dump capture.
+[2026-07-17 09:00:01] [CPDUMP] No existing CP dumps.
+[2026-07-17 09:00:02] [PING] Ping 8.8.8.8 OK
+[2026-07-17 09:00:03] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:35 | DownTime:0s

@@ -1,0 +1,6 @@
+=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===
+[2026-07-17 09:00:00] Program started. Version: 1.31.3
+[2026-07-17 09:00:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:20 | TEMP:35 | DownTime:0s
+[2026-07-17 09:00:03] [WARNING] Registration Denied! Code 3.
+[2026-07-17 09:05:03] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-07-17 09:05:03] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:20 | TEMP:35 | DownTime:300s

@@ -1,0 +1,6 @@
+=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===
+[2026-07-17 09:00:00] Program started. Main Version: 1.28.4
+[2026-07-17 09:00:01] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:25 | DownTime:0s
+[2026-07-17 09:01:00] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-07-17 09:01:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:25 | DownTime:60s
+[2026-07-17 09:36:00] [RECOVERY L3] FATAL: Network down 35mins. Exiting for start_prog to reinitialize.

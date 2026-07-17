@@ -57,8 +57,12 @@ selftest: selftest.cpp logmodel.cpp logmodel.h
 	g++ -std=c++17 -O2 -Wall -Wextra -o selftest selftest.cpp logmodel.cpp
 
 # 用 dialLog_v*.exe 通配:升版本后旧版本的 exe 也一并清掉,不留残留
+# 场景模拟器 + 结论引擎断言测试(只验结论引擎,验不了解析器 —— 见 simtest.cpp 顶部说明)
+simtest: simtest.cpp logmodel.cpp logmodel.h
+	g++ -std=c++17 -O2 -Wall -Wextra -o simtest simtest.cpp logmodel.cpp
+
 clean:
-	rm -f $(OBJS) dialLog_v*.exe selftest
+	rm -f $(OBJS) dialLog_v*.exe selftest simtest
 
 version:
 	@echo $(VER)
