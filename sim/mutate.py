@@ -115,8 +115,31 @@ def run_tests(tmp):
     return True
 
 
+PRISTINE = os.path.join(os.path.dirname(__file__), ".logmodel.pristine")
+
+
 def main():
+    # 崩溃安全:变异会改 SRC,进程若被 SIGKILL(超时 kill 无法捕获)会把变异态留在磁盘,
+    # 下次 git add -A 就可能提交坏解析器(踩过:'Dial Log OpenedZZ' 残留差点被提交)。
+    # 防护:① 把原始副本落盘 PRISTINE;② 启动时若发现上次残留(SRC 与 PRISTINE 不一致
+    #        且 SRC 含变异标记)先自愈;③ SIGTERM 也还原。
+    if os.path.exists(PRISTINE):
+        disk = open(SRC, encoding="utf-8").read()
+        pris = open(PRISTINE, encoding="utf-8").read()
+        if disk != pris and ("ZZ" in disk or "!= 'X'" in disk or "<= 'A'))" in disk):
+            print("⚠ 检测到上次变异残留,先还原 SRC")
+            open(SRC, "w", encoding="utf-8").write(pris)
+
     orig = open(SRC, encoding="utf-8").read()
+    open(PRISTINE, "w", encoding="utf-8").write(orig)   # 落盘原始副本
+
+    import signal
+    def _restore(*_):
+        open(SRC, "w", encoding="utf-8").write(orig)
+        os._exit(2)
+    signal.signal(signal.SIGTERM, _restore)
+    signal.signal(signal.SIGINT, _restore)
+
     tmp = tempfile.mkdtemp()
     caught = survived = bad = 0
     print("════ 变异测试:把修过的 bug 故意改回去,看测试抓不抓得住 ════")
@@ -138,6 +161,8 @@ def main():
     finally:
         open(SRC, "w", encoding="utf-8").write(orig)  # 兜底还原
         shutil.rmtree(tmp, ignore_errors=True)
+        try: os.remove(PRISTINE)  # 正常结束才删副本;异常退出时保留它供下次自愈
+        except OSError: pass
 
     print(f"\n════ {len(MUTATIONS)} 个变异:{caught} 被抓住,{survived} 存活,{bad} 片段失配 ════")
     if survived:

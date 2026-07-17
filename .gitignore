@@ -27,3 +27,4 @@ sim/hostrun_eg25/driver
 sim/hostrun_eg25/*.so
 sim/hostrun_artery/*.o
 sim/hostrun_artery/driver
+sim/.logmodel.pristine
