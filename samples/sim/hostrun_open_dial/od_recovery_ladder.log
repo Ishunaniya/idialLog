@@ -1,0 +1,554 @@
+[2026-07-17 16:08:51] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-07-17 16:08:51] [INIT] Starting dial initialization...
+[2026-07-17 16:08:51] [INIT] Waiting for ql_data_call_init...
+[2026-07-17 16:08:51] [INIT] data_call_init OK.
+[2026-07-17 16:08:51] [SIM] sim_init OK
+[2026-07-17 16:08:51] [INIT] ICCID: (empty)
+[2026-07-17 16:08:51] [INIT] SIM init state: UNKNOWN
+[2026-07-17 16:08:51] [INIT] IMEI:  865965086914080
+[2026-07-17 16:08:51] [INIT] FW:    (unknown)
+[2026-07-17 16:08:51] [INIT] SUB:   (unknown)
+[2026-07-17 16:08:51] [INIT] AP_FW: (unknown)
+[2026-07-17 16:08:51] [INIT] CP_FW: (unknown)
+[2026-07-17 16:08:51] [INIT] IMSI:  460089087110299
+[2026-07-17 16:08:51] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-07-17 16:08:51] [INIT] APN set success
+[2026-07-17 16:08:51] [INIT] set_reconnect_mode(NORMAL): OK
+[2026-07-17 16:08:51] [INIT] ql_data_call_config: OK
+[2026-07-17 16:08:51] [INIT] Starting Data Call...
+[2026-07-17 16:08:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 16:08:51] [EVENT] Network Recovered in SDK phase (L0). Down: 1s.
+[2026-07-17 16:08:51] [INIT] Dial success. Retry count cleared.
+[2026-07-17 16:08:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:08:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:08:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:08:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:08:51] [DIAG-DMESG] (none)
+[2026-07-17 16:08:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:08:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:08:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:08:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:08:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:08:51] [DIAG-DMESG] (none)
+[2026-07-17 16:08:51] [EVENT] Network Recovered in SDK phase (L0). Down: 4s.
+[2026-07-17 16:08:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:08:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:08:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:08:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:08:51] [DIAG-DMESG] (none)
+[2026-07-17 16:08:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:08:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:08:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:08:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 16:08:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:08:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:08:51] [DIAG-DMESG] (none)
+[2026-07-17 16:08:51] [EVENT] Network Recovered in SDK phase (L0). Down: 5s.
+[2026-07-17 16:08:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:08:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:08:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:08:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:08:51] [DIAG-DMESG] (none)
+[2026-07-17 16:08:51] [EVENT] Network Recovered in SDK phase (L0). Down: 2s.
+[2026-07-17 16:08:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:08:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:08:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:08:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:08:51] [DIAG-DMESG] (none)
+[2026-07-17 16:08:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:08:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:08:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:08:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 16:08:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:08:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:08:51] [DIAG-DMESG] (none)
+[2026-07-17 16:08:51] [EVENT] Network Recovered in SDK phase (L0). Down: 6s.
+[2026-07-17 16:08:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:08:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:08:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 2s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 4s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 6s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:3s
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 6s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 2s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:4s
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 7s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 4s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 5s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 2s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:11:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:11:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:11:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:11:21] [DIAG-DMESG] (none)
+[2026-07-17 16:11:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:11:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 7s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 4s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:3s
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 6s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 4s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 7s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:3s
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 5s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 4s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:2s
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 5s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:13:51] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:13:51] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:13:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:13:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:13:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:13:51] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:3s
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 8s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 4s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 4s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 6s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 2s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 6s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 4s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:3s
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 6s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:16:21] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:16:21] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:16:21] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:16:21] [DIAG-DMESG] (none)
+[2026-07-17 16:16:21] [EVENT] Network Recovered in SDK phase (L0). Down: 3s.
+[2026-07-17 16:16:21] [EVENT] Network Connected. Notification sent.
+[2026-07-17 16:18:51] [HEARTBEAT] IP:10.1.2.3
+[2026-07-17 16:18:51] [ERROR] SIM Card disconnected during runtime, CPIN=UNKNOWN.
+[2026-07-17 16:18:51] [DIAG-SIM] TIMEOUT | +CEREG: 0,1
+[2026-07-17 16:18:51] [DIAG-DMESG] (none)
+[2026-07-17 16:18:51] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
+[2026-07-17 16:18:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:19s
+[2026-07-17 16:18:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:49s
+[2026-07-17 16:18:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:80s
+[2026-07-17 16:18:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:111s
+[2026-07-17 16:18:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:142s
+[2026-07-17 16:21:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:172s
+[2026-07-17 16:21:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:202s
+[2026-07-17 16:21:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:233s
+[2026-07-17 16:21:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:264s
+[2026-07-17 16:23:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:295s
+[2026-07-17 16:23:51] [ALARM] Net Fail Duration: 301 sec. Trigger Level 1 recovery.
+[2026-07-17 16:23:51] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:23:51] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:23:51] [RECOVERY L1] Stopping Data Call & Cleaning PDP... REG=1
+[2026-07-17 16:23:51] [RECOVERY L1] Restarting Data Call...
+[2026-07-17 16:23:51] [RECOVERY L1] Start OK. Waiting for reconnect.
+[2026-07-17 16:23:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:326s
+[2026-07-17 16:23:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:356s
+[2026-07-17 16:23:51] [ALARM] Net Fail Duration: 366 sec. Trigger Level 1 recovery.
+[2026-07-17 16:23:51] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:23:51] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:23:51] [RECOVERY L1] Stopping Data Call & Cleaning PDP... REG=1
+[2026-07-17 16:23:51] [RECOVERY L1] Restarting Data Call...
+[2026-07-17 16:23:51] [RECOVERY L1] Start OK. Waiting for reconnect.
+[2026-07-17 16:23:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:388s
+[2026-07-17 16:23:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:418s
+[2026-07-17 16:23:51] [ALARM] Net Fail Duration: 429 sec. Trigger Level 1 recovery.
+[2026-07-17 16:23:51] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:23:51] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:23:51] [RECOVERY L1] Stopping Data Call & Cleaning PDP... REG=1
+[2026-07-17 16:23:51] [RECOVERY L1] Restarting Data Call...
+[2026-07-17 16:23:51] [RECOVERY L1] Start OK. Waiting for reconnect.
+[2026-07-17 16:26:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:451s
+[2026-07-17 16:26:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:481s
+[2026-07-17 16:26:21] [ALARM] Net Fail Duration: 494 sec. Trigger Level 1 recovery.
+[2026-07-17 16:26:21] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:26:21] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:26:21] [RECOVERY L1] Stopping Data Call & Cleaning PDP... REG=1
+[2026-07-17 16:26:21] [RECOVERY L1] Restarting Data Call...
+[2026-07-17 16:26:21] [RECOVERY L1] Start OK. Waiting for reconnect.
+[2026-07-17 16:26:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:512s
+[2026-07-17 16:26:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:542s
+[2026-07-17 16:26:21] [ALARM] Net Fail Duration:
+OK
+
+OK
+
+OK
+
+OK
+
+OK
+
+OK
+ 556 sec. Trigger Level 1 recovery.
+[2026-07-17 16:26:21] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:26:21] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:26:21] [RECOVERY L1] Stopping Data Call & Cleaning PDP... REG=1
+[2026-07-17 16:26:21] [RECOVERY L1] Restarting Data Call...
+[2026-07-17 16:26:21] [RECOVERY L1] Start OK. Waiting for reconnect.
+[2026-07-17 16:26:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:573s
+[2026-07-17 16:28:51] [ALARM] Net Fail Duration: 602 sec. Trigger Level 2 recovery.
+[2026-07-17 16:28:51] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:28:51] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:28:51] [RECOVERY L2] Toggling RF (Airplane Mode)... REG=1
+[2026-07-17 16:28:51] [RECOVERY L2] RF ON. Waiting 10s for registration...
+[2026-07-17 16:28:51] [RECOVERY L2] Restarting Data Call...
+[2026-07-17 16:28:51] [RECOVERY L2] Start OK. Waiting for reconnect.
+[2026-07-17 16:28:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:621s
+[2026-07-17 16:28:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:652s
+[2026-07-17 16:28:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:683s
+[2026-07-17 16:28:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:713s
+[2026-07-17 16:28:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:743s
+[2026-07-17 16:31:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:774s
+[2026-07-17 16:31:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:804s
+[2026-07-17 16:31:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:835s
+[2026-07-17 16:31:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:867s
+[2026-07-17 16:33:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:897s
+[2026-07-17 16:33:51] [ALARM] Net Fail Duration: 907 sec. Trigger Level 2 recovery.
+[2026-07-17 16:33:51] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:33:51] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:33:51] [RECOVERY L2] Toggling RF (Airplane Mode)... REG=1
+[2026-07-17 16:33:51] [RECOVERY L2] RF ON. Waiting 10s for registration...
+[2026-07-17 16:33:51] [RECOVERY L2] Restarting Data Call...
+[2026-07-17 16:33:51] [RECOVERY L2] Start OK. Waiting for reconnect.
+[2026-07-17 16:33:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:927s
+[2026-07-17 16:33:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:958s
+[2026-07-17 16:33:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:989s
+[2026-07-17 16:33:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1019s
+[2026-07-17 16:36:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1051s
+[2026-07-17 16:36:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1081s
+[2026-07-17 16:36:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1111s
+[2026-07-17 16:36:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1141s
+[2026-07-17 16:36:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1172s
+[2026-07-17 16:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1203s
+[2026-07-17 16:38:51] [ALARM] Net Fail Duration: 1210 sec. Trigger Level 2 recovery.
+[2026-07-17 16:38:51] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:38:51] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:38:51] [RECOVERY L2] Toggling RF (Airplane Mode)... REG=1
+[2026-07-17 16:38:51] [RECOVERY L2] RF ON. Waiting 10s for registration...
+[2026-07-17 16:38:51] [RECOVERY L2] Restarting Data Call...
+[2026-07-17 16:38:51] [RECOVERY L2] Start OK. Waiting for reconnect.
+[2026-07-17 16:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | 
+OK
+
+OK
+
+OK
+
+OK
+CSQ:18 | TEMP:-1 | DownTime:1234s
+[2026-07-17 16:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1264s
+[2026-07-17 16:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1294s
+[2026-07-17 16:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1324s
+[2026-07-17 16:41:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1354s
+[2026-07-17 16:41:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1386s
+[2026-07-17 16:41:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1417s
+[2026-07-17 16:41:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1447s
+[2026-07-17 16:41:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1477s
+[2026-07-17 16:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1507s
+[2026-07-17 16:43:51] [ALARM] Net Fail Duration: 1515 sec. Trigger Level 2 recovery.
+[2026-07-17 16:43:51] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:43:51] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:43:51] [RECOVERY L2] Toggling RF (Airplane Mode)... REG=1
+[2026-07-17 16:43:51] [RECOVERY L2] RF ON. Waiting 10s for registration...
+[2026-07-17 16:43:51] [RECOVERY L2] Restarting Data Call...
+[2026-07-17 16:43:51] [RECOVERY L2] Start OK. Waiting for reconnect.
+[2026-07-17 16:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1539s
+[2026-07-17 16:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1569s
+[2026-07-17 16:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1599s
+[2026-07-17 16:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1630s
+[2026-07-17 16:46:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1660s
+[2026-07-17 16:46:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1691s
+[2026-07-17 16:46:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1722s
+[2026-07-17 16:46:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1752s
+[2026-07-17 16:46:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1784s
+[2026-07-17 16:48:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1814s
+[2026-07-17 16:48:51] [ALARM] Net Fail Duration: 1818 sec. Trigger Level 2 recovery.
+[2026-07-17 16:48:51] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:48:51] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:48:51] [RECOVERY L2] Toggling RF (Airplane Mode)... REG=1
+[2026-07-17 16:48:51] [RECOVERY L2] RF ON. Waiting 10s for registration...
+[2026-07-17 16:48:51] [RECOVERY L2] Restarting Data Call...
+[2026-07-17 16:48:51] [RECOVERY L2] Start OK. Waiting for reconnect.
+[2026-07-17 16:48:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1844s
+[2026-07-17 16:48:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1874s
+[2026-07-17 16:48:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1904s
+[2026-07-17 16:48:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1934s
+[2026-07-17 16:51:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1964s
+[2026-07-17 16:51:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:1996s
+[2026-07-17 16:51:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:2027s
+[2026-07-17 16:51:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:2057s
+[2026-07-17 16:51:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:UNKNOWN | REG:1 | CSQ:18 | TEMP:-1 | DownTime:2087s
+[2026-07-17 16:53:51] [ALARM] Net Fail Duration: 2101 sec. Trigger Level 3 recovery.
+[2026-07-17 16:53:51] [RECOVERY] LastErr: +CEER: 0,-1
+[2026-07-17 16:53:51] [RECOVERY] PDP state: +CGACT: 1,1
+[2026-07-17 16:53:51] [RECOVERY L3] FATAL: Network down 35mins. Exiting for start_prog to reinitialize.

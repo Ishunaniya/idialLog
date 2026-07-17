@@ -20,3 +20,5 @@ selftest.exe
 sim/hostrun/*.o
 sim/hostrun/driver
 sim/hostrun/*.so
+sim/hostrun_open_dial/*.o
+sim/hostrun_open_dial/driver
