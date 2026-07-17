@@ -1,79 +1,56 @@
-[2026-07-17 17:08:11] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
-[2026-07-17 17:08:11] [INIT] Starting dial initialization...
-[2026-07-17 17:08:11] [INIT] Waiting for ql_data_call_init...
-[2026-07-17 17:08:11] [INIT] data_call_init retrying, remaining=200
-[2026-07-17 17:08:11] [INIT] data_call_init retrying, remaining=180
-[2026-07-17 17:08:11] [INIT] data_call_init retrying, remaining=160
-[2026-07-17 17:08:11] [INIT] data_call_init retrying, remaining=140
-[2026-07-17 17:08:11] [INIT] data_call_init retrying, remaining=120
-[2026-07-17 17:08:11] [INIT] data_call_init retrying, remaining=100
-[2026-07-17 17:08:11] [INIT] data_call_init retrying, remaining=80
-[2026-07-17 17:08:11] [INIT] data_call_init retrying, remaining=60
-[2026-07-17 17:08:11] [INIT] data_call_init retrying, remaining=40
-[2026-07-17 17:08:11] [INIT] data_call_init retrying, remaining=20
-[2026-07-17 17:08:11] [INIT] data_call_init failed, ret=-1067
+[2026-07-17 17:37:11] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-07-17 17:37:11] [INIT] Starting dial initialization...
+[2026-07-17 17:37:11] [INIT] Waiting for ql_data_call_init...
+[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=200
+[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=180
+[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=160
+[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=140
+[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=120
+[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=100
+[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=80
+[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=60
+[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=40
+[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=20
+[2026-07-17 17:37:11] [INIT] data_call_init failed, ret=-1067
 ql_sim_init ok
-[2026-07-17 17:08:11] [SIM] sim_init OK
-[2026-07-17 17:08:11] [SLOT] config: no /usr/dial/dualsim.json, seed write failed, use built-in defaults
-[2026-07-17 17:08:11] [OPER] overseas operator-select (dualsim.json oper_select): 0
-[2026-07-17 17:08:11] [SLOT] init: enable=1 primary_phy=1(eSIM) switch_after=600s denied_after=0s(0=follow) cooldown=120s budget=3 fast_boot=1 last_good_ttl=86400s data_dead_settle=120s weak_csq=6 probe_back=0s(0=off)
-[2026-07-17 17:08:11] [SLOT] fast-boot: no valid last-good, fall back to cold select
-[2026-07-17 17:08:11] [SLOT] cold select: probing both physical slots (data-verified)
-[2026-07-17 17:08:11] [SLOT] switch to Phy
-[2026-07-17 17:08:11] [SLOT] active now eSIM (card READY)
-[2026-07-17 17:08:11] [SLOT] cur ICCID: (empty) (eSIM)
-[2026-07-17 17:08:11] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-07-17 17:08:11] [SLOT] data start OK
-[2026-07-17 17:08:11] [SLOT] probe RAT=0 (+0)
-[2026-07-17 17:08:11] [SLOT] probe score: REG=1 CSQ=18 -> score=6018
-[2026-07-17 17:08:11] [SLOT] cold probe Phy: score=6018
-[2026-07-17 17:08:11] [SLOT] switch to eSIM
-[2026-07-17 17:08:11] [SLOT] active now eSIM (card READY)
-[2026-07-17 17:08:11] [SLOT] cur ICCID: (empty) (eSIM)
-[2026-07-17 17:08:11] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-07-17 17:08:11] [SLOT] data start OK
-[2026-07-17 17:09:51] [SLOT] probe RAT=0 (+0)
-[2026-07-17 17:09:51] [SLOT] probe score: REG=1 CSQ=18 -> score=6018
-[2026-07-17 17:09:51] [SLOT] cold probe eSIM: score=6018
-[2026-07-17 17:09:51] [SLOT] cold select result: best=Phy (score=6018) -> drive Phy
-[2026-07-17 17:09:51] [SLOT] switch to Phy
-[2026-07-17 17:09:51] [SLOT] active now eSIM (card READY)
-[2026-07-17 17:09:51] [SLOT] slot select done, Fast-Fail timer rebased.
-[2026-07-17 17:09:51] [INIT] ICCID: (empty)
-[2026-07-17 17:09:51] [INIT] SIM state: READY
-[2026-07-17 17:09:51] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-07-17 17:09:51] [INIT] APN set success
-[2026-07-17 17:09:51] [INIT] set_reconnect_mode(NORMAL): OK
-[2026-07-17 17:09:51] [INIT] ql_data_call_config: OK
-[2026-07-17 17:09:51] [INIT] Starting Data Call...
-[2026-07-17 17:09:51] [INIT] IMEI:    865965086914080
-[2026-07-17 17:09:51] [INIT] FW:      (unknown)
-[2026-07-17 17:09:51] [INIT] SUB:     (unknown)
-[2026-07-17 17:09:51] [INIT] AP_FW:   (unknown)
-[2026-07-17 17:09:51] [INIT] CP_FW:   (unknown)
-[2026-07-17 17:09:51] [INIT] IMSI:    460089087110299
-[2026-07-17 17:09:51] [INIT] Operator:+COPS: 0,2,"46000",7
-[2026-07-17 17:09:51] [INIT] CFUN:    +CFUN: 1
-[2026-07-17 17:09:51] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
+[2026-07-17 17:37:11] [SIM] sim_init OK
+[2026-07-17 17:37:11] [INIT] ICCID: (empty)
+[2026-07-17 17:37:11] [INIT] SIM state: READY
+[2026-07-17 17:37:11] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-07-17 17:37:11] [INIT] APN set success
+[2026-07-17 17:37:11] [INIT] set_reconnect_mode(NORMAL): OK
+[2026-07-17 17:37:11] [INIT] ql_data_call_config: OK
+[2026-07-17 17:37:11] [INIT] Starting Data Call...
+[2026-07-17 17:37:11] [INIT] IMEI:    865965086914080
+[2026-07-17 17:37:11] [INIT] FW:      (unknown)
+[2026-07-17 17:37:11] [INIT] SUB:     (unknown)
+[2026-07-17 17:37:11] [INIT] AP_FW:   (unknown)
+[2026-07-17 17:37:11] [INIT] CP_FW:   (unknown)
+[2026-07-17 17:37:11] [INIT] IMSI:    460089087110299
+[2026-07-17 17:37:11] [INIT] Operator:+COPS: 0,2,"46000",7
+[2026-07-17 17:37:11] [INIT] CFUN:    +CFUN: 1
+[2026-07-17 17:37:11] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
 ##### PRO type 
-[2026-07-17 17:09:51] [LED] startup, send blink
-[2026-07-17 17:09:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s | SLOT:eSIM
-[2026-07-17 17:09:51] [INFO] SDK auto-reconnect phase started (interval=25s). L1 at 300s, L2 at 600s, L3 at 2100s.
-[2026-07-17 17:09:51] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
-[2026-07-17 17:09:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:19s | SLOT:eSIM
-[2026-07-17 17:09:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:51s | SLOT:eSIM
-[2026-07-17 17:11:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:81s | SLOT:eSIM
-[2026-07-17 17:11:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:113s | SLOT:eSIM
-[2026-07-17 17:11:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:145s | SLOT:eSIM
-[2026-07-17 17:13:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:175s | SLOT:eSIM
-[2026-07-17 17:13:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:205s | SLOT:eSIM
-[2026-07-17 17:13:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:235s | SLOT:eSIM
-[2026-07-17 17:14:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:266s | SLOT:eSIM
-[2026-07-17 17:14:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:297s | SLOT:eSIM
-[2026-07-17 17:14:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:327s | SLOT:eSIM
-[2026-07-17 17:16:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:359s | SLOT:eSIM
-[2026-07-17 17:16:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:390s | SLOT:eSIM
-[2026-07-17 17:16:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:420s | SLOT:eSIM
-[2026-07-17 17:16:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:450s | SLOT:eSIM
-[2026-07-17 17:18:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:480s | SLOT:eSIM
-[2026-07-17 17:18:11] [EVENT] Exit requested. Turning LED off and leaving dial_loop.
+[2026-07-17 17:37:11] [LED] startup, send blink
+[2026-07-17 17:37:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
+[2026-07-17 17:37:11] [INFO] SDK auto-reconnect phase started (interval=25s). L1 at 300s, L2 at 600s, L3 at 2100s.
+[2026-07-17 17:37:11] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
+[2026-07-17 17:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:18s
+[2026-07-17 17:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:48s
+[2026-07-17 17:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:78s
+[2026-07-17 17:40:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:108s
+[2026-07-17 17:40:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:139s
+[2026-07-17 17:40:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:169s
+[2026-07-17 17:40:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:199s
+[2026-07-17 17:42:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:229s
+[2026-07-17 17:42:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:259s
+[2026-07-17 17:42:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:289s
+[2026-07-17 17:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:319s
+[2026-07-17 17:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:349s
+[2026-07-17 17:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:379s
+[2026-07-17 17:45:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:411s
+[2026-07-17 17:45:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:441s
+[2026-07-17 17:45:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:471s
+[2026-07-17 17:45:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:502s
+[2026-07-17 17:47:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:532s
+[2026-07-17 17:47:11] [EVENT] Exit requested. Turning LED off and leaving dial_loop.

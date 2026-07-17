@@ -61,8 +61,12 @@ selftest: selftest.cpp logmodel.cpp logmodel.h
 simtest: simtest.cpp logmodel.cpp logmodel.h
 	g++ -std=c++17 -O2 -Wall -Wextra -o simtest simtest.cpp logmodel.cpp
 
+# 对**真代码产出**的日志(sim/hostrun*/)做结论断言 —— 证据等级比 simtest 的手写日志高一档
+hostruntest: hostruntest.cpp logmodel.cpp logmodel.h
+	g++ -std=c++17 -O2 -Wall -Wextra -o hostruntest hostruntest.cpp logmodel.cpp
+
 clean:
-	rm -f $(OBJS) dialLog_v*.exe selftest simtest
+	rm -f $(OBJS) dialLog_v*.exe selftest simtest hostruntest
 
 version:
 	@echo $(VER)

@@ -7,10 +7,13 @@
 //   1.0.0  首版:仅 FMT_SD 格式,只在一份 EG25 日志上验证
 //   1.1.0  双格式(+artery seas_log)、平台自动识别、未识别行审计、结论引擎
 //   1.2.0  剪贴板粘贴分析(按钮 / Ctrl+V / --paste)
+//   1.3.0  修 CP dump 假阳性(正常设备曾被报"基带崩溃")、恢复阶梯改按事件计数
+//          (4 次曾被报成 8 次)、多行条目续行并入上一条、混合大小写标签 [NetCheck]、
+//          接活死分支"数据服务未就绪"(此前 enum 有名字但代码从无赋值,永不触发)
 #pragma once
 
 #define DL_VER_MAJOR 1
-#define DL_VER_MINOR 2
+#define DL_VER_MINOR 3
 #define DL_VER_PATCH 0
 
 #define DL_STRINGIFY2(x) #x
