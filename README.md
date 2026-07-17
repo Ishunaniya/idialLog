@@ -106,7 +106,7 @@ make CXX=i686-w64-mingw32-g++ WINDRES=i686-w64-mingw32-windres
 
 ```bash
 make selftest
-./selftest ../../rtms_sdk/apps/modem_mng/dial_20260630_000026.log
+./selftest samples/rtms_eg25/dial_20260630_000026.log
 ```
 
 自测会做**审计自洽校验**(`已解析 + 会话标记 + 空行 + 未识别 == 原始行数`),
@@ -130,7 +130,7 @@ make selftest
 > 那段 13m34s 被真实样本拆成 4m31s + 3m30s。
 
 ### ⚠️ 仅源码实证 + 合成夹具,**未经真机日志验证**
-- **EC200A / AG35 分支**:格式取自源码,夹具见 `samples/`
+- **EC200A / AG35 分支**:格式取自源码,夹具见 `samples/`(按来源分目录,见 `samples/README.md`)
   (`ec200a_synthetic.log` / `ag35_synthetic.log`)。本机无 EC200A/AG35 真机日志。
 - **artery(seas_log)分支**:全机**无 artery 真机日志**;仅
   `open_dial_for_artery/md/analyse/open_dial_roamlink_analysis_v2.md` 中有 1 行文档示例
@@ -175,4 +175,5 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | `selftest.cpp` | 解析层自测(含审计自洽校验、结论必带证据校验) |
 | `resource.rc` + `app.manifest` | 嵌入清单:comctl32 v6 现代控件外观 + DPI 感知 + 版本信息 |
 | `version.h` | **版本号单一来源**(C++ 与 resource.rc 共用);改版本只改这里 |
+| `samples/` | 测试夹具,按来源分目录(rtms_eg25 / rtms_ag35 / rtms_ec200a / dial_ec200a / dial_eg25);见其 README |
 | `Makefile` | 构建 |
