@@ -1,0 +1,355 @@
+=== Dial Log Opened [2026-07-17 00:00:00] daykey=2026-07-17 ===
+[2026-07-17 00:00:00] CFUN 调用次数已达到上限，无法继续调用
+[2026-07-17 00:00:01] CFUN 调用间隔不足 600 秒，无法继续调用
+[2026-07-17 00:00:02] EG25 modem_mng Version: VALUE
+[2026-07-17 00:00:03] Error: ccinet0 interface not ready after 30s. Exiting.
+[2026-07-17 00:00:04] Program started. Version: VALUE
+[2026-07-17 00:00:05] [ALARM] Net Fail Duration: 60 sec. Trigger Level 1 recovery.
+[2026-07-17 00:00:06] [APN] Failed to ql_data_call_set_apn_config, APN_ID=1, ret=1
+[2026-07-17 00:00:07] [APN] iccid not matched in apn.json, fall back to auto/default APN.
+[2026-07-17 00:00:08] [APN] load from apn.json (path=VALUE, count=1)
+[2026-07-17 00:00:09] [APN] matched: apn_name=VALUE, usrname=VALUE, password=VALUE, iccid=VALUE
+[2026-07-17 00:00:10] [CELL CHANGE] VALUE -> VALUE | VALUE
+[2026-07-17 00:00:11] [CELL] Init: VALUE
+[2026-07-17 00:00:12] [CFUN] AT+CFUN=0 failed, retry_nb=1
+[2026-07-17 00:00:13] [CFUN] AT+CFUN=0 success, response: 
+OK
+[2026-07-17 00:00:14] [CFUN] AT+CFUN=1 failed, retry_nb=1
+[2026-07-17 00:00:15] [CFUN] AT+CFUN=1 success, response: 
+OK
+[2026-07-17 00:00:16] [CFUN] Sending AT+CFUN=0 (stop RF)
+[2026-07-17 00:00:17] [CFUN] Sending AT+CFUN=1 (start RF)
+[2026-07-17 00:00:18] [CLEANUP] VALUE: kept 1, removed 1 old.
+[2026-07-17 00:00:19] [CLEANUP] Removed old file: VALUE
+[2026-07-17 00:00:20] [CPDUMP] /media/sdcard not available, skip bind mount.
+[2026-07-17 00:00:21] [CPDUMP] /sdcard already bind-mounted to SD card.
+[2026-07-17 00:00:22] [CPDUMP] /sdcard unmounted.
+[2026-07-17 00:00:23] [CPDUMP] Bind mounted /media/sdcard -> /sdcard for CP dump capture.
+[2026-07-17 00:00:24] [CPDUMP] Found 1 existing CP dump(s): VALUE
+[2026-07-17 00:00:25] [CPDUMP] No existing CP dumps.
+[2026-07-17 00:00:26] [CPDUMP] mkdir /sdcard/modem_dump failed: VALUE
+[2026-07-17 00:00:27] [CPDUMP] mount --bind failed (VALUE), CP dumps may be lost.
+[2026-07-17 00:00:28] [CPDUMP] umount /sdcard failed: VALUE
+[2026-07-17 00:00:29] [DIAG-DMESG-REC] VALUE
+[2026-07-17 00:00:30] [DIAG-DMESG] VALUE
+[2026-07-17 00:00:31] [DIAG-SIM-REC] QSIMSTAT=VALUE
+[2026-07-17 00:00:32] [DIAG-SIM] VALUE | VALUE
+[2026-07-17 00:00:33] [DIAG] VALUE
+[2026-07-17 00:00:34] [DIAG] Snapshot saved: VALUE/[dmesg|logcat]_VALUE_VALUE.log
+[2026-07-17 00:00:35] [DIAG] Snapshot saved: VALUE/[dmesg|logcat|svc]_VALUE_VALUE.log
+[2026-07-17 00:00:36] [DIAG] mkdir VALUE failed: VALUE, skip snapshot.
+[2026-07-17 00:00:37] [ERROR] Failed to write /tmp/resolv_v4.conf: VALUE
+[2026-07-17 00:00:38] [ERROR] Failed to write /tmp/resolv_v6.conf: VALUE
+[2026-07-17 00:00:39] [ERROR] SIM Card disconnected during runtime, state=VALUE.
+[2026-07-17 00:00:40] [EVENT] DataCall[1/VALUE]: VALUE -> VALUE
+[2026-07-17 00:00:41] [EVENT] Exit requested. Turning LED off and leaving dial_loop.
+[2026-07-17 00:00:42] [EVENT] Network Connected. Notification sent.
+[2026-07-17 00:00:43] [EVENT] Network Recovered in SDK phase (L0). Down: 60s.
+[2026-07-17 00:00:44] [EVENT] Network Recovered via card-switch (now VALUE). Down: 60s.
+[2026-07-17 00:00:45] [EVENT] Network Recovered. Down: 60s.
+[2026-07-17 00:00:46] [EVENT] PDP Disconnected: IF=VALUE
+[2026-07-17 00:00:47] [EVENT] PDP IPv4: IF=VALUE IP=VALUE GW=VALUE DNS=VALUE/VALUE
+[2026-07-17 00:00:48] [EVENT] PDP IPv6: IF=VALUE IP=VALUE GW=VALUE DNS=VALUE/VALUE
+[2026-07-17 00:00:49] [EVENT] PDP Idle (was connected): IF=VALUE
+[2026-07-17 00:00:50] [FATAL] SDK data call service error detected.
+[2026-07-17 00:00:51] [HEARTBEAT] VALUE | VALUEVALUEVALUE
+[2026-07-17 00:00:52] [HEARTBEAT] VALUE
+[2026-07-17 00:00:53] [HEARTBEAT] Network recovered after 60s
+[2026-07-17 00:00:54] [HEARTBEAT] Ping failed 1 consecutive times, fault timer started
+[2026-07-17 00:00:55] [HEARTBEAT] SIM_AT:VALUE | SIM_CB:VALUE | REG:1 | CSQ:1 | TEMP:1 | DownTime:60s | SLOT:VALUE
+[2026-07-17 00:00:56] [HEARTBEAT] SIM_AT:VALUE | SIM_CB:VALUE | REG:1 | CSQ:1 | TEMP:1 | DownTime:60s
+[2026-07-17 00:00:57] [INFO] SDK auto-reconnect phase started (interval=10s). 
+[2026-07-17 00:00:58] [INFO] SIM recovered: state=READY (down ~60s)
+[2026-07-17 00:00:59] [INFO] active SIM READY after card-switch (now VALUE, down ~60s)
+[2026-07-17 00:01:00] [INFO] never-connected, policy recovery (L1/L2/L3) gated. 
+[2026-07-17 00:01:01] [INIT] APN set success
+[2026-07-17 00:01:02] [INIT] AP_FW:   VALUE
+[2026-07-17 00:01:03] [INIT] CFUN:    VALUE
+[2026-07-17 00:01:04] [INIT] COPS: VALUE
+[2026-07-17 00:01:05] [INIT] CP_FW:   VALUE
+[2026-07-17 00:01:06] [INIT] Dial success. Retry count cleared.
+[2026-07-17 00:01:07] [INIT] FW:      VALUE
+[2026-07-17 00:01:08] [INIT] FW:    VALUE
+[2026-07-17 00:01:09] [INIT] Fast Fail: PDP not established in 10s. REG=1. Exiting to retry...
+[2026-07-17 00:01:10] [INIT] Fast Fail: PDP up but no Ping success in 10000ms. IF=VALUE REG=1. Exiting to retry...
+[2026-07-17 00:01:11] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-07-17 00:01:12] [INIT] Fast Retry Mode: Attempt 1/1
+[2026-07-17 00:01:13] [INIT] ICCID: VALUE
+[2026-07-17 00:01:14] [INIT] IMEI:    VALUE
+[2026-07-17 00:01:15] [INIT] IMEI:  VALUE
+[2026-07-17 00:01:16] [INIT] IMSI:    VALUE
+[2026-07-17 00:01:17] [INIT] IMSI:  VALUE
+[2026-07-17 00:01:18] [INIT] NW mode: VALUE
+[2026-07-17 00:01:19] [INIT] Operator:VALUE
+[2026-07-17 00:01:20] [INIT] PDP cfg: VALUE
+[2026-07-17 00:01:21] [INIT] PDP connected, start Ping window (10000ms).
+[2026-07-17 00:01:22] [INIT] PDP:   VALUE
+[2026-07-17 00:01:23] [INIT] SIM state: VALUE
+[2026-07-17 00:01:24] [INIT] SUB:     VALUE
+[2026-07-17 00:01:25] [INIT] Starting Data Call...
+[2026-07-17 00:01:26] [INIT] Starting dial initialization...
+[2026-07-17 00:01:27] [INIT] Waiting for ql_data_call_init...
+[2026-07-17 00:01:28] [INIT] data_call_init OK.
+[2026-07-17 00:01:29] [INIT] data_call_init failed, ret=1
+[2026-07-17 00:01:30] [INIT] data_call_init retrying, remaining=1
+[2026-07-17 00:01:31] [INIT] policy=1
+[2026-07-17 00:01:32] [INIT] ql_data_call_config: VALUE
+[2026-07-17 00:01:33] [INIT] ql_data_call_start failed: 1
+[2026-07-17 00:01:34] [INIT] set_reconnect_mode(NORMAL): VALUE
+[2026-07-17 00:01:35] [LED] startup, send blink
+[2026-07-17 00:01:36] [LED] state 1 -> 1, send (L3 exit)
+[2026-07-17 00:01:37] [LED] state 1 -> 1, send
+[2026-07-17 00:01:38] [LOGCLEAN] removed dir VALUE/VALUE (ret=1)
+[2026-07-17 00:01:39] [LOGMIGR] VALUE -> VALUE/ (ret=1)
+[2026-07-17 00:01:40] [MODEM] CFUN:    1VALUE
+[2026-07-17 00:01:41] [MODEM] FW:      VALUE
+[2026-07-17 00:01:42] [MODEM] Model:   VALUE
+[2026-07-17 00:01:43] [MODEM] SubEd:   VALUE
+[2026-07-17 00:01:44] [MODEM] Temp:    VALUE
+[2026-07-17 00:01:45] [NANOMSG] REQ/REP handler started, url=VALUE sock=1
+[2026-07-17 00:01:46] [NANOMSG] bad request: VALUE (cnt=1)
+[2026-07-17 00:01:47] [NANOMSG] exception while handling request: VALUE
+[2026-07-17 00:01:48] [NANOMSG] nn_send failed: VALUE
+[2026-07-17 00:01:49] [NANOMSG] reconnect failed (cnt=1), retry in 10s
+[2026-07-17 00:01:50] [NANOMSG] reconnected OK, sock=1
+[2026-07-17 00:01:51] [NANOMSG] recv failed 1 times (VALUE), reconnecting...
+[2026-07-17 00:01:52] [NANOMSG] status served OK, %lu replies since last log
+[2026-07-17 00:01:53] [NANOMSG] unknown exception while handling request
+[2026-07-17 00:01:54] [NetCheck] Error: Timeout waiting for interface 'VALUE' after 10s.
+[2026-07-17 00:01:55] [NetCheck] Interface 'VALUE' is ready!
+[2026-07-17 00:01:56] [NetCheck] Interface 'VALUE' not found yet... (1/10s)
+[2026-07-17 00:01:57] [NetCheck] Waiting for network interface 'VALUE' (Wait max 10s)...
+[2026-07-17 00:01:58] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-07-17 00:01:59] [OPER] VALUE failed, rsp="VALUE"
+[2026-07-17 00:02:00] [OPER] CFUN=0 after select, ret=1
+[2026-07-17 00:02:01] [OPER] CFUN=1, ret=1, waiting 10s for registration
+[2026-07-17 00:02:02] [OPER] COPS=1 VALUE VALUE (ret=1 rsp=VALUE)
+[2026-07-17 00:02:03] [OPER] Candidate list (1): VALUE
+[2026-07-17 00:02:04] [OPER] Remove operator VALUE after retry failure
+[2026-07-17 00:02:05] [OPER] Selected operator VALUE, response: 
+OK
+[2026-07-17 00:02:06] [OPER] Try operator VALUE
+[2026-07-17 00:02:07] [OPER] all 1 tries failed, COPS=0 to clear manual residue, ret=1
+[2026-07-17 00:02:08] [OPER] connection stable 10min, restoring automatic selection (COPS=0)
+[2026-07-17 00:02:09] [OPER] data call restart after round, ret=1
+[2026-07-17 00:02:10] [OPER] data call restart after scan failure, ret=1
+[2026-07-17 00:02:11] [OPER] data call stop before scan/select, ret=1
+[2026-07-17 00:02:12] [OPER] init failed (atc/nw service), operator-select disabled this run
+[2026-07-17 00:02:13] [OPER] late/unexpected scan callback dropped (async_index=1, round=1)
+[2026-07-17 00:02:14] [OPER] network scan start (timeout 10s)
+[2026-07-17 00:02:15] [OPER] network scan timeout after 10s
+[2026-07-17 00:02:16] [OPER] never-connected 60s with oper-select on, bypass gate, 
+[2026-07-17 00:02:17] [OPER] operator-select enabled (dualsim.json oper_select=1)
+[2026-07-17 00:02:18] [OPER] overseas operator-select (dualsim.json oper_select): 1
+[2026-07-17 00:02:19] [OPER] plmn queue stale (age>10s), clear and rescan
+[2026-07-17 00:02:20] [OPER] ql_atc_init failed, ret=1
+[2026-07-17 00:02:21] [OPER] ql_nw_init failed, ret=1
+[2026-07-17 00:02:22] [OPER] ql_nw_network_scan failed, ret=1
+[2026-07-17 00:02:23] [OPER] restore COPS=0, ret=1 rsp=VALUE
+[2026-07-17 00:02:24] [OPER] restore thread create failed
+[2026-07-17 00:02:25] [OPER] restore: AT+COPS? failed ret=1, skip
+[2026-07-17 00:02:26] [OPER] restore: mode=1, already automatic or unknown, no action
+[2026-07-17 00:02:27] [OPER] round done: VALUE
+[2026-07-17 00:02:28] [OPER] scan callback accepted (async_index=1, round=1)
+[2026-07-17 00:02:29] [OPER] scan done: 1 entries, 1 queued
+[2026-07-17 00:02:30] [OPER] scan issued, async_id=1 (round=1)
+[2026-07-17 00:02:31] [OPER] scan[1]: VALUE "VALUE" status=1 rat=1
+[2026-07-17 00:02:32] [OPER] select_oper entered with no candidate operator (deque empty)
+[2026-07-17 00:02:33] [OPER] selected VALUE
+[2026-07-17 00:02:34] [OPER] selection round end: VALUE (queue left=%zu)
+[2026-07-17 00:02:35] [OPER] selection round start (queue=%zu)
+[2026-07-17 00:02:36] [OPER] selection round stuck >35min (likely atc hang), 
+[2026-07-17 00:02:37] [OPER] trying VALUE ...
+[2026-07-17 00:02:38] [OPER] worker thread create failed
+[2026-07-17 00:02:39] [PING] Ping 8.8.8.8 OK
+[2026-07-17 00:02:40] [RECOVERY L1] LastErr: VALUE | PDP: VALUE
+[2026-07-17 00:02:41] [RECOVERY L1] REG down, skip redial (downtime=60s)
+[2026-07-17 00:02:42] [RECOVERY L1] REG live, soft redial: stop+start data call (downtime=60s)
+[2026-07-17 00:02:43] [RECOVERY L1] Restarting Data Call...
+[2026-07-17 00:02:44] [RECOVERY L1] Start OK. Waiting for reconnect.
+[2026-07-17 00:02:45] [RECOVERY L1] Start failed: 1 (REG:1)
+[2026-07-17 00:02:46] [RECOVERY L1] Stopping Data Call... REG=1
+[2026-07-17 00:02:47] [RECOVERY L1] soft redial VALUE
+[2026-07-17 00:02:48] [RECOVERY L2] AT+CFUN=0 rsp: 
+OK
+[2026-07-17 00:02:49] [RECOVERY L2] AT+CFUN=1 rsp: 
+OK
+[2026-07-17 00:02:50] [RECOVERY L2] Already connected (SDK auto-reconnected).
+[2026-07-17 00:02:51] [RECOVERY L2] RF ON. Waiting 10s for registration...
+[2026-07-17 00:02:52] [RECOVERY L2] Restarting Data Call...
+[2026-07-17 00:02:53] [RECOVERY L2] Start OK. Waiting for reconnect.
+[2026-07-17 00:02:54] [RECOVERY L2] Start failed: 1
+[2026-07-17 00:02:55] [RECOVERY L2] Toggling RF (Airplane Mode)... REG=1
+[2026-07-17 00:02:56] [RECOVERY L3] AT+CFUN=1,1 rsp: 
+OK
+[2026-07-17 00:02:57] [RECOVERY L3] FATAL: Network down 30mins. Exiting for watchdog to reinitialize.
+[2026-07-17 00:02:58] [RECOVERY L3] FATAL: Network down 35mins. Exiting for watchdog/init to reinitialize.
+[2026-07-17 00:02:59] [RECOVERY] LastErr: VALUE
+[2026-07-17 00:03:00] [RECOVERY] PDP state: VALUE
+[2026-07-17 00:03:01] [REG DIAG] cold-start no-reg | VALUE | VALUE | VALUE | VALUE
+[2026-07-17 00:03:02] [REG TIMEOUT] AT+COPS=0 rsp: 
+OK
+[2026-07-17 00:03:03] [REG TIMEOUT] COPS already auto, skip COPS=0
+[2026-07-17 00:03:04] [REG TIMEOUT] COPS not auto (VALUE), forcing COPS=0
+[2026-07-17 00:03:05] [REG TIMEOUT] policy=1, cfun reset and retry
+[2026-07-17 00:03:06] [REG TIMEOUT] policy=1, switching to Roamlink
+[2026-07-17 00:03:07] [REG TIMEOUT] policy=4 (connected): defer cfun reset to L2 ladder (reg timer reset)
+[2026-07-17 00:03:08] [ROAMLINK] VALUE not found, use default policy 1
+[2026-07-17 00:03:09] [ROAMLINK] Biz layer no data for 60s, switching to SIM
+[2026-07-17 00:03:10] [ROAMLINK] Biz rx_packets no growth for 60s
+[2026-07-17 00:03:11] [ROAMLINK] Channel fail timeout (10s), switching to SIM
+[2026-07-17 00:03:12] [ROAMLINK] Connect timeout (10s), switching to SIM
+[2026-07-17 00:03:13] [ROAMLINK] FORCE_ROAMLINK: biz no data, restarting service
+[2026-07-17 00:03:14] [ROAMLINK] FORCE_ROAMLINK: channel timeout, restarting service
+[2026-07-17 00:03:15] [ROAMLINK] FORCE_ROAMLINK: connect timeout, restarting service
+[2026-07-17 00:03:16] [ROAMLINK] FORCE_ROAMLINK: license missing and no backup,
+[2026-07-17 00:03:17] [ROAMLINK] Initial channel: Roamlink (starting)
+[2026-07-17 00:03:18] [ROAMLINK] Initial start failed, falling back to SIM
+[2026-07-17 00:03:19] [ROAMLINK] Ping OK in starting state, channel now active
+[2026-07-17 00:03:20] [ROAMLINK] Policy requires Roamlink as initial channel. Starting RBMaster...
+[2026-07-17 00:03:21] [ROAMLINK] Policy1: SIM stable 60s, trying Roamlink recovery
+[2026-07-17 00:03:22] [ROAMLINK] Policy2: Roamlink stable 60s, trying SIM recovery
+[2026-07-17 00:03:23] [ROAMLINK] RBMaster already running, skip
+[2026-07-17 00:03:24] [ROAMLINK] RBMaster launched, waiting 3s for init
+[2026-07-17 00:03:25] [ROAMLINK] RBMaster not found at VALUE → NO_PACKAGE
+[2026-07-17 00:03:26] [ROAMLINK] RBMaster process not found in /proc
+[2026-07-17 00:03:27] [ROAMLINK] RBMaster running (found in /proc)
+[2026-07-17 00:03:28] [ROAMLINK] SIM connected, starting RBMaster for license download
+[2026-07-17 00:03:29] [ROAMLINK] Switch back failed, retry in 10s
+[2026-07-17 00:03:30] [ROAMLINK] Switch failed
+[2026-07-17 00:03:31] [ROAMLINK] Switched back to Roamlink channel (starting)
+[2026-07-17 00:03:32] [ROAMLINK] Switched back to SIM channel
+[2026-07-17 00:03:33] [ROAMLINK] Switched to Roamlink channel (starting)
+[2026-07-17 00:03:34] [ROAMLINK] backup license restored to VALUE
+[2026-07-17 00:03:35] [ROAMLINK] backup restore succeeded but re-probe failed (1),
+[2026-07-17 00:03:36] [ROAMLINK] backup write failed (non-fatal)
+[2026-07-17 00:03:37] [ROAMLINK] backup written (was missing)
+[2026-07-17 00:03:38] [ROAMLINK] conf.ini not found at VALUE (factoryApp not yet run) → CONF_MISSING
+[2026-07-17 00:03:39] [ROAMLINK] failed to parse VALUE, use default policy 1
+[2026-07-17 00:03:40] [ROAMLINK] fork() failed: VALUE
+[2026-07-17 00:03:41] [ROAMLINK] fsync failed: VALUE
+[2026-07-17 00:03:42] [ROAMLINK] invalid policy 1 in VALUE, use default 1
+[2026-07-17 00:03:43] [ROAMLINK] kill_master: SIGKILL pid=1
+[2026-07-17 00:03:44] [ROAMLINK] kill_master: SIGTERM pid=1
+[2026-07-17 00:03:45] [ROAMLINK] kill_master: done, killed 1 process(es)
+[2026-07-17 00:03:46] [ROAMLINK] license backed up to VALUE
+[2026-07-17 00:03:47] [ROAMLINK] license check (60s / 10s elapsed)...
+[2026-07-17 00:03:48] [ROAMLINK] license downloaded! backing up and rebooting...
+[2026-07-17 00:03:49] [ROAMLINK] license failed, stopping RBMaster to free SIM channel and redial
+[2026-07-17 00:03:50] [ROAMLINK] license file appeared! backing up and rebooting
+[2026-07-17 00:03:51] [ROAMLINK] license file still being written (%lld → %lld bytes), waiting...
+[2026-07-17 00:03:52] [ROAMLINK] license missing or empty at VALUE → LICENSE_MISSING
+[2026-07-17 00:03:53] [ROAMLINK] license missing, backup restore failed: 
+[2026-07-17 00:03:54] [ROAMLINK] license not yet available
+[2026-07-17 00:03:55] [ROAMLINK] license restored from backup, roamlink available
+[2026-07-17 00:03:56] [ROAMLINK] license wait timeout (60s), 
+[2026-07-17 00:03:57] [ROAMLINK] network_select = 1
+[2026-07-17 00:03:58] [ROAMLINK] no valid backup license at VALUE
+[2026-07-17 00:03:59] [ROAMLINK] open VALUE failed: VALUE
+[2026-07-17 00:04:00] [ROAMLINK] open backup failed: VALUE
+[2026-07-17 00:04:01] [ROAMLINK] open license path for write failed: VALUE
+[2026-07-17 00:04:02] [ROAMLINK] opendir /proc failed: VALUE
+[2026-07-17 00:04:03] [ROAMLINK] policy=1 on startup: stopping residual RBMaster service
+[2026-07-17 00:04:04] [ROAMLINK] policy=1: SIM down 60s, switching to Roamlink
+[2026-07-17 00:04:05] [ROAMLINK] probe CONF_MISSING: /opt/conf.ini absent, force SIM
+[2026-07-17 00:04:06] [ROAMLINK] probe NO_PACKAGE: RBMaster missing, force SIM
+[2026-07-17 00:04:07] [ROAMLINK] probe OK (RBMaster + conf.ini + license valid, size=%lld bytes)
+[2026-07-17 00:04:08] [ROAMLINK] probe OK, roamlink available, policy=1
+[2026-07-17 00:04:09] [ROAMLINK] probe unknown result 1, force SIM
+[2026-07-17 00:04:10] [ROAMLINK] rebooting now
+[2026-07-17 00:04:11] [ROAMLINK] send_cmd: connect failed: VALUE
+[2026-07-17 00:04:12] [ROAMLINK] send_cmd: connect() failed: VALUE
+[2026-07-17 00:04:13] [ROAMLINK] send_cmd: fcntl() failed: VALUE
+[2026-07-17 00:04:14] [ROAMLINK] send_cmd: select() timeout or error (ret=1)
+[2026-07-17 00:04:15] [ROAMLINK] send_cmd: send() failed: VALUE
+[2026-07-17 00:04:16] [ROAMLINK] send_cmd: sent "VALUE" to VALUE:1
+[2026-07-17 00:04:17] [ROAMLINK] send_cmd: socket() failed: VALUE
+[2026-07-17 00:04:18] [ROAMLINK] start_service: AT+COPS already auto, skip AT+COPS=0
+[2026-07-17 00:04:19] [ROAMLINK] start_service: AT+COPS=0 OK
+[2026-07-17 00:04:20] [ROAMLINK] start_service: AT+COPS=0 failed: VALUE
+[2026-07-17 00:04:21] [ROAMLINK] start_service: Roamlink service started, network_type=2
+[2026-07-17 00:04:22] [ROAMLINK] start_service: send RBstartServiceMaster failed
+[2026-07-17 00:04:23] [ROAMLINK] starting RBMaster...
+[2026-07-17 00:04:24] [ROAMLINK] stop_service: Roamlink service stopped
+[2026-07-17 00:04:25] [ROAMLINK] stop_service: send RBstopServiceMaster failed
+[2026-07-17 00:04:26] [ROAMLINK] write license failed: VALUE
+[2026-07-17 00:04:27] [ROAMLINK] write_backup: fsync failed: VALUE
+[2026-07-17 00:04:28] [ROAMLINK] write_backup: open dest failed: VALUE
+[2026-07-17 00:04:29] [ROAMLINK] write_backup: open source failed: VALUE
+[2026-07-17 00:04:30] [ROAMLINK] write_backup: write failed: VALUE
+[2026-07-17 00:04:31] [SDK] DataCall connected | profile=1 | IP=VALUE GW=VALUE DNS=VALUE/VALUE
+[2026-07-17 00:04:32] [SDK] DataCall connected | profile=1 | IPv6=VALUE ifname=VALUE
+[2026-07-17 00:04:33] [SDK] DataCall disconnected | profile=1 err=0x0x1a
+[2026-07-17 00:04:34] [SIM] ICCID: VALUE
+[2026-07-17 00:04:35] [SIM] IMSI: VALUE
+[2026-07-17 00:04:36] [SIM] bad app type: 1
+[2026-07-17 00:04:37] [SIM] bad slot: 1
+[2026-07-17 00:04:38] [SIM] sim_deinit OK
+[2026-07-17 00:04:39] [SIM] sim_deinit failed, ret=1
+[2026-07-17 00:04:40] [SIM] sim_get_iccid failed, ret=1
+[2026-07-17 00:04:41] [SIM] sim_get_imsi failed, ret=1
+[2026-07-17 00:04:42] [SIM] sim_init OK
+[2026-07-17 00:04:43] [SIM] sim_init failed, ret=1
+[2026-07-17 00:04:44] [SLOT] active now VALUE (card READY)
+[2026-07-17 00:04:45] [SLOT] cold probe VALUE: score=1
+[2026-07-17 00:04:46] [SLOT] cold select result: best=VALUE (score=1) -> drive VALUE
+[2026-07-17 00:04:47] [SLOT] cold select: probing both physical slots (data-verified)
+[2026-07-17 00:04:48] [SLOT] config: 1 missing key(s) merged into dualsim.json
+[2026-07-17 00:04:49] [SLOT] config: VALUE absent -> seeded defaults (enable=1)
+[2026-07-17 00:04:50] [SLOT] config: VALUE parse fail, use defaults
+[2026-07-17 00:04:51] [SLOT] config: loaded VALUE
+[2026-07-17 00:04:52] [SLOT] config: no VALUE, seed write failed, use built-in defaults
+[2026-07-17 00:04:53] [SLOT] cur ICCID: VALUE (VALUE)
+[2026-07-17 00:04:54] [SLOT] data start OK
+[2026-07-17 00:04:55] [SLOT] data start fail ret=1
+[2026-07-17 00:04:56] [SLOT] data start: already connected (SDK auto)
+[2026-07-17 00:04:57] [SLOT] fast-boot: HIT VALUE (ping ok), skip other slot
+[2026-07-17 00:04:58] [SLOT] fast-boot: PDP not up in 10s, fall back to cold select
+[2026-07-17 00:04:59] [SLOT] fast-boot: last-good VALUE not ready, fall back
+[2026-07-17 00:05:00] [SLOT] fast-boot: no valid last-good, fall back to cold select
+[2026-07-17 00:05:01] [SLOT] fast-boot: ping never ok in 10s, fall back to cold select
+[2026-07-17 00:05:02] [SLOT] fast-boot: try last-good VALUE
+[2026-07-17 00:05:03] [SLOT] init: enable=1 primary_phy=1(VALUE) switch_after=10s denied_after=10s(0=follow) 
+[2026-07-17 00:05:04] [SLOT] last-good VALUE expired/invalid (age=60s, ttl=10s), ignore
+[2026-07-17 00:05:05] [SLOT] mark last-good VALUE FAILED: VALUE (next boots fall back to cold select)
+[2026-07-17 00:05:06] [SLOT] mark last-good VALUE
+[2026-07-17 00:05:07] [SLOT] new card not READY (ABSENT/empty?) VALUE
+[2026-07-17 00:05:08] [SLOT] param_alloc failed, start without config
+[2026-07-17 00:05:09] [SLOT] probe VALUE: no card/not ready, skip
+[2026-07-17 00:05:10] [SLOT] probe RAT=1 (+1)
+[2026-07-17 00:05:11] [SLOT] probe score: REG=1 CSQ=1 -> score=1
+[2026-07-17 00:05:12] [SLOT] probe-back(VALUE): current VALUE score=1, probing VALUE
+[2026-07-17 00:05:13] [SLOT] probe-back: VALUE not ready, switch back
+[2026-07-17 00:05:14] [SLOT] probe-back: VALUE rejected (score 1 vs 1VALUE), switch back
+[2026-07-17 00:05:15] [SLOT] probe-back: VALUE wins (1 > 1VALUE), migrate
+[2026-07-17 00:05:16] [SLOT] probe-back: switch back FAILED, leave to recovery
+[2026-07-17 00:05:17] [SLOT] residency=fallback (forced switch), last-good kept unchanged
+[2026-07-17 00:05:18] [SLOT] slot select done, Fast-Fail timer rebased.
+[2026-07-17 00:05:19] [SLOT] switch failed r=1 (keep start_fail_ts for L3)
+[2026-07-17 00:05:20] [SLOT] switch failed ret=1, budget still consumed
+[2026-07-17 00:05:21] [SLOT] switch to VALUE
+[2026-07-17 00:05:22] [SLOT] switch_slot FAIL ret=1
+[2026-07-17 00:05:23] [SLOT] switching to role=VALUE (VALUE)
+[2026-07-17 00:05:24] [SLOT] trigger(VALUE): down 60s REG=1 CSQ=1 count=1/1 -> switch card
+[2026-07-17 00:05:25] [STATE] VALUE -> VALUE
+[2026-07-17 00:05:26] [STATUS] fopen VALUE failed: VALUE
+[2026-07-17 00:05:27] [STATUS] rename failed: VALUE
+[2026-07-17 00:05:28] [TZ] Failed to parse timezone from date -R response
+[2026-07-17 00:05:29] [TZ] Parsed timezone: tz=1 (saved to VALUE)
+[2026-07-17 00:05:30] [TZ] date -R response: 
+OK
+[2026-07-17 00:05:31] [TZ] date -R returned empty response
+[2026-07-17 00:05:32] [WARNING] AT+CSQ no response
+[2026-07-17 00:05:33] [WARNING] Parse CSQ failed or no signal (RSSI=1)
+[2026-07-17 00:05:34] [WARNING] Registration Denied! Code 1.
+[2026-07-17 00:05:35] [WARNING] Registration Denied! Code 3.
+[2026-07-17 00:05:36] [WARN] apn set failed
+[2026-07-17 00:05:37] [WARN] ql_data_call_param_alloc failed, starting without APN config
+[2026-07-17 00:05:38] [WARN] ql_sim_get_card_info failed, ST_SIM will fall back to AT+CPIN?
+[2026-07-17 00:05:39] [WARN] sim_init failed (ret=1). SIM SDK callback may not work, 
+[2026-07-17 00:05:40] [ZERO ADDR] DataCall connected but address all-zero 
+[2026-07-17 00:05:41] [ZERO ADDR] still all-zero after redial, 
+[2026-07-17 00:05:42] at_init failed (smd_fd<0): AT port unavailable
+[2026-07-17 00:05:43] ccinet0 interface is ready. Program continuing...
+[2026-07-17 00:05:44] dial_mng_new failed (out of memory?), aborting
+[2026-07-17 00:05:45] 重置 CFUN

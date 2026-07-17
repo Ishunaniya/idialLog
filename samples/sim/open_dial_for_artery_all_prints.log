@@ -1,0 +1,243 @@
+2026-07-17 00:00:00.000 [INFO] [0mdial_task (dial.c:100) - VALUE
+2026-07-17 00:00:01.001 [INFO] [0mdial_task (dial.c:101) - VALUE Ret:VALUE
+2026-07-17 00:00:02.002 [INFO] [0mdial_task (dial.c:102) - VALUE
+2026-07-17 00:00:03.003 [INFO] [0mdial_task (dial.c:103) - < match >
+2026-07-17 00:00:04.004 [INFO] [0mdial_task (dial.c:104) - < time out >
+2026-07-17 00:00:05.005 [INFO] [0mdial_task (dial.c:105) - >>Read response urc, len=1, content:VALUE
+2026-07-17 00:00:06.006 [INFO] [0mdial_task (dial.c:106) - ADD APN :VALUE
+2026-07-17 00:00:07.007 [INFO] [0mdial_task (dial.c:107) - ADD APN list with ret:1
+2026-07-17 00:00:08.008 [INFO] [0mdial_task (dial.c:108) - APN List Count:1
+2026-07-17 00:00:09.009 [INFO] [0mdial_task (dial.c:109) - APN List:1, apn_name: VALUE, set apn_name:VALUE
+2026-07-17 00:00:10.010 [INFO] [0mdial_task (dial.c:110) - AT+COPS=0 Ret:VALUE
+2026-07-17 00:00:11.011 [INFO] [0mdial_task (dial.c:111) - AT+COPS=? Ret:VALUE
+2026-07-17 00:00:12.012 [INFO] [0mdial_task (dial.c:112) - AT+QLTS Ret Failed:VALUE
+2026-07-17 00:00:13.013 [INFO] [0mdial_task (dial.c:113) - AT+QLTS Ret Success:VALUE
+2026-07-17 00:00:14.014 [INFO] [0mdial_task (dial.c:114) - Add Oper Number: VALUE
+2026-07-17 00:00:15.015 [INFO] [0mdial_task (dial.c:115) - After CC DEQUE Size:1
+2026-07-17 00:00:16.016 [INFO] [0mdial_task (dial.c:116) - CSQ: 1
+2026-07-17 00:00:17.017 [INFO] [0mdial_task (dial.c:117) - DIAL Version TEST2: 1.01.01
+2026-07-17 00:00:18.018 [INFO] [0mdial_task (dial.c:118) - DIAL Version: 1.01.01
+2026-07-17 00:00:19.019 [INFO] [0mdial_task (dial.c:119) - Dial_st: dial_stat_cereg_check failed
+2026-07-17 00:00:20.020 [INFO] [0mdial_task (dial.c:120) - Dial_st: dial_stat_cereg_check success
+2026-07-17 00:00:21.021 [INFO] [0mdial_task (dial.c:121) - Dial_st: dial_stat_init failed
+2026-07-17 00:00:22.022 [INFO] [0mdial_task (dial.c:122) - Dial_st: dial_stat_init success
+2026-07-17 00:00:23.023 [INFO] [0mdial_task (dial.c:123) - Dial_st: dial_stat_precondition_check failed
+2026-07-17 00:00:24.024 [INFO] [0mdial_task (dial.c:124) - Dial_st: dial_stat_precondition_check success
+2026-07-17 00:00:25.025 [INFO] [0mdial_task (dial.c:125) - Dial_st: dial_stat_reg_check failed
+2026-07-17 00:00:26.026 [INFO] [0mdial_task (dial.c:126) - Dial_st: dial_stat_reg_check success
+2026-07-17 00:00:27.027 [INFO] [0mdial_task (dial.c:127) - Dial_st: dial_stat_sim_check failed
+2026-07-17 00:00:28.028 [INFO] [0mdial_task (dial.c:128) - Dial_st: dial_stat_sim_check success
+2026-07-17 00:00:29.029 [INFO] [0mdial_task (dial.c:129) - Dial_st: dial_stat_sim_init error
+2026-07-17 00:00:30.030 [INFO] [0mdial_task (dial.c:130) - Dial_st: dial_stat_sim_init success
+2026-07-17 00:00:31.031 [INFO] [0mdial_task (dial.c:131) - Dial_st: dial_stat_sim_op failed
+2026-07-17 00:00:32.032 [INFO] [0mdial_task (dial.c:132) - Dial_st: dial_stat_sim_op get imsi failed (non-fatal)
+2026-07-17 00:00:33.033 [INFO] [0mdial_task (dial.c:133) - Dial_st: dial_stat_sim_op success
+2026-07-17 00:00:34.034 [INFO] [0mdial_task (dial.c:134) - Dial_st: get profile index:1
+2026-07-17 00:00:35.035 [INFO] [0mdial_task (dial.c:135) - Gateway address:     VALUE
+2026-07-17 00:00:36.036 [INFO] [0mdial_task (dial.c:136) - Get APN list failure
+2026-07-17 00:00:37.037 [INFO] [0mdial_task (dial.c:137) - Get Connect status: 1 with failure: errno:0x0x1a
+2026-07-17 00:00:38.038 [INFO] [0mdial_task (dial.c:138) - Get Connect status: VALUE
+2026-07-17 00:00:39.039 [INFO] [0mdial_task (dial.c:139) - ICCID: VALUE
+2026-07-17 00:00:40.040 [INFO] [0mdial_task (dial.c:140) - IMSI: VALUE
+2026-07-17 00:00:41.041 [INFO] [0mdial_task (dial.c:141) - IP family VALUE 
+2026-07-17 00:00:42.042 [INFO] [0mdial_task (dial.c:142) - IPv4 address:        VALUE
+2026-07-17 00:00:43.043 [INFO] [0mdial_task (dial.c:143) - IPv6 address:          VALUE
+2026-07-17 00:00:44.044 [INFO] [0mdial_task (dial.c:144) - Initialization data call failure
+2026-07-17 00:00:45.045 [INFO] [0mdial_task (dial.c:145) - Interface Name:  VALUE
+2026-07-17 00:00:46.046 [INFO] [0mdial_task (dial.c:146) - Loaded Tz:1, Set Tz:1
+2026-07-17 00:00:47.047 [INFO] [0mdial_task (dial.c:147) - MCM_SIM_GetCardStatus failed with ret: 0x0x1a
+2026-07-17 00:00:48.048 [INFO] [0mdial_task (dial.c:148) - Net Connected
+2026-07-17 00:00:49.049 [INFO] [0mdial_task (dial.c:149) - Net disconnected, and reason code 0x0x1a
+2026-07-17 00:00:50.050 [INFO] [0mdial_task (dial.c:150) - No Oper Info
+2026-07-17 00:00:51.051 [INFO] [0mdial_task (dial.c:151) - No is_oper_select
+2026-07-17 00:00:52.052 [INFO] [0mdial_task (dial.c:152) - Oper Info: VALUE scanf ret:1
+2026-07-17 00:00:53.053 [INFO] [0mdial_task (dial.c:153) - Parse: VALUE Error
+2026-07-17 00:00:54.054 [INFO] [0mdial_task (dial.c:154) - Pre CC DEQUE Size:1
+2026-07-17 00:00:55.055 [INFO] [0mdial_task (dial.c:155) - Primary DNS address: VALUE
+2026-07-17 00:00:56.056 [INFO] [0mdial_task (dial.c:156) - QL_MCM_SIM_GetICCID error:VALUE
+2026-07-17 00:00:57.057 [INFO] [0mdial_task (dial.c:157) - QL_MCM_SIM_GetICCID ret = VALUE, ICCID: VALUE
+2026-07-17 00:00:58.058 [INFO] [0mdial_task (dial.c:158) - QL_MCM_SIM_GetIMSI error:VALUE
+2026-07-17 00:00:59.059 [INFO] [0mdial_task (dial.c:159) - Request cops info
+2026-07-17 00:01:00.060 [INFO] [0mdial_task (dial.c:160) - Request cops info failed with retry:1
+2026-07-17 00:01:01.061 [INFO] [0mdial_task (dial.c:161) - Retry failed, remove oper:VALUE
+2026-07-17 00:01:02.062 [INFO] [0mdial_task (dial.c:162) - Retry failed, remove oper:VALUE success
+2026-07-17 00:01:03.063 [INFO] [0mdial_task (dial.c:163) - Roamlink biz check: no rmnet_data iface found,
+2026-07-17 00:01:04.064 [INFO] [0mdial_task (dial.c:164) - Roamlink connect timeout (10s)
+2026-07-17 00:01:05.065 [INFO] [0mdial_task (dial.c:165) - Roamlink connected, entering active state
+2026-07-17 00:01:06.066 [INFO] [0mdial_task (dial.c:166) - Roamlink not yet connected, waited 60s / 10s
+2026-07-17 00:01:07.067 [INFO] [0mdial_task (dial.c:167) - Roamlink recovered after 1 failures
+2026-07-17 00:01:08.068 [INFO] [0mdial_task (dial.c:168) - Roamlink tcp test failed, count: 1 / 1
+2026-07-17 00:01:09.069 [INFO] [0mdial_task (dial.c:169) - SIM connected, starting RBMaster for license download
+2026-07-17 00:01:10.070 [INFO] [0mdial_task (dial.c:170) - SIM_op_st: sim_op_stat_get_iccid error
+2026-07-17 00:01:11.071 [INFO] [0mdial_task (dial.c:171) - SIM_op_st: sim_op_stat_get_imsi error
+2026-07-17 00:01:12.072 [INFO] [0mdial_task (dial.c:172) - Second DNS address:  VALUE
+2026-07-17 00:01:13.073 [INFO] [0mdial_task (dial.c:173) - Set APN
+2026-07-17 00:01:14.074 [INFO] [0mdial_task (dial.c:174) - TZ:1
+2026-07-17 00:01:15.075 [INFO] [0mdial_task (dial.c:175) - [HEARTBEAT] cereg=1 VALUE ifname=VALUE ip=VALUE rx_packets=%llu
+2026-07-17 00:01:16.076 [INFO] [0mdial_task (dial.c:176) - [HEARTBEAT] state=VALUE csq=1 tcp_fail=1 rl_fail=1
+2026-07-17 00:01:17.077 [INFO] [0mdial_task (dial.c:177) - [INIT] APN: VALUE
+2026-07-17 00:01:18.078 [INFO] [0mdial_task (dial.c:178) - [INIT] COPS: VALUE
+2026-07-17 00:01:19.079 [INFO] [0mdial_task (dial.c:179) - [INIT] FW: VALUE
+2026-07-17 00:01:20.080 [INFO] [0mdial_task (dial.c:180) - [INIT] IMEI: VALUE
+2026-07-17 00:01:21.081 [INFO] [0mdial_task (dial.c:181) - [INIT] policy=1
+2026-07-17 00:01:22.082 [INFO] [0mdial_task (dial.c:182) - [ROAMLINK] license failed, stopping RBMaster to free SIM channel and redial
+2026-07-17 00:01:23.083 [INFO] [0mdial_task (dial.c:183) - [ZERO ADDR] DataCall connected but address all-zero 
+2026-07-17 00:01:24.084 [INFO] [0mdial_task (dial.c:184) - [ZERO ADDR] still all-zero after redial, 
+2026-07-17 00:01:25.085 [INFO] [0mdial_task (dial.c:185) - apn found for iccid: VALUE
+2026-07-17 00:01:26.086 [INFO] [0mdial_task (dial.c:186) - apn set with profile_idx: 1, apn_name: VALUE, username: VALUE, password: VALUE
+2026-07-17 00:01:27.087 [INFO] [0mdial_task (dial.c:187) - apn: VALUE, iccid: VALUE, usrname: VALUE, pwd: VALUE
+2026-07-17 00:01:28.088 [INFO] [0mdial_task (dial.c:188) - at_init failed (smd_fd<0): AT port unavailable, 
+2026-07-17 00:01:29.089 [INFO] [0mdial_task (dial.c:189) - at_init: open VALUE failed, errno=1
+2026-07-17 00:01:30.090 [INFO] [0mdial_task (dial.c:190) - cereg_check timeout (10s), policy=1
+2026-07-17 00:01:31.091 [INFO] [0mdial_task (dial.c:191) - cereg_n: 1, stat_cereg:1
+2026-07-17 00:01:32.092 [INFO] [0mdial_task (dial.c:192) - cfun start response: 
+OK
+2026-07-17 00:01:33.093 [INFO] [0mdial_task (dial.c:193) - cfun stop response: 
+OK
+2026-07-17 00:01:34.094 [INFO] [0mdial_task (dial.c:194) - connection lost
+2026-07-17 00:01:35.095 [INFO] [0mdial_task (dial.c:195) - csq: 1
+2026-07-17 00:01:36.096 [INFO] [0mdial_task (dial.c:196) - csq: 1, less than threadhold
+2026-07-17 00:01:37.097 [INFO] [0mdial_task (dial.c:197) - dial time out, redial from :VALUE
+2026-07-17 00:01:38.098 [INFO] [0mdial_task (dial.c:198) - dial: license pending —
+2026-07-17 00:01:39.099 [INFO] [0mdial_task (dial.c:199) - dial: license pending — starting RBMaster for download,
+2026-07-17 00:01:40.100 [INFO] [0mdial_task (dial.c:200) - dial: policy=1, initial channel: Roamlink
+2026-07-17 00:01:41.101 [INFO] [0mdial_task (dial.c:201) - dial: policy=1, initial channel: physical SIM
+2026-07-17 00:01:42.102 [INFO] [0mdial_task (dial.c:202) - dial_mng_new failed (out of memory?), aborting
+2026-07-17 00:01:43.103 [INFO] [0mdial_task (dial.c:203) - dial_mng_new: calloc failed
+2026-07-17 00:01:44.104 [INFO] [0mdial_task (dial.c:204) - dial_mng_new: calloc sim_mng failed
+2026-07-17 00:01:45.105 [INFO] [0mdial_task (dial.c:205) - dial_mng_new: policy=1 (SIM), stopping Roamlink service first
+2026-07-17 00:01:46.106 [INFO] [0mdial_task (dial.c:206) - dial_stat_start_cfun
+2026-07-17 00:01:47.107 [INFO] [0mdial_task (dial.c:207) - dial_stat_stop_cfun
+2026-07-17 00:01:48.108 [INFO] [0mdial_task (dial.c:208) - dial_status: fopen VALUE failed: VALUE
+2026-07-17 00:01:49.109 [INFO] [0mdial_task (dial.c:209) - dial_status: rename failed: VALUE
+2026-07-17 00:01:50.110 [INFO] [0mdial_task (dial.c:210) - found apn 1 name: VALUE, user name: VALUE, password: VALUE
+2026-07-17 00:01:51.111 [INFO] [0mdial_task (dial.c:211) - fp is NULL
+2026-07-17 00:01:52.112 [INFO] [0mdial_task (dial.c:212) - fread error
+2026-07-17 00:01:53.113 [INFO] [0mdial_task (dial.c:213) - get ifaddrs with name: VALUE
+2026-07-17 00:01:54.114 [INFO] [0mdial_task (dial.c:214) - getifaddrs error
+2026-07-17 00:01:55.115 [INFO] [0mdial_task (dial.c:215) - getnameinfo() failed: VALUE
+2026-07-17 00:01:56.116 [INFO] [0mdial_task (dial.c:216) - iccid read from json:VALUE, iccid:VALUE
+2026-07-17 00:01:57.117 [INFO] [0mdial_task (dial.c:217) - ifaddrs
+2026-07-17 00:01:58.118 [INFO] [0mdial_task (dial.c:218) - json_apn_array error
+2026-07-17 00:01:59.119 [INFO] [0mdial_task (dial.c:219) - json_root is NULL
+2026-07-17 00:02:00.120 [INFO] [0mdial_task (dial.c:220) - license appeared! backing up and rebooting...
+2026-07-17 00:02:01.121 [INFO] [0mdial_task (dial.c:221) - license not yet downloaded, waited 60s / 10s
+2026-07-17 00:02:02.122 [INFO] [0mdial_task (dial.c:222) - malloc failed
+2026-07-17 00:02:03.123 [INFO] [0mdial_task (dial.c:223) - net connected
+2026-07-17 00:02:04.124 [INFO] [0mdial_task (dial.c:224) - no data rx on net if, redial
+2026-07-17 00:02:05.125 [INFO] [0mdial_task (dial.c:225) - nw_get_if_statistics_rx_packets: if_name is NULL
+2026-07-17 00:02:06.126 [INFO] [0mdial_task (dial.c:226) - nw_get_rmnet_rx_packets_sum: opendir failed: VALUE
+2026-07-17 00:02:07.127 [INFO] [0mdial_task (dial.c:227) - open statistics file: VALUE failed
+2026-07-17 00:02:08.128 [INFO] [0mdial_task (dial.c:228) - oper 1: VALUE
+2026-07-17 00:02:09.129 [INFO] [0mdial_task (dial.c:229) - oper size: 1
+2026-07-17 00:02:10.130 [INFO] [0mdial_task (dial.c:230) - p_apn_obj is NULL
+2026-07-17 00:02:11.131 [INFO] [0mdial_task (dial.c:231) - password error with set password:VALUE, module password:VALUE
+2026-07-17 00:02:12.132 [INFO] [0mdial_task (dial.c:232) - pdp_type error with set pdp_type:1, module pdp_type:1
+2026-07-17 00:02:13.133 [INFO] [0mdial_task (dial.c:233) - policy=1: Roamlink failed, switching to SIM
+2026-07-17 00:02:14.134 [INFO] [0mdial_task (dial.c:234) - policy=1: Roamlink timeout, switching to SIM
+2026-07-17 00:02:15.135 [INFO] [0mdial_task (dial.c:235) - policy=1: SIM failed, switching to Roamlink
+2026-07-17 00:02:16.136 [INFO] [0mdial_task (dial.c:236) - policy=force_roamlink: Roamlink failed, restarting
+2026-07-17 00:02:17.137 [INFO] [0mdial_task (dial.c:237) - policy=force_roamlink: timeout, restarting Roamlink
+2026-07-17 00:02:18.138 [INFO] [0mdial_task (dial.c:238) - policy=force_sim: SIM failed, redialing
+2026-07-17 00:02:19.139 [INFO] [0mdial_task (dial.c:239) - profile id 1 
+2026-07-17 00:02:20.140 [INFO] [0mdial_task (dial.c:240) - reg timeout: AT+COPS=0 unlock OK, back to auto operator
+2026-07-17 00:02:21.141 [INFO] [0mdial_task (dial.c:241) - reg timeout: AT+COPS=0 unlock failed: VALUE
+2026-07-17 00:02:22.142 [INFO] [0mdial_task (dial.c:242) - reg timeout: policy=1, cfun reset and retry
+2026-07-17 00:02:23.143 [INFO] [0mdial_task (dial.c:243) - reg timeout: policy=1, switching to Roamlink
+2026-07-17 00:02:24.144 [INFO] [0mdial_task (dial.c:244) - reg_check timeout (10s), policy=1
+2026-07-17 00:02:25.145 [INFO] [0mdial_task (dial.c:245) - restore apn settings
+2026-07-17 00:02:26.146 [INFO] [0mdial_task (dial.c:246) - roamlink->SIM recovery: full init
+2026-07-17 00:02:27.147 [INFO] [0mdial_task (dial.c:247) - roamlink->SIM recovery: reuse NW client
+2026-07-17 00:02:28.148 [INFO] [0mdial_task (dial.c:248) - roamlink->SIM: first time, full init from dial_stat_init
+2026-07-17 00:02:29.149 [INFO] [0mdial_task (dial.c:249) - roamlink->SIM: full init
+2026-07-17 00:02:30.150 [INFO] [0mdial_task (dial.c:250) - roamlink->SIM: reuse NW client
+2026-07-17 00:02:31.151 [INFO] [0mdial_task (dial.c:251) - roamlink->SIM: reuse NW client, restart from sim_init
+2026-07-17 00:02:32.152 [INFO] [0mdial_task (dial.c:252) - roamlink: VALUE not found, use default policy 1
+2026-07-17 00:02:33.153 [INFO] [0mdial_task (dial.c:253) - roamlink: RBMaster already running, skip
+2026-07-17 00:02:34.154 [INFO] [0mdial_task (dial.c:254) - roamlink: RBMaster forked (pid=1), waiting 3s
+2026-07-17 00:02:35.155 [INFO] [0mdial_task (dial.c:255) - roamlink: RBMaster not found at VALUE -> NO_PACKAGE
+2026-07-17 00:02:36.156 [INFO] [0mdial_task (dial.c:256) - roamlink: RBMaster not found at VALUE → NO_PACKAGE
+2026-07-17 00:02:37.157 [INFO] [0mdial_task (dial.c:257) - roamlink: RBMaster process exists in /proc
+2026-07-17 00:02:38.158 [INFO] [0mdial_task (dial.c:258) - roamlink: RBMaster process not found in /proc
+2026-07-17 00:02:39.159 [INFO] [0mdial_task (dial.c:259) - roamlink: RBMaster running (found in /proc)
+2026-07-17 00:02:40.160 [INFO] [0mdial_task (dial.c:260) - roamlink: RBMaster running and port 1 ready
+2026-07-17 00:02:41.161 [INFO] [0mdial_task (dial.c:261) - roamlink: backup license restored to VALUE
+2026-07-17 00:02:42.162 [INFO] [0mdial_task (dial.c:262) - roamlink: backup restore succeeded but probe still failed
+2026-07-17 00:02:43.163 [INFO] [0mdial_task (dial.c:263) - roamlink: backup restore succeeded but probe still failed,
+2026-07-17 00:02:44.164 [INFO] [0mdial_task (dial.c:264) - roamlink: backup write failed (non-fatal)
+2026-07-17 00:02:45.165 [INFO] [0mdial_task (dial.c:265) - roamlink: backup write failed: VALUE
+2026-07-17 00:02:46.166 [INFO] [0mdial_task (dial.c:266) - roamlink: backup written (was missing)
+2026-07-17 00:02:47.167 [INFO] [0mdial_task (dial.c:267) - roamlink: conf.ini disappeared during backup restore,
+2026-07-17 00:02:48.168 [INFO] [0mdial_task (dial.c:268) - roamlink: conf.ini not found at VALUE
+2026-07-17 00:02:49.169 [INFO] [0mdial_task (dial.c:269) - roamlink: failed to parse VALUE, use default policy 1
+2026-07-17 00:02:50.170 [INFO] [0mdial_task (dial.c:270) - roamlink: fork() failed: VALUE
+2026-07-17 00:02:51.171 [INFO] [0mdial_task (dial.c:271) - roamlink: fsync failed: VALUE
+2026-07-17 00:02:52.172 [INFO] [0mdial_task (dial.c:272) - roamlink: invalid policy 1 in VALUE, use default 1
+2026-07-17 00:02:53.173 [INFO] [0mdial_task (dial.c:273) - roamlink: is_running port check: socket() failed: VALUE
+2026-07-17 00:02:54.174 [INFO] [0mdial_task (dial.c:274) - roamlink: kill_master: SIGKILL pid=1
+2026-07-17 00:02:55.175 [INFO] [0mdial_task (dial.c:275) - roamlink: kill_master: SIGTERM pid=1
+2026-07-17 00:02:56.176 [INFO] [0mdial_task (dial.c:276) - roamlink: kill_master: done, killed 1 process(es)
+2026-07-17 00:02:57.177 [INFO] [0mdial_task (dial.c:277) - roamlink: license backed up to VALUE
+2026-07-17 00:02:58.178 [INFO] [0mdial_task (dial.c:278) - roamlink: license downloaded! backing up and rebooting...
+2026-07-17 00:02:59.179 [INFO] [0mdial_task (dial.c:279) - roamlink: license file still being written
+2026-07-17 00:03:00.180 [INFO] [0mdial_task (dial.c:280) - roamlink: license missing or empty at VALUE -> LICENSE_MISSING
+2026-07-17 00:03:01.181 [INFO] [0mdial_task (dial.c:281) - roamlink: license missing or empty at VALUE → LICENSE_MISSING
+2026-07-17 00:03:02.182 [INFO] [0mdial_task (dial.c:282) - roamlink: license restored from backup, available
+2026-07-17 00:03:03.183 [INFO] [0mdial_task (dial.c:283) - roamlink: network_select = 1
+2026-07-17 00:03:04.184 [INFO] [0mdial_task (dial.c:284) - roamlink: no valid backup license at VALUE
+2026-07-17 00:03:05.185 [INFO] [0mdial_task (dial.c:285) - roamlink: open VALUE failed: VALUE
+2026-07-17 00:03:06.186 [INFO] [0mdial_task (dial.c:286) - roamlink: open backup failed: VALUE
+2026-07-17 00:03:07.187 [INFO] [0mdial_task (dial.c:287) - roamlink: open backup path for write failed: VALUE
+2026-07-17 00:03:08.188 [INFO] [0mdial_task (dial.c:288) - roamlink: open license for backup failed: VALUE
+2026-07-17 00:03:09.189 [INFO] [0mdial_task (dial.c:289) - roamlink: open license path for write failed: VALUE
+2026-07-17 00:03:10.190 [INFO] [0mdial_task (dial.c:290) - roamlink: opendir /proc failed: VALUE
+2026-07-17 00:03:11.191 [INFO] [0mdial_task (dial.c:291) - roamlink: probe OK (RBMaster + conf.ini + license valid, size=%lld bytes)
+2026-07-17 00:03:12.192 [INFO] [0mdial_task (dial.c:292) - roamlink: probe OK (RBMaster + license valid, size=%lld bytes)
+2026-07-17 00:03:13.193 [INFO] [0mdial_task (dial.c:293) - roamlink: reaped RBMaster child pid=1
+2026-07-17 00:03:14.194 [INFO] [0mdial_task (dial.c:294) - roamlink: rebooting now
+2026-07-17 00:03:15.195 [INFO] [0mdial_task (dial.c:295) - roamlink: starting RBMaster...
+2026-07-17 00:03:16.196 [INFO] [0mdial_task (dial.c:296) - roamlink: write license failed: VALUE
+2026-07-17 00:03:17.197 [INFO] [0mdial_task (dial.c:297) - roamlink: write_backup: fsync failed: VALUE
+2026-07-17 00:03:18.198 [INFO] [0mdial_task (dial.c:298) - roamlink: write_backup: open dest failed: VALUE
+2026-07-17 00:03:19.199 [INFO] [0mdial_task (dial.c:299) - roamlink: write_backup: open source failed: VALUE
+2026-07-17 00:03:20.200 [INFO] [0mdial_task (dial.c:300) - roamlink: write_backup: write failed: VALUE
+2026-07-17 00:03:21.201 [INFO] [0mdial_task (dial.c:301) - roamlink_send_cmd: connect failed: VALUE
+2026-07-17 00:03:22.202 [INFO] [0mdial_task (dial.c:302) - roamlink_send_cmd: connect() failed: VALUE
+2026-07-17 00:03:23.203 [INFO] [0mdial_task (dial.c:303) - roamlink_send_cmd: fcntl() failed: VALUE
+2026-07-17 00:03:24.204 [INFO] [0mdial_task (dial.c:304) - roamlink_send_cmd: select() timeout or error (ret=1)
+2026-07-17 00:03:25.205 [INFO] [0mdial_task (dial.c:305) - roamlink_send_cmd: send() failed: VALUE
+2026-07-17 00:03:26.206 [INFO] [0mdial_task (dial.c:306) - roamlink_send_cmd: sent "VALUE" to VALUE:1
+2026-07-17 00:03:27.207 [INFO] [0mdial_task (dial.c:307) - roamlink_send_cmd: socket() failed: VALUE
+2026-07-17 00:03:28.208 [INFO] [0mdial_task (dial.c:308) - roamlink_start: AT+COPS=0 OK
+2026-07-17 00:03:29.209 [INFO] [0mdial_task (dial.c:309) - roamlink_start: AT+COPS=0 failed: VALUE
+2026-07-17 00:03:30.210 [INFO] [0mdial_task (dial.c:310) - roamlink_start: Roamlink service started, network_type=2
+2026-07-17 00:03:31.211 [INFO] [0mdial_task (dial.c:311) - roamlink_start: send RBstartServiceMaster failed
+2026-07-17 00:03:32.212 [INFO] [0mdial_task (dial.c:312) - roamlink_stop: Roamlink service stopped
+2026-07-17 00:03:33.213 [INFO] [0mdial_task (dial.c:313) - roamlink_stop: send RBstopServiceMaster failed
+2026-07-17 00:03:34.214 [INFO] [0mdial_task (dial.c:314) - roamlink→SIM: first time, full init from dial_stat_init
+2026-07-17 00:03:35.215 [INFO] [0mdial_task (dial.c:315) - roamlink→SIM: reuse NW client, restart from sim_init
+2026-07-17 00:03:36.216 [INFO] [0mdial_task (dial.c:316) - rx packets: %lld
+2026-07-17 00:03:37.217 [INFO] [0mdial_task (dial.c:317) - search ip: VALUE
+2026-07-17 00:03:38.218 [INFO] [0mdial_task (dial.c:318) - set apn failed
+2026-07-17 00:03:39.219 [INFO] [0mdial_task (dial.c:319) - sim card check failed, redial
+2026-07-17 00:03:40.220 [INFO] [0mdial_task (dial.c:320) - sim init failed
+2026-07-17 00:03:41.221 [INFO] [0mdial_task (dial.c:321) - start to get apn obj
+2026-07-17 00:03:42.222 [INFO] [0mdial_task (dial.c:322) - state: VALUE -> VALUE
+2026-07-17 00:03:43.223 [INFO] [0mdial_task (dial.c:323) - supplier: VALUE: 
+2026-07-17 00:03:44.224 [INFO] [0mdial_task (dial.c:324) - tcp test failed, count: 1 / 1
+2026-07-17 00:03:45.225 [INFO] [0mdial_task (dial.c:325) - tcp test recovered after 1 failures
+2026-07-17 00:03:46.226 [INFO] [0mdial_task (dial.c:326) - tcp_test: VALUE:1 -> VALUE
+2026-07-17 00:03:47.227 [INFO] [0mdial_task (dial.c:327) - tcp_test: VALUE:1 → VALUE
+2026-07-17 00:03:48.228 [INFO] [0mdial_task (dial.c:328) - tcp_test: connect failed: VALUE
+2026-07-17 00:03:49.229 [INFO] [0mdial_task (dial.c:329) - tcp_test: connect() failed immediately: VALUE
+2026-07-17 00:03:50.230 [INFO] [0mdial_task (dial.c:330) - tcp_test: fcntl() failed: VALUE
+2026-07-17 00:03:51.231 [INFO] [0mdial_task (dial.c:331) - tcp_test: inet_pton() failed for VALUE
+2026-07-17 00:03:52.232 [INFO] [0mdial_task (dial.c:332) - tcp_test: select() timeout or error (ret=1)
+2026-07-17 00:03:53.233 [INFO] [0mdial_task (dial.c:333) - tcp_test: socket() failed: VALUE
+2026-07-17 00:03:54.234 [INFO] [0mdial_task (dial.c:334) - the profile index 1 start data call failure: 0x0x1a
+2026-07-17 00:03:55.235 [INFO] [0mdial_task (dial.c:335) - the profile index 1 start data call success
+2026-07-17 00:03:56.236 [INFO] [0mdial_task (dial.c:336) - the profile index 1 stop data call failure: 0x0x1a
+2026-07-17 00:03:57.237 [INFO] [0mdial_task (dial.c:337) - the profile index 1 stop data call success
+2026-07-17 00:03:58.238 [INFO] [0mdial_task (dial.c:338) - timeout.tv_sec=1, timeout.tv_usec: 1 
+2026-07-17 00:03:59.239 [INFO] [0mdial_task (dial.c:339) - tx_packets = 1; rx_packets = 1; tx_bytes   = 1; rx_bytes   = 1
+2026-07-17 00:04:00.240 [INFO] [0mdial_task (dial.c:340) - usr_name error with set usr_name:VALUE, module usr_name:VALUE

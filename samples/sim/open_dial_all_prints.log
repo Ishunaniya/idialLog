@@ -1,0 +1,109 @@
+=== Dial Log Opened [2026-07-17 00:00:00] daykey=2026-07-17 ===
+[2026-07-17 00:00:00] Program started. Main Version: 1.01.1
+[2026-07-17 00:00:01] [ALARM] Net Fail Duration: 60 sec. Trigger Level 1 recovery.
+[2026-07-17 00:00:02] [APN] Failed to ql_data_call_set_apn_config, APN_ID=1, ret=1
+[2026-07-17 00:00:03] [APN] iccid not matched in apn.json, fall back to auto/default APN.
+[2026-07-17 00:00:04] [APN] load from apn.json (path=VALUE, count=1)
+[2026-07-17 00:00:05] [APN] matched: apn_name=VALUE, usrname=VALUE, password=VALUE, iccid=VALUE
+[2026-07-17 00:00:06] [CLEANUP] VALUE: kept 1, removed 1 old.
+[2026-07-17 00:00:07] [CLEANUP] Removed old file: VALUE
+[2026-07-17 00:00:08] [CPDUMP] /media/sdcard not available, skip bind mount.
+[2026-07-17 00:00:09] [CPDUMP] /sdcard already bind-mounted to SD card.
+[2026-07-17 00:00:10] [CPDUMP] /sdcard unmounted.
+[2026-07-17 00:00:11] [CPDUMP] Bind mounted /media/sdcard -> /sdcard for CP dump capture.
+[2026-07-17 00:00:12] [CPDUMP] Found 1 existing CP dump(s): VALUE
+[2026-07-17 00:00:13] [CPDUMP] No existing CP dumps.
+[2026-07-17 00:00:14] [CPDUMP] mkdir /sdcard/modem_dump failed: VALUE
+[2026-07-17 00:00:15] [CPDUMP] mount --bind failed (VALUE), CP dumps may be lost.
+[2026-07-17 00:00:16] [CPDUMP] umount /sdcard failed: VALUE
+[2026-07-17 00:00:17] [DIAG-DMESG-REC] VALUE
+[2026-07-17 00:00:18] [DIAG-DMESG] VALUE
+[2026-07-17 00:00:19] [DIAG-SIM-REC] QSIMSTAT=VALUE
+[2026-07-17 00:00:20] [DIAG-SIM] VALUE | VALUE
+[2026-07-17 00:00:21] [DIAG] VALUE
+[2026-07-17 00:00:22] [DIAG] Snapshot saved: VALUE/[dmesg|logcat]_VALUE_VALUE.log
+[2026-07-17 00:00:23] [DIAG] mkdir VALUE failed: VALUE, skip snapshot.
+[2026-07-17 00:00:24] [ERROR] Failed to write /tmp/resolv_v4.conf: VALUE
+[2026-07-17 00:00:25] [ERROR] Failed to write /tmp/resolv_v6.conf: VALUE
+[2026-07-17 00:00:26] [ERROR] SIM Card disconnected during runtime, CPIN=VALUE.
+[2026-07-17 00:00:27] [EVENT] DataCall[1/VALUE]: VALUE -> VALUE
+[2026-07-17 00:00:28] [EVENT] Network Connected. Notification sent.
+[2026-07-17 00:00:29] [EVENT] Network Recovered in SDK phase (L0). Down: 60s.
+[2026-07-17 00:00:30] [EVENT] Network Recovered. Down: 60s.
+[2026-07-17 00:00:31] [EVENT] PDP Disconnected: IF=VALUE
+[2026-07-17 00:00:32] [EVENT] PDP IPv4: IF=VALUE IP=VALUE GW=VALUE DNS=VALUE/VALUE
+[2026-07-17 00:00:33] [EVENT] PDP IPv6: IF=VALUE IP=VALUE GW=VALUE DNS=VALUE/VALUE
+[2026-07-17 00:00:34] [EVENT] PDP Idle (was connected): IF=VALUE
+[2026-07-17 00:00:35] [EVENT] SIGINT received. Cleaning up and exiting.
+[2026-07-17 00:00:36] [FATAL] SDK data call service crashed (QL_ERR_ABORTED). 
+[2026-07-17 00:00:37] [HEARTBEAT] VALUE
+[2026-07-17 00:00:38] [HEARTBEAT] SIM_AT:VALUE | SIM_CB:VALUE | REG:1 | CSQ:1 | TEMP:1 | DownTime:60s
+[2026-07-17 00:00:39] [INFO] SDK auto-reconnect phase started (interval=10s). 
+[2026-07-17 00:00:40] [INFO] SIM recovered: CPIN=READY (down ~60s)
+[2026-07-17 00:00:41] [INFO] Status updated to 1.
+[2026-07-17 00:00:42] [INFO] never-connected, policy recovery (L1/L2/L3) gated. 
+[2026-07-17 00:00:43] [INIT] APN set success
+[2026-07-17 00:00:44] [INIT] AP_FW: VALUE
+[2026-07-17 00:00:45] [INIT] CFUN: VALUE
+[2026-07-17 00:00:46] [INIT] CP_FW: VALUE
+[2026-07-17 00:00:47] [INIT] Dial success. Retry count cleared.
+[2026-07-17 00:00:48] [INIT] FW:    VALUE
+[2026-07-17 00:00:49] [INIT] Fast Fail: PDP not established in 10s. REG=1. Exiting to retry...
+[2026-07-17 00:00:50] [INIT] Fast Fail: PDP up but no Ping success in 10000ms. IF=VALUE REG=1. Exiting to retry...
+[2026-07-17 00:00:51] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-07-17 00:00:52] [INIT] Fast Retry Mode: Attempt 1/1
+[2026-07-17 00:00:53] [INIT] Fast Retry attempt 1/1 succeeded. Exiting fast fail mode.
+[2026-07-17 00:00:54] [INIT] ICCID: VALUE
+[2026-07-17 00:00:55] [INIT] IMEI:  VALUE
+[2026-07-17 00:00:56] [INIT] IMSI:  VALUE
+[2026-07-17 00:00:57] [INIT] Keep-alive: ping failed 1 times, exiting monitor to redial.
+[2026-07-17 00:00:58] [INIT] NW mode: VALUE
+[2026-07-17 00:00:59] [INIT] Network already up. Entering keep-alive monitor...
+[2026-07-17 00:01:00] [INIT] Operator: VALUE
+[2026-07-17 00:01:01] [INIT] PDP cfg: VALUE
+[2026-07-17 00:01:02] [INIT] PDP connected, start Ping window (10000ms).
+[2026-07-17 00:01:03] [INIT] SIM init state: VALUE
+[2026-07-17 00:01:04] [INIT] SUB:   VALUE
+[2026-07-17 00:01:05] [INIT] Starting Data Call...
+[2026-07-17 00:01:06] [INIT] Starting dial initialization...
+[2026-07-17 00:01:07] [INIT] Waiting for ql_data_call_init...
+[2026-07-17 00:01:08] [INIT] data_call_init OK.
+[2026-07-17 00:01:09] [INIT] data_call_init failed, ret=1
+[2026-07-17 00:01:10] [INIT] data_call_init retrying, remaining=1
+[2026-07-17 00:01:11] [INIT] ql_data_call_config: VALUE
+[2026-07-17 00:01:12] [INIT] ql_data_call_start failed: 1
+[2026-07-17 00:01:13] [INIT] set_reconnect_mode(NORMAL): VALUE
+[2026-07-17 00:01:14] [LOGCLEAN] removed dir VALUE/VALUE (ret=1)
+[2026-07-17 00:01:15] [LOGMIGR] VALUE -> VALUE/ (ret=1)
+[2026-07-17 00:01:16] [PING ERROR] popen failed!
+[2026-07-17 00:01:17] [PING FAIL] No TTL in response. Cmd: VALUE
+[2026-07-17 00:01:18] [PING OUT] VALUE
+[2026-07-17 00:01:19] [RECOVERY L1] Restarting Data Call...
+[2026-07-17 00:01:20] [RECOVERY L1] Start OK. Waiting for reconnect.
+[2026-07-17 00:01:21] [RECOVERY L1] Start failed: 1 (REG:1)
+[2026-07-17 00:01:22] [RECOVERY L1] Stopping Data Call & Cleaning PDP... REG=1
+[2026-07-17 00:01:23] [RECOVERY L2] Already connected (SDK auto-reconnected).
+[2026-07-17 00:01:24] [RECOVERY L2] RF ON. Waiting 10s for registration...
+[2026-07-17 00:01:25] [RECOVERY L2] Restarting Data Call...
+[2026-07-17 00:01:26] [RECOVERY L2] Start OK. Waiting for reconnect.
+[2026-07-17 00:01:27] [RECOVERY L2] Start failed: 1
+[2026-07-17 00:01:28] [RECOVERY L2] Toggling RF (Airplane Mode)... REG=1
+[2026-07-17 00:01:29] [RECOVERY L3] FATAL: Network down 35mins. Exiting for start_prog to reinitialize.
+[2026-07-17 00:01:30] [RECOVERY] LastErr: VALUE
+[2026-07-17 00:01:31] [RECOVERY] PDP state: VALUE
+[2026-07-17 00:01:32] [SIM] bad app type: 1
+[2026-07-17 00:01:33] [SIM] bad slot: 1
+[2026-07-17 00:01:34] [SIM] sim_deinit OK
+[2026-07-17 00:01:35] [SIM] sim_deinit failed, ret=1
+[2026-07-17 00:01:36] [SIM] sim_get_iccid failed, ret=1
+[2026-07-17 00:01:37] [SIM] sim_get_imsi failed, ret=1
+[2026-07-17 00:01:38] [SIM] sim_init OK
+[2026-07-17 00:01:39] [SIM] sim_init failed, ret=1
+[2026-07-17 00:01:40] [WARNING] Registration Denied! Code 1.
+[2026-07-17 00:01:41] [WARNING] Registration Denied! Code 3.
+[2026-07-17 00:01:42] [WARN] AT+CPIN? popen failed (VALUE), treating as ERROR
+[2026-07-17 00:01:43] [WARN] Status updated to 1.
+[2026-07-17 00:01:44] [WARN] apn set failed
+[2026-07-17 00:01:45] [WARN] ql_data_call_param_alloc failed, starting without APN config
+[2026-07-17 00:01:46] [WARN] ql_sim_get_card_info failed, ST_SIM will fall back to AT+CPIN?
+[2026-07-17 00:01:47] ping  failed ......

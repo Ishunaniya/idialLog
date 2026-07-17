@@ -35,3 +35,37 @@ L3 触发、真有 CP dump、AG35 切卡、多会话重启、温度过高。
 「L1 触发 2 次,L2 触发 1 次」。补后变异 2 也被抓住。
 
 **教训:只断言"某结论出现了"往往没有牙齿,得断言它的具体内容。**
+
+## 全打印覆盖校验(`sim/check_coverage.sh`)
+
+回答"是不是全部了"—— **用可度量的覆盖率,不是嘴上说**。
+
+```bash
+sim/check_coverage.sh /home/tronlong/lyp/code/open_dial
+sim/check_coverage.sh /home/tronlong/lyp/code/rtms_sdk/apps/modem_mng
+sim/check_coverage.sh /home/tronlong/lyp/code/open_dial_for_artery
+```
+
+做法:`git grep` 出该仓库**全部分支**的日志格式串(`dial_log(...)` / artery 的
+`SEAS_LOG_*(...)`)取并集 → 填充占位符 → 逐条生成日志 → 喂解析器,
+要求 **未识别 0** 且 **标签全认出**。
+
+| 仓库 | 分支 | 唯一日志串 | 标签 | 结果 |
+|---|---|---|---|---|
+| `open_dial` | 7 | **108** | 23 | ✅ 未识别 0,标签全认出 |
+| `modem_mng` | 25 | **346** | 38 | ✅ 未识别 0,标签全认出 |
+| `open_dial_for_artery` | 5 | **241** | 4 | ✅ 未识别 0,标签全认出 |
+
+分支间确有差异(实证):`open_dial` 的 `fix_cp_dump` 用 `[WARN] Status updated`,
+另两个分支用 `[INFO] Status updated`;`Registration Denied` 的 code 一处是 `%d`、
+一处硬编码 `3`。故必须取**全分支并集**,只看当前分支会漏。
+
+### 这个校验能证明什么、不能证明什么
+
+- ✅ **格式串本身**逐字取自源码 → "源码里能打出的每一条串,工具都认得"——这条成立。
+- ⚠️ **占位符替换值是脚本选的** → 不能推出"真机日志工具都认得"。
+  实证:真机 `"[RECOVERY L2] AT+CFUN=0 rsp: %s"` 的 `%s` 是**多行**的 `\nOK\n`,
+  我原先没料到 → 续行被当未识别丢弃(由真机日志抓出,非本校验)。
+  故脚本对 `rsp:`/`response:` 后的 `%s` 专门还原多行形态,但**别的 %s 仍可能有我没想到的形态**。
+
+**真机日志不可替代。** 本校验只是把"源码层面的漏"清零。
