@@ -65,8 +65,12 @@ simtest: simtest.cpp logmodel.cpp logmodel.h
 hostruntest: hostruntest.cpp logmodel.cpp logmodel.h
 	g++ -std=c++17 -O2 -Wall -Wextra -o hostruntest hostruntest.cpp logmodel.cpp
 
+# 真机日志基线断言:把真机上的**具体数字**钉死 —— 变异测试证明"只验结论出现"没牙齿
+baselinetest: baselinetest.cpp logmodel.cpp logmodel.h
+	g++ -std=c++17 -O2 -Wall -Wextra -o baselinetest baselinetest.cpp logmodel.cpp
+
 clean:
-	rm -f $(OBJS) dialLog_v*.exe selftest simtest hostruntest
+	rm -f $(OBJS) dialLog_v*.exe selftest simtest hostruntest baselinetest
 
 version:
 	@echo $(VER)
