@@ -129,6 +129,33 @@ int main() {
         }
     }
 
+    // ── 真机 artery 1.29.13(seas_log,含真实 ESC 字节)──
+    {
+        auto L = load("samples/dial_eg25/real_artery_1.29.13.log");
+        std::printf("── 真机 artery 1.29.13(seas_log,71 行)\n");
+        if (!L.ok) { std::printf("   ✗ 打不开\n"); g_fail++; }
+        else {
+            ck(L.pi.plat == PLAT_ARTERY, "平台=artery", L.pi.name, "artery");
+            // 钉死 ANSI 剥离既不残留、也不过度吞噬:
+            //  · 残留 ESC/[0m  → CSI 范围太宽(剥不干净)
+            //  · 消息被吃空    → CSI 范围太窄(变异 @..~ 收窄到 @..A 时,终止字符 m=109
+            //    落在范围外 → stripAnsi 一路吃到行尾,整条消息变空)
+            // 两个方向都要断言,否则"收窄"变异会从"消息变空"这一侧溜过去(实测踩到)。
+            long esc = 0, tail = 0, empty = 0, total = 0;
+            for (const auto& l : L.lines) {
+                if (l.msg.find('\x1b') != std::string::npos) esc++;
+                if (l.msg.find("[0m") != std::string::npos)  tail++;
+                total++;
+                if (l.msg.empty()) empty++;
+            }
+            cki(esc,   0, "消息含残留 ESC 字节的行数");
+            cki(tail,  0, "消息含残留 '[0m' 的行数");
+            // artery 每行都有正文(func/file/line 之后),解析后不该有空消息 —— 有则被 ANSI 吃空了
+            ck(empty == 0 && total > 0, "解析后无空消息行(ANSI 未过度吞噬)",
+               std::to_string(empty) + "/" + std::to_string(total), "0/N");
+        }
+    }
+
     // ── 真机 EC200A 1.28.4(完全正常的设备:假阳性守卫)──
     {
         auto L = load("samples/dial_ec200a/real_ec200a_1.28.4_unsynced.log");

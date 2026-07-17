@@ -23,6 +23,13 @@
 #include <string>
 #include <vector>
 
+//
+// 【场景退役记录 2026-07-18】原 11 个手写场景中,已被真代码日志(hostruntest)或
+// 真机数字(baselinetest)等价覆盖的 5 个已退役(从没联网/L3×3/恢复阶梯多行计数)——
+// 手写版被证明是残缺的,真代码版证据等级更高。
+// **保留的都是真代码注入不了、或无等价覆盖的**:注册被拒(桩注不了 Registration Denied)、
+// 真 CP dump(桩造不出)、正常设备例行 CPDUMP、AG35 切卡代价归因(hostruntest 的 ag35
+// 场景没触发 C_SWITCHING)、多会话重启、温度过高(读 sysfs 桩注不了)。
 using namespace dl;
 
 struct Scenario {
@@ -48,22 +55,6 @@ struct Scenario {
 static std::vector<Scenario> scenarios() {
     std::vector<Scenario> v;
 
-    // ---- 1. 从未联网:恢复阶梯被 has_connected_once 门控(EC200A)----
-    v.push_back({
-        "EC200A 从未联网,阶梯被门控",
-        "ec200a_never_connected.log",
-        "=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===\n"
-        "[2026-07-17 09:00:00] Program started. Version: 1.31.3\n"
-        "[2026-07-17 09:00:01] [INIT] ICCID: 89860000000000000000\n"
-        "[2026-07-17 09:00:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:12 | TEMP:35 | DownTime:0s\n"
-        "[2026-07-17 09:05:02] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started\n"
-        "[2026-07-17 09:05:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:12 | TEMP:35 | DownTime:300s\n"
-        "[2026-07-17 09:10:02] [INFO] never-connected, policy recovery (L1/L2/L3) gated. \n"
-        "[2026-07-17 09:15:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:12 | TEMP:35 | DownTime:900s\n",
-        { "从未成功联网" },
-        { "CP dump", "L3 已触发" },
-        PLAT_EC200A, 0
-    });
 
     // ---- 2. 注册被拒 ----
     v.push_back({
@@ -80,23 +71,6 @@ static std::vector<Scenario> scenarios() {
         PLAT_EC200A, 0
     });
 
-    // ---- 3. L3 触发(EC200A 措辞:35mins / watchdog/init)----
-    v.push_back({
-        "EC200A L3 触发(进程 exit)",
-        "ec200a_recovery_l3.log",
-        "=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===\n"
-        "[2026-07-17 09:00:00] Program started. Version: 1.31.3\n"
-        "[2026-07-17 09:00:01] [PING] Ping 8.8.8.8 OK\n"
-        "[2026-07-17 09:00:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:35 | DownTime:0s\n"
-        "[2026-07-17 09:01:00] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started\n"
-        "[2026-07-17 09:01:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:35 | DownTime:60s\n"
-        "[2026-07-17 09:06:00] [RECOVERY L1] LastErr: +CEER: 0,-1\n"
-        "[2026-07-17 09:11:00] [RECOVERY L2] AT+CFUN=0 rsp: \nOK\n"
-        "[2026-07-17 09:36:00] [RECOVERY L3] FATAL: Network down 35mins. Exiting for watchdog/init to reinitialize.\n",
-        { "L3 已触发", "恢复阶梯已生效" },
-        { "恢复阶梯一次都没触发", "CP dump" },
-        PLAT_EC200A, 0
-    });
 
     // ---- 4. 真有 CP dump ----
     v.push_back({
@@ -177,71 +151,8 @@ static std::vector<Scenario> scenarios() {
         PLAT_EC200A, 0
     });
 
-    // ---- 9. EG25 L3(措辞与 EC200A 不同:30mins / watchdog)----
-    v.push_back({
-        "EG25 L3 触发(措辞:30mins/watchdog)",
-        "eg25_recovery_l3.log",
-        "=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===\n"
-        "[2026-07-17 09:00:00] EG25 modem_mng Version: 1.31.15\n"
-        "[2026-07-17 09:00:01] [ROAMLINK] network_select = 4\n"
-        "[2026-07-17 09:00:02] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0\n"
-        "[2026-07-17 09:01:00] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started\n"
-        "[2026-07-17 09:01:00] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:60s | ConsecFail:3 | RL_FAIL:0\n"
-        "[2026-07-17 09:02:00] [RECOVERY L1] LastErr: +CEER: 0,-1\n"
-        "[2026-07-17 09:07:00] [RECOVERY L2] AT+CFUN=0 rsp: \nOK\n"
-        "[2026-07-17 09:31:00] [RECOVERY L3] FATAL: Network down 30mins. Exiting for watchdog to reinitialize.\n",
-        { "L3 已触发", "恢复阶梯已生效" },
-        { "恢复阶梯一次都没触发" },
-        PLAT_EG25, 0
-    });
 
-    // ---- 10. 恢复阶梯次数必须按**事件**算,不按**行**算 ----
-    //  变异测试证明:只断言"恢复阶梯已生效"出现是不够的 —— 把计数退回按行,
-    //  测试照样全绿。必须断言**具体次数**才有牙齿。
-    //  本场景照真机 EG25 1.31.15 的多行形态构造:
-    //    一次 L1 = 2 行(LastErr + "REG down, skip redial",同秒)
-    //    一次 L2 = 3 行(LastErr + CFUN=0 rsp + CFUN=1 rsp,跨 3 秒)
-    //  共 2 次 L1(4 行)+ 1 次 L2(3 行)→ 必须报 "L1 触发 2 次,L2 触发 1 次"
-    v.push_back({
-        "恢复阶梯多行条目:次数须按事件不按行",
-        "eg25_recovery_multiline_count.log",
-        "=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===\n"
-        "[2026-07-17 09:00:00] EG25 modem_mng Version: 1.31.15\n"
-        "[2026-07-17 09:00:01] [ROAMLINK] network_select = 4\n"
-        "[2026-07-17 09:00:02] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0\n"
-        "[2026-07-17 09:01:00] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started\n"
-        "[2026-07-17 09:01:00] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:20 | Temp:40,35,35 | DownTime:60s | ConsecFail:3 | RL_FAIL:0\n"
-        // 第 1 次 L1 —— 2 行同秒
-        "[2026-07-17 09:02:00] [RECOVERY L1] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1\n"
-        "[2026-07-17 09:02:00] [RECOVERY L1] REG down, skip redial (downtime=120s)\n"
-        // 第 2 次 L1 —— 2 行同秒(距上次 63s > 30s 合并窗)
-        "[2026-07-17 09:03:03] [RECOVERY L1] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1\n"
-        "[2026-07-17 09:03:03] [RECOVERY L1] REG down, skip redial (downtime=183s)\n"
-        // 第 1 次 L2 —— 3 行跨 3 秒
-        "[2026-07-17 09:06:00] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1\n"
-        "[2026-07-17 09:06:01] [RECOVERY L2] AT+CFUN=0 rsp: \nOK\n"
-        "[2026-07-17 09:06:03] [RECOVERY L2] AT+CFUN=1 rsp: \nOK\n"
-        "[2026-07-17 09:06:20] [HEARTBEAT] Network recovered after 320s\n"
-        "[2026-07-17 09:06:21] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0\n",
-        { "L1 触发 2 次", "L2 触发 1 次" },   // ← 断言具体次数,这才挡得住"按行计数"回归
-        { "L3 已触发", "恢复阶梯一次都没触发" },
-        PLAT_EG25, 0
-    });
 
-    // ---- 11. open_dial 的 L3(措辞又不同:start_prog)----
-    v.push_back({
-        "open_dial L3 触发(措辞:start_prog)",
-        "open_dial_recovery_l3.log",
-        "=== Dial Log Opened [2026-07-17 09:00:00] daykey=2026-07-17 ===\n"
-        "[2026-07-17 09:00:00] Program started. Main Version: 1.28.4\n"
-        "[2026-07-17 09:00:01] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:25 | DownTime:0s\n"
-        "[2026-07-17 09:01:00] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started\n"
-        "[2026-07-17 09:01:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:25 | DownTime:60s\n"
-        "[2026-07-17 09:36:00] [RECOVERY L3] FATAL: Network down 35mins. Exiting for start_prog to reinitialize.\n",
-        { "L3 已触发" },
-        { "CP dump" },
-        PLAT_EC200A, 0
-    });
 
     return v;
 }

@@ -16,7 +16,7 @@ set -u
 cd "$(dirname "$0")/.."
 SRC=logmodel.cpp
 BAK=$(mktemp); cp "$SRC" "$BAK"
-trap 'cp "$BAK" "$SRC"; rm -f "$BAK"; make selftest simtest hostruntest baselinetest >/dev/null 2>&1' EXIT
+trap 'cp "$BAK" "$SRC"; rm -f "$BAK" /tmp/mut_*; echo "(已还原 $SRC)"' EXIT
 
 pass=0; survived=0; total=0
 
@@ -120,6 +120,28 @@ mutate "never-connected 匹配串改错" \
 mutate "数据假死(ΔRX=0)判定失效" \
   'else if (sawZeroRx && mZero)     { c = C_DATADEAD;  evm = mZero; }' \
   'else if (false && mZero)         { c = C_DATADEAD;  evm = mZero; }'
+
+# ── 解析器边界变异(第一轮只变异分类逻辑,解析器边界没碰过;这里补上)──
+
+# P1. SD 时间戳位置判定(line[20] 应为 ']')—— 改错则所有 FMT_SD 行解析失败
+mutate "SD 时间戳 ']' 位置判定改错" \
+  'if (line.size() < 22 || line[0] != '"'"'['"'"' || line[20] != '"'"']'"'"') return false;' \
+  'if (line.size() < 22 || line[0] != '"'"'['"'"' || line[20] != '"'"'X'"'"') return false;'
+
+# P2. seas 毫秒点判定(line0[19] 应为 '.')—— 改错则所有 FMT_SEAS 行解析失败
+mutate "seas 毫秒 '.' 位置判定改错" \
+  "line0[19] != '"'"'.'"'"'" \
+  "line0[19] != '"'"'X'"'"'"
+
+# P3. ANSI CSI 终止字符范围(@..~)—— 改窄则 ESC[0m 剥不干净、artery 解析乱
+mutate "ANSI CSI 终止范围收窄" \
+  "s[j] <= '"'"'~'"'"'))" \
+  "s[j] <= '"'"'A'"'"'))"
+
+# P4. 会话标记识别(=== Dial Log Opened)—— 改错则会话标记被当未识别,自洽等式崩
+mutate "会话标记匹配串改错" \
+  'line.find("Dial Log Opened") != std::string::npos ||' \
+  'line.find("Dial Log OpenedXX") != std::string::npos ||'
 
 echo
 echo "════ ${total} 个变异:${pass} 个被抓住,${survived} 个存活 ════"
