@@ -260,6 +260,19 @@ void parseLines(const std::vector<std::string>& raw,
             continue;
         }
 
+        // 无时间戳但紧跟在已解析行之后 → 多行日志条目的**续行**,并入上一条,不算未识别。
+        // 【样本实证】真机 EG25 1.31.15 / artery 1.29.13:AT 应答是分行写的 ——
+        //   [15:22:26] [RECOVERY L2] AT+CFUN=0 rsp:
+        //   OK                                        ← 本行无时间戳,属上一条
+        // 这个"OK"是 CFUN 是否成功的证据,当成未识别丢掉就等于漏掉了诊断信息。
+        // (合成夹具里没有多行条目,故此前一直没暴露。)
+        if (!out.empty()) {
+            out.back().msg += " ⏎ ";
+            out.back().msg += line;
+            ad.continuation++;
+            continue;
+        }
+
         // 未识别:计数 + 分类 + 留样(这是“没漏消息”的唯一硬证据)
         ad.unparsed++;
         ad.unparsedKinds[classifyUnparsed(line)]++;
@@ -609,9 +622,18 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
         if (icontains(l.msg, "never-connected"))            evNeverConn.push_back(&l);
         if (icontains(l.msg, "Policy1:") || icontains(l.msg, "Policy2:") ||
             icontains(l.msg, "policy="))                    evPolicy.push_back(&l);
-        if (l.tag.compare(0, 11, "RECOVERY L1") == 0)       evRecL1.push_back(&l);
-        if (l.tag.compare(0, 11, "RECOVERY L2") == 0)       evRecL2.push_back(&l);
-        if (l.tag.compare(0, 11, "RECOVERY L3") == 0)       evRecL3.push_back(&l);
+        // 按**事件**收,不是按行收:一次恢复会打多行。
+        // 【样本实证】真机 EG25 1.31.15:一次 L1 打 2 行(LastErr + "REG down, skip redial",同秒);
+        // 一次 L2 打 3 行(LastErr + "AT+CFUN=0 rsp" + "AT+CFUN=1 rsp",跨 3 秒)。
+        // 按行计数会把 4 次 L1 报成 8 次、1 次 L2 报成 3 次。
+        // 用时间邻近合并:恢复阶梯自身有 ≥60s 节流(eg25/dial/dial.c),故 30s 内的同级行必属同一次。
+        auto pushEvent = [&l](std::vector<const LogLine*>& v) {
+            if (!v.empty() && l.t - v.back()->t <= 30) return;   // 同一次的后续行,不另计
+            v.push_back(&l);
+        };
+        if (l.tag.compare(0, 11, "RECOVERY L1") == 0)       pushEvent(evRecL1);
+        if (l.tag.compare(0, 11, "RECOVERY L2") == 0)       pushEvent(evRecL2);
+        if (l.tag.compare(0, 11, "RECOVERY L3") == 0)       pushEvent(evRecL3);
         // ec200a/dial/dial.cpp:1082 "[WARNING] Registration Denied! Code %d."
         if (icontains(l.msg, "Registration Denied"))        evDenied.push_back(&l);
         if (l.tag == "CPDUMP")                              evCpdump.push_back(&l);

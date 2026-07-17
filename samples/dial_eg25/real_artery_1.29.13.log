@@ -1,0 +1,71 @@
+2026-07-16 09:42:53.498 [INFO] [0mmain (main.c:168) - DIAL Version: 1.29.13
+
+2026-07-16 09:42:53.549 [INFO] [0mroamlink_read_policy (roamlink.c:313) - roamlink: /usrdata/network.ini not found, use default policy 4
+2026-07-16 09:42:53.573 [INFO] [0mroamlink_is_master_running (roamlink.c:391) - roamlink: RBMaster process not found in /proc
+2026-07-16 09:42:53.578 [ERROR] [0mroamlink_probe (roamlink.c:69) - roamlink: RBMaster not found at /usrdata/roamlink/RBMaster -> NO_PACKAGE
+2026-07-16 09:42:53.580 [INFO] [0mprint_init_info (main.c:133) - [INIT] policy=4
+2026-07-16 09:42:53.600 [INFO] [0mprint_init_info (main.c:140) - [INIT] IMEI: 867652076900414
+2026-07-16 09:42:53.615 [INFO] [0mprint_init_info (main.c:144) - [INIT] FW: EG25GGBR07A08M2G_OCPU_30.200.30.200
+2026-07-16 09:42:53.628 [INFO] [0mprint_init_info (main.c:151) - [INIT] COPS: +COPS: 1
+2026-07-16 09:42:53.655 [INFO] [0mdial_task (dial.c:875) - state: (start) -> none
+2026-07-16 09:42:53.655 [INFO] [0mdial_task (dial.c:935) - dial: policy=4, initial channel: physical SIM
+2026-07-16 09:42:54.656 [INFO] [0mdial_task (dial.c:875) - state: none -> init
+2026-07-16 09:42:56.173 [INFO] [0mdial_task (dial.c:875) - state: init -> sim_init
+2026-07-16 09:42:57.681 [INFO] [0mdial_task (dial.c:875) - state: sim_init -> sim_check
+2026-07-16 09:42:58.687 [INFO] [0mdial_task (dial.c:875) - state: sim_check -> sim_op
+2026-07-16 09:42:58.695 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 89464283216124343304
+2026-07-16 09:42:58.700 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 240422612434330
+2026-07-16 09:42:59.700 [INFO] [0mdial_task (dial.c:875) - state: sim_op -> reg_check
+2026-07-16 09:42:59.707 [ERROR] [0mdial_task (dial.c:1008) - Dial_st: dial_stat_reg_check failed
+2026-07-16 09:43:53.824 [INFO] [0mmain (main.c:220) - [HEARTBEAT] state=reg_check csq=31 tcp_fail=0 rl_fail=0
+2026-07-16 09:44:53.985 [INFO] [0mmain (main.c:220) - [HEARTBEAT] state=reg_check csq=0 tcp_fail=0 rl_fail=0
+2026-07-16 09:45:54.137 [INFO] [0mmain (main.c:220) - [HEARTBEAT] state=reg_check csq=0 tcp_fail=0 rl_fail=0
+2026-07-16 09:46:54.305 [INFO] [0mmain (main.c:220) - [HEARTBEAT] state=reg_check csq=31 tcp_fail=0 rl_fail=0
+2026-07-16 09:47:54.464 [INFO] [0mmain (main.c:220) - [HEARTBEAT] state=reg_check csq=31 tcp_fail=0 rl_fail=0
+2026-07-16 09:47:54.484 [INFO] [0mnw_at_get_cereg_stat (nw.c:134) - cereg_n: 0, stat_cereg:0
+2026-07-16 09:47:54.499 [INFO] [0mmain (main.c:243) - [HEARTBEAT] cereg=0 cellid=33832B6 pci=341 tac=29CF rsrp=-79dBm rsrq=-14dB ifname=(none) ip=0.0.0.0 rx_packets=0
+2026-07-16 09:48:00.265 [ERROR] [0mdial_task (dial.c:1016) - reg_check timeout (300s), policy=4
+2026-07-16 09:48:00.266 [ERROR] [0mdial_task (dial.c:1938) - reg timeout: policy=4, cfun reset and retry
+2026-07-16 09:48:00.290 [INFO] [0mdial_task (dial.c:1962) - reg timeout: AT+COPS=0 unlock OK, back to auto operator
+2026-07-16 09:48:01.290 [INFO] [0mdial_task (dial.c:875) - state: reg_check -> stop_cfun
+2026-07-16 09:48:01.291 [INFO] [0mdial_task (dial.c:1490) - dial_stat_stop_cfun
+2026-07-16 09:48:06.530 [INFO] [0mdial_task (dial.c:1508) - cfun stop response: 
+OK
+
+2026-07-16 09:48:07.530 [INFO] [0mdial_task (dial.c:875) - state: stop_cfun -> start_cfun
+2026-07-16 09:48:07.531 [ERROR] [0mdial_task (dial.c:1513) - dial_stat_start_cfun
+2026-07-16 09:48:12.737 [INFO] [0mdial_task (dial.c:1534) - cfun start response: 
+OK
+
+2026-07-16 09:48:13.738 [INFO] [0mdial_task (dial.c:875) - state: start_cfun -> sim_init
+2026-07-16 09:48:15.748 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 89464283216124343304
+2026-07-16 09:48:16.754 [INFO] [0mdial_task (dial.c:875) - state: sim_op -> reg_check
+2026-07-16 09:48:57.864 [INFO] [0mmain (main.c:220) - [HEARTBEAT] state=reg_check csq=0 tcp_fail=0 rl_fail=0
+2026-07-16 09:53:44.969 [INFO] [0mmain (main.c:220) - [HEARTBEAT] state=reg_check csq=22 tcp_fail=0 rl_fail=0
+2026-07-16 09:53:46.926 [INFO] [0mdial_task (dial.c:875) - state: reg_check -> cereg_check
+2026-07-16 09:53:47.940 [INFO] [0mdial_task (dial.c:875) - state: cereg_check -> precondition_check
+2026-07-16 09:53:48.941 [INFO] [0mdial_task (dial.c:875) - state: precondition_check -> pre_start_call
+2026-07-16 09:53:48.944 [INFO] [0mapn_scan_from_json (apn.c:165) - iccid read from json:898604, iccid:89464283216124343304
+2026-07-16 09:53:48.947 [INFO] [0mapn_scan_from_json (apn.c:226) - apn: internet.lte.cxn, iccid: 894642, usrname: , pwd: 
+2026-07-16 09:53:48.947 [INFO] [0mapn_get_apn_obj (apn.c:385) - apn found for iccid: 89464283216124343304
+2026-07-16 09:53:48.947 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: internet.lte.cxn, username: , password: 
+2026-07-16 09:53:48.991 [INFO] [0mdial_task (dial.c:1071) - [INIT] APN: internet.lte.cxn
+2026-07-16 09:53:51.563 [INFO] [0mdial_task (dial.c:875) - state: pre_start_call -> start_call
+2026-07-16 09:53:56.564 [ERROR] [0mdail_start_data_call (dial.c:347) - the profile index 1 start data call failure: 0x0
+2026-07-16 09:54:00.158 [INFO] [0mdial_data_call_state_callback (dial.c:310) - Net disconnected, and reason code 0x1a
+2026-07-16 09:54:00.905 [INFO] [0mdial_data_call_state_callback (dial.c:284) - Net Connected
+
+2026-07-16 09:54:00.905 [INFO] [0mdial_data_call_state_callback (dial.c:288) - IPv4 address:        10.30.131.72
+2026-07-16 09:54:00.907 [INFO] [0mdial_data_call_state_callback (dial.c:290) - Primary DNS address: 193.181.246.57
+2026-07-16 09:54:01.059 [INFO] [0mdial_task (dial.c:875) - state: start_call -> wait_for_connect
+2026-07-16 09:54:01.070 [INFO] [0mdial_task (dial.c:1094) - net connected
+2026-07-16 09:54:01.083 [INFO] [0mparse_tz_info (tz.c:80) - 2026/07/16,09:54:01+32,0
+
+2026-07-16 09:54:01.086 [INFO] [0msave_tz_info (tz.c:27) - Loaded Tz:32, Set Tz:32
+2026-07-16 09:54:01.225 [INFO] [0mnw_get_ifaddrs (nw.c:490) - get ifaddrs with name: rmnet_data0
+
+2026-07-16 09:54:02.239 [INFO] [0mdial_task (dial.c:875) - state: wait_for_connect -> net_connected
+2026-07-16 09:54:45.593 [INFO] [0mmain (main.c:220) - [HEARTBEAT] state=net_connected csq=16 tcp_fail=0 rl_fail=0
+2026-07-16 09:55:45.809 [INFO] [0mmain (main.c:220) - [HEARTBEAT] state=net_connected csq=18 tcp_fail=0 rl_fail=0
+2026-07-16 09:56:41.052 [INFO] [0mmain (main.c:243) - [HEARTBEAT] cereg=1 cellid=C5EAB21 pci=257 tac=41B rsrp=-107dBm rsrq=-20dB ifname=rmnet_data0 ip=10.30.131.72 rx_packets=8073
+2026-07-16 09:56:46.073 [INFO] [0mmain (main.c:220) - [HEARTBEAT] state=net_connected csq=22 tcp_fail=0 rl_fail=0

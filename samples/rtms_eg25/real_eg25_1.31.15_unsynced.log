@@ -1,0 +1,133 @@
+=== Dial Log Opened [1970-01-01 15:10:16] daykey=unsynced ===
+[1970-01-01 15:10:16] EG25 modem_mng Version: 1.31.15
+[1970-01-01 15:10:16] [ROAMLINK] network_select = 4
+[1970-01-01 15:10:16] [NANOMSG] REQ/REP handler started, url=tcp://127.0.0.1:38001 sock=0
+[1970-01-01 15:10:16] [ROAMLINK] probe OK (RBMaster + conf.ini + license valid, size=24208 bytes)
+[1970-01-01 15:10:16] [ROAMLINK] probe OK, roamlink available, policy=4
+[1970-01-01 15:10:16] [ROAMLINK] RBMaster process not found in /proc
+[1970-01-01 15:10:19] [LED] state -1 -> 1, send
+[1970-01-01 15:10:19] [STATE] (start) -> none
+[1970-01-01 15:10:20] [STATE] none -> init
+[1970-01-01 15:10:22] [MODEM] Model:   EG25
+[1970-01-01 15:10:22] [MODEM] FW:      EG25GGBR07A08M2G_OCPU_30.200.30.200
+[1970-01-01 15:10:22] [MODEM] SubEd:    V03
+[1970-01-01 15:10:22] [MODEM] CFUN:    1 (full)
+[1970-01-01 15:10:23] [MODEM] Temp:    41,36,35
+[1970-01-01 15:10:24] [STATE] init -> sim_init
+[1970-01-01 15:10:25] [STATE] sim_init -> sim_check
+[1970-01-01 15:10:26] [STATE] sim_check -> sim_op
+[1970-01-01 15:10:26] [INIT] ICCID: 89852019925010000888
+[1970-01-01 15:10:26] [INIT] IMSI:  455011505090058
+[1970-01-01 15:10:26] [NANOMSG] status served OK, 1 replies since last log
+[1970-01-01 15:10:26] [INIT] IMEI:  867929069681908
+[1970-01-01 15:10:26] [INIT] PDP:   +CGDCONT: 1,"IP","badapn.invalid","0.0.0.0",0,0,0,0 | +CGDCONT: 2,"IPV4V6","ims","0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0",0,0,0,0 | +CGDCONT: 3,"IPV4V6","SOS","0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0",0,0,0,1 | +CGDCONT: 8,"IP","internet.lte.cxn","0.0.0.0",0,0,0,0 | +CGDCONT: 9,"IP","internet.lte.cxn","0.0.0.0",0,0,0,0
+[1970-01-01 15:10:26] [INIT] FW:    EG25GGBR07A08M2G_OCPU_30.200.30.200
+[1970-01-01 15:10:26] [INIT] policy=4
+[1970-01-01 15:10:26] [INIT] COPS: +COPS: 0,0,"CHINA MOBILE",7 (mode=0 auto) | CEREG: +CEREG: 0,5
+[1970-01-01 15:10:27] [STATE] sim_op -> reg_check
+[1970-01-01 15:10:28] [STATE] reg_check -> cereg_check
+[1970-01-01 15:10:28] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","TDD",460,00,D17C148,496,38950,40,5,5,272D,-101,-6,-75,23,18
+[1970-01-01 15:10:29] [STATE] cereg_check -> precondition_check
+[1970-01-01 15:10:30] [STATE] precondition_check -> pre_start_call
+[1970-01-01 15:10:30] [APN] selected: apn="badapn.invalid" profile=1 is_oper_select=1 (iccid-match="898520")
+[1970-01-01 15:10:32] [STATE] pre_start_call -> start_call
+[1970-01-01 15:10:34] [SDK] DataCall connected | profile=1 | IP=10.112.82.148 GW=0.0.0.0 DNS=202.175.3.9/202.175.36.16
+[1970-01-01 15:10:34] [STATE] start_call -> wait_for_connect
+[1970-01-01 15:10:34] [COPS] connected: +COPS: 0,0,"CHINA MOBILE",7 (mode=0 auto)
+[1970-01-01 15:10:35] [STATE] wait_for_connect -> net_connected
+[1970-01-01 15:10:36] [LED] state 1 -> 2, send
+[1970-01-01 15:10:48] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:41,36,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | cereg=1 | ifname=rmnet_data0 | rx_packets=12 | RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.112.82.148"
+[1970-01-01 15:11:19] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:11:49] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:12:19] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:41,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:12:50] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:13:20] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:21 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:13:50] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:21 | Temp:43,36,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:14:21] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:19 | Temp:43,37,36 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:14:51] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:21 | Temp:43,37,36 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:15:22] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:43,37,36 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:15:26] [NANOMSG] status served OK, 30 replies since last log
+[1970-01-01 15:16:02] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:99 | Temp:42,37,36 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | cereg=0 | ifname=rmnet_data0 | rx_packets=260 | Cell:D17C148 | +CGPADDR: 1,"10.112.82.148"
+[1970-01-01 15:16:36] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:21 | Temp:39,36,36 | DownTime:0s | ConsecFail:2 | RL_FAIL:0
+[1970-01-01 15:17:11] [LED] state 2 -> 1, send
+[1970-01-01 15:17:11] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[1970-01-01 15:17:11] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:21 | Temp:43,36,35 | DownTime:0s | ConsecFail:3 | RL_FAIL:0
+[1970-01-01 15:17:11] [DIAG] RSRP:-100 RSRQ:-10 | Cell:D17C148 | +CGPADDR: 1,"10.112.82.148" | +QTEMP: 42,36,35 | +CEER: 0,-1 | +CGACT: 1,1 | +CGACT: 10,0 | +CGACT: 11,0 | +CGACT: 12,0 | +CGACT: 13,0 | +CGACT: 14,0 | +CGACT: 15,0 | +CGACT: 16,0 | +CGACT: 2,0 | +CGACT: 3,0 | +CGACT: 4,0 | +CGACT: 5,0 | +CGACT: 6,0 | +CGACT: 7,0 | +CGACT: 8,0 | +CGACT: 9,0
+[1970-01-01 15:17:46] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:21 | Temp:38,35,35 | DownTime:35s | ConsecFail:4 | RL_FAIL:0
+[1970-01-01 15:17:52] [STATE] net_connected -> reg_check
+[1970-01-01 15:18:17] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:21 | Temp:38,35,35 | DownTime:67s | ConsecFail:5 | RL_FAIL:0
+[1970-01-01 15:18:17] [SM] dial_st=reg_check | is_func_called=1
+[1970-01-01 15:18:17] [RECOVERY L1] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1 | +CGACT: 10,0 | +CGACT: 11,0 | +CGACT: 12,0 | +CGACT: 13,0 | +CGACT: 14,0 | +CGACT: 15,0 | +CGACT: 16,0 | +CGACT: 2,0 | +CGACT: 3,0 | +CGACT: 4,0 | +CGACT: 5,0 | +CGACT: 6,0 | +CGACT: 7,0 | +CGACT: 8,0 | +CGACT: 9,0
+[1970-01-01 15:18:17] [RECOVERY L1] REG down, skip redial (downtime=67s)
+[1970-01-01 15:18:48] [CELL CHANGE] D17C148 -> 99D991 | +QENG: "servingcell","LIMSRV","LTE","FDD",460,01,99D991,345,100,1,5,5,755C,-103,-7,-76,19,24
+[1970-01-01 15:18:48] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:21 | Temp:38,35,35 | DownTime:98s | ConsecFail:6 | RL_FAIL:0
+[1970-01-01 15:18:48] [SM] dial_st=reg_check | is_func_called=1
+[1970-01-01 15:19:19] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:18 | Temp:38,34,34 | DownTime:129s | ConsecFail:7 | RL_FAIL:0
+[1970-01-01 15:19:19] [SM] dial_st=reg_check | is_func_called=1
+[1970-01-01 15:19:19] [RECOVERY L1] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1 | +CGACT: 10,0 | +CGACT: 11,0 | +CGACT: 12,0 | +CGACT: 13,0 | +CGACT: 14,0 | +CGACT: 15,0 | +CGACT: 16,0 | +CGACT: 2,0 | +CGACT: 3,0 | +CGACT: 4,0 | +CGACT: 5,0 | +CGACT: 6,0 | +CGACT: 7,0 | +CGACT: 8,0 | +CGACT: 9,0
+[1970-01-01 15:19:19] [RECOVERY L1] REG down, skip redial (downtime=129s)
+[1970-01-01 15:19:51] [CELL CHANGE] 99D991 -> D17C148 | +QENG: "servingcell","LIMSRV","LTE","TDD",460,00,D17C148,496,38950,40,5,5,272D,-102,-9,-73,23,16
+[1970-01-01 15:19:51] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:21 | Temp:37,34,34 | DownTime:161s | ConsecFail:8 | RL_FAIL:0
+[1970-01-01 15:19:51] [SM] dial_st=reg_check | is_func_called=1
+[1970-01-01 15:20:22] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:21 | Temp:37,34,34 | DownTime:192s | ConsecFail:9 | RL_FAIL:0
+[1970-01-01 15:20:22] [SM] dial_st=reg_check | is_func_called=1
+[1970-01-01 15:20:22] [RECOVERY L1] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1 | +CGACT: 10,0 | +CGACT: 11,0 | +CGACT: 12,0 | +CGACT: 13,0 | +CGACT: 14,0 | +CGACT: 15,0 | +CGACT: 16,0 | +CGACT: 2,0 | +CGACT: 3,0 | +CGACT: 4,0 | +CGACT: 5,0 | +CGACT: 6,0 | +CGACT: 7,0 | +CGACT: 8,0 | +CGACT: 9,0
+[1970-01-01 15:20:22] [RECOVERY L1] REG down, skip redial (downtime=192s)
+[1970-01-01 15:20:53] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:19 | Temp:37,34,34 | DownTime:223s | ConsecFail:10 | RL_FAIL:0
+[1970-01-01 15:20:53] [SM] dial_st=reg_check | is_func_called=1
+
+[1970-01-01 15:21:26] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:18 | Temp:37,34,34 | DownTime:254s | ConsecFail:11 | RL_FAIL:0 | cereg=0 | ifname=rmnet_data0 | rx_packets=260 | RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.112.82.148"
+[1970-01-01 15:21:26] [SM] dial_st=reg_check | is_func_called=1
+[1970-01-01 15:21:26] [RECOVERY L1] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1 | +CGACT: 10,0 | +CGACT: 11,0 | +CGACT: 12,0 | +CGACT: 13,0 | +CGACT: 14,0 | +CGACT: 15,0 | +CGACT: 16,0 | +CGACT: 2,0 | +CGACT: 3,0 | +CGACT: 4,0 | +CGACT: 5,0 | +CGACT: 6,0 | +CGACT: 7,0 | +CGACT: 8,0 | +CGACT: 9,0
+[1970-01-01 15:21:26] [RECOVERY L1] REG down, skip redial (downtime=254s)
+[1970-01-01 15:21:54] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:18 | Temp:37,34,34 | DownTime:284s | ConsecFail:12 | RL_FAIL:0
+[1970-01-01 15:21:54] [SM] dial_st=reg_check | is_func_called=1
+[1970-01-01 15:21:58] [NANOMSG] status served OK, 3 replies since last log
+[1970-01-01 15:22:25] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:20 | Temp:37,34,33 | DownTime:315s | ConsecFail:13 | RL_FAIL:0
+[1970-01-01 15:22:25] [SM] dial_st=reg_check | is_func_called=1
+[1970-01-01 15:22:25] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1 | +CGACT: 10,0 | +CGACT: 11,0 | +CGACT: 12,0 | +CGACT: 13,0 | +CGACT: 14,0 | +CGACT: 15,0 | +CGACT: 16,0 | +CGACT: 2,0 | +CGACT: 3,0 | +CGACT: 4,0 | +CGACT: 5,0 | +CGACT: 6,0 | +CGACT: 7,0 | +CGACT: 8,0 | +CGACT: 9,0
+[1970-01-01 15:22:26] [RECOVERY L2] AT+CFUN=0 rsp: 
+OK
+
+[1970-01-01 15:22:26] [SDK] DataCall disconnected | profile=1 err=0x0
+[1970-01-01 15:22:28] [RECOVERY L2] AT+CFUN=1 rsp: 
+OK
+
+[1970-01-01 15:22:31] [SDK] DataCall connected | profile=1 | IP=10.95.128.92 GW=0.0.0.0 DNS=202.175.3.9/202.175.36.16
+[1970-01-01 15:22:39] [STATE] reg_check -> cereg_check
+[1970-01-01 15:22:39] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","TDD",460,00,D17C148,496,38950,40,5,5,272D,-102,-6,-76,22,-
+[1970-01-01 15:22:40] [STATE] cereg_check -> precondition_check
+[1970-01-01 15:22:41] [STATE] precondition_check -> pre_start_call
+[1970-01-01 15:22:41] [APN] selected: apn="badapn.invalid" profile=1 is_oper_select=1 (iccid-match="898520")
+[1970-01-01 15:22:43] [STATE] pre_start_call -> start_call
+[1970-01-01 15:22:44] [STATE] start_call -> wait_for_connect
+[1970-01-01 15:22:44] [COPS] connected: +COPS: 1,2,"46000",7 (mode=1 manual)
+[1970-01-01 15:22:46] [LED] state 1 -> 2, send
+[1970-01-01 15:22:46] [HEARTBEAT] Network recovered after 345s
+[1970-01-01 15:22:46] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:18 | Temp:39,34,34 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:22:46] [STATE] wait_for_connect -> net_connected
+[1970-01-01 15:23:17] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:19 | Temp:39,34,34 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:23:47] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:19 | Temp:39,34,34 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:24:18] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:19 | Temp:40,35,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+
+
+
+
+[1970-01-01 15:24:48] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:19 | Temp:40,35,34 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:25:19] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,34 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:25:49] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:40,35,34 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:26:19] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:22 | Temp:40,35,34 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | cereg=1 | ifname=rmnet_data0 | rx_packets=723 | RSRP:-99 RSRQ:-9 | Cell:D17C148 | +CGPADDR: 1,"10.95.128.92"
+[1970-01-01 15:26:50] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:21 | Temp:40,35,34 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:27:03] [NANOMSG] status served OK, 194 replies since last log
+[1970-01-01 15:27:20] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:19 | Temp:42,36,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:27:50] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:42,36,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:28:21] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:43,36,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:28:51] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:43,36,35 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:29:21] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:21 | Temp:43,36,36 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:29:52] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:21 | Temp:43,37,36 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:30:22] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:21 | Temp:43,37,36 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:30:52] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:43,37,36 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:31:23] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:44,37,36 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | cereg=1 | ifname=rmnet_data0 | rx_packets=986 | RSRP:-99 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.95.128.92"
+[1970-01-01 15:31:53] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:43,37,36 | DownTime:0s | ConsecFail:0 | RL_FAIL:0
+[1970-01-01 15:32:03] [NANOMSG] status served OK, 30 replies since last log
+[1970-01-01 15:32:23] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:20 | Temp:44,37,36 | DownTime:0s | ConsecFail:0 | RL_FAIL:0

@@ -1,0 +1,36 @@
+=== Dial Log Opened [1970-01-01 08:01:46] daykey=unsynced ===
+[1970-01-01 08:01:46] Program started. Main Version: 1.28.4
+[1970-01-01 08:01:46] [CPDUMP] Bind mounted /media/sdcard -> /sdcard for CP dump capture.
+[1970-01-01 08:01:46] [CPDUMP] No existing CP dumps.
+[1970-01-01 08:01:46] [INIT] Fast Retry Mode: Attempt 2/3
+[1970-01-01 08:01:46] [INIT] Starting dial initialization...
+[1970-01-01 08:01:46] [INIT] Waiting for ql_data_call_init...
+[1970-01-01 08:01:46] [INIT] data_call_init OK.
+[1970-01-01 08:01:46] [SIM] sim_init OK
+[1970-01-01 08:01:46] [INIT] ICCID: 89860820182591394309
+[1970-01-01 08:01:46] [INIT] SIM init state: READY
+[1970-01-01 08:01:46] [INIT] IMEI:  865965086914080
+[1970-01-01 08:01:46] [INIT] FW:    EC200ACNTAR02A04M2G_OCPU
+[1970-01-01 08:01:46] [INIT] SUB:   V02
+[1970-01-01 08:01:46] [INIT] AP_FW: OW21.02_asr1803p401_rls211_1.057.030_20220902_04_14_bld73
+[1970-01-01 08:01:46] [INIT] CP_FW: FALCON_CP_SDK1.057.030X_Linux::FALCON_LWG_M13_A0_MSA_1.057.029::Falcon_ASR_PM802_RFAPI_v5.53c_FEM_v5.45_RC7b_RFVersion
+[1970-01-01 08:01:46] [INIT] IMSI:  460089087110299
+[1970-01-01 08:01:46] [APN] load from apn.json (path=/usr/dial/apn.json, count=4)
+[1970-01-01 08:01:46] [APN] iccid not matched in apn.json, fall back to auto/default APN.
+[1970-01-01 08:01:46] [INIT] APN set success
+[1970-01-01 08:01:46] [EVENT] DataCall[4/auto_network]: dial status none -> dial created
+[1970-01-01 08:01:46] [INIT] set_reconnect_mode(NORMAL): OK
+[1970-01-01 08:01:46] [EVENT] DataCall[4/auto_network]: dial created -> dial idle
+[1970-01-01 08:01:46] [INIT] ql_data_call_config: OK
+[1970-01-01 08:01:46] [INIT] Starting Data Call...
+[1970-01-01 08:01:46] [EVENT] DataCall[4/auto_network]: dial idle -> dial connecting
+[1970-01-01 08:01:46] [EVENT] DataCall[4/auto_network]: dial connecting -> dial connected
+[1970-01-01 08:01:46] [WARN] Status updated to 1.
+[1970-01-01 08:01:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:23 | DownTime:0s
+[1970-01-01 08:01:47] [EVENT] PDP IPv4: IF=ccinet1 IP=10.18.39.48 GW=10.18.39.49 DNS=36.158.169.100/36.158.151.124
+[1970-01-01 08:01:47] [INIT] PDP connected, start Ping window (10000ms).
+[1970-01-01 08:01:48] [INIT] Dial success. Retry count cleared.
+[1970-01-01 08:01:48] [INIT] Fast Retry attempt 2/3 succeeded. Exiting fast fail mode.
+[1970-01-01 08:01:48] [EVENT] Network Connected. Notification sent.
+[1970-01-01 08:01:48] [HEARTBEAT] RSRP:-106 | RSRQ:-6 | CID:0d17c148 | IP:10.18.39.48
+[1970-01-01 08:02:16] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:17 | TEMP:25 | DownTime:0s

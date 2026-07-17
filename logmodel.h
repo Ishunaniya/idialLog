@@ -48,13 +48,15 @@ struct UnparsedLine {
     std::string text;
 };
 
-// 解析审计:证明"没漏消息"的硬证据。rawTotal = parsed+session+blank+unparsed
+// 解析审计:证明"没漏消息"的硬证据。
+// 自洽等式:rawTotal = parsed + session + blank + continuation + unparsed
 struct ParseAudit {
-    size_t rawTotal  = 0;
-    size_t parsed    = 0;   // 成功解析为 LogLine
-    size_t session   = 0;   // "=== Dial Log Opened/Program Exit ===" 会话标记
-    size_t blank     = 0;   // 空行/纯空白
-    size_t unparsed  = 0;   // 未识别 ← 审计目标
+    size_t rawTotal      = 0;
+    size_t parsed        = 0;   // 成功解析为 LogLine
+    size_t session       = 0;   // "=== Dial Log Opened/Program Exit ===" 会话标记
+    size_t blank         = 0;   // 空行/纯空白
+    size_t continuation  = 0;   // 多行条目的续行(无时间戳,已并入上一条;非丢弃)
+    size_t unparsed      = 0;   // 未识别 ← 审计目标
     std::vector<UnparsedLine> samples;              // 未识别样例(上限 kMaxSamples)
     std::map<std::string, size_t> unparsedKinds;    // 未识别行的粗分类 → 计数
     static const size_t kMaxSamples = 200;

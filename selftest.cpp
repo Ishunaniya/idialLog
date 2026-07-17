@@ -31,13 +31,13 @@ int main(int argc, char** argv) {
 
     // 未识别行审计:证明“没漏”的硬证据(必须自洽:各类之和 == 原始行数)
     std::printf("== 未识别行审计 ==\n");
-    std::printf("  已解析:%zu  会话标记:%zu  空行:%zu  未识别:%zu  (占比 %.3f%%)\n",
-                audit.parsed, audit.session, audit.blank, audit.unparsed,
+    std::printf("  已解析:%zu  会话标记:%zu  空行:%zu  续行:%zu  未识别:%zu  (占比 %.3f%%)\n",
+                audit.parsed, audit.session, audit.blank, audit.continuation, audit.unparsed,
                 audit.unparsedRatio() * 100.0);
-    size_t sum = audit.parsed + audit.session + audit.blank + audit.unparsed;
-    std::printf("  自洽校验: %zu + %zu + %zu + %zu = %zu %s %zu(原始行)\n",
-                audit.parsed, audit.session, audit.blank, audit.unparsed, sum,
-                sum == audit.rawTotal ? "==" : "!=", audit.rawTotal);
+    size_t sum = audit.parsed + audit.session + audit.blank + audit.continuation + audit.unparsed;
+    std::printf("  自洽校验: %zu + %zu + %zu + %zu + %zu = %zu %s %zu(原始行)\n",
+                audit.parsed, audit.session, audit.blank, audit.continuation, audit.unparsed,
+                sum, sum == audit.rawTotal ? "==" : "!=", audit.rawTotal);
     if (sum != audit.rawTotal) { std::printf("  ** 审计不自洽,解析器有漏计 **\n"); return 1; }
     for (auto& kv : audit.unparsedKinds) std::printf("  未识别分类 %-22s %zu\n", kv.first.c_str(), kv.second);
     for (size_t i = 0; i < audit.samples.size() && i < 5; ++i)
