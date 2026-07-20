@@ -325,6 +325,85 @@ void parseLines(const std::vector<std::string>& raw,
     if (audit) *audit = std::move(ad);
 }
 
+// ============================ 多文件合并定序 ============================
+// 只扫头部若干行取首时间戳。不复用 parseLines:那会把整份日志解析一遍(N 份文件 ×
+// 全量行),而定序只需要头部一条。
+bool firstTimestamp(const std::vector<std::string>& raw, long long* t, size_t scanLimit) {
+    const size_t n = std::min(raw.size(), scanLimit);
+    for (size_t i = 0; i < n; ++i) {
+        std::string line = raw[i];
+        while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) line.pop_back();
+        if (trim(line).empty()) continue;
+
+        // 会话标记:FMT_SD 文件的首行通常就是它(logger_sd.c:424),它带的时间戳
+        // 比后面第一条普通日志更早,是这份文件真正的起点。
+        if (line.compare(0, 3, "===") == 0 && line.find("Dial Log Opened") != std::string::npos) {
+            size_t a = line.find('[');
+            size_t b = (a == std::string::npos) ? std::string::npos : line.find(']', a);
+            if (a != std::string::npos && b != std::string::npos && b > a + 1) {
+                int Y, Mo, D, h, mi, s;
+                if (std::sscanf(line.substr(a + 1, b - a - 1).c_str(),
+                                "%4d-%2d-%2d %2d:%2d:%2d", &Y, &Mo, &D, &h, &mi, &s) == 6) {
+                    if (t) *t = mkEpoch(Y, Mo, D, h, mi, s);
+                    return true;
+                }
+            }
+            continue;   // 是标记但时间戳残缺 → 继续往下找普通行
+        }
+
+        LogLine L;
+        if (parseSd(line, L) || parseSeas(line, L)) {
+            if (t) *t = L.t;
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<size_t> orderByTime(const std::vector<std::vector<std::string>>& chunks) {
+    struct Key { size_t idx; long long t; bool hasT; };
+    std::vector<Key> keys;
+    keys.reserve(chunks.size());
+    for (size_t i = 0; i < chunks.size(); ++i) {
+        long long t = 0;
+        bool has = firstTimestamp(chunks[i], &t);
+        keys.push_back(Key{ i, t, has });
+    }
+    // stable_sort:同一首时间戳(同一秒内起头的两份)保持输入顺序,不无端打乱。
+    std::stable_sort(keys.begin(), keys.end(), [](const Key& a, const Key& b) {
+        if (a.hasT != b.hasT) return a.hasT;   // 有时间戳的一律在前
+        if (!a.hasT) return false;             // 都没有 → 比较结果为“相等”,stable 保持原序
+        return a.t < b.t;
+    });
+    std::vector<size_t> out;
+    out.reserve(keys.size());
+    for (const auto& k : keys) out.push_back(k.idx);
+    return out;
+}
+
+// ---- 时基判定 ----
+TimeBase timeBaseOf(const std::vector<std::string>& raw) {
+    long long t = 0;
+    if (!firstTimestamp(raw, &t)) return TB_NONE;
+    // mkEpoch 以本地时间构造;这里只需要粗判年份,用 t 反推年份即可。
+    // t < (2000-01-01 的 epoch) 即视为未同步。2000-01-01 00:00:00 UTC = 946684800。
+    // 阈值取 946684800 - 86400 留一天余量(避免时区把 2000-01-01 本地时刻算到边界外)。
+    return (t < 946598400LL) ? TB_UNSYNCED : TB_WALL;
+}
+
+MixReport detectMix(const std::vector<std::vector<std::string>>& chunks) {
+    MixReport r;
+    for (size_t i = 0; i < chunks.size(); ++i) {
+        switch (timeBaseOf(chunks[i])) {
+            case TB_WALL:     r.wallIdx.push_back(i);     break;
+            case TB_UNSYNCED: r.unsyncedIdx.push_back(i); break;
+            default:          r.noneIdx.push_back(i);     break;
+        }
+    }
+    r.mixed = !r.wallIdx.empty() && !r.unsyncedIdx.empty();
+    return r;
+}
+
 // 字段解析:同时支持 "K:V" 与 "K=V"。
 // 值的终止:下一个 '|',或下一处 “空白 + 标识符 + [:=]”(否则
 // "RSRP:-104 RSRQ:-10"(eg25/diag/diag.c:33)会把 RSRQ 吞进 RSRP 的值;

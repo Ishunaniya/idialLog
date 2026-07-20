@@ -78,10 +78,33 @@ MUTATIONS = [
     ("会话标记匹配串改错",
      'line.find("Dial Log Opened")',
      'line.find("Dial Log OpenedZZ")'),
+    # ── 多文件合并定序(orderByTime / firstTimestamp)——mergetest 的靶子 ──
+    ('定序退回不排序(拖入顺序直接拼)',
+     'std::stable_sort(keys.begin(), keys.end(), [](const Key& a, const Key& b) {',
+     'if (false) std::stable_sort(keys.begin(), keys.end(), [](const Key& a, const Key& b) {'),
+    ('定序丢掉 stable(同秒起头顺序不再保证)',
+     'std::stable_sort(keys.begin(), keys.end()',
+     'std::sort(keys.begin(), keys.end()'),
+    ('无时间戳的 chunk 退回排最前',
+     'if (a.hasT != b.hasT) return a.hasT;',
+     'if (a.hasT != b.hasT) return !a.hasT;'),
+    ('firstTimestamp 漏认会话标记',
+     'if (line.compare(0, 3, "===") == 0 && line.find("Dial Log Opened") != std::string::npos) {',
+     'if (false) {'),
+    # ── 跨时基混合防护(timeBaseOf / detectMix)——mergetest T11 的靶子 ──
+    ('时基阈值退回 0(1970 被当墙钟,混合不再被拦)',
+     'return (t < 946598400LL) ? TB_UNSYNCED : TB_WALL;',
+     'return (t < 0LL) ? TB_UNSYNCED : TB_WALL;'),
+    ('detectMix 永不报混合(mixed 恒 false)',
+     'r.mixed = !r.wallIdx.empty() && !r.unsyncedIdx.empty();',
+     'r.mixed = false;'),
+    ('未同步误分到墙钟批(排除失效)',
+     'case TB_UNSYNCED: r.unsyncedIdx.push_back(i); break;',
+     'case TB_UNSYNCED: r.wallIdx.push_back(i); break;'),
 ]
 
 # 变异后跑的测试(全绿=变异存活=测试有洞)
-TESTS = ["simtest", "hostruntest", "baselinetest"]
+TESTS = ["simtest", "hostruntest", "baselinetest", "mergetest"]
 SELFTEST_LOGS = [
     "samples/rtms_eg25/dial_20260630_000026.log",
     "samples/rtms_eg25/real_eg25_1.31.15_unsynced.log",

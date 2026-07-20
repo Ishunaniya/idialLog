@@ -28,3 +28,12 @@ sim/hostrun_eg25/*.so
 sim/hostrun_artery/*.o
 sim/hostrun_artery/driver
 sim/.logmodel.pristine
+
+# 编译产物与临时 patch(不入库)
+mergetest
+selftest
+simtest
+hostruntest
+baselinetest
+*.o
+*.patch

@@ -761,15 +761,72 @@ static void LoadRawLines(const std::vector<std::string>& raw, const std::wstring
 }
 
 static void LoadFiles(const std::vector<std::wstring>& paths) {
-    std::vector<std::string> raw;
+    // 逐份读入 → 跨时基混合防护 → 按首时间戳定序 → 拼接。
+    // 拖入顺序(资源管理器多选)与文件对话框返回顺序都不保证按时间,而 parseLines 不排序,
+    // 顺序拼接会让时间线/断网/可用率全错(v1.3.0 及之前的行为)。定序与时基判定逻辑均在
+    // logmodel(orderByTime / detectMix),此处只做 I/O、排除、拼接、提示。
+    std::vector<std::vector<std::string>> chunks;
     std::vector<std::wstring> ok;
     for (const auto& p : paths) {
         std::vector<std::string> one;
-        if (ReadFileLines(p, one)) { raw.insert(raw.end(), one.begin(), one.end()); ok.push_back(p); }
+        if (ReadFileLines(p, one)) { chunks.push_back(std::move(one)); ok.push_back(p); }
         else MessageBoxW(hMain, (L"读取失败:\n" + p).c_str(), L"错误", MB_ICONERROR);
     }
     if (ok.empty()) return;
-    LoadRawLines(raw, (ok.size() == 1) ? ok[0] : FmtW(L"%d 个文件合并", (int)ok.size()));
+
+    // 跨时基混合防护(方案A):同时含墙钟与"时钟未同步"日志时,未同步批与墙钟批不在同一
+    // 时间坐标系,混合拼接会把跨度撑成几十年、可用率从"差"翻成"良好"。此处排除未同步批,
+    // 只用墙钟批出结论,并明确列出被排除的文件让用户知情。未同步批未销毁,可单独再拖入分析。
+    MixReport mix = detectMix(chunks);
+    std::wstring excludedNote;
+    if (mix.mixed) {
+        std::wstring names;
+        for (size_t i : mix.unsyncedIdx) {
+            // 只取文件名,不带路径,提示更短
+            const std::wstring& full = ok[i];
+            size_t slash = full.find_last_of(L"\\/");
+            names += L"\n  · " + (slash == std::wstring::npos ? full : full.substr(slash + 1));
+        }
+        std::wstring msg = FmtW(L"检测到 %d 份日志时钟未同步(时间戳落在 1970 年),\n"
+                               L"与其余 %d 份墙钟日志不在同一时间坐标系。\n\n"
+                               L"已从本次合并中排除以下未同步日志,仅用墙钟日志出结论:%s\n\n"
+                               L"如需查看未同步日志,请单独拖入分析。",
+                               (int)mix.unsyncedIdx.size(), (int)mix.wallIdx.size(), names.c_str());
+        MessageBoxW(hMain, msg.c_str(), L"时钟未同步日志已排除", MB_ICONWARNING | MB_OK);
+
+        // 用墙钟批重建 chunks / ok,后续定序拼接只在墙钟批内进行
+        std::vector<std::vector<std::string>> keptChunks;
+        std::vector<std::wstring> keptOk;
+        for (size_t i : mix.wallIdx) { keptChunks.push_back(std::move(chunks[i])); keptOk.push_back(ok[i]); }
+        chunks.swap(keptChunks);
+        ok.swap(keptOk);
+        excludedNote = FmtW(L",已排除 %d 份未同步日志", (int)mix.unsyncedIdx.size());
+    }
+    if (ok.empty()) return;   // 理论上不会:mixed 时 wallIdx 必非空,防御性保留
+
+    std::vector<size_t> ord = orderByTime(chunks);
+
+    bool reordered = false;
+    int noTs = 0;
+    for (size_t i = 0; i < ord.size(); ++i) {
+        if (ord[i] != i) reordered = true;
+        if (!firstTimestamp(chunks[ord[i]], nullptr)) noTs++;
+    }
+
+    std::vector<std::string> raw;
+    for (size_t i : ord) raw.insert(raw.end(), chunks[i].begin(), chunks[i].end());
+
+    std::wstring lbl;
+    if (ok.size() == 1) {
+        lbl = ok[0] + excludedNote;   // 排除后只剩一份时,仍要带上排除提示
+    } else {
+        // 多文件必须让人看见到底按什么顺序拼的 —— 否则重排是隐形的,出了错也无从察觉
+        lbl = FmtW(L"%d 个文件合并", (int)ok.size());
+        lbl += reordered ? L"(已按时间重排)" : L"(拖入顺序已是时间顺序)";
+        if (noTs > 0) lbl += FmtW(L",其中 %d 份扫不到时间戳→拼在最后", noTs);
+        lbl += excludedNote;
+    }
+    LoadRawLines(raw, lbl);
 }
 
 // 从剪贴板粘贴日志文本分析(SSH 里 cat 日志后直接选中复制的场景,手上没有文件)

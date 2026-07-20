@@ -69,8 +69,12 @@ hostruntest: hostruntest.cpp logmodel.cpp logmodel.h
 baselinetest: baselinetest.cpp logmodel.cpp logmodel.h
 	g++ -std=c++17 -O2 -Wall -Wextra -o baselinetest baselinetest.cpp logmodel.cpp
 
+# 多文件合并定序断言测试:真机日志切分打乱→定序→逐行还原(最有牙齿的一层在这)
+mergetest: mergetest.cpp logmodel.cpp logmodel.h
+	g++ -std=c++17 -O2 -Wall -Wextra -o mergetest mergetest.cpp logmodel.cpp
+
 clean:
-	rm -f $(OBJS) dialLog_v*.exe selftest simtest hostruntest baselinetest
+	rm -f $(OBJS) dialLog_v*.exe selftest simtest hostruntest baselinetest mergetest
 
 version:
 	@echo $(VER)
