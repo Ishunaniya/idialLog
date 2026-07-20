@@ -1,0 +1,200 @@
+﻿=== Dial Log Opened [2026-06-30 00:00:26] daykey=2026-06-30 ===
+[2026-06-30 00:00:26] [CELL CHANGE] 1D8DE0D -> 1D8DE0B | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8DE0B,396,1850,3,5,5,10D3,-104,-10,-74,4,-
+[2026-06-30 00:00:26] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:21 | Temp:69,62,60 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1177303 | cereg=1 | ifname=rmnet_data0 | RSRP:-104 RSRQ:-10 | Cell:1D8DE0B | +CGPADDR: 1,"10.154.135.228"
+[2026-06-30 00:00:56] [CELL CHANGE] 1D8DE0B -> 1D8DE0D | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8DE0D,396,500,1,5,5,10D3,-110,-14,-74,-1,-
+[2026-06-30 00:00:56] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:17 | Temp:70,62,61 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1177575
+[2026-06-30 00:01:36] [CELL CHANGE] 1D8DE0D -> 1D8B11F | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8B11F,17,1850,3,5,5,10D3,-126,-19,-87,-6,-
+[2026-06-30 00:01:36] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:19 | Temp:70,62,61 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1177575
+[2026-06-30 00:01:50] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:01:55] [CELL CHANGE] 1D8B11F -> 774D | +QENG: "servingcell","NOCONN","GSM",510,10,2F7F,774D,49,5,-,-95,255,255,0,6,46,1,-,-,-,-,-,-,-,-,-,"-"
+[2026-06-30 00:01:55] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:9 | Temp:64,61,60 | DownTime:0s | ConsecFail:2 | RL_FAIL:0 | RX_PKT:1177575
+[2026-06-30 00:01:58] [SDK] DataCall connected | profile=1 | IP=8.8.8.8 GW=8.8.8.8 DNS=8.8.8.8/8.8.8.8
+[2026-06-30 00:02:27] [CELL CHANGE] 774D -> 1D93020 | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D93020,299,3500,8,3,3,10D3,-105,-13,-75,0,-
+[2026-06-30 00:02:27] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:20 | Temp:65,59,59 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1177889
+[2026-06-30 00:02:56] [CELL CHANGE] 1D93020 -> 1D8DE0D | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8DE0D,396,500,1,5,5,10D3,-121,-14,-86,-3,-
+[2026-06-30 00:02:57] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:13 | Temp:66,59,58 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1177890
+[2026-06-30 00:03:26] [CELL CHANGE] 1D8DE0D -> 1D93022 | +QENG: "servingcell","NOCONN","LTE","TDD",510,10,1D93022,362,38750,40,5,5,10D3,-115,-15,-81,1,-
+[2026-06-30 00:03:26] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:18 | Temp:67,60,58 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178050
+[2026-06-30 00:03:57] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:15 | Temp:68,60,59 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178204
+[2026-06-30 00:04:35] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:14 | Temp:66,61,59 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1178204
+[2026-06-30 00:04:58] [CELL CHANGE] 1D93022 -> 370C | +QENG: "servingcell","NOCONN","GSM",510,10,2F7F,370C,19,4,-,-96,255,255,0,5,33,1,-,-,-,-,-,-,-,-,-,"-"
+[2026-06-30 00:04:58] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:9 | Temp:65,60,64 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178426
+[2026-06-30 00:05:35] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:15 | Temp:66,60,58 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1178426 | cereg=1 | ifname=rmnet_data0 | Cell:370C | +CGPADDR: 1,"10.138.129.183"
+[2026-06-30 00:06:05] [CELL CHANGE] 370C -> 1D8F80B | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F80B,369,1850,3,5,5,10D3,-125,-20,-85,-7,-
+[2026-06-30 00:06:06] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:17 | Temp:69,60,60 | DownTime:0s | ConsecFail:2 | RL_FAIL:0 | RX_PKT:1178426
+[2026-06-30 00:06:36] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-06-30 00:06:36] [CELL CHANGE] 1D8F80B -> 1D8DE0C | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8DE0C,99,3500,8,3,3,10D3,-114,-15,-82,-5,-
+[2026-06-30 00:06:36] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:16 | Temp:68,61,61 | DownTime:0s | ConsecFail:3 | RL_FAIL:0 | RX_PKT:1178426
+[2026-06-30 00:06:37] [DIAG] RSRP:-115 RSRQ:-16 | Cell:1D8DE0C | +CGPADDR: 1,"10.138.129.183" | +QTEMP: 68,61,61 | +CEER: 4,39 | +CGACT: 1,1 | +CGACT: 2,0 | +CGACT: 3,0 | +CGACT: 4,0 | +CGACT: 5,0
+[2026-06-30 00:06:56] [HEARTBEAT] Network recovered after 30s
+[2026-06-30 00:06:57] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:16 | Temp:68,61,61 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178494
+[2026-06-30 00:07:26] [CELL CHANGE] 1D8DE0C -> 1D8F80B | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F80B,369,1850,3,5,5,10D3,-124,-19,-84,-7,-
+[2026-06-30 00:07:26] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:14 | Temp:70,62,61 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178533
+[2026-06-30 00:07:57] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:14 | Temp:71,63,63 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178559
+[2026-06-30 00:08:26] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:17 | Temp:68,62,62 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178587
+[2026-06-30 00:09:04] [CELL CHANGE] 1D8F80B -> 7545 | +QENG: "servingcell","NOCONN","GSM",510,10,2F7E,7545,59,1,-,-81,255,255,0,20,48,1,-,-,-,-,-,-,-,-,-,"-"
+[2026-06-30 00:09:04] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:17 | Temp:65,60,63 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178602
+[2026-06-30 00:09:13] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:09:19] [SDK] DataCall connected | profile=1 | IP=8.8.8.8 GW=8.8.8.8 DNS=8.8.8.8/8.8.8.8
+[2026-06-30 00:09:35] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:12 | Temp:64,60,59 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1178602
+[2026-06-30 00:10:06] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:12 | Temp:63,59,58 | DownTime:0s | ConsecFail:2 | RL_FAIL:0 | RX_PKT:1178602
+[2026-06-30 00:10:14] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:10:21] [SDK] DataCall connected | profile=1 | IP=8.8.8.8 GW=8.8.8.8 DNS=8.8.8.8/8.8.8.8
+[2026-06-30 00:10:30] [CELL CHANGE] 7545 -> 774D | +QENG: "servingcell","NOCONN","GSM",510,10,2F7F,774D,49,5,-,-88,255,255,0,13,53,1,-,-,-,-,-,-,-,-,-,"-"
+[2026-06-30 00:10:31] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:15 | Temp:63,58,58 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178630 | cereg=0 | ifname=rmnet_data0 | Cell:774D | +CGPADDR: 1,"10.138.130.21"
+[2026-06-30 00:11:05] [CELL CHANGE] 774D -> 36ED | +QENG: "servingcell","NOCONN","GSM",510,10,2F7E,36ED,7,4,-,-83,255,255,0,18,58,1,-,-,-,-,-,-,-,-,-,"-"
+[2026-06-30 00:11:05] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:9 | Temp:62,58,57 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1178630
+[2026-06-30 00:11:26] [CELL CHANGE] 36ED -> 1D8CC0D | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8CC0D,9,500,1,5,5,1042,-117,-19,-79,-11,-
+[2026-06-30 00:11:27] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:20 | Temp:66,58,57 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178635
+[2026-06-30 00:11:56] [CELL CHANGE] 1D8CC0D -> 1D8DE0E | +QENG: "servingcell","NOCONN","LTE","TDD",510,10,1D8DE0E,396,38750,40,5,5,10D3,-104,-14,-69,-1,-
+[2026-06-30 00:11:56] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:21 | Temp:67,59,57 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1178749
+[2026-06-30 00:12:27] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:21 | Temp:67,59,58 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1179020
+[2026-06-30 00:12:57] [CELL CHANGE] 1D8DE0E -> FFFFFFFF | +QENG: "servingcell","NOCONN","LTE","FDD",65535,65535,FFFFFFFF,396,-1,3,5,5,FFFF,-113,-16,-78,-4,-
+[2026-06-30 00:12:57] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:21 | Temp:68,60,58 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1179254
+[2026-06-30 00:13:26] [CELL CHANGE] FFFFFFFF -> 1D93D15 | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D93D15,22,1850,3,5,5,1042,-125,-15,-90,-5,-
+[2026-06-30 00:13:27] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:15 | Temp:69,60,60 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1179470
+[2026-06-30 00:14:05] [CELL CHANGE] 1D93D15 -> 781F | +QENG: "servingcell","NOCONN","GSM",510,10,2F7E,781F,23,9,-,-92,255,255,0,9,49,1,-,-,-,-,-,-,-,-,-,"-"
+[2026-06-30 00:14:05] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:11 | Temp:63,59,58 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1179470
+[2026-06-30 00:14:35] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:8 | Temp:63,59,58 | DownTime:0s | ConsecFail:2 | RL_FAIL:0 | RX_PKT:1179470
+[2026-06-30 00:14:58] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:12 | Temp:63,59,59 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1179609
+[2026-06-30 00:15:26] [CELL CHANGE] 781F -> 1D8F30B | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F30B,315,1850,3,5,5,1042,-97,-10,-67,14,-
+[2026-06-30 00:15:26] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:22 | Temp:68,59,58 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1179829 | cereg=1 | ifname=rmnet_data0 | RSRP:-97 RSRQ:-10 | Cell:1D8F30B | +CGPADDR: 1,"10.138.130.21"
+[2026-06-30 00:15:57] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:16 | Temp:68,60,58 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1180099
+[2026-06-30 00:16:26] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:23 | Temp:69,60,59 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1180342
+[2026-06-30 00:16:57] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:21 | Temp:68,60,59 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1180561
+[2026-06-30 00:17:27] [CELL CHANGE] 1D8F30B -> 1D8F80C | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F80C,369,3500,8,3,3,10D3,-109,-13,-79,-1,-
+[2026-06-30 00:17:27] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:18 | Temp:67,60,60 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1180787
+[2026-06-30 00:17:56] [CELL CHANGE] 1D8F80C -> 1D8F30C | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F30C,315,3500,8,3,3,1042,-115,-16,-83,-3,-
+[2026-06-30 00:17:56] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:16 | Temp:67,60,60 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1181033
+[2026-06-30 00:18:27] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:15 | Temp:67,61,60 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1181299
+[2026-06-30 00:18:58] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:15 | Temp:67,60,61 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1181386
+[2026-06-30 00:19:26] [CELL CHANGE] 1D8F30C -> 1D8F30D | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F30D,315,500,1,5,5,1042,-106,-12,-74,9,-
+[2026-06-30 00:19:27] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:18 | Temp:69,61,59 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1181693
+[2026-06-30 00:19:56] [CELL CHANGE] 1D8F30D -> FFFFFFFF | +QENG: "servingcell","NOCONN","LTE","FDD",65535,65535,FFFFFFFF,44,-1,8,3,3,FFFF,-110,-17,-83,-20,-
+[2026-06-30 00:19:56] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:19 | Temp:67,61,60 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1181937
+[2026-06-30 00:20:35] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:17 | Temp:66,61,59 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1181937 | cereg=1 | ifname=rmnet_data0 | Cell:FFFFFFFF | +CGPADDR: 1,"10.138.130.21"
+[2026-06-30 00:20:57] [CELL CHANGE] FFFFFFFF -> 1D8F30C | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F30C,315,3500,8,3,3,1042,-101,-14,-70,-2,-
+[2026-06-30 00:20:57] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:21 | Temp:67,60,60 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1182231
+[2026-06-30 00:21:35] [CELL CHANGE] 1D8F30C -> 1D8DE0C | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8DE0C,99,3500,8,3,3,10D3,-114,-15,-81,-5,14
+[2026-06-30 00:21:35] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:16 | Temp:66,61,60 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1182231
+[2026-06-30 00:22:05] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:12 | Temp:63,60,58 | DownTime:0s | ConsecFail:2 | RL_FAIL:0 | RX_PKT:1182231
+[2026-06-30 00:22:36] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-06-30 00:22:36] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:12 | Temp:62,58,57 | DownTime:0s | ConsecFail:3 | RL_FAIL:0 | RX_PKT:1182231
+[2026-06-30 00:22:36] [DIAG] Cell:1D8DE0C | +CGPADDR: 1,"10.138.130.21" | +QTEMP: 62,58,57 | +CEER: 4,39 | +CGACT: 1,1 | +CGACT: 2,0 | +CGACT: 3,0 | +CGACT: 4,0 | +CGACT: 5,0
+[2026-06-30 00:23:05] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:99 | Temp:64,58,57 | DownTime:30s | ConsecFail:4 | RL_FAIL:0 | RX_PKT:1182231
+[2026-06-30 00:23:06] [ROAMLINK] Biz layer no data for 130s, switching to SIM
+[2026-06-30 00:23:07] [ROAMLINK] send_cmd: sent "RBstopServiceMaster" to 127.0.0.1:5568
+[2026-06-30 00:23:07] [ROAMLINK] stop_service: Roamlink service stopped
+[2026-06-30 00:23:08] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:23:11] [STATE] roamlink_active -> sim_init
+[2026-06-30 00:23:12] [STATE] sim_init -> sim_check
+[2026-06-30 00:23:13] [STATE] sim_check -> sim_op
+[2026-06-30 00:23:14] [STATE] sim_op -> reg_check
+[2026-06-30 00:23:26] [CELL CHANGE] 1D8DE0C -> D48A004 | +QENG: "servingcell","LIMSRV","LTE","FDD",510,11,D48A004,409,1325,3,5,5,6BD3,-98,-11,-67,10,29
+[2026-06-30 00:23:27] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:21 | Temp:61,57,56 | DownTime:0s | ConsecFail:1 | RL_FAIL:1
+[2026-06-30 00:23:57] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:21 | Temp:62,57,56 | DownTime:0s | ConsecFail:2 | RL_FAIL:1
+[2026-06-30 00:24:19] [STATE] reg_check -> cereg_check
+[2026-06-30 00:24:19] [CELL] Init: +QENG: "servingcell","SEARCH"
+[2026-06-30 00:24:20] [STATE] cereg_check -> precondition_check
+[2026-06-30 00:24:21] [STATE] precondition_check -> pre_start_call
+[2026-06-30 00:24:23] [STATE] pre_start_call -> start_call
+[2026-06-30 00:24:24] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:24:25] [STATE] start_call -> wait_for_connect
+[2026-06-30 00:24:28] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-06-30 00:24:28] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:18 | Temp:60,56,55 | DownTime:0s | ConsecFail:3 | RL_FAIL:1
+[2026-06-30 00:24:29] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:24:40] [SDK] DataCall connected | profile=1 | IP=193.181.246.58 GW=193.181.246.58 DNS=193.181.246.58/193.181.246.58
+[2026-06-30 00:24:41] [STATE] wait_for_connect -> net_connected
+[2026-06-30 00:25:04] [HEARTBEAT] Network recovered after 35s
+[2026-06-30 00:25:04] [CELL CHANGE] init -> 4331D09 | +QENG: "servingcell","NOCONN","LTE","FDD",510,11,4331D09,157,325,1,4,4,6BD3,-98,-18,-59,1,-
+[2026-06-30 00:25:04] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:13 | Temp:63,56,55 | DownTime:0s | ConsecFail:0 | RL_FAIL:1
+[2026-06-30 00:25:34] [CELL CHANGE] 4331D09 -> D48A007 | +QENG: "servingcell","NOCONN","LTE","FDD",510,11,D48A007,356,325,1,4,4,6BD3,-111,-19,-75,-4,-
+[2026-06-30 00:25:35] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:23 | Temp:63,56,55 | DownTime:0s | ConsecFail:0 | RL_FAIL:1 | cereg=1 | ifname=rmnet_data0 | rx_packets=1182510 | RSRP:-111 RSRQ:-19 | Cell:D48A007 | +CGPADDR: 1,"10.10.1.221"
+[2026-06-30 00:26:05] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:22 | Temp:61,55,54 | DownTime:0s | ConsecFail:0 | RL_FAIL:1
+[2026-06-30 00:26:35] [CELL CHANGE] D48A007 -> D489F07 | +QENG: "servingcell","NOCONN","LTE","FDD",510,11,D489F07,9,325,1,4,4,6BD3,-125,-20,-82,-11,-
+[2026-06-30 00:26:35] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:17 | Temp:64,55,54 | DownTime:0s | ConsecFail:0 | RL_FAIL:1
+[2026-06-30 00:27:05] [CELL CHANGE] D489F07 -> 4331D09 | +QENG: "servingcell","NOCONN","LTE","FDD",510,11,4331D09,157,325,1,4,4,6BD3,-117,-18,-79,2,-
+[2026-06-30 00:27:05] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:14 | Temp:64,56,55 | DownTime:0s | ConsecFail:0 | RL_FAIL:1
+[2026-06-30 00:27:35] [CELL CHANGE] 4331D09 -> D48A007 | +QENG: "servingcell","NOCONN","LTE","FDD",510,11,D48A007,356,325,1,4,4,6BD3,-121,-19,-82,-8,-
+[2026-06-30 00:27:35] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:14 | Temp:65,56,55 | DownTime:0s | ConsecFail:0 | RL_FAIL:1
+[2026-06-30 00:28:05] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | CSQ:14 | Temp:64,56,55 | DownTime:0s | ConsecFail:0 | RL_FAIL:1
+[2026-06-30 00:28:35] [ROAMLINK] Policy1: SIM stable 323s, trying Roamlink recovery
+[2026-06-30 00:28:36] [ROAMLINK] RBMaster running (found in /proc)
+[2026-06-30 00:28:36] [ROAMLINK] RBMaster already running, skip
+[2026-06-30 00:28:36] [ROAMLINK] start_service: AT+COPS already auto, skip AT+COPS=0
+[2026-06-30 00:28:36] [ROAMLINK] send_cmd: sent "RBstartServiceMaster" to 127.0.0.1:5568
+[2026-06-30 00:28:36] [ROAMLINK] start_service: Roamlink service started, network_type=2
+[2026-06-30 00:28:36] [ROAMLINK] Switched back to Roamlink channel (starting)
+[2026-06-30 00:28:36] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:14 | Temp:61,56,54 | DownTime:0s | ConsecFail:0 | RL_FAIL:1 | RX_PKT:0
+[2026-06-30 00:28:36] [STATE] net_connected -> roamlink_starting
+[2026-06-30 00:28:38] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:28:43] [SDK] DataCall disconnected | profile=1 err=0xd
+[2026-06-30 00:28:55] [SDK] DataCall connected | profile=1 | IP=4.2.2.2 GW=4.2.2.2 DNS=4.2.2.2/4.2.2.2
+[2026-06-30 00:29:03] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:29:04] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:15 | Temp:62,56,54 | DownTime:0s | ConsecFail:1 | RL_FAIL:1 | RX_PKT:0
+[2026-06-30 00:29:08] [SDK] DataCall disconnected | profile=1 err=0xd
+[2026-06-30 00:29:19] [SDK] DataCall connected | profile=1 | IP=8.8.8.8 GW=8.8.8.8 DNS=8.8.8.8/8.8.8.8
+[2026-06-30 00:29:43] [CELL CHANGE] D48A007 -> 36ED | +QENG: "servingcell","NOCONN","GSM",510,10,2F7E,36ED,7,4,-,-88,255,255,0,0,0,1,-,-,-,-,-,-,-,-,-,"-"
+[2026-06-30 00:29:43] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:13 | Temp:59,55,54 | DownTime:0s | ConsecFail:2 | RL_FAIL:1 | RX_PKT:0
+[2026-06-30 00:30:14] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-06-30 00:30:14] [CELL CHANGE] 36ED -> 774D | +QENG: "servingcell","NOCONN","GSM",510,10,2F7F,774D,49,5,-,-88,255,255,0,0,0,1,-,-,-,-,-,-,-,-,-,"-"
+[2026-06-30 00:30:14] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:13 | Temp:58,54,53 | DownTime:0s | ConsecFail:3 | RL_FAIL:1 | RX_PKT:0
+[2026-06-30 00:30:15] [DIAG] Cell:774D | +CGPADDR: 1,"10.154.131.208" | +QTEMP: 58,54,53 | +CEER: 6,258 | +CGACT: 1,1 | +CGACT: 2,0 | +CGACT: 3,0 | +CGACT: 4,0 | +CGACT: 5,0
+[2026-06-30 00:30:43] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:13 | Temp:58,54,53 | DownTime:30s | ConsecFail:4 | RL_FAIL:1 | RX_PKT:0 | cereg=0 | ifname=rmnet_data0 | Cell:774D | +CGPADDR: 1,"10.154.131.208"
+[2026-06-30 00:31:07] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:31:07] [SDK] DataCall disconnected | profile=1 err=0xd
+[2026-06-30 00:31:13] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:13 | Temp:58,54,53 | DownTime:60s | ConsecFail:5 | RL_FAIL:1 | RX_PKT:0
+[2026-06-30 00:31:19] [SDK] DataCall connected | profile=1 | IP=0.0.0.0 GW=0.0.0.0 DNS=0.0.0.0/0.0.0.0
+[2026-06-30 00:31:19] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:31:33] [CELL CHANGE] 774D -> 4331D09 | +QENG: "servingcell","NOCONN","LTE","FDD",510,11,4331D09,157,325,1,4,4,6BD3,-129,-20,-85,-13,-2
+[2026-06-30 00:31:34] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:12 | Temp:59,54,53 | DownTime:90s | ConsecFail:6 | RL_FAIL:1 | RX_PKT:0
+[2026-06-30 00:31:36] [SDK] DataCall connected | profile=1 | IP=4.2.2.2 GW=4.2.2.2 DNS=4.2.2.2/4.2.2.2
+[2026-06-30 00:31:46] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:31:51] [SDK] DataCall disconnected | profile=1 err=0xd
+[2026-06-30 00:32:01] [SDK] DataCall disconnected | profile=1 err=0xd
+[2026-06-30 00:32:03] [CELL CHANGE] 4331D09 -> 1D8AA0C | +QENG: "servingcell","LIMSRV","LTE","FDD",510,10,1D8AA0C,333,3500,8,3,3,1042,-107,-11,-79,0,-
+[2026-06-30 00:32:03] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:18 | Temp:61,55,53 | DownTime:120s | ConsecFail:7 | RL_FAIL:1 | RX_PKT:0
+[2026-06-30 00:32:22] [SDK] DataCall connected | profile=1 | IP=8.8.8.8 GW=8.8.8.8 DNS=8.8.8.8/8.8.8.8
+[2026-06-30 00:32:43] [CELL CHANGE] 1D8AA0C -> 1D93020 | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D93020,299,3500,8,3,3,10D3,-105,-12,-76,0,14
+[2026-06-30 00:32:43] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:16 | Temp:59,55,54 | DownTime:150s | ConsecFail:8 | RL_FAIL:1 | RX_PKT:0
+[2026-06-30 00:33:05] [HEARTBEAT] Network recovered after 180s
+[2026-06-30 00:33:05] [ROAMLINK] Ping OK in starting state, channel now active
+[2026-06-30 00:33:05] [CELL CHANGE] 1D93020 -> 1D8DE0C | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8DE0C,99,3500,8,3,3,10D3,-107,-11,-79,3,-
+[2026-06-30 00:33:05] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:17 | Temp:61,55,54 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1182604
+[2026-06-30 00:33:05] [STATE] roamlink_starting -> roamlink_active
+[2026-06-30 00:33:34] [CELL CHANGE] 1D8DE0C -> 1D8DE0E | +QENG: "servingcell","NOCONN","LTE","TDD",510,10,1D8DE0E,396,38750,40,5,5,10D3,-117,-17,-81,-6,-
+[2026-06-30 00:33:34] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:19 | Temp:63,56,54 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1182609
+[2026-06-30 00:33:49] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:33:49] [SDK] DataCall disconnected | profile=1 err=0xd
+[2026-06-30 00:34:01] [SDK] DataCall connected | profile=1 | IP=4.2.2.2 GW=4.2.2.2 DNS=4.2.2.2/4.2.2.2
+[2026-06-30 00:34:05] [CELL CHANGE] 1D8DE0E -> D48A007 | +QENG: "servingcell","NOCONN","LTE","FDD",510,11,D48A007,356,325,1,4,4,6BD3,-120,-17,-84,-7,-
+[2026-06-30 00:34:05] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:16 | Temp:64,56,54 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1182616
+[2026-06-30 00:34:09] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:34:14] [SDK] DataCall disconnected | profile=1 err=0xd
+[2026-06-30 00:34:25] [SDK] DataCall connected | profile=1 | IP=8.8.8.8 GW=8.8.8.8 DNS=8.8.8.8/8.8.8.8
+[2026-06-30 00:34:43] [CELL CHANGE] D48A007 -> 1D92C0B | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D92C0B,180,1850,3,5,5,1042,-109,-14,-75,-2,-
+[2026-06-30 00:34:43] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:20 | Temp:64,56,54 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1182616
+[2026-06-30 00:35:04] [CELL CHANGE] 1D92C0B -> 1D8DE0C | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8DE0C,99,3500,8,3,3,10D3,-97,-13,-66,0,-
+[2026-06-30 00:35:05] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:24 | Temp:63,56,56 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1182750
+[2026-06-30 00:35:34] [CELL CHANGE] 1D8DE0C -> 1D8DE0F | +QENG: "servingcell","NOCONN","LTE","TDD",510,10,1D8DE0F,396,38948,40,5,5,10D3,-116,-20,-71,-3,-
+[2026-06-30 00:35:34] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:19 | Temp:65,57,55 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1182983 | cereg=1 | ifname=rmnet_data0 | RSRP:-116 RSRQ:-20 | Cell:1D8DE0F | +CGPADDR: 1,"10.154.135.130"
+[2026-06-30 00:36:14] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:20 | Temp:61,56,54 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1182983
+[2026-06-30 00:36:20] [SDK] DataCall disconnected | profile=1 err=0x0
+[2026-06-30 00:36:25] [SDK] DataCall disconnected | profile=1 err=0xd
+[2026-06-30 00:36:33] [CELL CHANGE] 1D8DE0F -> 774D | +QENG: "servingcell","NOCONN","GSM",510,10,2F7F,774D,49,5,-,-97,255,255,0,4,44,1,-,-,-,-,-,-,-,-,-,"-"
+[2026-06-30 00:36:33] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:8 | Temp:59,55,54 | DownTime:0s | ConsecFail:2 | RL_FAIL:0 | RX_PKT:1182983
+[2026-06-30 00:36:35] [SDK] DataCall disconnected | profile=1 err=0xd
+[2026-06-30 00:37:04] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-06-30 00:37:04] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:14 | Temp:58,54,53 | DownTime:0s | ConsecFail:3 | RL_FAIL:0 | RX_PKT:1182983
+[2026-06-30 00:37:04] [DIAG] Cell:774D | +QTEMP: 58,54,53 | +CEER: 3,6 | +CGACT: 1,1 | +CGACT: 2,0 | +CGACT: 3,0 | +CGACT: 4,0 | +CGACT: 5,0
+[2026-06-30 00:37:07] [SDK] DataCall connected | profile=1 | IP=8.8.8.8 GW=8.8.8.8 DNS=8.8.8.8/8.8.8.8
+[2026-06-30 00:37:35] [HEARTBEAT] Network recovered after 30s
+[2026-06-30 00:37:35] [CELL CHANGE] 774D -> 1D8F30C | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F30C,315,3500,8,3,3,1042,-112,-11,-83,0,-
+[2026-06-30 00:37:35] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:15 | Temp:64,57,58 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1183253
+[2026-06-30 00:38:13] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:15 | Temp:63,57,55 | DownTime:0s | ConsecFail:1 | RL_FAIL:0 | RX_PKT:1183253
+[2026-06-30 00:38:35] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:99 | Temp:63,56,56 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1183468
+[2026-06-30 00:39:05] [CELL CHANGE] 1D8F30C -> 1D8F30B | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F30B,315,1850,3,5,5,1042,-98,-11,-70,10,-
+[2026-06-30 00:39:05] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:22 | Temp:66,57,56 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1183834
+[2026-06-30 00:39:34] [CELL CHANGE] 1D8F30B -> 1D8F30D | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F30D,315,500,1,5,5,1042,-116,-13,-82,2,-
+[2026-06-30 00:39:34] [HEARTBEAT] CH:ROAMLINK | SIM:1 | CSQ:17 | Temp:66,58,56 | DownTime:0s | ConsecFail:0 | RL_FAIL:0 | RX_PKT:1184101
+[2026-06-30 00:40:05] [CELL CHANGE] 1D8F30D -> 1D8F30B | +QENG: "servingcell","NOCONN","LTE","FDD",510,10,1D8F30B,315,1850,3,5,5,1042,-98,-12,-68,10,-

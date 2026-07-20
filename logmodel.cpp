@@ -6,6 +6,12 @@
 #include <cstdlib>
 #include <cstring>
 #include <regex>
+#ifdef DL_HAVE_MINIZ
+// 只用 mz_ 前缀 API;关掉 zlib 兼容别名(inflate/crc32/... 那些 static inline),
+// 否则它们在本 TU 里未被引用会触发 -Wunused-function(本项目 -Wall -Wextra 零告警)。
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include "miniz.h"
+#endif
 
 
 namespace dl {
@@ -1119,6 +1125,151 @@ std::vector<LogLine> applyFilters(const std::vector<LogLine>& lines,
         }
     }
     return cur;
+}
+
+// ============================ BOM 剥离 / 压缩包直读 ============================
+void stripBom(std::string& buf) {
+    if (buf.size() >= 3 &&
+        (unsigned char)buf[0] == 0xEF &&
+        (unsigned char)buf[1] == 0xBB &&
+        (unsigned char)buf[2] == 0xBF) {
+        buf.erase(0, 3);
+    }
+}
+
+ArchiveKind archiveKindOf(const std::string& buf) {
+    if (buf.size() >= 2 &&
+        (unsigned char)buf[0] == 0x1F && (unsigned char)buf[1] == 0x8B) return ARC_GZIP;
+    if (buf.size() >= 4 &&
+        buf[0] == 'P' && buf[1] == 'K' &&
+        (unsigned char)buf[2] == 0x03 && (unsigned char)buf[3] == 0x04) return ARC_ZIP;
+    return ARC_NONE;
+}
+
+// ---- tar 拆分(gzip 解出来若是 tar,再拆成多条目)----
+// tar 是 512 字节块:每个文件一个 512 头(name[0..99], size 在 124..135 八进制),
+// 紧跟 ceil(size/512) 个数据块。两个全零块表示结束。只取普通文件(typeflag '0' 或 '\0')。
+// 仅在编入 miniz 时才需要(只被 gzip 分支调用);不定义 DL_HAVE_MINIZ 时不编译,
+// 避免 -Wunused-function(本项目 -Wall -Wextra 零告警)。
+#ifdef DL_HAVE_MINIZ
+static bool looksLikeTar(const std::string& d) {
+    // POSIX tar 在偏移 257 有 "ustar" 魔数;GNU tar 也是。老式 v7 tar 无魔数,
+    // 这里用魔数做主判据(可靠),避免把普通文本误判成 tar。
+    return d.size() >= 262 && std::memcmp(d.data() + 257, "ustar", 5) == 0;
+}
+
+static bool splitTar(const std::string& d, std::vector<ArchiveEntry>& out) {
+    size_t off = 0;
+    while (off + 512 <= d.size()) {
+        const char* h = d.data() + off;
+        // 全零块 = 结束
+        bool allZero = true;
+        for (int i = 0; i < 512; ++i) if (h[i]) { allZero = false; break; }
+        if (allZero) break;
+
+        // 文件名(可能不足 100 字节,以 NUL 结尾)
+        size_t nameLen = 0;
+        while (nameLen < 100 && h[nameLen]) nameLen++;
+        std::string name(h, nameLen);
+
+        // 大小:偏移 124,11 位八进制 + 可能的空格/NUL
+        char szbuf[13] = {0};
+        std::memcpy(szbuf, h + 124, 12);
+        long long fsize = std::strtoll(szbuf, nullptr, 8);
+        if (fsize < 0) return false;
+
+        char typeflag = h[156];
+        off += 512;   // 跳过头
+        if (off + (size_t)fsize > d.size()) break;   // 数据不完整,停
+
+        // 普通文件('0' 或 '\0');目录('5')/其它类型跳过数据
+        if (typeflag == '0' || typeflag == '\0') {
+            if (fsize > 0) out.push_back(ArchiveEntry{ name, d.substr(off, (size_t)fsize) });
+        }
+        // 跳到下一个 512 对齐
+        off += ((size_t)fsize + 511) & ~((size_t)511);
+    }
+    return true;
+}
+#endif  // DL_HAVE_MINIZ (tar helpers)
+
+bool extractArchive(const std::string& buf, std::vector<ArchiveEntry>& entries, std::string& err) {
+    ArchiveKind k = archiveKindOf(buf);
+    if (k == ARC_NONE) { err = "不是已知压缩格式"; return false; }
+
+#ifdef DL_HAVE_MINIZ
+    if (k == ARC_GZIP) {
+        // gzip 解压:miniz 的 tinfl 只做裸 DEFLATE,gzip 需先跳过头、末尾无 adler。
+        // 用 mz_inflate 走 raw deflate,gzip 头(10字节固定 + 可选字段)手工跳过。
+        if (buf.size() < 18) { err = "gzip 数据过短"; return false; }
+        size_t p = 10;
+        unsigned char flg = (unsigned char)buf[3];
+        if (flg & 0x04) {   // FEXTRA
+            if (p + 2 > buf.size()) { err = "gzip FEXTRA 越界"; return false; }
+            unsigned xlen = (unsigned char)buf[p] | ((unsigned char)buf[p+1] << 8);
+            p += 2 + xlen;
+        }
+        if (flg & 0x08) { while (p < buf.size() && buf[p]) p++; p++; }   // FNAME
+        if (flg & 0x10) { while (p < buf.size() && buf[p]) p++; p++; }   // FCOMMENT
+        if (flg & 0x02) p += 2;                                          // FHCRC
+        if (p >= buf.size()) { err = "gzip 头解析越界"; return false; }
+
+        // gzip 末 8 字节是 CRC32 + ISIZE;ISIZE 给出原始大小,预分配。
+        uint32_t isize = (unsigned char)buf[buf.size()-4] |
+                         ((unsigned char)buf[buf.size()-3] << 8) |
+                         ((unsigned char)buf[buf.size()-2] << 16) |
+                         ((uint32_t)(unsigned char)buf[buf.size()-1] << 24);
+        std::string out;
+        size_t cap = isize ? isize : (buf.size() * 4 + 1024);
+        out.resize(cap);
+
+        mz_stream s; std::memset(&s, 0, sizeof(s));
+        if (mz_inflateInit2(&s, -MZ_DEFAULT_WINDOW_BITS) != MZ_OK) { err = "inflate 初始化失败"; return false; }
+        s.next_in = (const unsigned char*)buf.data() + p;
+        s.avail_in = (unsigned)(buf.size() - p - 8);
+        s.next_out = (unsigned char*)&out[0];
+        s.avail_out = (unsigned)out.size();
+        int r = mz_inflate(&s, MZ_FINISH);
+        if (r != MZ_STREAM_END && r != MZ_OK) {
+            // 输出缓冲可能不够(isize 是 mod 2^32,超 4GB 才会错;这里日志远小于此)
+            mz_inflateEnd(&s); err = "gzip 解压失败"; return false;
+        }
+        out.resize(s.total_out);
+        mz_inflateEnd(&s);
+
+        if (looksLikeTar(out)) {
+            if (!splitTar(out, entries) || entries.empty()) { err = "tar 拆分为空"; return false; }
+        } else {
+            entries.push_back(ArchiveEntry{ "", std::move(out) });
+        }
+        return true;
+    }
+
+    if (k == ARC_ZIP) {
+        mz_zip_archive z; mz_zip_zero_struct(&z);
+        if (!mz_zip_reader_init_mem(&z, buf.data(), buf.size(), 0)) { err = "zip 打开失败"; return false; }
+        mz_uint n = mz_zip_reader_get_num_files(&z);
+        for (mz_uint i = 0; i < n; ++i) {
+            mz_zip_archive_file_stat st;
+            if (!mz_zip_reader_file_stat(&z, i, &st)) continue;
+            if (mz_zip_reader_is_file_a_directory(&z, i)) continue;
+            size_t outSz = 0;
+            void* p = mz_zip_reader_extract_to_heap(&z, i, &outSz, 0);
+            if (!p) continue;
+            entries.push_back(ArchiveEntry{ st.m_filename, std::string((char*)p, outSz) });
+            mz_free(p);
+        }
+        mz_zip_reader_end(&z);
+        if (entries.empty()) { err = "zip 内无可读文件"; return false; }
+        return true;
+    }
+    err = "未支持的压缩格式";
+    return false;
+#else
+    (void)entries;
+    err = "本次构建未编入解压支持(DL_HAVE_MINIZ 未定义)";
+    return false;
+#endif
 }
 
 } // namespace dl

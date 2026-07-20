@@ -114,13 +114,13 @@ static std::wstring FmtW(const wchar_t* fmt, ...) {
 }
 
 // ============================ 文件读取 ============================
-static bool ReadFileLines(const std::wstring& path, std::vector<std::string>& out) {
+static bool ReadFileBytes(const std::wstring& path, std::string& buf) {
     HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return false;
     LARGE_INTEGER sz;
     if (!GetFileSizeEx(h, &sz)) { CloseHandle(h); return false; }
-    std::string buf((size_t)sz.QuadPart, '\0');
+    buf.assign((size_t)sz.QuadPart, '\0');
     DWORD got = 0, total = 0;
     while (total < (DWORD)sz.QuadPart) {
         if (!ReadFile(h, &buf[total], (DWORD)sz.QuadPart - total, &got, nullptr) || got == 0) break;
@@ -128,7 +128,12 @@ static bool ReadFileLines(const std::wstring& path, std::vector<std::string>& ou
     }
     CloseHandle(h);
     buf.resize(total);
+    return true;
+}
 
+// 字节缓冲 → 文本行。先剥 UTF-8 BOM(见 stripBom 说明:BOM 会破坏首行时间戳判定)。
+static void SplitLines(std::string buf, std::vector<std::string>& out) {
+    dl::stripBom(buf);
     size_t a = 0;
     while (a <= buf.size()) {
         size_t b = buf.find('\n', a);
@@ -139,6 +144,46 @@ static bool ReadFileLines(const std::wstring& path, std::vector<std::string>& ou
         out.push_back(buf.substr(a, b - a));
         a = b + 1;
     }
+}
+
+// 读一个路径 → 一到多份行缓冲(chunks)+ 各自展示名(labels)。
+// 压缩包(.zip/.tar.gz/.gz)在内存中解压;一个包里的每个文件成为独立 chunk,
+// 这样它们照常走后续的定序 / 时基混合防护(与手工解压后多选拖入等价)。
+// 返回 false = 连字节都读不到(路径错/占用);解压失败会退化为"把原始字节当普通日志"。
+static bool ReadPathExpand(const std::wstring& path,
+                           std::vector<std::vector<std::string>>& chunks,
+                           std::vector<std::wstring>& labels) {
+    std::string buf;
+    if (!ReadFileBytes(path, buf)) return false;
+
+    // 取纯文件名用于包内条目命名
+    std::wstring base = path;
+    size_t slash = base.find_last_of(L"\\/");
+    if (slash != std::wstring::npos) base = base.substr(slash + 1);
+
+    if (dl::archiveKindOf(buf) != dl::ARC_NONE) {
+        std::vector<dl::ArchiveEntry> entries;
+        std::string err;
+        if (dl::extractArchive(buf, entries, err)) {
+            for (auto& e : entries) {
+                std::vector<std::string> lines;
+                SplitLines(std::move(e.data), lines);
+                if (lines.empty()) continue;
+                chunks.push_back(std::move(lines));
+                // 展示名:包名!内部名(内部名可能为空,如单文件 .gz)
+                std::wstring inner = U8ToW(e.name);
+                labels.push_back(inner.empty() ? base : (base + L"!" + inner));
+            }
+            if (!chunks.empty()) return true;
+            // 解压成功但没有可用条目 → 退化为普通读取
+        }
+        // 解压失败:静默退化,把原始字节当普通日志(可能只是扩展名碰巧像压缩包)
+    }
+
+    std::vector<std::string> lines;
+    SplitLines(std::move(buf), lines);
+    chunks.push_back(std::move(lines));
+    labels.push_back(base);
     return true;
 }
 
@@ -768,9 +813,18 @@ static void LoadFiles(const std::vector<std::wstring>& paths) {
     std::vector<std::vector<std::string>> chunks;
     std::vector<std::wstring> ok;
     for (const auto& p : paths) {
-        std::vector<std::string> one;
-        if (ReadFileLines(p, one)) { chunks.push_back(std::move(one)); ok.push_back(p); }
-        else MessageBoxW(hMain, (L"读取失败:\n" + p).c_str(), L"错误", MB_ICONERROR);
+        // ReadPathExpand:普通文件 → 1 个 chunk;压缩包 → 包内每个文件各 1 个 chunk。
+        // 展开后的 chunk 与手工解压后多选拖入完全等价,照常走定序 / 时基混合防护。
+        std::vector<std::vector<std::string>> sub;
+        std::vector<std::wstring> subLabels;
+        if (ReadPathExpand(p, sub, subLabels)) {
+            for (size_t i = 0; i < sub.size(); ++i) {
+                chunks.push_back(std::move(sub[i]));
+                ok.push_back(subLabels[i]);
+            }
+        } else {
+            MessageBoxW(hMain, (L"读取失败:\n" + p).c_str(), L"错误", MB_ICONERROR);
+        }
     }
     if (ok.empty()) return;
 
@@ -882,7 +936,7 @@ static void DoOpen() {
     OPENFILENAMEW ofn{};
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = hMain;
-    ofn.lpstrFilter = L"日志文件 (*.log;*.txt)\0*.log;*.txt\0所有文件 (*.*)\0*.*\0\0";
+    ofn.lpstrFilter = L"日志与压缩包 (*.log;*.txt;*.zip;*.gz)\0*.log;*.txt;*.zip;*.gz;*.tar.gz\0所有文件 (*.*)\0*.*\0\0";
     ofn.lpstrFile = buf.data();
     ofn.nMaxFile = (DWORD)buf.size();
     ofn.lpstrTitle = L"选择 dial 日志(可多选,将合并分析)";

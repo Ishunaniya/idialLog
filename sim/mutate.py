@@ -101,10 +101,26 @@ MUTATIONS = [
     ('未同步误分到墙钟批(排除失效)',
      'case TB_UNSYNCED: r.unsyncedIdx.push_back(i); break;',
      'case TB_UNSYNCED: r.wallIdx.push_back(i); break;'),
+    # ── 压缩包直读 / BOM 剥离(archiveKindOf / extractArchive / stripBom)——archivetest 靶子 ──
+    ('stripBom 不剥离(BOM 残留破坏首戳)',
+     '        buf.erase(0, 3);',
+     '        (void)0;'),
+    ('gzip 魔数判错(第二字节)',
+     '(unsigned char)buf[0] == 0x1F && (unsigned char)buf[1] == 0x8B) return ARC_GZIP;',
+     '(unsigned char)buf[0] == 0x1F && (unsigned char)buf[1] == 0x8C) return ARC_GZIP;'),
+    ('zip 魔数判错',
+     "buf[0] == 'P' && buf[1] == 'K' &&",
+     "buf[0] == 'Q' && buf[1] == 'K' &&"),
+    ('tar 大小字段进制读错(八进制当十进制)',
+     'long long fsize = std::strtoll(szbuf, nullptr, 8);',
+     'long long fsize = std::strtoll(szbuf, nullptr, 10);'),
+    ('tar 魔数判错(ustar)',
+     'std::memcmp(d.data() + 257, "ustar", 5) == 0;',
+     'std::memcmp(d.data() + 257, "ustaX", 5) == 0;'),
 ]
 
 # 变异后跑的测试(全绿=变异存活=测试有洞)
-TESTS = ["simtest", "hostruntest", "baselinetest", "mergetest"]
+TESTS = ["simtest", "hostruntest", "baselinetest", "mergetest", "archivetest"]
 SELFTEST_LOGS = [
     "samples/rtms_eg25/dial_20260630_000026.log",
     "samples/rtms_eg25/real_eg25_1.31.15_unsynced.log",
@@ -113,16 +129,46 @@ SELFTEST_LOGS = [
 ]
 
 
+_MINIZ_CACHE = [None]   # miniz.o 只编一次(与变异无关),全局缓存路径
+
+
+def _miniz_obj():
+    """编译 miniz.o 一次并缓存返回路径;失败返回 None。"""
+    if _MINIZ_CACHE[0] and os.path.exists(_MINIZ_CACHE[0]):
+        return _MINIZ_CACHE[0]
+    import tempfile
+    path = os.path.join(tempfile.gettempdir(), "dl_mutate_miniz.o")
+    if subprocess.run(["gcc", "-std=c11", "-O2", "-DMINIZ_NO_STDIO", "-DMINIZ_NO_TIME",
+                       "-c", "miniz.c", "-o", path], cwd=ROOT,
+                      stderr=subprocess.DEVNULL).returncode != 0:
+        return None
+    _MINIZ_CACHE[0] = path
+    return path
+
+
 def run_tests(tmp):
-    """编 logmodel.o + 链接 4 个测试 + 跑。全绿返回 True(=变异存活)。"""
+    """编 logmodel.o + 链接测试 + 跑。全绿返回 True(=变异存活)。"""
     obj = os.path.join(tmp, "lm.o")
     if subprocess.run(CXX + ["-c", SRC, "-o", obj], cwd=ROOT,
                       stderr=subprocess.DEVNULL).returncode != 0:
         return False  # 编不过 = 变异被抓住
+    # archivetest 依赖 miniz + DL_HAVE_MINIZ:logmodel.o 也得带这个宏重编一份(单独 obj)。
+    # 其余测试用不带 miniz 的 obj。miniz.o 与变异无关(变异只改 logmodel.cpp),
+    # 用全局缓存只编一次 —— 否则每个变异重编 350KB 的 miniz.c 会拖到超时。
+    obj_mz = os.path.join(tmp, "lm_mz.o")
+    mzobj = _miniz_obj()
+    have_mz = ("archivetest" in TESTS and mzobj is not None
+               and subprocess.run(CXX + ["-DDL_HAVE_MINIZ", "-c", SRC, "-o", obj_mz], cwd=ROOT,
+                                  stderr=subprocess.DEVNULL).returncode == 0)
     for t in TESTS + ["selftest"]:
         exe = os.path.join(tmp, t)
-        if subprocess.run(CXX + ["-o", exe, t + ".cpp", obj], cwd=ROOT,
-                          stderr=subprocess.DEVNULL).returncode != 0:
+        if t == "archivetest":
+            if not have_mz:
+                return False   # archivetest 该跑却编不出 miniz obj → 视为抓住(保守)
+            cmd = CXX + ["-DDL_HAVE_MINIZ", "-o", exe, t + ".cpp", obj_mz, mzobj]
+        else:
+            cmd = CXX + ["-o", exe, t + ".cpp", obj]
+        if subprocess.run(cmd, cwd=ROOT, stderr=subprocess.DEVNULL).returncode != 0:
             return False
     for t in TESTS:
         if subprocess.run([os.path.join(tmp, t)], cwd=ROOT,
@@ -141,16 +187,40 @@ def run_tests(tmp):
 PRISTINE = os.path.join(os.path.dirname(__file__), ".logmodel.pristine")
 
 
+def _git_head_src():
+    """从 git HEAD 取 SRC 的干净内容(权威基线)。失败返回 None。"""
+    rel = os.path.relpath(SRC, ROOT)
+    r = subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT,
+                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    return r.stdout.decode("utf-8") if r.returncode == 0 else None
+
+
 def main():
     # 崩溃安全:变异会改 SRC,进程若被 SIGKILL(超时 kill 无法捕获)会把变异态留在磁盘,
-    # 下次 git add -A 就可能提交坏解析器(踩过:'Dial Log OpenedZZ' 残留差点被提交)。
-    # 防护:① 把原始副本落盘 PRISTINE;② 启动时若发现上次残留(SRC 与 PRISTINE 不一致
-    #        且 SRC 含变异标记)先自愈;③ SIGTERM 也还原。
-    if os.path.exists(PRISTINE):
+    # 下次 git add -A 就可能提交坏解析器。
+    #
+    # 【教训】旧自愈只在"SRC 含特定标记(ZZ 等)"时才还原 —— 非标记型变异(如把
+    # `return a.hasT` 改成 `return !a.hasT`)残留时认不出,且会把坏内容再存进 PRISTINE,
+    # 污染叠加。现改为:
+    #   ① 优先信任 git HEAD 作为基线(权威,不会被上次运行污染);
+    #   ② 只要磁盘 SRC 与基线**逐字节不一致**就还原,不再匹配任何标记;
+    #   ③ PRISTINE 仅作 git 不可用时的兜底,且写入前先用 git 校验过。
+    baseline = _git_head_src()
+    if baseline is not None:
+        disk = open(SRC, encoding="utf-8").read()
+        if disk != baseline:
+            # 与 HEAD 不一致:可能是上次残留,也可能是**未提交的正当改动**。
+            # 无法区分,保守起见提示并中止,让用户自己确认 —— 绝不静默覆盖用户改动。
+            print("⚠ SRC 与 git HEAD 不一致。若这是上次变异残留,请手动还原:")
+            print(f"    git checkout -- {os.path.relpath(SRC, ROOT)}")
+            print("  若这是你未提交的正当改动,请先 commit 或 stash 再跑变异测试。")
+            sys.exit(2)
+    elif os.path.exists(PRISTINE):
+        # git 不可用的兜底:PRISTINE 是上次由本脚本(经校验后)落盘的
         disk = open(SRC, encoding="utf-8").read()
         pris = open(PRISTINE, encoding="utf-8").read()
-        if disk != pris and ("ZZ" in disk or "!= 'X'" in disk or "<= 'A'))" in disk):
-            print("⚠ 检测到上次变异残留,先还原 SRC")
+        if disk != pris:
+            print("⚠ 检测到 SRC 与 PRISTINE 不一致,还原(git 不可用,用兜底副本)")
             open(SRC, "w", encoding="utf-8").write(pris)
 
     orig = open(SRC, encoding="utf-8").read()

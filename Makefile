@@ -35,7 +35,14 @@ CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -municode \
 LDFLAGS  := -mwindows -municode -static -static-libgcc -static-libstdc++ -s
 LIBS     := -lcomctl32 -lgdi32 -lcomdlg32 -lshell32 -luser32 -lkernel32
 
-OBJS := ui.o logmodel.o resource.o
+# 压缩包直读(.zip/.tar.gz)靠内嵌 miniz(MIT,纯 C 单文件,静态编入,零运行时依赖)。
+# 定义 DL_HAVE_MINIZ 后 logmodel 才编入解压实现;不定义则解压函数返回"未编入"。
+# MINIZ_NO_STDIO/NO_TIME:只用内存解压,砍掉文件 IO 与时间戳依赖,减小体积。
+MINIZ_DEF := -DDL_HAVE_MINIZ
+MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
+CC       := x86_64-w64-mingw32-gcc
+
+OBJS := ui.o logmodel.o miniz.o resource.o
 
 all: $(TARGET)
 
@@ -44,10 +51,13 @@ $(TARGET): $(OBJS)
 	@echo "==> 生成 $@ (静态链接,无运行时依赖)"
 
 ui.o: ui.cpp logmodel.h version.h
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
 
-logmodel.o: logmodel.cpp logmodel.h
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+logmodel.o: logmodel.cpp logmodel.h miniz.h
+	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
+
+miniz.o: miniz.c miniz.h
+	$(CC) $(MINIZ_CFLAGS) -c $< -o $@
 
 resource.o: resource.rc app.manifest version.h
 	$(WINDRES) -c 65001 $< -O coff -o $@
@@ -73,8 +83,16 @@ baselinetest: baselinetest.cpp logmodel.cpp logmodel.h
 mergetest: mergetest.cpp logmodel.cpp logmodel.h
 	g++ -std=c++17 -O2 -Wall -Wextra -o mergetest mergetest.cpp logmodel.cpp
 
+# 压缩包直读 + BOM 剥离断言测试:host 侧也编入 miniz(它是可移植 C,Linux 能编),
+# 因此解压逻辑完全可单元测试,不依赖 Windows。miniz_host.o 与交叉编译的 miniz.o 分开。
+miniz_host.o: miniz.c miniz.h
+	gcc -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME -c miniz.c -o miniz_host.o
+
+archivetest: archivetest.cpp logmodel.cpp logmodel.h miniz_host.o
+	g++ -std=c++17 -O2 -Wall -Wextra -DDL_HAVE_MINIZ -o archivetest archivetest.cpp logmodel.cpp miniz_host.o
+
 clean:
-	rm -f $(OBJS) dialLog_v*.exe selftest simtest hostruntest baselinetest mergetest
+	rm -f $(OBJS) miniz_host.o dialLog_v*.exe selftest simtest hostruntest baselinetest mergetest archivetest
 
 version:
 	@echo $(VER)

@@ -10,12 +10,13 @@
 //   1.3.0  修 CP dump 假阳性(正常设备曾被报"基带崩溃")、恢复阶梯改按事件计数
 //   1.4.0  多文件合并按时间定序(修时间线/断网/可用率错算);
 //          跨时基混合防护:墙钟与"时钟未同步"(1970)日志混合拖入时排除未同步批
+//   1.5.0  压缩包直读(.zip/.tar.gz/.gz,内嵌 miniz)+ UTF-8 BOM 剥离
 //          (4 次曾被报成 8 次)、多行条目续行并入上一条、混合大小写标签 [NetCheck]、
 //          接活死分支"数据服务未就绪"(此前 enum 有名字但代码从无赋值,永不触发)
 #pragma once
 
 #define DL_VER_MAJOR 1
-#define DL_VER_MINOR 4
+#define DL_VER_MINOR 5
 #define DL_VER_PATCH 0
 
 #define DL_STRINGIFY2(x) #x
