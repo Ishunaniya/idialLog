@@ -235,7 +235,8 @@ static std::string classifyUnparsed(const std::string& s) {
 void parseLines(const std::vector<std::string>& raw,
                 std::vector<LogLine>& out,
                 std::vector<std::string>& sessions,
-                ParseAudit* audit)
+                ParseAudit* audit,
+                const std::vector<size_t>& fileBoundaries)
 {
     out.clear();
     sessions.clear();
@@ -243,8 +244,18 @@ void parseLines(const std::vector<std::string>& raw,
     std::vector<long long> restartTs;   // 重启时刻(opened 标记 + 版本横幅,末尾合并去重)
     ParseAudit ad;
     ad.rawTotal = raw.size();
+    // 文件边界集合(升序下标转成 set 便于 O(1) 查):当前行下标 == 某文件起点时,
+    // 禁止把它续到上一条(那属于上一个文件)。留空 = 无边界。
+    size_t nextBoundaryPos = 0;   // 指向 fileBoundaries 中下一个待命中的边界
 
     for (size_t idx = 0; idx < raw.size(); ++idx) {
+        // 是否是某个文件的起始行(多文件合并时)。是 → 本行不得续到上一条(属上一个文件)。
+        bool atFileStart = false;
+        while (nextBoundaryPos < fileBoundaries.size() && fileBoundaries[nextBoundaryPos] < idx)
+            ++nextBoundaryPos;
+        if (nextBoundaryPos < fileBoundaries.size() && fileBoundaries[nextBoundaryPos] == idx)
+            atFileStart = true;
+
         // 去掉行尾 \r\n
         std::string line = raw[idx];
         while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) line.pop_back();
@@ -284,6 +295,20 @@ void parseLines(const std::vector<std::string>& raw,
                 L.msg.find("Program started. Version:") != std::string::npos ||
                 L.msg.find("Program started. Main Version:") != std::string::npos)
                 restartTs.push_back(L.t);
+            // 时钟跳变检测:与上一条已解析行比较,若跨越 2000 年边界(一侧 <2000 一侧 >=2000)
+            // 即认定跳变 —— 这是 RTC 未授时(1970)后中途授时的特征。只记录首次跳变(最有意义
+            // 的那次:1970→真实时间)。阈值用 2000 年边界而非"差值大",避免把正常跨天误判。
+            if (!ad.clockJump && !out.empty()) {
+                long long prevT = out.back().t;
+                bool prevUnsynced = prevT < 946598400LL;   // <2000-01-01(与 timeBaseOf 同阈值)
+                bool curUnsynced  = L.t  < 946598400LL;
+                if (prevUnsynced != curUnsynced) {
+                    ad.clockJump  = true;
+                    ad.jumpFromT  = prevT;
+                    ad.jumpToT    = L.t;
+                    ad.jumpAtLine = idx + 1;   // 1-based 原始行号
+                }
+            }
             out.push_back(std::move(L));
             continue;
         }
@@ -302,7 +327,9 @@ void parseLines(const std::vector<std::string>& raw,
         // 无关噪声糊进上一条 dial_log 的消息里。SD 卡日志文件只有 dial_log 写入、不存在此问题,
         // 但控制台捕获是用户会拿来分析的真实输入,必须挡住。
         // 挡不住的就老实计入未识别,由审计报出来 —— 那才是诚实的做法。
-        if (!out.empty()) {
+        // 跨文件防御:本行是某文件首行时,即使无时间戳也不并入上一条(那是上一个文件的),
+        // 老实计入未识别,由审计报出。
+        if (!out.empty() && !atFileStart) {
             const std::string& prev = out.back().msg;
             size_t e2 = prev.find_last_not_of(" \t");
             if (e2 != std::string::npos && prev[e2] == ':') {

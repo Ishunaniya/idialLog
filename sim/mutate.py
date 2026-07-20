@@ -117,10 +117,20 @@ MUTATIONS = [
     ('tar 魔数判错(ustar)',
      'std::memcmp(d.data() + 257, "ustar", 5) == 0;',
      'std::memcmp(d.data() + 257, "ustaX", 5) == 0;'),
+    # ── 跨文件续行防御 / 时钟跳变检测 —— boundarytest 靶子 ──
+    ('跨文件续行防御失效(atFileStart 恒 false)',
+     'if (!out.empty() && !atFileStart) {',
+     'if (!out.empty() && !false) {'),
+    ('时钟跳变阈值错(2000边界退回0)',
+     'bool prevUnsynced = prevT < 946598400LL;   // <2000-01-01(与 timeBaseOf 同阈值)',
+     'bool prevUnsynced = prevT < 0LL;   // <2000-01-01(与 timeBaseOf 同阈值)'),
+    ('时钟跳变检测关闭(clockJump 永不置位)',
+     'if (prevUnsynced != curUnsynced) {',
+     'if (false) {'),
 ]
 
 # 变异后跑的测试(全绿=变异存活=测试有洞)
-TESTS = ["simtest", "hostruntest", "baselinetest", "mergetest", "archivetest"]
+TESTS = ["simtest", "hostruntest", "baselinetest", "mergetest", "archivetest", "boundarytest"]
 SELFTEST_LOGS = [
     "samples/rtms_eg25/dial_20260630_000026.log",
     "samples/rtms_eg25/real_eg25_1.31.15_unsynced.log",

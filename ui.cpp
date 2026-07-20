@@ -710,6 +710,16 @@ static void RenderFindings() {
     o += FmtW(L"  解析覆盖 : 已解析 %d 行,未识别 %d 行(%.2f%%)",
               (int)g_audit.parsed, (int)g_audit.unparsed, g_audit.unparsedRatio() * 100.0);
     o += (g_audit.unparsed == 0) ? L"  → 无遗漏\r\n" : L"  → 详见“未识别行”页\r\n";
+
+    // 时钟跳变警告:该日志内部时间从未授时(1970)跳到真实时间(或反之),时间轴前后不在
+    // 同一坐标系。不臆测正确值,只诚实标出,提示跨跳变点的断网时长/可用率不可信。
+    if (g_audit.clockJump) {
+        o += FmtW(L"  ⚠ 时钟跳变 : 第 %d 行时间从 %s 跳到 %s\r\n",
+                  (int)g_audit.jumpAtLine,
+                  U8ToW(fmtTime(g_audit.jumpFromT, "FULL")).c_str(),
+                  U8ToW(fmtTime(g_audit.jumpToT, "FULL")).c_str());
+        o += L"              该日志含未授时段,跨跳变点的断网时长/可用率不可信,请分段看\r\n";
+    }
     o += L"\r\n";
 
     if (g_findings.empty()) {
@@ -795,8 +805,9 @@ static void RefreshAll() {
 }
 
 // 载入的公共尾段:拿到原始行之后的处理,文件与剪贴板共用
-static void LoadRawLines(const std::vector<std::string>& raw, const std::wstring& srcLabel) {
-    parseLines(raw, g_all, g_sessions, &g_audit);
+static void LoadRawLines(const std::vector<std::string>& raw, const std::wstring& srcLabel,
+                         const std::vector<size_t>& fileBoundaries = {}) {
+    parseLines(raw, g_all, g_sessions, &g_audit, fileBoundaries);
     g_plat = detectPlatform(g_all);   // 平台识别用全量行(不受筛选影响)
     std::wstring lbl = srcLabel;
     lbl += FmtW(L"   (%d 行, %d 会话, %s)", (int)g_all.size(), (int)g_sessions.size(),
@@ -868,7 +879,11 @@ static void LoadFiles(const std::vector<std::wstring>& paths) {
     }
 
     std::vector<std::string> raw;
-    for (size_t i : ord) raw.insert(raw.end(), chunks[i].begin(), chunks[i].end());
+    std::vector<size_t> fileBoundaries;   // 各文件在 raw 中的起始下标 → 阻止跨文件续行
+    for (size_t i : ord) {
+        fileBoundaries.push_back(raw.size());   // 本文件从这里开始
+        raw.insert(raw.end(), chunks[i].begin(), chunks[i].end());
+    }
 
     std::wstring lbl;
     if (ok.size() == 1) {
@@ -880,7 +895,7 @@ static void LoadFiles(const std::vector<std::wstring>& paths) {
         if (noTs > 0) lbl += FmtW(L",其中 %d 份扫不到时间戳→拼在最后", noTs);
         lbl += excludedNote;
     }
-    LoadRawLines(raw, lbl);
+    LoadRawLines(raw, lbl, fileBoundaries);
 }
 
 // 从剪贴板粘贴日志文本分析(SSH 里 cat 日志后直接选中复制的场景,手上没有文件)

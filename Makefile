@@ -91,8 +91,12 @@ miniz_host.o: miniz.c miniz.h
 archivetest: archivetest.cpp logmodel.cpp logmodel.h miniz_host.o
 	g++ -std=c++17 -O2 -Wall -Wextra -DDL_HAVE_MINIZ -o archivetest archivetest.cpp logmodel.cpp miniz_host.o
 
+# 跨文件续行防御 + 时钟跳变检测断言测试(问题②机制实证/问题①无真机样本,见文件头声明)
+boundarytest: boundarytest.cpp logmodel.cpp logmodel.h
+	g++ -std=c++17 -O2 -Wall -Wextra -o boundarytest boundarytest.cpp logmodel.cpp
+
 clean:
-	rm -f $(OBJS) miniz_host.o dialLog_v*.exe selftest simtest hostruntest baselinetest mergetest archivetest
+	rm -f $(OBJS) miniz_host.o dialLog_v*.exe selftest simtest hostruntest baselinetest mergetest archivetest boundarytest
 
 version:
 	@echo $(VER)

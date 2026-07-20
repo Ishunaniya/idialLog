@@ -39,3 +39,4 @@ baselinetest
 *.patch
 archivetest
 miniz_host.o
+boundarytest

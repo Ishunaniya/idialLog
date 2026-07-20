@@ -57,6 +57,16 @@ struct ParseAudit {
     size_t blank         = 0;   // 空行/纯空白
     size_t continuation  = 0;   // 多行条目的续行(无时间戳,已并入上一条;非丢弃)
     size_t unparsed      = 0;   // 未识别 ← 审计目标
+    // 时钟跳变检测(问题①):一份日志内部时间戳大幅跳跃 —— 通常是设备开机 RTC 未授时
+    // (1970 起点)后中途联网授时,时间从 1970 跳到真实年份。此时该日志的时间轴前后
+    // 不在同一坐标系,断网时长/可用率跨越跳变点会算错。
+    // 【无真机样本】现有 33 份夹具无一含此跳变(两份 unsynced 全程 1970,设备整段未授时)。
+    // 故此处**只检测并报告,不臆测正确行为**(修复需知道正确时间,只能靠猜)——与"未识别行
+    // 审计"同路子:诚实暴露异常,由用户判断,不假装解决。
+    bool   clockJump     = false;  // 是否检测到跳变
+    long long jumpFromT  = 0;      // 跳变前一行的时间
+    long long jumpToT    = 0;      // 跳变后一行的时间
+    size_t jumpAtLine    = 0;      // 跳变发生的原始行号(1-based)
     std::vector<UnparsedLine> samples;              // 未识别样例(上限 kMaxSamples)
     std::map<std::string, size_t> unparsedKinds;    // 未识别行的粗分类 → 计数
     static const size_t kMaxSamples = 200;
@@ -113,10 +123,15 @@ struct Finding {
 
 // ---- 解析 ----
 // 返回解析出的行;sessions 收集会话标记时间戳(进程重启次数);audit 给出未识别行审计。
+// fileBoundaries: 多文件合并时各文件在 raw 中的起始下标(升序)。用于阻止**跨文件续行**——
+//   若 A 文件末行以冒号结尾、B 文件首行无时间戳,续行逻辑会把 B 首行误并入 A 末条(串味)。
+//   真机 72 种拼接组合虽未触发(日志通常正常结束),但机制真实,此为零风险防御。
+//   留空 = 单文件/剪贴板,无边界约束(行为与旧版完全一致)。
 void parseLines(const std::vector<std::string>& raw,
                 std::vector<LogLine>& out,
                 std::vector<std::string>& sessions,
-                ParseAudit* audit = nullptr);
+                ParseAudit* audit = nullptr,
+                const std::vector<size_t>& fileBoundaries = {});
 
 // ---- 多文件合并定序 ----
 // 取一批原始行中**第一条带时间戳的行**的 epoch 秒。只扫前 scanLimit 行
