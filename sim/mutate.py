@@ -134,6 +134,10 @@ MUTATIONS = [
     ('Down: 时长提取位置错(偏移5改0)',
      'size_t q = d + 5;',
      'size_t q = d + 0;'),
+    # ── open_dial 会话标记识别 —— baselinetest 靶子 ──
+    ('会话标记漏认 open_dial 的 Dial Program Started',
+     'bool isOpened = line.find("Dial Log Opened") != std::string::npos ||\n                        line.find("Dial Program Started") != std::string::npos;',
+     'bool isOpened = line.find("Dial Log Opened") != std::string::npos ||\n                        line.find("Dial Program StartedZZ") != std::string::npos;'),
 ]
 
 # 变异后跑的测试(全绿=变异存活=测试有洞)

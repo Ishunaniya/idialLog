@@ -262,15 +262,19 @@ void parseLines(const std::vector<std::string>& raw,
 
         if (trim(line).empty()) { ad.blank++; continue; }
 
-        // 会话标记(logger_sd.c:424 "=== Dial Log Opened [ts] daykey=... ==="
+        // 会话标记(logger_sd.c:424 "=== Dial Log Opened [ts] daykey=... ===" (modem_mng)
+        //           open_dial:  "=== Dial Program Started [ts] ===" (对等开场标记)
         //           logger_sd.c:527 "=== Program Exit [ts] ===")
+        // 【真机实证】open_dial 日志开场是 "Dial Program Started",此前只认 "Dial Log Opened",
+        //   导致 open_dial 首行被误计未识别(真机 954 行中恰 1 行)。二者语义对等:都是一次
+        //   会话开始,都带时间戳、都算一次进程重启。
+        bool isOpened = line.find("Dial Log Opened") != std::string::npos ||
+                        line.find("Dial Program Started") != std::string::npos;
         if (line.compare(0, 3, "===") == 0 &&
-            (line.find("Dial Log Opened") != std::string::npos ||
-             line.find("Program Exit") != std::string::npos)) {
+            (isOpened || line.find("Program Exit") != std::string::npos)) {
             size_t a = line.find('[');
             size_t b = (a == std::string::npos) ? std::string::npos : line.find(']', a);
-            if (a != std::string::npos && b != std::string::npos && b > a + 1 &&
-                line.find("Dial Log Opened") != std::string::npos) {
+            if (a != std::string::npos && b != std::string::npos && b > a + 1 && isOpened) {
                 std::string ts = line.substr(a + 1, b - a - 1);  // "YYYY-MM-DD HH:MM:SS"
                 int Y,Mo,D,h,mi,s;
                 if (std::sscanf(ts.c_str(), "%4d-%2d-%2d %2d:%2d:%2d",&Y,&Mo,&D,&h,&mi,&s)==6)
@@ -369,8 +373,10 @@ bool firstTimestamp(const std::vector<std::string>& raw, long long* t, size_t sc
         if (trim(line).empty()) continue;
 
         // 会话标记:FMT_SD 文件的首行通常就是它(logger_sd.c:424),它带的时间戳
-        // 比后面第一条普通日志更早,是这份文件真正的起点。
-        if (line.compare(0, 3, "===") == 0 && line.find("Dial Log Opened") != std::string::npos) {
+        // 比后面第一条普通日志更早,是这份文件真正的起点。open_dial 用 "Dial Program Started"。
+        if (line.compare(0, 3, "===") == 0 &&
+            (line.find("Dial Log Opened") != std::string::npos ||
+             line.find("Dial Program Started") != std::string::npos)) {
             size_t a = line.find('[');
             size_t b = (a == std::string::npos) ? std::string::npos : line.find(']', a);
             if (a != std::string::npos && b != std::string::npos && b > a + 1) {

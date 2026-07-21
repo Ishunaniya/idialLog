@@ -213,6 +213,22 @@ int main() {
         }
     }
 
+    // ── open_dial 会话标记 "=== Dial Program Started [ts] ===" 识别(v1.7.x)──
+    //    此前解析器只认 modem_mng 的 "Dial Log Opened",open_dial 的开场标记被误计未识别
+    //    (真机 954 行中恰 1 行)。二者对等:算会话、算重启、不计未识别。内联夹具直接断言。
+    {
+        std::printf("── open_dial 会话标记 Dial Program Started\n");
+        std::vector<std::string> raw = {
+            "=== Dial Program Started [2026-06-13 05:56:04] ===",
+            "[2026-06-13 05:56:05] [INIT] Starting dial initialization...",
+            "=== Program Exit [2026-06-13 12:00:00] ==="
+        };
+        std::vector<LogLine> lines; std::vector<std::string> sess; ParseAudit a;
+        parseLines(raw, lines, sess, &a);
+        cki((long)a.unparsed, 0, "Dial Program Started 不计未识别(曾误计1)");
+        cki((long)a.session, 2, "会话标记计数 2(Started + Exit)");
+    }
+
     std::printf("\n===== 真机基线断言:%d 项失败 =====\n", g_fail);
     std::printf("注:基线数字全部来自**真机日志**,不是我编的期望值。\n"
                 "    本层专治'只验结论出现、不验具体数字'的没牙齿断言(变异测试逼出来的)。\n");

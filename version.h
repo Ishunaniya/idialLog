@@ -14,13 +14,14 @@
 //   1.6.0  跨文件续行防御(多文件合并不串味)+ 时钟跳变检测报告(未授时日志中途授时)
 //   1.7.0  UI:应用图标 + 行/断网着色改用 CVD 安全角色色(删违规裸RGB) + PerMonitorV2 DPI 缩放
 //   1.7.1  修断网漏报:引擎原只认 modem_mng "recovered after Ns",漏 open_dial "Down: Ns"→报0次
+//   1.7.2  修 open_dial 会话标记漏认:"=== Dial Program Started ===" 曾误计未识别
 //          (4 次曾被报成 8 次)、多行条目续行并入上一条、混合大小写标签 [NetCheck]、
 //          接活死分支"数据服务未就绪"(此前 enum 有名字但代码从无赋值,永不触发)
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 7
-#define DL_VER_PATCH 1
+#define DL_VER_PATCH 2
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)
