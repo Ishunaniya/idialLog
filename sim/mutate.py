@@ -127,6 +127,13 @@ MUTATIONS = [
     ('时钟跳变检测关闭(clockJump 永不置位)',
      'if (prevUnsynced != curUnsynced) {',
      'if (false) {'),
+    # ── 断网引擎 open_dial 'Down:' 格式识别 —— baselinetest 靶子 ──
+    ('断网漏认 open_dial 的 Down: 格式(回退只认 after)',
+     'if (lo.find("network recovered") != std::string::npos) {',
+     'if (false) {'),
+    ('Down: 时长提取位置错(偏移5改0)',
+     'size_t q = d + 5;',
+     'size_t q = d + 0;'),
 ]
 
 # 变异后跑的测试(全绿=变异存活=测试有洞)
@@ -156,21 +163,25 @@ def _miniz_obj():
     return path
 
 
-def run_tests(tmp):
-    """编 logmodel.o + 链接测试 + 跑。全绿返回 True(=变异存活)。"""
+def run_tests(tmp, mut_name=""):
+    """编 logmodel.o + 链接测试 + 跑。全绿返回 True(=变异存活)。
+    优化:archivetest 每次要带 miniz 重编 logmodel(慢)。只有触及 archive/BOM 代码的
+    变异才需要它 —— 非 archive 变异即使 archivetest 不跑也不影响结论(它抓不到这些洞)。
+    靠变异名里的关键词判断是否 archive 相关。"""
     obj = os.path.join(tmp, "lm.o")
     if subprocess.run(CXX + ["-c", SRC, "-o", obj], cwd=ROOT,
                       stderr=subprocess.DEVNULL).returncode != 0:
         return False  # 编不过 = 变异被抓住
-    # archivetest 依赖 miniz + DL_HAVE_MINIZ:logmodel.o 也得带这个宏重编一份(单独 obj)。
-    # 其余测试用不带 miniz 的 obj。miniz.o 与变异无关(变异只改 logmodel.cpp),
-    # 用全局缓存只编一次 —— 否则每个变异重编 350KB 的 miniz.c 会拖到超时。
+    # 是否 archive 相关变异(名字含这些词) → 才编 archivetest
+    arch_kw = ("gzip", "zip", "tar", "bom", "miniz", "解压", "压缩", "魔数", "BOM")
+    is_arch = any(k.lower() in mut_name.lower() for k in arch_kw)
     obj_mz = os.path.join(tmp, "lm_mz.o")
     mzobj = _miniz_obj()
-    have_mz = ("archivetest" in TESTS and mzobj is not None
+    have_mz = (is_arch and "archivetest" in TESTS and mzobj is not None
                and subprocess.run(CXX + ["-DDL_HAVE_MINIZ", "-c", SRC, "-o", obj_mz], cwd=ROOT,
                                   stderr=subprocess.DEVNULL).returncode == 0)
-    for t in TESTS + ["selftest"]:
+    run_list = [t for t in TESTS if not (t == "archivetest" and not is_arch)]
+    for t in run_list + ["selftest"]:
         exe = os.path.join(tmp, t)
         if t == "archivetest":
             if not have_mz:
@@ -180,7 +191,7 @@ def run_tests(tmp):
             cmd = CXX + ["-o", exe, t + ".cpp", obj]
         if subprocess.run(cmd, cwd=ROOT, stderr=subprocess.DEVNULL).returncode != 0:
             return False
-    for t in TESTS:
+    for t in run_list:
         if subprocess.run([os.path.join(tmp, t)], cwd=ROOT,
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
             return False
@@ -253,7 +264,7 @@ def main():
                 bad += 1
                 continue
             open(SRC, "w", encoding="utf-8").write(orig.replace(old, new, 1))
-            survived_now = run_tests(tmp)
+            survived_now = run_tests(tmp, name)
             open(SRC, "w", encoding="utf-8").write(orig)  # 立即还原
             if survived_now:
                 print(f"  {name:<40s} ❌ 存活 —— 测试没抓住,有洞")

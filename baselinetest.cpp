@@ -198,6 +198,21 @@ int main() {
         }
     }
 
+    // ── open_dial 'Down: Ns' 断网格式(v1.7.x 修复漏报:引擎原只认 modem_mng 的
+    //    "recovered after Ns",漏了 open_dial/SDK 的 "Network Recovered ... Down: Ns",
+    //    导致明明断了十几次却报 0 次、可用率 100%。真机截图坐实后修复)──
+    {
+        auto L = load("samples/sim/open_dial_all_prints.log");
+        std::printf("── open_dial_all_prints(Down: 断网格式)\n");
+        if (!L.ok) { std::printf("   ✗ 打不开\n"); g_fail++; }
+        else {
+            // 若回退到只认 "after Ns",这两条 "Down:" 断网就会漏成 0 —— 钉死数字防回归
+            cki((long)L.outs.size(), 2, "断网次数(open_dial Down: 格式,曾漏报为0)");
+            long long tot = 0; for (const auto& o : L.outs) if (o.recovered) tot += o.dur;
+            cki(tot, 120, "断网累计时长(2×60s,从 Down: 提取)");
+        }
+    }
+
     std::printf("\n===== 真机基线断言:%d 项失败 =====\n", g_fail);
     std::printf("注:基线数字全部来自**真机日志**,不是我编的期望值。\n"
                 "    本层专治'只验结论出现、不验具体数字'的没牙齿断言(变异测试逼出来的)。\n");

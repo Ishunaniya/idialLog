@@ -523,16 +523,32 @@ bool isFaultStart(const std::string& msg) {
 }
 
 bool isRecovered(const std::string& msg, int* durSec) {
-    const char* key = "Network recovered after ";
-    std::string lo = lower(msg), lk = lower(key);
-    size_t p = lo.find(lk);
-    if (p == std::string::npos) return false;
-    size_t q = p + lk.size();
-    size_t st = q;
-    while (q < msg.size() && std::isdigit((unsigned char)msg[q])) q++;
-    if (q == st) return false;
-    if (durSec) *durSec = std::atoi(msg.substr(st, q - st).c_str());
-    return true;
+    std::string lo = lower(msg);
+    // 形态一(modem_mng):"Network recovered after Ns" —— 时长在 after 后。
+    {
+        const char* key = "network recovered after ";
+        size_t p = lo.find(key);
+        if (p != std::string::npos) {
+            size_t q = p + std::strlen(key), st = q;
+            while (q < msg.size() && std::isdigit((unsigned char)msg[q])) q++;
+            if (q > st) { if (durSec) *durSec = std::atoi(msg.substr(st, q - st).c_str()); return true; }
+        }
+    }
+    // 形态二(open_dial/SDK):"Network Recovered ... Down: Ns" —— 恢复行自报停机时长。
+    //   覆盖 "Network Recovered. Down: Ns" / "...in SDK phase (L0). Down: Ns" /
+    //        "...via card-switch (now X). Down: Ns"。真机实证 3 变体。
+    //   必须同时含 "network recovered" 与 "down:",避免把无关的 "Down:" 行误判。
+    if (lo.find("network recovered") != std::string::npos) {
+        size_t d = lo.find("down:");
+        if (d != std::string::npos) {
+            size_t q = d + 5;
+            while (q < msg.size() && msg[q] == ' ') q++;
+            size_t st = q;
+            while (q < msg.size() && std::isdigit((unsigned char)msg[q])) q++;
+            if (q > st) { if (durSec) *durSec = std::atoi(msg.substr(st, q - st).c_str()); return true; }
+        }
+    }
+    return false;
 }
 
 // 时间线保留的“状态变化类”标签。取自三仓库 dial_log/SEAS_LOG 首参的穷举
