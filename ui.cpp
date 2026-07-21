@@ -64,6 +64,16 @@ static std::vector<MetricRow> g_metrics;
 static ParseAudit            g_audit;      // 未识别行审计(“没漏消息”的硬证据)
 static PlatformInfo          g_plat;       // 自动识别的来源平台
 static std::vector<Finding>  g_findings;   // 结论引擎输出
+
+// 总览页下半的"区块卡"数据模型:每个 ── 区块 ── 变成一张卡。
+// RenderSummary 填充 g_sumCards,SummaryProc 按此画卡(与结论页同一套自绘手法)。
+struct SumCard {
+    std::wstring title;              // 卡标题(如"断网""报错/告警")
+    std::vector<std::wstring> lines; // 卡内每行文本
+    int accent = 0;                  // 0=中性 1=告警(黄) 2=严重(红)
+    bool mono = false;               // 内容是否等宽(报错/证据类用等宽对齐)
+};
+static std::vector<SumCard> g_sumCards;
 static std::vector<COLORREF> g_tlColors, g_ogColors;
 static std::vector<std::pair<long long,int>> g_csq;   // 供图表
 static int g_curPage = 0;
@@ -267,6 +277,7 @@ static void DrawTile(HDC hdc, RECT r, const std::wstring& label, const std::wstr
 
 static LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_ERASEBKGND) return 1;
+    if (msg == WM_SIZE) { InvalidateRect(hwnd, nullptr, TRUE); return 0; }
     if (msg != WM_PAINT) return DefWindowProcW(hwnd, msg, wp, lp);
 
     PAINTSTRUCT ps;
@@ -547,6 +558,89 @@ static LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
     EndPaint(hwnd, &ps);
     return 0;
 }
+
+// ============================ 总览页下半(自绘卡片) ============================
+// 把明细区块从"文本墙"改成卡片,与结论页同一套手法。数据来自 g_sumCards
+// (RenderSummary 填充,逻辑不变,只是输出改成结构化区块)。
+static int g_sumScroll = 0;
+static int g_sumContentH = 0;
+
+static LRESULT CALLBACK SummaryProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == WM_ERASEBKGND) return 1;
+    if (msg == WM_SIZE) { InvalidateRect(hwnd, nullptr, TRUE); return 0; }
+    if (msg == WM_VSCROLL) {
+        RECT rc; GetClientRect(hwnd, &rc);
+        int page = rc.bottom, maxScroll = std::max(0, g_sumContentH - page), old = g_sumScroll, line = S(40);
+        switch (LOWORD(wp)) {
+            case SB_LINEUP: g_sumScroll -= line; break;
+            case SB_LINEDOWN: g_sumScroll += line; break;
+            case SB_PAGEUP: g_sumScroll -= page; break;
+            case SB_PAGEDOWN: g_sumScroll += page; break;
+            case SB_THUMBTRACK: case SB_THUMBPOSITION: g_sumScroll = HIWORD(wp); break;
+        }
+        g_sumScroll = std::max(0, std::min(g_sumScroll, maxScroll));
+        if (g_sumScroll != old) { SetScrollPos(hwnd, SB_VERT, g_sumScroll, TRUE); InvalidateRect(hwnd, nullptr, FALSE); }
+        return 0;
+    }
+    if (msg == WM_MOUSEWHEEL) {
+        int d = GET_WHEEL_DELTA_WPARAM(wp);
+        SendMessageW(hwnd, WM_VSCROLL, MAKEWPARAM(d > 0 ? SB_LINEUP : SB_LINEDOWN, 0), 0);
+        SendMessageW(hwnd, WM_VSCROLL, MAKEWPARAM(d > 0 ? SB_LINEUP : SB_LINEDOWN, 0), 0);
+        return 0;
+    }
+    if (msg != WM_PAINT) return DefWindowProcW(hwnd, msg, wp, lp);
+
+    PAINTSTRUCT ps; HDC hw = BeginPaint(hwnd, &ps);
+    RECT rc; GetClientRect(hwnd, &rc);
+    HDC hdc = CreateCompatibleDC(hw);
+    HBITMAP bmp = CreateCompatibleBitmap(hw, rc.right, rc.bottom);
+    HGDIOBJ obm = SelectObject(hdc, bmp);
+    HBRUSH pageBg = CreateSolidBrush(th::page);
+    FillRect(hdc, &rc, pageBg); DeleteObject(pageBg);
+
+    const int M = S(16), CARD_PAD = S(18), GAP = S(14), BAND = S(5);
+    int cardW = rc.right - 2 * M;
+    int textX0 = M + CARD_PAD + BAND;
+    int y = M - g_sumScroll;
+
+    for (const auto& c : g_sumCards) {
+        COLORREF band = (c.accent == 2) ? th::rowFault : (c.accent == 1 ? th::rowWarn : th::inkMuted);
+        HFONT lineFont = c.mono ? hFontMono : hFontUI;
+        int titleH = S(24), lineH = c.mono ? S(18) : S(20);
+        int h = CARD_PAD + titleH + S(6) + (int)c.lines.size() * lineH + CARD_PAD;
+
+        // 画卡
+        RECT cr{ M, y, M + cardW, y + h };
+        HBRUSH bg = CreateSolidBrush(th::surface); FillRect(hdc, &cr, bg); DeleteObject(bg);
+        HPEN pn = CreatePen(PS_SOLID, 1, th::border);
+        HGDIOBJ op = SelectObject(hdc, pn), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+        RoundRect(hdc, cr.left, cr.top, cr.right, cr.bottom, S(8), S(8));
+        SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(pn);
+        RECT b{ M + S(1), y + S(2), M + S(1) + BAND, y + h - S(2) };
+        HBRUSH bb = CreateSolidBrush(band); FillRect(hdc, &b, bb); DeleteObject(bb);
+
+        int ty = y + CARD_PAD;
+        DrawText_(hdc, textX0, ty, c.title, hFontSect,
+                  c.accent == 2 ? th::rowFault : (c.accent == 1 ? th::rowWarn : th::inkPri));
+        ty += titleH + S(6);
+        for (const auto& ln : c.lines) {
+            DrawText_(hdc, textX0, ty, ln, lineFont, th::inkPri);
+            ty += lineH;
+        }
+        y += h + GAP;
+    }
+
+    g_sumContentH = y + g_sumScroll;
+    SCROLLINFO si{}; si.cbSize = sizeof(si);
+    si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
+    si.nMin = 0; si.nMax = std::max(0, g_sumContentH); si.nPage = rc.bottom; si.nPos = g_sumScroll;
+    SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
+
+    BitBlt(hw, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
+    SelectObject(hdc, obm); DeleteObject(bmp); DeleteDC(hdc);
+    EndPaint(hwnd, &ps);
+    return 0;
+}
 static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_ERASEBKGND) return 1;   // 交给 WM_PAINT,避免闪烁
     if (msg != WM_PAINT) return DefWindowProcW(hwnd, msg, wp, lp);
@@ -700,15 +794,31 @@ static COLORREF RowColor(const LogLine& l) {
 }
 
 static void RenderSummary() {
-    std::wstring o;
-    if (g_view.empty()) { SetWindowTextW(hSummary, L"筛选后没有可解析的日志行。"); return; }
+    g_sumCards.clear();
+    g_sumScroll = 0;
+    if (hSummary) { SetScrollPos(hSummary, SB_VERT, 0, TRUE); }
+    if (g_view.empty()) {
+        g_sumCards.push_back({ L"明细", { L"筛选后没有可解析的日志行。" }, 0, false });
+        if (hSummary) InvalidateRect(hSummary, nullptr, FALSE);
+        return;
+    }
 
-    // 跨度/平台/可用率已在仪表盘,这里从"明细"起头(t0/t1 与 span 随之不再需要)
-    o += FmtW(L"  日志行数 : %d    进程会话(重启): %d\r\n", (int)g_view.size(), (int)g_sessions.size());
-    if (g_sessions.size() > 1) {
-        o += FmtW(L"  ⚠ 检测到 %d 次进程重启 (L3 exit / watchdog 拉起?):\r\n", (int)g_sessions.size());
-        for (size_t i = 0; i < g_sessions.size() && i < 6; ++i)
-            o += L"      " + U8ToW(g_sessions[i]) + L"\r\n";
+    auto add = [&](std::wstring title, std::vector<std::wstring> lines, int accent = 0, bool mono = false) {
+        g_sumCards.push_back({ std::move(title), std::move(lines), accent, mono });
+    };
+
+    // ── 概览 ──
+    {
+        std::vector<std::wstring> ls;
+        ls.push_back(FmtW(L"日志行数 %d    进程会话(重启) %d", (int)g_view.size(), (int)g_sessions.size()));
+        int acc = 0;
+        if (g_sessions.size() > 1) {
+            acc = 1;
+            ls.push_back(FmtW(L"⚠ 检测到 %d 次进程重启 (L3 exit / watchdog 拉起?)", (int)g_sessions.size()));
+            for (size_t i = 0; i < g_sessions.size() && i < 6; ++i)
+                ls.push_back(L"   " + U8ToW(g_sessions[i]));
+        }
+        add(L"概览", ls, acc);
     }
 
     // 断网
@@ -720,15 +830,15 @@ static void RenderSummary() {
         if (x.dur > longest) { longest = x.dur; longestAt = x.end; }
         if (x.dur <= 30) b0++; else if (x.dur <= 60) b1++; else if (x.dur <= 300) b2++; else b3++;
     }
-    // 断网次数/累计/可用率/分布 已在上方仪表盘,这里不重复,只补仪表盘没有的
     if (!g_outages.empty()) {
-        o += L"\r\n── 断网 ──\r\n";
+        std::vector<std::wstring> ls; int acc = 0;
         if (longest > 0)
-            o += FmtW(L"  最长单次 %s 发生在 %s\r\n", U8ToW(fmtDur(longest)).c_str(),
-                      U8ToW(fmtTime(longestAt, "MD")).c_str());
-        if (!g_outages.back().recovered)
-            o += FmtW(L"  ⚠ 日志结束时仍处于断网(未见恢复),始于 %s\r\n",
-                      U8ToW(fmtTime(g_outages.back().start, "MD")).c_str());
+            ls.push_back(FmtW(L"最长单次 %s 发生在 %s", U8ToW(fmtDur(longest)).c_str(), U8ToW(fmtTime(longestAt, "MD")).c_str()));
+        if (!g_outages.back().recovered) {
+            acc = 2;
+            ls.push_back(FmtW(L"⚠ 日志结束时仍处于断网(未见恢复),始于 %s", U8ToW(fmtTime(g_outages.back().start, "MD")).c_str()));
+        }
+        if (!ls.empty()) add(L"断网", ls, acc);
     }
 
     // 信号/温度/通道
@@ -747,45 +857,41 @@ static void RenderSummary() {
         if (m.ch != "-") chans[m.ch]++;
         if (m.rx != "-") rxs.push_back({ m.t, atoll(m.rx.c_str()) });
     }
-    // CSQ 三值已在仪表盘卡片上,这里只留卡片放不下的弱信号统计
-    if (csqN && weak) {
-        o += L"\r\n── 信号 CSQ ──\r\n";
-        o += FmtW(L"  弱信号(<10) : %d 次 / 共 %d 样本  首次 %s\r\n",
-                  weak, csqN, U8ToW(fmtTime(weakFirst, "MD")).c_str());
-    }
+    if (csqN && weak)
+        add(L"信号 CSQ", { FmtW(L"弱信号(<10)  %d 次 / 共 %d 样本   首次 %s", weak, csqN, U8ToW(fmtTime(weakFirst, "MD")).c_str()) }, 1);
     if (tN) {
-        o += L"\r\n── 温度 ──\r\n";
-        o += FmtW(L"  max=%d°C  avg=%.0f°C", tMax, (double)tSum / tN);
-        if (hot) o += FmtW(L"   ⚠ ≥85°C %d次", hot);
-        o += L"\r\n";
+        std::wstring s = FmtW(L"max=%d°C   avg=%.0f°C", tMax, (double)tSum / tN);
+        if (hot) s += FmtW(L"    ⚠ ≥85°C %d 次", hot);
+        add(L"温度", { s }, hot ? 1 : 0);
     }
     if (!chans.empty()) {
-        int tot = 0;
-        for (auto& kv : chans) tot += kv.second;
-        o += L"\r\n── 通道占比 ──\r\n  ";
-        for (auto& kv : chans) o += FmtW(L"%s:%.0f%%   ", U8ToW(kv.first).c_str(), 100.0 * kv.second / tot);
-        o += L"\r\n";
+        int tot = 0; for (auto& kv : chans) tot += kv.second;
+        std::wstring s;
+        for (auto& kv : chans) s += FmtW(L"%s:%.0f%%    ", U8ToW(kv.first).c_str(), 100.0 * kv.second / tot);
+        add(L"通道占比", { s });
     }
 
     // RX 停滞
     auto stalls = detectRxStall(rxs);
     if (!stalls.empty()) {
-        o += L"\r\n── 数据假死征兆(RX_PKT 停滞) ──\r\n";
+        std::vector<std::wstring> ls;
         for (size_t i = 0; i < stalls.size() && i < 6; ++i)
-            o += FmtW(L"  RX_PKT 卡住 %s  %s → %s\r\n", U8ToW(fmtDur(stalls[i].dur)).c_str(),
-                      U8ToW(fmtTime(stalls[i].start, "MD")).c_str(), U8ToW(fmtTime(stalls[i].end, "HM")).c_str());
-        if (stalls.size() > 6) o += FmtW(L"  ... 另有 %d 段\r\n", (int)stalls.size() - 6);
+            ls.push_back(FmtW(L"RX_PKT 卡住 %s  %s → %s", U8ToW(fmtDur(stalls[i].dur)).c_str(),
+                         U8ToW(fmtTime(stalls[i].start, "MD")).c_str(), U8ToW(fmtTime(stalls[i].end, "HM")).c_str()));
+        if (stalls.size() > 6) ls.push_back(FmtW(L"... 另有 %d 段", (int)stalls.size() - 6));
+        add(L"数据假死征兆(RX_PKT 停滞)", ls, 1, true);
     }
 
     // 报错
     std::vector<const LogLine*> errs;
     for (const auto& l : g_view) if (isErrLine(l)) errs.push_back(&l);
     if (!errs.empty()) {
-        o += FmtW(L"\r\n── 报错/告警 (%d) ──\r\n", (int)errs.size());
+        std::vector<std::wstring> ls;
         for (size_t i = 0; i < errs.size() && i < 12; ++i)
-            o += FmtW(L"  %s  [%s] %s\r\n", U8ToW(errs[i]->ts).c_str(),
-                      U8ToW(errs[i]->tag).c_str(), U8ToW(errs[i]->msg.substr(0, 90)).c_str());
-        if (errs.size() > 12) o += FmtW(L"  ... 另有 %d 条\r\n", (int)errs.size() - 12);
+            ls.push_back(FmtW(L"%s  [%s] %s", U8ToW(errs[i]->ts).c_str(),
+                         U8ToW(errs[i]->tag).c_str(), U8ToW(errs[i]->msg.substr(0, 90)).c_str()));
+        if (errs.size() > 12) ls.push_back(FmtW(L"... 另有 %d 条", (int)errs.size() - 12));
+        add(FmtW(L"报错/告警 (%d)", (int)errs.size()), ls, 2, true);
     }
 
     // 关键事件计数
@@ -801,12 +907,13 @@ static void RenderSummary() {
         if (l.tag == "OPER") oper++;
         if (l.tag.compare(0, 4, "CELL") == 0) cells++;
     }
-    o += L"\r\n── 关键事件计数 ──\r\n";
-    o += FmtW(L"  通道切换:%d  SDK断开:%d  状态迁移:%d  CFUN:%d  切卡:%d  选网:%d  小区变更:%d\r\n",
-              sw, disc, states, cfun, slot, oper, cells);
-    o += L"\r\n提示: “时间线”看事件流, “断网”看逐次, “指标/信号图”看 CSQ 与 ΔRX(=0 即数据不通)。\r\n";
+    add(L"关键事件计数",
+        { FmtW(L"通道切换:%d   SDK断开:%d   状态迁移:%d   CFUN:%d   切卡:%d   选网:%d   小区变更:%d",
+               sw, disc, states, cfun, slot, oper, cells),
+          L"",
+          L"提示: “时间线”看事件流, “断网”看逐次, “指标/信号图”看 CSQ 与 ΔRX(=0 即数据不通)。" });
 
-    SetWindowTextW(hSummary, o.c_str());
+    if (hSummary) InvalidateRect(hSummary, nullptr, FALSE);
 }
 
 static void RenderTimeline() {
@@ -1302,8 +1409,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         hDash = CreateWindowExW(0, L"dialDashCls", L"", WS_CHILD,
                                 0, 0, 10, 10, hwnd, (HMENU)(INT_PTR)IDC_DASH,
                                 GetModuleHandleW(nullptr), nullptr);
-        hSummary = Mk(L"EDIT", L"", WS_BORDER | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY,
-                      0, 0, 10, 10, IDC_SUMMARY, hFontMono);
+        hSummary = CreateWindowExW(0, L"dialSummaryCls", L"",
+                                   WS_CHILD | WS_VISIBLE | WS_VSCROLL,
+                                   0, 0, 10, 10, hwnd, (HMENU)(INT_PTR)IDC_SUMMARY, GetModuleHandleW(nullptr), nullptr);
         hFindings = CreateWindowExW(0, L"dialFindingsCls", L"",
                                     WS_CHILD | WS_VISIBLE | WS_VSCROLL,
                                     0, 0, 100, 100, hwnd, (HMENU)(INT_PTR)IDC_FINDINGS, GetModuleHandleW(nullptr), nullptr);
@@ -1475,6 +1583,14 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow) 
     wcDash.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wcDash.lpszClassName = L"dialDashCls";
     RegisterClassExW(&wcDash);
+
+    WNDCLASSEXW wcSum{};
+    wcSum.cbSize = sizeof(wcSum);
+    wcSum.lpfnWndProc = SummaryProc;
+    wcSum.hInstance = hInst;
+    wcSum.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wcSum.lpszClassName = L"dialSummaryCls";
+    RegisterClassExW(&wcSum);
 
     WNDCLASSEXW wcFind{};
     wcFind.cbSize = sizeof(wcFind);
