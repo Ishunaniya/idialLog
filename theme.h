@@ -52,12 +52,15 @@ inline const COLORREF s8_red     = HEX2RGB(0xe34948);
 // ---- 断网带:critical 的极淡水洗(~10% 不透明度压在 surface 上),不是饱和色块 ----
 inline const COLORREF outageBand = HEX2RGB(0xf8e5e5);
 
-// ---- 时间线行着色(沿用分类序列的固定槽位) ----
-inline const COLORREF rowRecovered = good;
-inline const COLORREF rowFault     = critical;
-inline const COLORREF rowRoamlink  = s5_aqua;
-inline const COLORREF rowState     = s1_blue;
-inline const COLORREF rowSdk       = s7_violet;
+// ---- 时间线行着色(小字号,需 WCAG≥4.5,与图表/仪表盘的大元素色解耦)----
+// 序列色(good/s1_blue/s5_aqua)是为大色块/大字设计的,直接做小字对比度不足
+// (good 3.35 / s1_blue 4.42 / s5_aqua 2.82)。这里给行文字用同色相的加深版,
+// 大元素仍用原序列色。rowFault/rowErr/rowSdk 原本就达标,沿用。
+inline const COLORREF rowRecovered = HEX2RGB(0x0a880a);   // good 加深:3.35→4.63
+inline const COLORREF rowFault     = critical;            // 4.80 达标
+inline const COLORREF rowRoamlink  = HEX2RGB(0x14855c);   // s5_aqua 加深:2.82→4.63
+inline const COLORREF rowState     = HEX2RGB(0x2975d1);   // s1_blue 加深:4.42→4.61
+inline const COLORREF rowSdk       = s7_violet;           // 8.56 达标
 inline const COLORREF rowWarn      = HEX2RGB(0x8a6100);   // warning 在浅底上做文字不合格,用同色系深步进
 inline const COLORREF rowErr       = critical;
 

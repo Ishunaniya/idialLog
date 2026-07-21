@@ -5,6 +5,10 @@
    嵌入清单以启用 comctl32 v6(现代控件外观)与 DPI 感知 */
 1 24 "app.manifest"
 
+/* 应用图标:数字最小的 ICON 资源即 exe 在资源管理器/任务栏显示的图标。
+   IDI_APPICON=101,与 ui.cpp 的 LoadIconW 对应。图标为多尺寸(16..256)。 */
+101 ICON "dialLog.ico"
+
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION     DL_VER_MAJOR,DL_VER_MINOR,DL_VER_PATCH,0
 PRODUCTVERSION  DL_VER_MAJOR,DL_VER_MINOR,DL_VER_PATCH,0

@@ -59,7 +59,7 @@ logmodel.o: logmodel.cpp logmodel.h miniz.h
 miniz.o: miniz.c miniz.h
 	$(CC) $(MINIZ_CFLAGS) -c $< -o $@
 
-resource.o: resource.rc app.manifest version.h
+resource.o: resource.rc app.manifest version.h dialLog.ico
 	$(WINDRES) -c 65001 $< -O coff -o $@
 
 # 解析层自测:logmodel 不含 Win32 依赖,用本机 g++ 直接编译运行

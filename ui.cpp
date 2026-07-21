@@ -50,15 +50,6 @@ using namespace dl;
 #define IDC_PASTE     1021
 #define IDC_DASH      1022
 
-// ============================ 配色 ============================
-static const COLORREF CRED  = RGB(200, 40, 40);
-static const COLORREF CGRN  = RGB(30, 140, 60);
-static const COLORREF CYEL  = RGB(170, 120, 0);
-static const COLORREF CBLU  = RGB(40, 90, 200);
-static const COLORREF CMAG  = RGB(160, 40, 160);
-static const COLORREF CTEAL = RGB(0, 130, 140);
-static const COLORREF CTXT  = RGB(0, 0, 0);
-
 // ============================ 全局状态 ============================
 static HWND hMain, hTab, hStatus, hFileLbl;
 static HWND hTagBox, hGrepBox, hSinceBox, hUntilBox;
@@ -77,8 +68,17 @@ static std::vector<COLORREF> g_tlColors, g_ogColors;
 static std::vector<std::pair<long long,int>> g_csq;   // 供图表
 static int g_curPage = 0;
 
-static const int TOP_H   = 78;
-static const int CHART_H = 190;
+// ============================ DPI 缩放中枢 ============================
+// PerMonitorV2:所有尺寸以 96 DPI 逻辑像素书写,经 S() 换算成当前显示器物理像素。
+// g_dpi 在 WM_CREATE 初始化、WM_DPICHANGED 更新。一处控制,避免 45 处散改漏改。
+static int g_dpi = 96;
+static inline int S(int logical) { return MulDiv(logical, g_dpi, 96); }
+// 字体高度是负值(-12 表示字符高 12px),换算要保留符号
+static inline int SF(int logicalNeg) { return -MulDiv(-logicalNeg, g_dpi, 96); }
+
+// 这些原来是编译期常量,DPI 化后必须运行期算(依赖 g_dpi),故改成取值函数。
+static inline int TOP_H()   { return S(78); }
+static inline int CHART_H() { return S(190); }
 
 // ============================ 字符串工具 ============================
 static std::wstring U8ToW(const std::string& s) {
@@ -490,15 +490,30 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
 // ============================ 渲染 ============================
 static COLORREF RowColor(const LogLine& l) {
-    if (isRecovered(l.msg, nullptr)) return CGRN;
-    if (isFaultStart(l.msg))         return CRED;
+    // 用 theme.h 的角色色(CVD 色盲安全、经校验),不再用裸 RGB —— theme.h 硬规矩:代码只写角色。
+    //
+    // 着色的语义识别比断网引擎更宽:除 isFaultStart/isRecovered(喂断网统计,措辞严格,
+    // 不能动)外,这里额外认 open_dial/SDK 那套措辞 —— 真机(open_dial 1.27.3)的故障/恢复
+    // 主线是 "Network Recovered in SDK phase"、"Snapshot ..._fault_/_recovery_"、[RECOVERY*],
+    // 只按 tag 上色会把它们漏成黑色。**只影响颜色,不影响任何统计**。
+    const std::string& m = l.msg;
+    auto has = [&](const char* k){ return m.find(k) != std::string::npos; };
+
+    // 恢复(绿):断网引擎认的 + SDK 相 + recovery 快照 + RECOVERY 动作 tag
+    if (isRecovered(m, nullptr) || has("Network Recovered") || has("_recovery_") ||
+        l.tag.compare(0, 8, "RECOVERY") == 0)
+        return th::rowRecovered;
+    // 故障(红):断网引擎认的 + fault 快照 + 硬告警
+    if (isFaultStart(m) || has("_fault_") || has("Net Fail Duration"))
+        return th::rowFault;
+
     std::string t = l.tag;
-    if (t == "ERROR" || t == "FATAL" || t == "CFUN") return CRED;
-    if (t == "WARN" || t == "WARNING" || t == "ALARM" || t == "SLOT" || t == "OPER") return CYEL;
-    if (t == "ROAMLINK") return CTEAL;
-    if (t == "STATE")    return CBLU;
-    if (t == "SDK")      return CMAG;
-    return CTXT;
+    if (t == "ERROR" || t == "FATAL" || t == "CFUN") return th::rowErr;
+    if (t == "WARN" || t == "WARNING" || t == "ALARM" || t == "SLOT" || t == "OPER") return th::rowWarn;
+    if (t == "ROAMLINK") return th::rowRoamlink;
+    if (t == "STATE")    return th::rowState;
+    if (t == "SDK")      return th::rowSdk;
+    return th::inkPri;
 }
 
 static void RenderSummary() {
@@ -638,11 +653,11 @@ static void RenderOutages() {
         if (o.recovered) {
             LvSet(hOutage, row, 2, U8ToW(fmtTime(o.end, "MD")));
             LvSet(hOutage, row, 3, U8ToW(fmtDur(o.dur)));
-            g_ogColors.push_back(o.dur > 60 ? CRED : (o.dur > 30 ? CYEL : CTXT));
+            g_ogColors.push_back(o.dur > 60 ? th::critical : (o.dur > 30 ? th::rowWarn : th::inkPri));
         } else {
             LvSet(hOutage, row, 2, L"未恢复");
             LvSet(hOutage, row, 3, L"?");
-            g_ogColors.push_back(CRED);
+            g_ogColors.push_back(th::critical);
         }
         row++;
     }
@@ -1014,7 +1029,7 @@ static void Layout() {
     GetWindowRect(hStatus, &rs);
     int statusH = rs.bottom - rs.top;
 
-    int tabTop = TOP_H;
+    int tabTop = TOP_H();
     int tabH = rc.bottom - tabTop - statusH;
     if (tabH < 40) tabH = 40;
     MoveWindow(hTab, 0, tabTop, rc.right, tabH, TRUE);
@@ -1023,9 +1038,9 @@ static void Layout() {
     TabCtrl_AdjustRect(hTab, FALSE, &d);
 
     // 总览页:上=仪表盘(固定高),下=详情文字
-    const int DASH_H = 336;
-    int dh = std::min<int>(DASH_H, (int)(d.bottom - d.top) - 60);
-    if (dh < 80) dh = 80;
+    const int DASH_H = S(336);
+    int dh = std::min<int>(DASH_H, (int)(d.bottom - d.top) - S(60));
+    if (dh < S(80)) dh = S(80);
     MoveWindow(hDash,    d.left, d.top, d.right - d.left, dh, TRUE);
     MoveWindow(hSummary, d.left, d.top + dh, d.right - d.left, (d.bottom - d.top) - dh, TRUE);
     MoveWindow(hFindings, d.left, d.top, d.right - d.left, d.bottom - d.top, TRUE);
@@ -1036,17 +1051,17 @@ static void Layout() {
     MoveWindow(hUnparsed, d.left, d.top, d.right - d.left, d.bottom - d.top, TRUE);
 
     // 指标页:图表(上) + 表格(中) + 导出按钮(下)
-    int ch = std::min<int>(CHART_H, (int)(d.bottom - d.top) / 2);   // RECT 成员是 LONG,显式定型
+    int ch = std::min<int>(CHART_H(), (int)(d.bottom - d.top) / 2);   // RECT 成员是 LONG,显式定型
     MoveWindow(hChart,  d.left, d.top, d.right - d.left, ch, TRUE);
-    int btnH = 28;
+    int btnH = S(28);
     int gridTop = d.top + ch;
     int gridH = (d.bottom - d.top) - ch - btnH;
-    if (gridH < 30) gridH = 30;
+    if (gridH < S(30)) gridH = S(30);
     MoveWindow(hMetric, d.left, gridTop, d.right - d.left, gridH, TRUE);
-    MoveWindow(hExport, d.left, gridTop + gridH, 160, btnH, TRUE);
+    MoveWindow(hExport, d.left, gridTop + gridH, S(160), btnH, TRUE);
 
     // 顶部文件名标签跟随宽度
-    MoveWindow(hFileLbl, 196, 10, std::max(200, (int)rc.right - 208), 20, TRUE);  // 让开“粘贴日志”按钮
+    MoveWindow(hFileLbl, S(196), S(10), std::max(S(200), (int)rc.right - S(208)), S(20), TRUE);  // 让开“粘贴日志”按钮
 }
 
 // ============================ 主窗口 ============================
@@ -1072,16 +1087,28 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
     case WM_CREATE: {
         hMain = hwnd;
+        // DPI 初始化(必须在建控件/字体前):PerMonitorV2 下 GetDpiForWindow 给出本窗口所在
+        // 显示器的 DPI。动态取函数指针,老系统(无此 API)回退 96。
+        {
+            HMODULE u32 = GetModuleHandleW(L"user32.dll");
+            typedef UINT (WINAPI *GetDpiForWindow_t)(HWND);
+            auto pGetDpiForWindow = u32 ? reinterpret_cast<GetDpiForWindow_t>(
+                reinterpret_cast<void*>(GetProcAddress(u32, "GetDpiForWindow"))) : nullptr;
+            if (pGetDpiForWindow) {
+                UINT d = pGetDpiForWindow(hwnd);
+                if (d >= 72 && d <= 480) g_dpi = (int)d;   // 合理范围保护
+            }
+        }
         // 字体
-        hFontUI = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+        hFontUI = CreateFontW(SF(-12), 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
                               OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
                               DEFAULT_PITCH | FF_DONTCARE, L"Microsoft YaHei UI");
-        hFontMono = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+        hFontMono = CreateFontW(SF(-12), 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
                                 OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
                                 FIXED_PITCH | FF_MODERN, L"Consolas");
         // 仪表盘字体。hero ≥48px;大数字用比例数字(非等宽),等宽只留给要对齐的列
         auto mkf = [](int h, int w) {
-            return CreateFontW(h, 0, 0, 0, w, 0, 0, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+            return CreateFontW(SF(h), 0, 0, 0, w, 0, 0, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
                                CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
                                L"Microsoft YaHei UI");
         };
@@ -1090,27 +1117,27 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         hFontTileLbl = mkf(-12, FW_NORMAL);
         hFontSect    = mkf(-14, FW_SEMIBOLD);
 
-        // 顶部工具栏
-        Mk(L"BUTTON", L"打开日志…", BS_PUSHBUTTON, 8, 6, 96, 26, IDC_OPEN, hFontUI);
-        Mk(L"BUTTON", L"粘贴日志", BS_PUSHBUTTON, 108, 6, 80, 26, IDC_PASTE, hFontUI);
+        // 顶部工具栏(逻辑像素,S() 换算到物理像素)
+        Mk(L"BUTTON", L"打开日志…", BS_PUSHBUTTON, S(8), S(6), S(96), S(26), IDC_OPEN, hFontUI);
+        Mk(L"BUTTON", L"粘贴日志", BS_PUSHBUTTON, S(108), S(6), S(80), S(26), IDC_PASTE, hFontUI);
         hFileLbl = Mk(L"STATIC", L"未加载 —— 拖入 dial_*.log(可多选),或复制日志文本后按 Ctrl+V / 点“粘贴日志”",
-                      SS_LEFTNOWORDWRAP | SS_ENDELLIPSIS, 196, 10, 820, 20, IDC_FILELBL, hFontUI);
+                      SS_LEFTNOWORDWRAP | SS_ENDELLIPSIS, S(196), S(10), S(820), S(20), IDC_FILELBL, hFontUI);
 
         int y = 44;
-        Mk(L"STATIC", L"标签:", SS_LEFT, 8, y + 4, 36, 18, 0, hFontUI);
-        hTagBox = Mk(L"EDIT", L"", WS_BORDER | ES_AUTOHSCROLL, 46, y, 140, 22, IDC_TAGBOX, hFontUI);
-        Mk(L"STATIC", L"筛选(正则):", SS_LEFT, 196, y + 4, 74, 18, 0, hFontUI);
-        hGrepBox = Mk(L"EDIT", L"", WS_BORDER | ES_AUTOHSCROLL, 272, y, 210, 22, IDC_GREPBOX, hFontUI);
-        Mk(L"STATIC", L"起:", SS_LEFT, 492, y + 4, 22, 18, 0, hFontUI);
-        hSinceBox = Mk(L"EDIT", L"", WS_BORDER | ES_AUTOHSCROLL, 516, y, 84, 22, IDC_SINCEBOX, hFontUI);
-        Mk(L"STATIC", L"止:", SS_LEFT, 608, y + 4, 22, 18, 0, hFontUI);
-        hUntilBox = Mk(L"EDIT", L"", WS_BORDER | ES_AUTOHSCROLL, 632, y, 84, 22, IDC_UNTILBOX, hFontUI);
-        Mk(L"BUTTON", L"应用筛选", BS_PUSHBUTTON, 728, y - 2, 84, 26, IDC_APPLY, hFontUI);
-        Mk(L"BUTTON", L"清空", BS_PUSHBUTTON, 818, y - 2, 60, 26, IDC_CLEAR, hFontUI);
+        Mk(L"STATIC", L"标签:", SS_LEFT, S(8), S(y + 4), S(36), S(18), 0, hFontUI);
+        hTagBox = Mk(L"EDIT", L"", WS_BORDER | ES_AUTOHSCROLL, S(46), S(y), S(140), S(22), IDC_TAGBOX, hFontUI);
+        Mk(L"STATIC", L"筛选(正则):", SS_LEFT, S(196), S(y + 4), S(74), S(18), 0, hFontUI);
+        hGrepBox = Mk(L"EDIT", L"", WS_BORDER | ES_AUTOHSCROLL, S(272), S(y), S(210), S(22), IDC_GREPBOX, hFontUI);
+        Mk(L"STATIC", L"起:", SS_LEFT, S(492), S(y + 4), S(22), S(18), 0, hFontUI);
+        hSinceBox = Mk(L"EDIT", L"", WS_BORDER | ES_AUTOHSCROLL, S(516), S(y), S(84), S(22), IDC_SINCEBOX, hFontUI);
+        Mk(L"STATIC", L"止:", SS_LEFT, S(608), S(y + 4), S(22), S(18), 0, hFontUI);
+        hUntilBox = Mk(L"EDIT", L"", WS_BORDER | ES_AUTOHSCROLL, S(632), S(y), S(84), S(22), IDC_UNTILBOX, hFontUI);
+        Mk(L"BUTTON", L"应用筛选", BS_PUSHBUTTON, S(728), S(y - 2), S(84), S(26), IDC_APPLY, hFontUI);
+        Mk(L"BUTTON", L"清空", BS_PUSHBUTTON, S(818), S(y - 2), S(60), S(26), IDC_CLEAR, hFontUI);
 
         // 页签
         hTab = CreateWindowExW(0, WC_TABCONTROLW, L"", WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
-                               0, TOP_H, 100, 100, hwnd, (HMENU)(INT_PTR)IDC_TAB,
+                               0, TOP_H(), 100, 100, hwnd, (HMENU)(INT_PTR)IDC_TAB,
                                GetModuleHandleW(nullptr), nullptr);
         SendMessageW(hTab, WM_SETFONT, (WPARAM)hFontUI, TRUE);
         const wchar_t* tabs[] = { L"总览", L"结论 ★", L"时间线", L"断网",
@@ -1158,10 +1185,42 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         Layout();
         return 0;
 
+    // 窗口被拖到不同 DPI 的显示器(或系统缩放变更):更新 g_dpi,重建字体(字体尺寸是
+    // 创建时固定的,不随 DPI 自动变),按系统建议的新矩形调整窗口,再重排。
+    case WM_DPICHANGED: {
+        g_dpi = HIWORD(wp);   // 新 DPI(x,y 相同)
+        // 重建所有字体
+        auto mkf2 = [](int h, int w, const wchar_t* face, DWORD pitch) {
+            return CreateFontW(SF(h), 0, 0, 0, w, 0, 0, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+                               CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, pitch, face);
+        };
+        HFONT oUI = hFontUI, oMono = hFontMono, oHero = hFontHero,
+              oTV = hFontTileVal, oTL = hFontTileLbl, oSect = hFontSect;
+        hFontUI      = mkf2(-12, FW_NORMAL,  L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
+        hFontMono    = mkf2(-12, FW_NORMAL,  L"Consolas",           FIXED_PITCH | FF_MODERN);
+        hFontHero    = mkf2(-48, FW_SEMIBOLD,L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
+        hFontTileVal = mkf2(-22, FW_SEMIBOLD,L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
+        hFontTileLbl = mkf2(-12, FW_NORMAL,  L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
+        hFontSect    = mkf2(-14, FW_SEMIBOLD,L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
+        // 把新字体铺给顶部控件(子控件字体逐个重设)
+        for (HWND c = GetWindow(hwnd, GW_CHILD); c; c = GetWindow(c, GW_HWNDNEXT))
+            SendMessageW(c, WM_SETFONT, (WPARAM)hFontUI, TRUE);
+        SendMessageW(hTab, WM_SETFONT, (WPARAM)hFontUI, TRUE);
+        // 删旧字体
+        for (HFONT f : { oUI, oMono, oHero, oTV, oTL, oSect }) if (f) DeleteObject(f);
+        // 按系统建议矩形调整窗口(会触发 WM_SIZE → Layout)
+        RECT* nr = (RECT*)lp;
+        SetWindowPos(hwnd, nullptr, nr->left, nr->top,
+                     nr->right - nr->left, nr->bottom - nr->top,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+        InvalidateRect(hwnd, nullptr, TRUE);
+        return 0;
+    }
+
     case WM_GETMINMAXINFO: {
         MINMAXINFO* mmi = (MINMAXINFO*)lp;
-        mmi->ptMinTrackSize.x = 920;
-        mmi->ptMinTrackSize.y = 520;
+        mmi->ptMinTrackSize.x = S(920);
+        mmi->ptMinTrackSize.y = S(520);
         return 0;
     }
 
@@ -1282,8 +1341,15 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow) 
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
     wc.lpszClassName = L"dialLogMainCls";
-    wc.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
-    wc.hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
+    // 自定义应用图标(resource.rc 中 IDI_APPICON=101):任务栏/Alt-Tab/标题栏都用它。
+    // LoadImage 按需求尺寸取 ico 内最匹配的一档(大图标取 32,小图标取 16)。
+    HICON hIconBig = (HICON)LoadImageW(hInst, MAKEINTRESOURCEW(101), IMAGE_ICON,
+                                       0, 0, LR_DEFAULTSIZE | LR_SHARED);
+    HICON hIconSm  = (HICON)LoadImageW(hInst, MAKEINTRESOURCEW(101), IMAGE_ICON,
+                                       GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
+                                       LR_SHARED);
+    wc.hIcon   = hIconBig ? hIconBig : LoadIcon(nullptr, IDI_APPLICATION);
+    wc.hIconSm = hIconSm  ? hIconSm  : LoadIcon(nullptr, IDI_APPLICATION);
     RegisterClassExW(&wc);
 
     // 标题带版本:用户发来的截图能直接看出是哪个 build
@@ -1293,6 +1359,14 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow) 
                              CW_USEDEFAULT, CW_USEDEFAULT, 1180, 760,
                              nullptr, nullptr, hInst, nullptr);
     if (!w) return 1;
+    // 初始尺寸 1180×760 是 96 DPI 逻辑值。WM_CREATE 已把 g_dpi 设为本窗口 DPI,
+    // 若非 96 则按比例放大外框(否则高分屏上窗口偏小、装不下放大后的内容)。
+    if (g_dpi != 96) {
+        RECT wr; GetWindowRect(w, &wr);
+        SetWindowPos(w, nullptr, 0, 0,
+                     MulDiv(1180, g_dpi, 96), MulDiv(760, g_dpi, 96),
+                     SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
     ShowWindow(w, nCmdShow);
     UpdateWindow(w);
 
