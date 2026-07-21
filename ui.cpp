@@ -363,7 +363,189 @@ static LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     return 0;
 }
 
-// ============================ 图表(自绘) ============================
+// ============================ 结论页(自绘卡片) ============================
+// 把结论从"文本墙"改成卡片:浅底、白卡圆角、左侧严重度色带、留白分层。
+// 内容仍来自 g_findings / g_plat / g_audit(逻辑层不动),此处只负责画。
+// 支持垂直滚动(内容常超一屏)。绘制手法沿用仪表盘(RoundRect/DrawText_/双缓冲)。
+static int g_findScroll = 0;      // 当前滚动偏移(逻辑像素,已过 S())
+static int g_findContentH = 0;    // 内容总高(用于滚动范围)
+
+// 自动换行输出一段文字,返回占用高度。用于卡片内的依据/建议(可能很长)。
+static int DrawWrapped(HDC hdc, int x, int y, int maxW, const std::wstring& s,
+                       HFONT f, COLORREF c) {
+    HGDIOBJ of = SelectObject(hdc, f);
+    SetTextColor(hdc, c);
+    RECT r{ x, y, x + maxW, y + 10000 };
+    DrawTextW(hdc, s.c_str(), (int)s.size(), &r, DT_LEFT | DT_TOP | DT_WORDBREAK | DT_CALCRECT);
+    int h = r.bottom - r.top;
+    r.right = x + maxW;
+    DrawTextW(hdc, s.c_str(), (int)s.size(), &r, DT_LEFT | DT_TOP | DT_WORDBREAK);
+    SelectObject(hdc, of);
+    return h;
+}
+
+static LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == WM_ERASEBKGND) return 1;
+
+    if (msg == WM_VSCROLL) {
+        RECT rc; GetClientRect(hwnd, &rc);
+        int page = rc.bottom;
+        int maxScroll = std::max(0, g_findContentH - page);
+        int old = g_findScroll;
+        int line = S(40);
+        switch (LOWORD(wp)) {
+            case SB_LINEUP:   g_findScroll -= line; break;
+            case SB_LINEDOWN: g_findScroll += line; break;
+            case SB_PAGEUP:   g_findScroll -= page; break;
+            case SB_PAGEDOWN: g_findScroll += page; break;
+            case SB_THUMBTRACK:
+            case SB_THUMBPOSITION: g_findScroll = HIWORD(wp); break;
+        }
+        g_findScroll = std::max(0, std::min(g_findScroll, maxScroll));
+        if (g_findScroll != old) {
+            SetScrollPos(hwnd, SB_VERT, g_findScroll, TRUE);
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+        return 0;
+    }
+    if (msg == WM_MOUSEWHEEL) {
+        int delta = GET_WHEEL_DELTA_WPARAM(wp);
+        SendMessageW(hwnd, WM_VSCROLL, MAKEWPARAM(delta > 0 ? SB_LINEUP : SB_LINEDOWN, 0), 0);
+        SendMessageW(hwnd, WM_VSCROLL, MAKEWPARAM(delta > 0 ? SB_LINEUP : SB_LINEDOWN, 0), 0);
+        return 0;
+    }
+    if (msg == WM_SIZE) {
+        // 窗口尺寸变了(如 Layout 把结论页从初始 100×100 拉到全宽)必须整窗重绘,
+        // 否则卡片宽度停留在旧尺寸 —— 表现为"卡片只占左半、右侧残留空框"。
+        InvalidateRect(hwnd, nullptr, TRUE);
+        return 0;
+    }
+    if (msg != WM_PAINT) return DefWindowProcW(hwnd, msg, wp, lp);
+
+    PAINTSTRUCT ps; HDC hw = BeginPaint(hwnd, &ps);
+    RECT rc; GetClientRect(hwnd, &rc);
+    // 双缓冲
+    HDC hdc = CreateCompatibleDC(hw);
+    HBITMAP bmp = CreateCompatibleBitmap(hw, rc.right, rc.bottom);
+    HGDIOBJ obm = SelectObject(hdc, bmp);
+    // 页面浅底
+    HBRUSH pageBg = CreateSolidBrush(th::page);
+    FillRect(hdc, &rc, pageBg);
+    DeleteObject(pageBg);
+
+    const int M = S(16);              // 页边距
+    const int CARD_PAD = S(14);       // 卡内边距
+    const int GAP = S(12);            // 卡间距
+    const int BAND = S(4);            // 左侧严重度色带宽
+    int cardW = rc.right - 2 * M;
+    int textX0 = M + CARD_PAD + BAND;
+    int textW = cardW - 2 * CARD_PAD - BAND;
+    int y = M - g_findScroll;         // 应用滚动偏移
+
+    auto drawCard = [&](int topY, int height, COLORREF band) {
+        RECT cr{ M, topY, M + cardW, topY + height };
+        HBRUSH bg = CreateSolidBrush(th::surface);
+        FillRect(hdc, &cr, bg); DeleteObject(bg);
+        HPEN pn = CreatePen(PS_SOLID, 1, th::border);
+        HGDIOBJ op = SelectObject(hdc, pn), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+        RoundRect(hdc, cr.left, cr.top, cr.right, cr.bottom, S(8), S(8));
+        SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(pn);
+        if (band) {   // 左侧色带
+            RECT b{ M + S(1), topY + S(2), M + S(1) + BAND, topY + height - S(2) };
+            HBRUSH bb = CreateSolidBrush(band); FillRect(hdc, &b, bb); DeleteObject(bb);
+        }
+    };
+
+    // ── 头部元信息卡 ──
+    {
+        // 先量高度:平台 + 覆盖 +(可能)跳变
+        int lines = 2;                        // 平台 / 覆盖
+        if (g_plat.evidenceLine) lines++;
+        bool jump = g_audit.clockJump;
+        int h = CARD_PAD * 2 + lines * S(20) + (jump ? S(40) : 0);
+        drawCard(y, h, th::inkMuted);
+        int ty = y + CARD_PAD;
+        DrawText_(hdc, textX0, ty, L"来源平台:  " + U8ToW(g_plat.name), hFontUI, th::inkPri); ty += S(20);
+        DrawText_(hdc, textX0, ty,
+                  FmtW(L"解析覆盖:  已解析 %d 行,未识别 %d 行(%.2f%%)%s",
+                       (int)g_audit.parsed, (int)g_audit.unparsed, g_audit.unparsedRatio()*100.0,
+                       g_audit.unparsed==0 ? L"  → 无遗漏" : L"  → 见“未识别行”页"),
+                  hFontUI, g_audit.unparsed==0 ? th::inkSec : th::rowWarn); ty += S(20);
+        if (g_plat.evidenceLine) {
+            DrawText_(hdc, textX0, ty, FmtW(L"识别依据:  第 %d 行  ", (int)g_plat.evidenceLine) + U8ToW(g_plat.evidence),
+                      hFontUI, th::inkMuted); ty += S(20);
+        }
+        if (jump) {
+            DrawText_(hdc, textX0, ty, FmtW(L"⚠ 时钟跳变: 第 %d 行 %s → %s", (int)g_audit.jumpAtLine,
+                      U8ToW(fmtTime(g_audit.jumpFromT,"FULL")).c_str(), U8ToW(fmtTime(g_audit.jumpToT,"FULL")).c_str()),
+                      hFontUI, th::rowFault); ty += S(20);
+            DrawText_(hdc, textX0, ty, L"   跨跳变点的断网时长/可用率不可信,请分段看", hFontUI, th::inkMuted);
+        }
+        y += h + GAP;
+    }
+
+    if (g_findings.empty()) {
+        int h = CARD_PAD * 2 + S(44);
+        drawCard(y, h, th::inkMuted);
+        DrawText_(hdc, textX0, y + CARD_PAD, L"未得出任何有证据支撑的结论。", hFontSect, th::inkPri);
+        DrawText_(hdc, textX0, y + CARD_PAD + S(22), L"(不等于“没问题”:也可能证据不足。本工具不臆测。)", hFontUI, th::inkMuted);
+        y += h + GAP;
+    }
+
+    // ── 每条结论一张卡(先测高度,再画白底,最后画字)──
+    int n = 0;
+    for (const auto& f : g_findings) {
+        COLORREF band = (f.severity == 2) ? th::rowFault : (f.severity == 1 ? th::rowWarn : th::rowState);
+        const wchar_t* lv = (f.severity == 2) ? L"严重" : (f.severity == 1 ? L"告警" : L"信息");
+        std::wstring title = FmtW(L"%d. 【%s】", ++n, lv) + U8ToW(f.title);
+        std::wstring detail = U8ToW(f.detail), advice = U8ToW(f.advice);
+
+        // —— 测量 pass:算这张卡多高(不画,只用 DT_CALCRECT)——
+        auto measureWrap = [&](const std::wstring& s, HFONT font) {
+            HGDIOBJ of = SelectObject(hdc, font);
+            RECT r{ 0, 0, textW, 10000 };
+            DrawTextW(hdc, s.c_str(), (int)s.size(), &r, DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT);
+            SelectObject(hdc, of);
+            return (int)(r.bottom - r.top);
+        };
+        int titleH = S(22), lblH = S(18), evH = S(18);
+        int h = CARD_PAD;                       // 顶内边距
+        h += titleH + S(4);                     // 标题
+        h += lblH + measureWrap(detail, hFontUI) + S(6);   // 依据
+        h += lblH + measureWrap(advice, hFontUI) + S(6);   // 建议
+        h += lblH + (int)f.ev.size() * evH;     // 证据
+        h += CARD_PAD;                          // 底内边距
+
+        // —— 画 pass:白底卡 + 色带,再叠字 ——
+        drawCard(y, h, band);
+        int ty = y + CARD_PAD;
+        DrawText_(hdc, textX0, ty, title, hFontSect, band); ty += titleH + S(4);
+        DrawText_(hdc, textX0, ty, L"依据", hFontUI, th::inkMuted); ty += lblH;
+        ty += DrawWrapped(hdc, textX0, ty, textW, detail, hFontUI, th::inkPri) + S(6);
+        DrawText_(hdc, textX0, ty, L"建议", hFontUI, th::inkMuted); ty += lblH;
+        ty += DrawWrapped(hdc, textX0, ty, textW, advice, hFontUI, th::inkSec) + S(6);
+        DrawText_(hdc, textX0, ty, L"证据", hFontUI, th::inkMuted); ty += lblH;
+        for (const auto& e : f.ev) {
+            DrawText_(hdc, textX0 + S(8), ty,
+                      FmtW(L"· 第 %d 行  ", (int)e.lineNo) + U8ToW(e.ts) + L"  " + U8ToW(e.text),
+                      hFontMono, th::inkSec);
+            ty += evH;
+        }
+        y += h + GAP;
+    }
+
+    g_findContentH = y + g_findScroll;   // 记录总高(去掉本帧偏移)
+    // 更新滚动范围
+    SCROLLINFO si{}; si.cbSize = sizeof(si);
+    si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
+    si.nMin = 0; si.nMax = std::max(0, g_findContentH); si.nPage = rc.bottom; si.nPos = g_findScroll;
+    SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
+
+    BitBlt(hw, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
+    SelectObject(hdc, obm); DeleteObject(bmp); DeleteDC(hdc);
+    EndPaint(hwnd, &ps);
+    return 0;
+}
 static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_ERASEBKGND) return 1;   // 交给 WM_PAINT,避免闪烁
     if (msg != WM_PAINT) return DefWindowProcW(hwnd, msg, wp, lp);
@@ -715,48 +897,14 @@ static void RenderRaw() {
     SetWindowTextW(hRaw, U8ToW(s).c_str());
 }
 
-// “结论”页:自动根因 + 处置建议 + 每条结论的日志证据(行号/时间戳)
+// “结论”页现由 FindingsProc 自绘卡片,数据直接读 g_findings/g_plat/g_audit。
+// 此函数只需在数据更新后重置滚动并触发重绘。
 static void RenderFindings() {
-    std::wstring o;
-    o += L"══ 自动结论(每条都附日志证据,无证据不输出)══\r\n\r\n";
-    o += L"  来源平台 : " + U8ToW(g_plat.name) + L"\r\n";
-    if (g_plat.evidenceLine)
-        o += FmtW(L"  识别依据 : 第 %d 行  ", (int)g_plat.evidenceLine) + U8ToW(g_plat.evidence) + L"\r\n";
-    o += FmtW(L"  解析覆盖 : 已解析 %d 行,未识别 %d 行(%.2f%%)",
-              (int)g_audit.parsed, (int)g_audit.unparsed, g_audit.unparsedRatio() * 100.0);
-    o += (g_audit.unparsed == 0) ? L"  → 无遗漏\r\n" : L"  → 详见“未识别行”页\r\n";
-
-    // 时钟跳变警告:该日志内部时间从未授时(1970)跳到真实时间(或反之),时间轴前后不在
-    // 同一坐标系。不臆测正确值,只诚实标出,提示跨跳变点的断网时长/可用率不可信。
-    if (g_audit.clockJump) {
-        o += FmtW(L"  ⚠ 时钟跳变 : 第 %d 行时间从 %s 跳到 %s\r\n",
-                  (int)g_audit.jumpAtLine,
-                  U8ToW(fmtTime(g_audit.jumpFromT, "FULL")).c_str(),
-                  U8ToW(fmtTime(g_audit.jumpToT, "FULL")).c_str());
-        o += L"              该日志含未授时段,跨跳变点的断网时长/可用率不可信,请分段看\r\n";
+    g_findScroll = 0;
+    if (hFindings) {
+        SetScrollPos(hFindings, SB_VERT, 0, TRUE);
+        InvalidateRect(hFindings, nullptr, FALSE);
     }
-    o += L"\r\n";
-
-    if (g_findings.empty()) {
-        o += L"  未得出任何有证据支撑的结论。\r\n"
-             L"  (这不等于“没问题”:可能是日志时段内确无异常,也可能是证据不足——\r\n"
-             L"   本工具只在有日志证据时下结论,不臆测。)\r\n";
-        SetWindowTextW(hFindings, o.c_str());
-        return;
-    }
-
-    int n = 0;
-    for (const auto& f : g_findings) {
-        const wchar_t* lv = (f.severity == 2) ? L"【严重】" : (f.severity == 1 ? L"【告警】" : L"【信息】");
-        o += FmtW(L"── %d. ", ++n) + std::wstring(lv) + U8ToW(f.title) + L"\r\n";
-        o += L"   依据: " + U8ToW(f.detail) + L"\r\n";
-        o += L"   建议: " + U8ToW(f.advice) + L"\r\n";
-        o += L"   证据:\r\n";
-        for (const auto& e : f.ev)
-            o += FmtW(L"     · 第 %d 行  ", (int)e.lineNo) + U8ToW(e.ts) + L"  " + U8ToW(e.text) + L"\r\n";
-        o += L"\r\n";
-    }
-    SetWindowTextW(hFindings, o.c_str());
 }
 
 // “未识别行”页:把解析不了的行摆出来,这是“完完整整不漏消息”的唯一硬证据
@@ -1155,8 +1303,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                                 GetModuleHandleW(nullptr), nullptr);
         hSummary = Mk(L"EDIT", L"", WS_BORDER | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY,
                       0, 0, 10, 10, IDC_SUMMARY, hFontMono);
-        hFindings = Mk(L"EDIT", L"", WS_BORDER | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY,
-                       0, 0, 10, 10, IDC_FINDINGS, hFontMono);
+        hFindings = CreateWindowExW(0, L"dialFindingsCls", L"",
+                                    WS_CHILD | WS_VISIBLE | WS_VSCROLL,
+                                    0, 0, 100, 100, hwnd, (HMENU)(INT_PTR)IDC_FINDINGS, GetModuleHandleW(nullptr), nullptr);
         hUnparsed = MkLv(IDC_UNPARSED, { {L"原始行号", 90}, {L"未识别的原文", 960} });
         hTimeline = MkLv(IDC_TIMELINE, { {L"时间", 140}, {L"标签", 90}, {L"消息", 820} });
         hOutage   = MkLv(IDC_OUTAGE,   { {L"#", 44}, {L"开始", 160}, {L"恢复", 160}, {L"时长", 90} });
@@ -1325,6 +1474,14 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow) 
     wcDash.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wcDash.lpszClassName = L"dialDashCls";
     RegisterClassExW(&wcDash);
+
+    WNDCLASSEXW wcFind{};
+    wcFind.cbSize = sizeof(wcFind);
+    wcFind.lpfnWndProc = FindingsProc;
+    wcFind.hInstance = hInst;
+    wcFind.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wcFind.lpszClassName = L"dialFindingsCls";
+    RegisterClassExW(&wcFind);
 
     WNDCLASSEXW wcChart{};
     wcChart.cbSize = sizeof(wcChart);
