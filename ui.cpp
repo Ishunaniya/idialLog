@@ -434,9 +434,9 @@ static LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
     DeleteObject(pageBg);
 
     const int M = S(16);              // 页边距
-    const int CARD_PAD = S(14);       // 卡内边距
-    const int GAP = S(12);            // 卡间距
-    const int BAND = S(4);            // 左侧严重度色带宽
+    const int CARD_PAD = S(18);       // 卡内边距
+    const int GAP = S(14);            // 卡间距
+    const int BAND = S(5);            // 左侧严重度色带宽
     int cardW = rc.right - 2 * M;
     int textX0 = M + CARD_PAD + BAND;
     int textW = cardW - 2 * CARD_PAD - BAND;
@@ -508,22 +508,23 @@ static LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
             SelectObject(hdc, of);
             return (int)(r.bottom - r.top);
         };
-        int titleH = S(22), lblH = S(18), evH = S(18);
+        int titleH = S(24), lblH = S(20), evH = S(19);
+        const int SEC = S(12);
         int h = CARD_PAD;                       // 顶内边距
-        h += titleH + S(4);                     // 标题
-        h += lblH + measureWrap(detail, hFontUI) + S(6);   // 依据
-        h += lblH + measureWrap(advice, hFontUI) + S(6);   // 建议
+        h += titleH + S(8);                     // 标题
+        h += lblH + measureWrap(detail, hFontUI) + SEC;   // 依据
+        h += lblH + measureWrap(advice, hFontUI) + SEC;   // 建议
         h += lblH + (int)f.ev.size() * evH;     // 证据
         h += CARD_PAD;                          // 底内边距
 
         // —— 画 pass:白底卡 + 色带,再叠字 ——
         drawCard(y, h, band);
         int ty = y + CARD_PAD;
-        DrawText_(hdc, textX0, ty, title, hFontSect, band); ty += titleH + S(4);
+        DrawText_(hdc, textX0, ty, title, hFontSect, band); ty += titleH + S(8);
         DrawText_(hdc, textX0, ty, L"依据", hFontUI, th::inkMuted); ty += lblH;
-        ty += DrawWrapped(hdc, textX0, ty, textW, detail, hFontUI, th::inkPri) + S(6);
+        ty += DrawWrapped(hdc, textX0, ty, textW, detail, hFontUI, th::inkPri) + SEC;
         DrawText_(hdc, textX0, ty, L"建议", hFontUI, th::inkMuted); ty += lblH;
-        ty += DrawWrapped(hdc, textX0, ty, textW, advice, hFontUI, th::inkSec) + S(6);
+        ty += DrawWrapped(hdc, textX0, ty, textW, advice, hFontUI, th::inkSec) + SEC;
         DrawText_(hdc, textX0, ty, L"证据", hFontUI, th::inkMuted); ty += lblH;
         for (const auto& e : f.ev) {
             DrawText_(hdc, textX0 + S(8), ty,
