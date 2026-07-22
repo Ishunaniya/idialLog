@@ -1552,9 +1552,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         }
         if (hdr->code == NM_CUSTOMDRAW &&
-            (hdr->hwndFrom == hTimeline || hdr->hwndFrom == hOutage || hdr->hwndFrom == hMetric)) {
+            (hdr->hwndFrom == hTimeline || hdr->hwndFrom == hOutage || hdr->hwndFrom == hMetric ||
+             hdr->hwndFrom == hTags || hdr->hwndFrom == hUnparsed)) {
             LPNMLVCUSTOMDRAW cd = (LPNMLVCUSTOMDRAW)lp;
-            // 时间线 / 断网:整行文字着色
+            // 时间线 / 断网:整行文字着色 + 斑马纹底
             if (hdr->hwndFrom == hTimeline || hdr->hwndFrom == hOutage) {
                 const std::vector<COLORREF>& cols = (hdr->hwndFrom == hTimeline) ? g_tlColors : g_ogColors;
                 switch (cd->nmcd.dwDrawStage) {
@@ -1562,6 +1563,19 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 case CDDS_ITEMPREPAINT: {
                     size_t i = (size_t)cd->nmcd.dwItemSpec;
                     if (i < cols.size()) cd->clrText = cols[i];
+                    cd->clrTextBk = (i & 1) ? th::zebra : GetSysColor(COLOR_WINDOW);   // 斑马纹
+                    return CDRF_DODEFAULT;
+                }
+                }
+                return CDRF_DODEFAULT;
+            }
+            // 标签 / 未识别行:纯斑马纹(无特殊着色)
+            if (hdr->hwndFrom == hTags || hdr->hwndFrom == hUnparsed) {
+                switch (cd->nmcd.dwDrawStage) {
+                case CDDS_PREPAINT:     return CDRF_NOTIFYITEMDRAW;
+                case CDDS_ITEMPREPAINT: {
+                    size_t i = (size_t)cd->nmcd.dwItemSpec;
+                    cd->clrTextBk = (i & 1) ? th::zebra : GetSysColor(COLOR_WINDOW);
                     return CDRF_DODEFAULT;
                 }
                 }
