@@ -89,7 +89,7 @@ MUTATIONS = [
      'if (a.hasT != b.hasT) return a.hasT;',
      'if (a.hasT != b.hasT) return !a.hasT;'),
     ('firstTimestamp 漏认会话标记',
-     'if (line.compare(0, 3, "===") == 0 && line.find("Dial Log Opened") != std::string::npos) {',
+     'if (line.compare(0, 3, "===") == 0 &&\n            (line.find("Dial Log Opened") != std::string::npos ||\n             line.find("Dial Program Started") != std::string::npos)) {',
      'if (false) {'),
     # ── 跨时基混合防护(timeBaseOf / detectMix)——mergetest T11 的靶子 ──
     ('时基阈值退回 0(1970 被当墙钟,混合不再被拦)',
