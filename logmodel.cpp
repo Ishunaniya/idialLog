@@ -915,12 +915,19 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
     for (const auto& o : outs) {
         long long lo = o.start - 90, hi = o.recovered ? o.end : lines.back().t;
         int  minCsq = 999; bool sawZeroRx = false;
+        int  minRsrp = 9999;                              // 窗口内最低 RSRP(dBm,越低越差)
         const MetricRow* mZero = nullptr; const MetricRow* mWeak = nullptr;
+        const MetricRow* mRsrp = nullptr;
         for (const auto& m : mets) {
             if (m.t < lo || m.t > hi) continue;
             if (m.csqVal >= 0 && m.csqVal < minCsq) { minCsq = m.csqVal; mWeak = &m; }
+            if (m.rsrp < 0 && m.rsrp < minRsrp) { minRsrp = m.rsrp; mRsrp = &m; }
             if (m.drxZero) { sawZeroRx = true; if (!mZero) mZero = &m; }
         }
+        // RSRP < -110 dBm = 3GPP 极差覆盖(基本不可用)。比 CS<10 更灵敏:
+        // CSQ 是 0-31 粗档,可能读到中间值,而 RSRP 已探底 —— 覆盖问题此时才现形。
+        bool weakByRsrp = (minRsrp <= -110);
+        bool weakByCsq  = (minCsq < 10 && mWeak);
         const LogLine* sw = nullptr;
         for (const auto* v : { &evSlot, &evOper, &evCfun })
             for (const auto* l : *v)
@@ -938,7 +945,10 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
          * 归因成"弱信号"会把排查引偏(见 ec200a 数据服务未就绪诊断的教训)。 */
         else if (nr)                     { c = C_NOTREADY;  evl = nr; }
         else if (sw)                     { c = C_SWITCHING; evl = sw; }
-        else if (minCsq < 10 && mWeak)   { c = C_WEAK;      evm = mWeak; }
+        else if (weakByCsq || weakByRsrp) {
+            c = C_WEAK;
+            evm = weakByCsq ? mWeak : mRsrp;   // CSQ 命中优先用 CSQ 证据,否则用 RSRP
+        }
         else if (sawZeroRx && mZero)     { c = C_DATADEAD;  evm = mZero; }
         causeCnt[c]++;
         if (causeEv[c].size() < 3) {
@@ -946,8 +956,10 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
             if (evl) e = mkEv(*evl);
             else if (evm) {
                 e.lineNo = evm->lineNo; e.ts = evm->ts;
-                e.text = "心跳 CSQ=" + evm->csq + " ΔRX=" + evm->drx + " (断网 " +
-                         fmtTime(o.start, "MD") + " 起)";
+                std::string sig = "心跳 CSQ=" + evm->csq;
+                if (evm->rsrp < 0) sig += " RSRP=" + std::to_string(evm->rsrp) + "dBm";
+                sig += " ΔRX=" + evm->drx;
+                e.text = sig + " (断网 " + fmtTime(o.start, "MD") + " 起)";
             } else {
                 e.lineNo = o.startLine; e.ts = fmtTime(o.start, "FULL");
                 e.text = "断网起点(无弱信号/无 ΔRX=0/无切卡选网痕迹)";
@@ -963,7 +975,8 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
                   std::to_string(causeCnt[c]) + " 次 / 共 " + std::to_string(outs.size()) + " 次";
         switch (c) {
         case C_WEAK:
-            f.detail = "断网窗口内心跳 CSQ 最小值 < 10(≈RSSI<-95dBm),覆盖不足。";
+            f.detail = "断网窗口内心跳 CSQ 最小值 < 10(≈RSSI<-95dBm),或 RSRP ≤ -110dBm"
+                       "(3GPP 极差覆盖),信号覆盖不足。";
             f.advice = "查天线连接/馈线/安装位置;确认是否处于覆盖边缘或屏蔽环境。重拨无法解决覆盖问题。";
             break;
         case C_DATADEAD:
@@ -1071,6 +1084,33 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
             e.text = "心跳温度峰值 " + hot->tmax + "℃";
             f.ev.push_back(e);
             fs.push_back(std::move(f));
+        }
+    }
+
+    // ---- 6b. 信号质量劣化(RSRP 长期偏低)----
+    // RSRP 是比 CSQ 更精确的信号指标。若整体均值就偏低,说明设备长期处于覆盖边缘,
+    // 不只是偶发弱信号 —— 这是安装位置/天线的系统性问题,值得单独提示。
+    {
+        long long sum = 0; int n = 0, worst = 9999; const MetricRow* mWorst = nullptr;
+        for (const auto& m : mets) {
+            if (m.rsrp < 0) { sum += m.rsrp; n++; if (m.rsrp < worst) { worst = m.rsrp; mWorst = &m; } }
+        }
+        if (n >= 5) {                              // 需足够样本才下结论,不臆测
+            int avg = (int)(sum / n);
+            if (avg <= -100 && mWorst) {           // 均值 ≤ -100(3GPP"较差"以下)判长期劣化
+                Finding f;
+                f.severity = 1;
+                f.title  = "信号质量长期偏低:RSRP 均值 " + std::to_string(avg) + " dBm(共 " +
+                           std::to_string(n) + " 样本)";
+                f.detail = "RSRP 均值处于 3GPP\"较差\"档(≤-100dBm),最低 " + std::to_string(worst) +
+                           " dBm。设备长期处于覆盖边缘,非偶发 —— 断网/低速大概率与此相关。";
+                f.advice = "系统性排查:天线选型/安装位置/朝向、是否室内深处或金属屏蔽;"
+                           "必要时加装外置天线或选覆盖更好的运营商。";
+                Evidence e; e.lineNo = mWorst->lineNo; e.ts = mWorst->ts;
+                e.text = "最低 RSRP=" + std::to_string(worst) + "dBm (均值 " + std::to_string(avg) + "dBm)";
+                f.ev.push_back(e);
+                fs.push_back(std::move(f));
+            }
         }
     }
 

@@ -145,6 +145,13 @@ MUTATIONS = [
     ('RSRP 负值过滤反向(只收正数→全废)',
      'if (endp != v->c_str() && r < 0) m.rsrp = (int)r;',
      'if (endp != v->c_str() && r > 0) m.rsrp = (int)r;'),
+    # ── RSRP 断网分类 + 信号劣化结论 —— baselinetest 靶子 ──
+    ('RSRP断网分类失效(阈值-110退回不可能值)',
+     'bool weakByRsrp = (minRsrp <= -110);',
+     'bool weakByRsrp = (minRsrp <= -99999);'),
+    ('信号劣化结论阈值反向(≤-100退回≥)',
+     'if (avg <= -100 && mWorst) {',
+     'if (avg >= -100 && mWorst) {'),
 ]
 
 # 变异后跑的测试(全绿=变异存活=测试有洞)

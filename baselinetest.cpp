@@ -252,6 +252,34 @@ int main() {
         }
     }
 
+    // ── RSRP 纳入断网根因分类 + 信号质量劣化结论(v1.8.x)──
+    //    CSQ 尚可(>10)但 RSRP≤-110 的断网,应归"弱信号"(旧逻辑会漏成"未能归类");
+    //    RSRP 均值≤-100 应额外报"信号质量长期偏低"。
+    {
+        std::printf("── RSRP 断网分类 + 信号劣化结论\n");
+        std::vector<std::string> raw = {
+            "[2026-06-13 10:00:00] [HEARTBEAT] CSQ:15 | RSRP:-113 RSRQ:-19",
+            "[2026-06-13 10:00:30] [HEARTBEAT] Ping failed, fault timer started",
+            "[2026-06-13 10:01:30] [HEARTBEAT] Network recovered after 60",
+            "[2026-06-13 10:02:00] [HEARTBEAT] CSQ:16 | RSRP:-112 RSRQ:-18",
+            "[2026-06-13 10:02:30] [HEARTBEAT] CSQ:15 | RSRP:-114 RSRQ:-19",
+            "[2026-06-13 10:03:00] [HEARTBEAT] CSQ:16 | RSRP:-111 RSRQ:-18",
+            "[2026-06-13 10:03:30] [HEARTBEAT] CSQ:15 | RSRP:-115 RSRQ:-19"
+        };
+        std::vector<LogLine> lines; std::vector<std::string> sess; ParseAudit a;
+        parseLines(raw, lines, sess, &a);
+        auto fs = analyze(lines, collectOutages(lines), buildMetrics(lines), detectPlatform(lines), a);
+        bool weakByRsrp = false, sigDeg = false;
+        for (const auto& f : fs) {
+            if (f.title.find("弱信号") != std::string::npos) weakByRsrp = true;
+            if (f.title.find("信号质量长期偏低") != std::string::npos) sigDeg = true;
+        }
+        if (!weakByRsrp) { std::printf("   ✗ CSQ>10 但 RSRP≤-110 的断网未归弱信号\n"); g_fail++; }
+        else std::printf("   ✓ RSRP≤-110 断网归类为弱信号(CSQ 未触发)\n");
+        if (!sigDeg) { std::printf("   ✗ RSRP 均值≤-100 未报信号质量长期偏低\n"); g_fail++; }
+        else std::printf("   ✓ RSRP 均值≤-100 报信号质量长期偏低\n");
+    }
+
     std::printf("\n===== 真机基线断言:%d 项失败 =====\n", g_fail);
     std::printf("注:基线数字全部来自**真机日志**,不是我编的期望值。\n"
                 "    本层专治'只验结论出现、不验具体数字'的没牙齿断言(变异测试逼出来的)。\n");
