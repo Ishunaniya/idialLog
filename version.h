@@ -15,12 +15,15 @@
 //   1.7.0  UI:应用图标 + 行/断网着色改用 CVD 安全角色色(删违规裸RGB) + PerMonitorV2 DPI 缩放
 //   1.7.1  修断网漏报:引擎原只认 modem_mng "recovered after Ns",漏 open_dial "Down: Ns"→报0次
 //   1.7.2  修 open_dial 会话标记漏认:"=== Dial Program Started ===" 曾误计未识别
+//   1.8.0  UI 卡片化 + 斑马纹;RSRP/RSRQ 提取与质量评价;结论纳入 RSRP;
+//          新增"SDK 短断网(链路抖动)"断网归类
+//   1.9.0  RSRP 曲线并入信号图(紫线/右轴 dBm,与蓝色 CSQ 双线同图)
 //          (4 次曾被报成 8 次)、多行条目续行并入上一条、混合大小写标签 [NetCheck]、
 //          接活死分支"数据服务未就绪"(此前 enum 有名字但代码从无赋值,永不触发)
 #pragma once
 
 #define DL_VER_MAJOR 1
-#define DL_VER_MINOR 8
+#define DL_VER_MINOR 9
 #define DL_VER_PATCH 0
 
 #define DL_STRINGIFY2(x) #x

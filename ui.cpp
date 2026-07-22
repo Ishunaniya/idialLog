@@ -76,6 +76,7 @@ struct SumCard {
 static std::vector<SumCard> g_sumCards;
 static std::vector<COLORREF> g_tlColors, g_ogColors;
 static std::vector<std::pair<long long,int>> g_csq;   // 供图表
+static std::vector<std::pair<long long,int>> g_rsrp;  // 供图表:RSRP dBm(负值,右轴)
 static int g_curPage = 0;
 
 // ============================ DPI 缩放中枢 ============================
@@ -661,7 +662,7 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     SelectObject(hdc, hFontUI);
     SetBkMode(hdc, TRANSPARENT);
 
-    RECT r{ 40, 22, rcC.right - 14, rcC.bottom - 22 };
+    RECT r{ 40, 22, rcC.right - 40, rcC.bottom - 22 };   // 右侧留 40px 给 RSRP 刻度
     if (r.right - r.left < 30 || r.bottom - r.top < 30) {
         BitBlt(hdcWin, 0, 0, rcC.right, rcC.bottom, hdc, 0, 0, SRCCOPY);
         SelectObject(hdc, oldBmp); DeleteObject(bmp); DeleteDC(hdc);
@@ -670,7 +671,7 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
 
     SetTextColor(hdc, th::inkMuted);
-    const wchar_t* title = L"CSQ 信号强度(0-31,越高越好;竖红带=断网;黄虚线=弱信号阈值 10)";
+    const wchar_t* title = L"信号趋势  蓝=CSQ(0-31,左轴)  紫=RSRP(dBm,右轴)  竖红带=断网  黄虚线=弱信号阈值10";
     TextOutW(hdc, 42, 4, title, (int)wcslen(title));
 
     if (g_csq.size() < 2) {
@@ -748,6 +749,32 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     SelectObject(hdc, oldPen);
     DeleteObject(linePen);
+
+    // RSRP 折线(右轴,dBm):量程固定 -120~-60,越高越好。独立 Y 映射,紫色区分。
+    if (g_rsrp.size() >= 2) {
+        const int RS_HI = -60, RS_LO = -120;
+        auto Yr = [&](int v) {
+            int c = v > RS_HI ? RS_HI : (v < RS_LO ? RS_LO : v);
+            return r.bottom - (int)((double)(c - RS_LO) / (RS_HI - RS_LO) * (r.bottom - r.top));
+        };
+        SetTextColor(hdc, th::s7_violet);
+        const int rsTicks[] = { -60, -80, -100, -120 };
+        for (int i = 0; i < 4; ++i) {
+            int y = Yr(rsTicks[i]);
+            wchar_t lb[8]; wsprintfW(lb, L"%d", rsTicks[i]);
+            TextOutW(hdc, r.right + 4, y - 8, lb, (int)wcslen(lb));
+        }
+        HPEN rsPen = CreatePen(PS_SOLID, 2, th::s7_violet);
+        oldPen = SelectObject(hdc, rsPen);
+        bool f2 = true;
+        for (const auto& c : g_rsrp) {
+            int x = X(c.first), y = Yr(c.second);
+            if (f2) { MoveToEx(hdc, x, y, nullptr); f2 = false; }
+            else LineTo(hdc, x, y);
+        }
+        SelectObject(hdc, oldPen);
+        DeleteObject(rsPen);
+    }
 
     // X 轴两端时间
     SetTextColor(hdc, th::inkMuted);
@@ -982,6 +1009,7 @@ static void RenderOutages() {
 static void RenderMetrics() {
     ListView_DeleteAllItems(hMetric);
     g_csq.clear();
+    g_rsrp.clear();
     int row = 0;
     for (const auto& m : g_metrics) {
         LvAddRow(hMetric, row, U8ToW(m.ts));
@@ -994,6 +1022,7 @@ static void RenderMetrics() {
         LvSet(hMetric, row, 7, m.rsrp < 0 ? FmtW(L"%d", m.rsrp) : L"-");
         LvSet(hMetric, row, 8, m.rsrq < 0 ? FmtW(L"%d", m.rsrq) : L"-");
         if (m.csqVal >= 0) g_csq.push_back({ m.t, m.csqVal });
+        if (m.rsrp < 0)    g_rsrp.push_back({ m.t, m.rsrp });
         row++;
     }
     InvalidateRect(hChart, nullptr, TRUE);
