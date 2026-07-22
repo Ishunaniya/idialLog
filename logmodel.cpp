@@ -623,6 +623,9 @@ std::vector<Outage> collectOutages(const std::vector<LogLine>& lines) {
             o.startLine = have ? startLine : l.lineNo;
             o.end = l.t; o.dur = dur; o.recovered = true;
             o.endLine = l.lineNo;
+            // SDK L0 自愈:恢复行含 "(L0)"(open_dial "Network Recovered in SDK phase (L0)")。
+            // 这类是短断网、链路抖动,设备自愈,与走 L1+ 阶梯的深层恢复区分。
+            o.l0Recovered = (l.msg.find("(L0)") != std::string::npos);
             outs.push_back(o);
             have = false;
         }
@@ -788,10 +791,11 @@ static Evidence mkEv(const LogLine& l) {
 }
 
 // 断网根因分类(取值即 Finding 的分组键)
-enum Cause { C_WEAK, C_DATADEAD, C_SWITCHING, C_DENIED, C_NOTREADY, C_UNKNOWN, C_N };
+enum Cause { C_WEAK, C_DATADEAD, C_SWITCHING, C_DENIED, C_NOTREADY, C_SDK_L0, C_UNKNOWN, C_N };
 static const char* kCauseName[C_N] = {
     "弱信号", "数据假死(RX_PKT 停滞)", "切卡/选网/CFUN 期间",
-    "注册被拒(SIM 或账户问题)", "数据服务未就绪", "未能归类"
+    "注册被拒(SIM 或账户问题)", "数据服务未就绪",
+    "SDK 短断网(链路抖动,非设备故障)", "未能归类"
 };
 
 std::vector<Finding> analyze(const std::vector<LogLine>& lines,
@@ -950,6 +954,9 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
             evm = weakByCsq ? mWeak : mRsrp;   // CSQ 命中优先用 CSQ 证据,否则用 RSRP
         }
         else if (sawZeroRx && mZero)     { c = C_DATADEAD;  evm = mZero; }
+        // L0 自愈 + 无上述特征 → SDK 短断网(链路抖动)。区别于"未能归类":
+        // 未能归类是"查不出",这里是"查出来了——SDK 在 L0 就自愈,是网络侧瞬时抖动"。
+        else if (o.l0Recovered)          { c = C_SDK_L0; }
         causeCnt[c]++;
         if (causeEv[c].size() < 3) {
             Evidence e;
@@ -1000,6 +1007,13 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
                        "表现为\"信号好好的却上不了网\"。";
             f.advice = "查 ql_netd 守护进程是否在跑(ps);这类故障靠重拨/CFUN/换卡都无效 —— "
                        "它们治的是射频侧,而问题在 AP 侧的数据服务。";
+            break;
+        case C_SDK_L0:
+            f.detail = "断网短暂,SDK auto-reconnect 在 L0 阶段即自愈(未升级到 L1 软重拨/L2 射频重置),"
+                       "且窗口内信号正常、无数据假死、无切卡。这类是网络侧瞬时抖动(基站释放/PDP "
+                       "会话超时/覆盖切换等),设备本身无故障。";
+            f.advice = "无需排查设备:设备已自愈。若频率高或影响业务,查网络侧 —— 运营商专网策略、"
+                       "基站 inactivity timer、PDP/承载超时;可要求运营商侧排查周期性断连。";
             break;
         default:
             f.detail = "该次断网窗口内未见弱信号、ΔRX=0、切卡/选网或注册被拒的痕迹,"

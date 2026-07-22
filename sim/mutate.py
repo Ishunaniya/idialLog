@@ -152,6 +152,13 @@ MUTATIONS = [
     ('信号劣化结论阈值反向(≤-100退回≥)',
      'if (avg <= -100 && mWorst) {',
      'if (avg >= -100 && mWorst) {'),
+    # ── SDK L0 短断网归类 —— baselinetest 靶子 ──
+    ('SDK L0标志失效(不认(L0))',
+     'o.l0Recovered = (l.msg.find("(L0)") != std::string::npos);',
+     'o.l0Recovered = (l.msg.find("(L0)ZZ") != std::string::npos);'),
+    ('SDK L0归类分支删除(退回未能归类)',
+     'else if (o.l0Recovered)          { c = C_SDK_L0; }',
+     'else if (false)                  { c = C_SDK_L0; }'),
 ]
 
 # 变异后跑的测试(全绿=变异存活=测试有洞)

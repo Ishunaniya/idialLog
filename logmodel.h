@@ -89,6 +89,8 @@ struct Outage {
     long long end   = 0;
     int  dur        = 0;
     bool recovered  = false;
+    bool l0Recovered = false;            // true=SDK 在 L0 阶段自愈(短断网,链路抖动);
+                                         // false=走了 L1+ 恢复阶梯或普通恢复
     size_t startLine = 0, endLine = 0;   // 证据行号
 };
 

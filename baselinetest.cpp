@@ -280,6 +280,33 @@ int main() {
         else std::printf("   ✓ RSRP 均值≤-100 报信号质量长期偏低\n");
     }
 
+    // ── SDK L0 短断网归类(v1.8.x):open_dial "Network Recovered in SDK phase (L0)"
+    //    的短断网,归"SDK 短断网(链路抖动)",而非"未能归类"。走 L1+ 的不算。──
+    {
+        std::printf("── SDK L0 短断网归类\n");
+        std::vector<std::string> raw = {
+            "[2026-06-13 07:07:31] [INFO] SDK auto-reconnect phase started",
+            "[2026-06-13 07:07:32] [HEARTBEAT] CSQ:28 | RSRP:-76 RSRQ:-8",
+            "[2026-06-13 07:08:05] [EVENT] Network Recovered in SDK phase (L0). Down: 35s.",
+            "[2026-06-13 08:12:00] [INFO] SDK auto-reconnect phase started",
+            "[2026-06-13 08:12:03] [HEARTBEAT] CSQ:30 | RSRP:-70 RSRQ:-9",
+            "[2026-06-13 08:12:07] [EVENT] Network Recovered in SDK phase (L0). Down: 9s.",
+            "[2026-06-13 10:57:20] [EVENT] Network Recovered. Down: 311s."   // 非 L0
+        };
+        std::vector<LogLine> lines; std::vector<std::string> sess; ParseAudit a;
+        parseLines(raw, lines, sess, &a);
+        auto outs = collectOutages(lines);
+        int l0cnt = 0; for (const auto& o : outs) if (o.l0Recovered) l0cnt++;
+        cki((long)l0cnt, 2, "L0 自愈标志:2 次(35s/9s),311s 那次非 L0");
+        auto fs = analyze(lines, outs, buildMetrics(lines), detectPlatform(lines), a);
+        bool sdkL0 = false;
+        for (const auto& f : fs)
+            if (f.title.find("SDK 短断网") != std::string::npos && f.title.find("2 次") != std::string::npos)
+                sdkL0 = true;
+        if (!sdkL0) { std::printf("   ✗ L0 短断网未归'SDK 短断网'\n"); g_fail++; }
+        else std::printf("   ✓ 2 次 L0 短断网归'SDK 短断网(链路抖动)'\n");
+    }
+
     std::printf("\n===== 真机基线断言:%d 项失败 =====\n", g_fail);
     std::printf("注:基线数字全部来自**真机日志**,不是我编的期望值。\n"
                 "    本层专治'只验结论出现、不验具体数字'的没牙齿断言(变异测试逼出来的)。\n");
