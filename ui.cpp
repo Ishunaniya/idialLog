@@ -844,6 +844,8 @@ static void RenderSummary() {
     // 信号/温度/通道
     long long csqSum = 0; int csqN = 0, csqMin = 9999, csqMax = -1, weak = 0; long long weakFirst = 0;
     long long tSum = 0; int tN = 0, tMax = -9999, hot = 0;
+    int rsrpN = 0, rsrpMin = 9999, rsrpMax = -9999; long long rsrpSum = 0;
+    int rsrqN = 0, rsrqMin = 9999, rsrqMax = -9999; long long rsrqSum = 0;
     std::map<std::string, int> chans;
     std::vector<std::pair<long long,long long>> rxs;
     for (const auto& m : g_metrics) {
@@ -853,12 +855,36 @@ static void RenderSummary() {
             csqMax = std::max(csqMax, m.csqVal);
             if (m.csqVal < 10) { if (weak == 0) weakFirst = m.t; weak++; }
         }
+        if (m.rsrp < 0) { rsrpSum += m.rsrp; rsrpN++; rsrpMin = std::min(rsrpMin, m.rsrp); rsrpMax = std::max(rsrpMax, m.rsrp); }
+        if (m.rsrq < 0) { rsrqSum += m.rsrq; rsrqN++; rsrqMin = std::min(rsrqMin, m.rsrq); rsrqMax = std::max(rsrqMax, m.rsrq); }
         if (m.tmax != "-") { int v = atoi(m.tmax.c_str()); tSum += v; tN++; tMax = std::max(tMax, v); if (v >= 85) hot++; }
         if (m.ch != "-") chans[m.ch]++;
         if (m.rx != "-") rxs.push_back({ m.t, atoll(m.rx.c_str()) });
     }
     if (csqN && weak)
         add(L"信号 CSQ", { FmtW(L"弱信号(<10)  %d 次 / 共 %d 样本   首次 %s", weak, csqN, U8ToW(fmtTime(weakFirst, "MD")).c_str()) }, 1);
+    // RSRP/RSRQ 信号质量(dBm 精确值,附 3GPP 通用分档评价)
+    if (rsrpN || rsrqN) {
+        // 质量分档:RSRP ≥-90 良 / -90~-100 中 / <-100 差;RSRQ ≥-15 良 / -15~-20 中 / <-20 差
+        auto rateP = [](int v) { return v >= -90 ? L"良" : (v >= -100 ? L"中" : L"差"); };
+        auto rateQ = [](int v) { return v >= -15 ? L"良" : (v >= -20 ? L"中" : L"差"); };
+        std::vector<std::wstring> ls; int acc = 0;
+        if (rsrpN) {
+            int avg = (int)(rsrpSum / rsrpN);
+            ls.push_back(FmtW(L"RSRP  最低 %d / 均 %d / 最高 %d dBm   [均值:%s]",
+                              rsrpMin, avg, rsrpMax, rateP(avg)));
+            ls.push_back(L"      (≥-90 良 / -90~-100 中 / <-100 差,越大越好)");
+            if (avg < -100 || rsrpMin < -110) acc = std::max(acc, 1);
+        }
+        if (rsrqN) {
+            int avg = (int)(rsrqSum / rsrqN);
+            ls.push_back(FmtW(L"RSRQ  最低 %d / 均 %d / 最高 %d dB   [均值:%s]",
+                              rsrqMin, avg, rsrqMax, rateQ(avg)));
+            ls.push_back(L"      (≥-15 良 / -15~-20 中 / <-20 差)");
+            if (avg < -20) acc = std::max(acc, 1);
+        }
+        add(L"信号质量 RSRP / RSRQ", ls, acc);
+    }
     if (tN) {
         std::wstring s = FmtW(L"max=%d°C   avg=%.0f°C", tMax, (double)tSum / tN);
         if (hot) s += FmtW(L"    ⚠ ≥85°C %d 次", hot);
@@ -965,6 +991,8 @@ static void RenderMetrics() {
         LvSet(hMetric, row, 4, U8ToW(m.cf));
         LvSet(hMetric, row, 5, U8ToW(m.rx));
         LvSet(hMetric, row, 6, U8ToW(m.drx));
+        LvSet(hMetric, row, 7, m.rsrp < 0 ? FmtW(L"%d", m.rsrp) : L"-");
+        LvSet(hMetric, row, 8, m.rsrq < 0 ? FmtW(L"%d", m.rsrq) : L"-");
         if (m.csqVal >= 0) g_csq.push_back({ m.t, m.csqVal });
         row++;
     }
@@ -1258,7 +1286,7 @@ static void DoExportCsv() {
     if (!GetSaveFileNameW(&ofn)) return;
 
     std::string out = "\xEF\xBB\xBF";              // UTF-8 BOM,Excel 中文不乱码
-    out += "time,ch,csq,tmax,consec_fail,rx_pkt,drx\r\n";
+    out += "time,ch,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq\r\n";
     for (const auto& m : g_metrics) {
         out += m.ts; out += ',';
         out += m.ch; out += ',';
@@ -1266,7 +1294,9 @@ static void DoExportCsv() {
         out += m.tmax; out += ',';
         out += m.cf; out += ',';
         out += m.rx; out += ',';
-        out += m.drx; out += "\r\n";
+        out += m.drx; out += ',';
+        out += (m.rsrp < 0 ? std::to_string(m.rsrp) : ""); out += ',';
+        out += (m.rsrq < 0 ? std::to_string(m.rsrq) : ""); out += "\r\n";
     }
     HANDLE h = CreateFileW(file, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) { MessageBoxW(hMain, L"写入失败。", L"错误", MB_ICONERROR); return; }
@@ -1419,7 +1449,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         hTimeline = MkLv(IDC_TIMELINE, { {L"时间", 140}, {L"标签", 90}, {L"消息", 820} });
         hOutage   = MkLv(IDC_OUTAGE,   { {L"#", 44}, {L"开始", 160}, {L"恢复", 160}, {L"时长", 90} });
         hMetric   = MkLv(IDC_METRIC,   { {L"时间", 140}, {L"CH", 90}, {L"CSQ", 60}, {L"Tmax", 60},
-                                         {L"ConsecFail", 90}, {L"RX_PKT", 110}, {L"ΔRX", 80} });
+                                         {L"ConsecFail", 90}, {L"RX_PKT", 110}, {L"ΔRX", 80},
+                                         {L"RSRP", 70}, {L"RSRQ", 70} });
         hTags     = MkLv(IDC_TAGS,     { {L"标签", 150}, {L"次数", 80}, {L"占比", 600} });
         hRaw = Mk(L"EDIT", L"", WS_BORDER | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY,
                   0, 0, 10, 10, IDC_RAW, hFontMono);

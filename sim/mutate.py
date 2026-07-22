@@ -138,6 +138,13 @@ MUTATIONS = [
     ('会话标记漏认 open_dial 的 Dial Program Started',
      'bool isOpened = line.find("Dial Log Opened") != std::string::npos ||\n                        line.find("Dial Program Started") != std::string::npos;',
      'bool isOpened = line.find("Dial Log Opened") != std::string::npos ||\n                        line.find("Dial Program StartedZZ") != std::string::npos;'),
+    # ── RSRP/RSRQ 提取 —— baselinetest 靶子 ──
+    ('RSRP 提取失效(pick键改错)',
+     'if ((v = pick(f, {"RSRP", "rsrp"}))) {',
+     'if ((v = pick(f, {"RSRPZZ", "rsrp"}))) {'),
+    ('RSRP 负值过滤反向(只收正数→全废)',
+     'if (endp != v->c_str() && r < 0) m.rsrp = (int)r;',
+     'if (endp != v->c_str() && r > 0) m.rsrp = (int)r;'),
 ]
 
 # 变异后跑的测试(全绿=变异存活=测试有洞)

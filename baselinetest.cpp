@@ -229,6 +229,29 @@ int main() {
         cki((long)a.session, 2, "会话标记计数 2(Started + Exit)");
     }
 
+    // ── RSRP/RSRQ 提取(v1.7.x 新功能):HEARTBEAT 行的 dBm 精确信号值 ──
+    //    真机两种分隔:open_dial "RSRP:-94 | RSRQ:-18"(竖线) / modem_mng
+    //    "RSRP:-104 RSRQ:-10"(空格)。hbFields 均能切出。只接受负值。
+    {
+        std::printf("── RSRP/RSRQ 提取(两种分隔)\n");
+        std::vector<std::string> raw = {
+            "[2026-06-30 00:00:26] [HEARTBEAT] CSQ:21 | RSRP:-104 RSRQ:-10 | Cell:X",   // 空格
+            "[2026-06-13 07:07:32] [HEARTBEAT] CSQ:20 | RSRP:-94 | RSRQ:-18 | CID:Y",   // 竖线
+            "[2026-06-13 07:08:00] [HEARTBEAT] CSQ:25 | CID:Z"                          // 无 RSRP
+        };
+        std::vector<LogLine> lines; std::vector<std::string> sess; ParseAudit a;
+        parseLines(raw, lines, sess, &a);
+        auto ms = buildMetrics(lines);
+        if (ms.size() != 3) { std::printf("   ✗ 期望3条指标,得 %zu\n", ms.size()); g_fail++; }
+        else {
+            cki((long)ms[0].rsrp, -104, "RSRP 空格分隔(RSRP:-104 RSRQ:-10)");
+            cki((long)ms[0].rsrq, -10,  "RSRQ 空格分隔");
+            cki((long)ms[1].rsrp, -94,  "RSRP 竖线分隔(RSRP:-94 | RSRQ:-18)");
+            cki((long)ms[1].rsrq, -18,  "RSRQ 竖线分隔");
+            cki((long)ms[2].rsrp, 1,    "无 RSRP 行保持无效标记(不误报)");
+        }
+    }
+
     std::printf("\n===== 真机基线断言:%d 项失败 =====\n", g_fail);
     std::printf("注:基线数字全部来自**真机日志**,不是我编的期望值。\n"
                 "    本层专治'只验结论出现、不验具体数字'的没牙齿断言(变异测试逼出来的)。\n");

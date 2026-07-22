@@ -757,6 +757,19 @@ std::vector<MetricRow> buildMetrics(const std::vector<LogLine>& lines) {
             long c = std::strtol(v->c_str(), &endp, 10);
             if (endp != v->c_str() && c != 99) m.csqVal = (int)c;   // 99 = AT+CSQ 未知
         }
+        // RSRP/RSRQ:dBm 精确信号值(负数)。真机两种分隔 hbFields 均能切出:
+        //   open_dial "RSRP:-94 | RSRQ:-18"(竖线) / modem_mng "RSRP:-104 RSRQ:-10"(空格)。
+        // 只接受负值,正数视为异常(1=无效标记)。
+        if ((v = pick(f, {"RSRP", "rsrp"}))) {
+            char* endp = nullptr;
+            long r = std::strtol(v->c_str(), &endp, 10);
+            if (endp != v->c_str() && r < 0) m.rsrp = (int)r;
+        }
+        if ((v = pick(f, {"RSRQ", "rsrq"}))) {
+            char* endp = nullptr;
+            long r = std::strtol(v->c_str(), &endp, 10);
+            if (endp != v->c_str() && r < 0) m.rsrq = (int)r;
+        }
         rows.push_back(std::move(m));
     }
     return rows;

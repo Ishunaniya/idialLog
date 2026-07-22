@@ -20,8 +20,8 @@
 #pragma once
 
 #define DL_VER_MAJOR 1
-#define DL_VER_MINOR 7
-#define DL_VER_PATCH 2
+#define DL_VER_MINOR 8
+#define DL_VER_PATCH 0
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

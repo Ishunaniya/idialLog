@@ -103,6 +103,8 @@ struct MetricRow {
     long long t = 0;
     std::string ts, ch, csq, tmax, cf, rx, drx;
     int  csqVal  = -1;      // -1=无效/99
+    int  rsrp    = 1;       // dBm,负值(约-70~-120,越大越好);1=无效(正数不可能是真值)
+    int  rsrq    = 1;       // dB,负值(约-3~-20);1=无效
     bool drxZero = false;   // ΔRX == 0 → 数据不通征兆
     size_t lineNo = 0;
 };
