@@ -1574,9 +1574,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             case CDDS_ITEMPREPAINT | CDDS_SUBITEM: {
                 size_t i = (size_t)cd->nmcd.dwItemSpec;
                 int sub = cd->iSubItem;
-                cd->clrTextBk = GetSysColor(COLOR_WINDOW);
+                // 斑马纹:奇数行浅灰底(th::zebra),偶数行白 —— 隔行区分,长表好读。
+                cd->clrTextBk = (i & 1) ? th::zebra : GetSysColor(COLOR_WINDOW);
                 if (i < g_metrics.size()) {
                     const MetricRow& m = g_metrics[i];
+                    // 高亮单元格优先级高于斑马纹(覆盖)
                     if (sub == 6 && m.drxZero)                      cd->clrTextBk = RGB(255, 214, 245);
                     else if (sub == 2 && m.csqVal >= 0 && m.csqVal < 10) cd->clrTextBk = RGB(255, 238, 200);
                 }

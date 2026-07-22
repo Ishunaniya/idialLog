@@ -21,6 +21,7 @@ namespace th {
 // ---- 表面 ----
 inline const COLORREF surface  = HEX2RGB(0xfcfcfb);  // 图表/内容表面
 inline const COLORREF page     = HEX2RGB(0xf9f9f7);  // 页面底板(比表面暗一档)
+inline const COLORREF zebra    = HEX2RGB(0xf4f4f2);  // 表格斑马纹(隔行浅灰,极淡不抢焦)
 inline const COLORREF border   = HEX2RGB(0xe4e4e3);  // 发丝描边(ink 10% 压在 surface 上)
 
 // ---- 文字(唯一允许承载文字的颜色) ----
