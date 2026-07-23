@@ -77,6 +77,8 @@ static std::vector<SumCard> g_sumCards;
 static std::vector<COLORREF> g_tlColors, g_ogColors;
 static std::vector<std::pair<long long,int>> g_csq;   // 供图表
 static std::vector<std::pair<long long,int>> g_rsrp;  // 供图表:RSRP dBm(负值,右轴)
+static std::vector<std::pair<long long,int>> g_rsrq;  // 供图表:RSRQ dB(负值,与RSRP共右轴,点击切换)
+static bool g_chartShowRsrq = false;                  // 右轴当前显示:false=RSRP true=RSRQ
 static int g_curPage = 0;
 
 // ============================ DPI 缩放中枢 ============================
@@ -644,6 +646,14 @@ static LRESULT CALLBACK SummaryProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 }
 static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_ERASEBKGND) return 1;   // 交给 WM_PAINT,避免闪烁
+    if (msg == WM_LBUTTONDOWN) {          // 点击图区:右轴 RSRP/RSRQ 切换
+        if (!g_rsrp.empty() || !g_rsrq.empty()) {
+            g_chartShowRsrq = !g_chartShowRsrq;
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+        return 0;
+    }
+    if (msg == WM_SETCURSOR) { SetCursor(LoadCursorW(nullptr, IDC_HAND)); return TRUE; }
     if (msg != WM_PAINT) return DefWindowProcW(hwnd, msg, wp, lp);
 
     PAINTSTRUCT ps;
@@ -671,7 +681,9 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
 
     SetTextColor(hdc, th::inkMuted);
-    const wchar_t* title = L"信号趋势  蓝=CSQ(0-31,左轴)  紫=RSRP(dBm,右轴)  竖红带=断网  黄虚线=弱信号阈值10";
+    const wchar_t* title = g_chartShowRsrq
+        ? L"信号趋势  蓝=CSQ(0-31,左轴)  紫=RSRQ(dB,右轴)  [点图切回 RSRP]  竖红带=断网"
+        : L"信号趋势  蓝=CSQ(0-31,左轴)  紫=RSRP(dBm,右轴)  [点图切换 RSRQ]  竖红带=断网";
     TextOutW(hdc, 42, 4, title, (int)wcslen(title));
 
     if (g_csq.size() < 2) {
@@ -750,39 +762,68 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     SelectObject(hdc, oldPen);
     DeleteObject(linePen);
 
-    // RSRP 折线(右轴,dBm):量程固定 -120~-60,越高越好。独立 Y 映射,紫色区分。
-    if (g_rsrp.size() >= 2) {
-        const int RS_HI = -60, RS_LO = -120;
-        auto Yr = [&](int v) {
-            int c = v > RS_HI ? RS_HI : (v < RS_LO ? RS_LO : v);
-            return r.bottom - (int)((double)(c - RS_LO) / (RS_HI - RS_LO) * (r.bottom - r.top));
-        };
-        SetTextColor(hdc, th::s7_violet);
-        const int rsTicks[] = { -60, -80, -100, -120 };
-        for (int i = 0; i < 4; ++i) {
-            int y = Yr(rsTicks[i]);
-            wchar_t lb[8]; wsprintfW(lb, L"%d", rsTicks[i]);
-            TextOutW(hdc, r.right + 4, y - 8, lb, (int)wcslen(lb));
+    // 右轴折线:RSRP 或 RSRQ(点击图区切换)。二者量程不同,各用各的刻度。
+    //   RSRP -120~-60 dBm;RSRQ -25~0 dB。均为负值、越大越好,紫色区分于蓝色 CSQ。
+    {
+        const std::vector<std::pair<long long,int>>& series = g_chartShowRsrq ? g_rsrq : g_rsrp;
+        const int RS_HI = g_chartShowRsrq ?   0 :  -60;
+        const int RS_LO = g_chartShowRsrq ? -25 : -120;
+        const int tk4[4] = { RS_HI, RS_HI - (RS_HI - RS_LO) / 3,
+                             RS_HI - (RS_HI - RS_LO) * 2 / 3, RS_LO };
+        if (series.size() >= 2) {
+            auto Yr = [&](int v) {
+                int c = v > RS_HI ? RS_HI : (v < RS_LO ? RS_LO : v);
+                return r.bottom - (int)((double)(c - RS_LO) / (RS_HI - RS_LO) * (r.bottom - r.top));
+            };
+            SetTextColor(hdc, th::s7_violet);
+            for (int i2 = 0; i2 < 4; ++i2) {
+                int y = Yr(tk4[i2]);
+                wchar_t lb[8]; wsprintfW(lb, L"%d", tk4[i2]);
+                TextOutW(hdc, r.right + 4, y - 8, lb, (int)wcslen(lb));
+            }
+            HPEN rsPen = CreatePen(PS_SOLID, 2, th::s7_violet);
+            oldPen = SelectObject(hdc, rsPen);
+            bool f2 = true;
+            for (const auto& c : series) {
+                int x = X(c.first), y = Yr(c.second);
+                if (f2) { MoveToEx(hdc, x, y, nullptr); f2 = false; }
+                else LineTo(hdc, x, y);
+            }
+            SelectObject(hdc, oldPen);
+            DeleteObject(rsPen);
         }
-        HPEN rsPen = CreatePen(PS_SOLID, 2, th::s7_violet);
-        oldPen = SelectObject(hdc, rsPen);
-        bool f2 = true;
-        for (const auto& c : g_rsrp) {
-            int x = X(c.first), y = Yr(c.second);
-            if (f2) { MoveToEx(hdc, x, y, nullptr); f2 = false; }
-            else LineTo(hdc, x, y);
-        }
-        SelectObject(hdc, oldPen);
-        DeleteObject(rsPen);
     }
 
-    // X 轴两端时间
+    // X 轴时间刻度:对齐整点(非均分),竖网格线 + HH:MM;步长按跨度自适应,标签不超 10 个
     SetTextColor(hdc, th::inkMuted);
-    std::wstring s0 = U8ToW(fmtTime(t0, "HM")), s1 = U8ToW(fmtTime(t1, "HM"));
-    TextOutW(hdc, r.left, r.bottom + 3, s0.c_str(), (int)s0.size());
-    SIZE sz{};
-    GetTextExtentPoint32W(hdc, s1.c_str(), (int)s1.size(), &sz);
-    TextOutW(hdc, r.right - sz.cx, r.bottom + 3, s1.c_str(), (int)s1.size());
+    {
+        long long spanSec = t1 - t0;
+        int stepH = 1;
+        const int cand[] = { 1, 2, 3, 6, 12, 24 };
+        for (int i3 = 0; i3 < 6; ++i3) {
+            stepH = cand[i3];
+            if (spanSec / (cand[i3] * 3600LL) <= 10) break;
+        }
+        long long stepSec = stepH * 3600LL;
+        long long firstT = ((t0 + stepSec - 1) / stepSec) * stepSec;
+        HPEN tPen = CreatePen(PS_SOLID, 1, th::grid);
+        HGDIOBJ oldTP = SelectObject(hdc, tPen);
+        for (long long t = firstT; t <= t1; t += stepSec) {
+            int x = X(t);
+            if (x < r.left || x > r.right) continue;
+            MoveToEx(hdc, x, r.top, nullptr);
+            LineTo(hdc, x, r.bottom);
+            std::wstring lb = U8ToW(fmtTime(t, "HM"));
+            SIZE ts{}; GetTextExtentPoint32W(hdc, lb.c_str(), (int)lb.size(), &ts);
+            TextOutW(hdc, x - ts.cx / 2, r.bottom + 3, lb.c_str(), (int)lb.size());
+        }
+        SelectObject(hdc, oldTP); DeleteObject(tPen);
+        std::wstring s0 = U8ToW(fmtTime(t0, "HM")), s1 = U8ToW(fmtTime(t1, "HM"));
+        TextOutW(hdc, r.left, r.bottom + 3, s0.c_str(), (int)s0.size());
+        SIZE sz{};
+        GetTextExtentPoint32W(hdc, s1.c_str(), (int)s1.size(), &sz);
+        TextOutW(hdc, r.right - sz.cx, r.bottom + 3, s1.c_str(), (int)s1.size());
+    }
 
     BitBlt(hdcWin, 0, 0, rcC.right, rcC.bottom, hdc, 0, 0, SRCCOPY);
     SelectObject(hdc, oldBmp);
@@ -1010,6 +1051,7 @@ static void RenderMetrics() {
     ListView_DeleteAllItems(hMetric);
     g_csq.clear();
     g_rsrp.clear();
+    g_rsrq.clear();
     int row = 0;
     for (const auto& m : g_metrics) {
         LvAddRow(hMetric, row, U8ToW(m.ts));
@@ -1023,6 +1065,7 @@ static void RenderMetrics() {
         LvSet(hMetric, row, 8, m.rsrq < 0 ? FmtW(L"%d", m.rsrq) : L"-");
         if (m.csqVal >= 0) g_csq.push_back({ m.t, m.csqVal });
         if (m.rsrp < 0)    g_rsrp.push_back({ m.t, m.rsrp });
+        if (m.rsrq < 0)    g_rsrq.push_back({ m.t, m.rsrq });
         row++;
     }
     InvalidateRect(hChart, nullptr, TRUE);

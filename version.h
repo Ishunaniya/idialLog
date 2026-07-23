@@ -24,7 +24,7 @@
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 9
-#define DL_VER_PATCH 0
+#define DL_VER_PATCH 1
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)
