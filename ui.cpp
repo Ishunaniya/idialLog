@@ -32,6 +32,7 @@ using namespace dl;
 #define IDC_APPLY     1003
 #define IDC_CLEAR     1004
 #define IDC_EXPORT    1005
+#define IDC_CLOSELOG  1030   // 关闭日志(卸载当前数据)
 #define IDC_TAGBOX    1006
 #define IDC_GREPBOX   1007
 #define IDC_SINCEBOX  1008
@@ -1491,7 +1492,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         Mk(L"STATIC", L"止:", SS_LEFT, S(608), S(y + 4), S(22), S(18), 0, hFontUI);
         hUntilBox = Mk(L"EDIT", L"", WS_BORDER | ES_AUTOHSCROLL, S(632), S(y), S(84), S(22), IDC_UNTILBOX, hFontUI);
         Mk(L"BUTTON", L"应用筛选", BS_PUSHBUTTON, S(728), S(y - 2), S(84), S(26), IDC_APPLY, hFontUI);
-        Mk(L"BUTTON", L"清空", BS_PUSHBUTTON, S(818), S(y - 2), S(60), S(26), IDC_CLEAR, hFontUI);
+        Mk(L"BUTTON", L"清空筛选", BS_PUSHBUTTON, S(818), S(y - 2), S(84), S(26), IDC_CLEAR, hFontUI);
+        Mk(L"BUTTON", L"关闭日志", BS_PUSHBUTTON, S(908), S(y - 2), S(84), S(26), IDC_CLOSELOG, hFontUI);
 
         // 页签
         hTab = CreateWindowExW(0, WC_TABCONTROLW, L"", WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
@@ -1614,6 +1616,30 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             SetWindowTextW(hUntilBox, L"");
             RefreshAll();
             return 0;
+        case IDC_CLOSELOG: {
+            // 关闭日志:卸载数据回到"尚未加载"。RefreshAll 对空数据会提前 return
+            // (不刷各页),故此处手动逐页渲染,否则列表/卡片残留上一份日志。
+            g_all.clear(); g_view.clear();
+            g_sessions.clear(); g_outages.clear(); g_metrics.clear();
+            g_findings.clear(); g_sumCards.clear();
+            g_tlColors.clear(); g_ogColors.clear();
+            g_csq.clear(); g_rsrp.clear(); g_rsrq.clear();
+            g_audit = ParseAudit{};
+            g_plat  = PlatformInfo{};
+            g_findScroll = g_findContentH = 0;
+            g_sumScroll  = g_sumContentH  = 0;
+            SetWindowTextW(hTagBox, L"");
+            SetWindowTextW(hGrepBox, L"");
+            SetWindowTextW(hSinceBox, L"");
+            SetWindowTextW(hUntilBox, L"");
+            RenderSummary(); RenderFindings(); RenderTimeline(); RenderOutages();
+            RenderMetrics(); RenderTags(); RenderRaw(); RenderUnparsed();
+            if (hChart) InvalidateRect(hChart, nullptr, TRUE);
+            if (hDash)  InvalidateRect(hDash,  nullptr, TRUE);
+            SetWindowTextW(hFileLbl, L"");
+            SetWindowTextW(hStatus, L"尚未加载日志。");
+            return 0;
+        }
         }
         return 0;
 
