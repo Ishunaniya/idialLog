@@ -80,6 +80,7 @@ static std::vector<std::pair<long long,int>> g_csq;   // 供图表
 static std::vector<std::pair<long long,int>> g_rsrp;  // 供图表:RSRP dBm(负值,右轴)
 static std::vector<std::pair<long long,int>> g_rsrq;  // 供图表:RSRQ dB(负值,与RSRP共右轴,点击切换)
 static bool g_chartShowRsrq = false;                  // 右轴当前显示:false=RSRP true=RSRQ
+static int  g_chartHoverX   = -1;                     // 悬停 X(客户区),-1=未悬停
 static int g_curPage = 0;
 
 // ============================ DPI 缩放中枢 ============================
@@ -655,6 +656,18 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return 0;
     }
     if (msg == WM_SETCURSOR) { SetCursor(LoadCursorW(nullptr, IDC_HAND)); return TRUE; }
+    if (msg == WM_MOUSEMOVE) {            // 悬停:记录X并重绘 → 十字线+读数
+        int mx = (int)(short)LOWORD(lp);
+        if (mx != g_chartHoverX) {
+            g_chartHoverX = mx;
+            InvalidateRect(hwnd, nullptr, FALSE);
+            TRACKMOUSEEVENT tme{};
+            tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = hwnd;
+            TrackMouseEvent(&tme);
+        }
+        return 0;
+    }
+    if (msg == WM_MOUSELEAVE) { g_chartHoverX = -1; InvalidateRect(hwnd, nullptr, FALSE); return 0; }
     if (msg != WM_PAINT) return DefWindowProcW(hwnd, msg, wp, lp);
 
     PAINTSTRUCT ps;
@@ -795,6 +808,45 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
     }
 
+    // 悬停十字线 + 读数:找最近的 CSQ 采样点,显示时间与各指标当时的值
+    if (g_chartHoverX >= r.left && g_chartHoverX <= r.right && !g_csq.empty()) {
+        double frac = (double)(g_chartHoverX - r.left) / (r.right - r.left > 0 ? (r.right - r.left) : 1);
+        long long ht = t0 + (long long)(frac * (t1 - t0));
+        const std::pair<long long,int>* best = nullptr; long long bestD = 0;
+        for (const auto& c : g_csq) {
+            long long d = c.first > ht ? c.first - ht : ht - c.first;
+            if (!best || d < bestD) { best = &c; bestD = d; }
+        }
+        if (best) {
+            int hx = X(best->first);
+            HPEN crossPen = CreatePen(PS_DOT, 1, th::inkMuted);
+            HGDIOBJ opc = SelectObject(hdc, crossPen);
+            MoveToEx(hdc, hx, r.top, nullptr); LineTo(hdc, hx, r.bottom);
+            SelectObject(hdc, opc); DeleteObject(crossPen);
+            const std::vector<std::pair<long long,int>>& rs = g_chartShowRsrq ? g_rsrq : g_rsrp;
+            const std::pair<long long,int>* rbest = nullptr; long long rd = 0;
+            for (const auto& c : rs) {
+                long long d = c.first > best->first ? c.first - best->first : best->first - c.first;
+                if (!rbest || d < rd) { rbest = &c; rd = d; }
+            }
+            std::wstring info = U8ToW(fmtTime(best->first, "HM")) + FmtW(L"   CSQ %d", best->second);
+            if (rbest && rd <= 600)
+                info += FmtW(g_chartShowRsrq ? L"   RSRQ %d dB" : L"   RSRP %d dBm", rbest->second);
+            SIZE is{}; GetTextExtentPoint32W(hdc, info.c_str(), (int)info.size(), &is);
+            int bx = hx + 8, by = r.top + 4;
+            if (bx + is.cx + 10 > r.right) bx = hx - is.cx - 14;
+            RECT ib{ bx - 4, by - 2, bx + is.cx + 6, by + is.cy + 3 };
+            HBRUSH ibg = CreateSolidBrush(th::surface);
+            FillRect(hdc, &ib, ibg); DeleteObject(ibg);
+            HPEN ibd = CreatePen(PS_SOLID, 1, th::border);
+            HGDIOBJ oib = SelectObject(hdc, ibd), oib2 = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+            Rectangle(hdc, ib.left, ib.top, ib.right, ib.bottom);
+            SelectObject(hdc, oib2); SelectObject(hdc, oib); DeleteObject(ibd);
+            SetTextColor(hdc, th::inkPri);
+            TextOutW(hdc, bx, by, info.c_str(), (int)info.size());
+        }
+    }
+
     // X 轴时间刻度:对齐整点(非均分),竖网格线 + HH:MM;步长按跨度自适应,标签不超 10 个
     SetTextColor(hdc, th::inkMuted);
     {
@@ -809,6 +861,11 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         long long firstT = ((t0 + stepSec - 1) / stepSec) * stepSec;
         HPEN tPen = CreatePen(PS_SOLID, 1, th::grid);
         HGDIOBJ oldTP = SelectObject(hdc, tPen);
+        std::wstring es0 = U8ToW(fmtTime(t0, "HM")), es1 = U8ToW(fmtTime(t1, "HM"));
+        SIZE z0{}, z1{};
+        GetTextExtentPoint32W(hdc, es0.c_str(), (int)es0.size(), &z0);
+        GetTextExtentPoint32W(hdc, es1.c_str(), (int)es1.size(), &z1);
+        int leftGuard = r.left + z0.cx + 6, rightGuard = r.right - z1.cx - 6;
         for (long long t = firstT; t <= t1; t += stepSec) {
             int x = X(t);
             if (x < r.left || x > r.right) continue;
@@ -816,7 +873,9 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             LineTo(hdc, x, r.bottom);
             std::wstring lb = U8ToW(fmtTime(t, "HM"));
             SIZE ts{}; GetTextExtentPoint32W(hdc, lb.c_str(), (int)lb.size(), &ts);
-            TextOutW(hdc, x - ts.cx / 2, r.bottom + 3, lb.c_str(), (int)lb.size());
+            int tx = x - ts.cx / 2;
+            if (tx < leftGuard || tx + ts.cx > rightGuard) continue;   // 与首尾重叠→只画线
+            TextOutW(hdc, tx, r.bottom + 3, lb.c_str(), (int)lb.size());
         }
         SelectObject(hdc, oldTP); DeleteObject(tPen);
         std::wstring s0 = U8ToW(fmtTime(t0, "HM")), s1 = U8ToW(fmtTime(t1, "HM"));
@@ -867,7 +926,8 @@ static void RenderSummary() {
     g_sumScroll = 0;
     if (hSummary) { SetScrollPos(hSummary, SB_VERT, 0, TRUE); }
     if (g_view.empty()) {
-        g_sumCards.push_back({ L"明细", { L"筛选后没有可解析的日志行。" }, 0, false });
+        if (!g_all.empty())      // 未加载日志时不显示卡片(上方已有提示)
+            g_sumCards.push_back({ L"明细", { L"筛选后没有可解析的日志行(试试“清空筛选”)。" }, 0, false });
         if (hSummary) InvalidateRect(hSummary, nullptr, FALSE);
         return;
     }
