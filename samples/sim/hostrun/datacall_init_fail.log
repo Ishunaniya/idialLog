@@ -1,56 +1,57 @@
-[2026-07-17 17:37:11] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
-[2026-07-17 17:37:11] [INIT] Starting dial initialization...
-[2026-07-17 17:37:11] [INIT] Waiting for ql_data_call_init...
-[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=200
-[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=180
-[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=160
-[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=140
-[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=120
-[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=100
-[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=80
-[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=60
-[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=40
-[2026-07-17 17:37:11] [INIT] data_call_init retrying, remaining=20
-[2026-07-17 17:37:11] [INIT] data_call_init failed, ret=-1067
+[2026-08-04 22:58:00] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-08-04 22:58:00] [INIT] Starting dial initialization...
+[2026-08-04 22:58:00] [INIT] Waiting for ql_data_call_init...
+[2026-08-04 22:58:00] [INIT] data_call_init retrying, remaining=200
+[2026-08-04 22:58:00] [INIT] data_call_init retrying, remaining=180
+[2026-08-04 22:58:00] [INIT] data_call_init retrying, remaining=160
+[2026-08-04 22:58:00] [INIT] data_call_init retrying, remaining=140
+[2026-08-04 22:58:00] [INIT] data_call_init retrying, remaining=120
+[2026-08-04 22:58:00] [INIT] data_call_init retrying, remaining=100
+[2026-08-04 22:58:00] [INIT] data_call_init retrying, remaining=80
+[2026-08-04 22:58:00] [INIT] data_call_init retrying, remaining=60
+[2026-08-04 22:58:00] [INIT] data_call_init retrying, remaining=40
+[2026-08-04 22:58:00] [INIT] data_call_init retrying, remaining=20
+[2026-08-04 22:58:00] [INIT] data_call_init failed, ret=-1067
+[2026-08-04 22:58:00] [INIT] NW service init OK.
 ql_sim_init ok
-[2026-07-17 17:37:11] [SIM] sim_init OK
-[2026-07-17 17:37:11] [INIT] ICCID: (empty)
-[2026-07-17 17:37:11] [INIT] SIM state: READY
-[2026-07-17 17:37:11] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-07-17 17:37:11] [INIT] APN set success
-[2026-07-17 17:37:11] [INIT] set_reconnect_mode(NORMAL): OK
-[2026-07-17 17:37:11] [INIT] ql_data_call_config: OK
-[2026-07-17 17:37:11] [INIT] Starting Data Call...
-[2026-07-17 17:37:11] [INIT] IMEI:    865965086914080
-[2026-07-17 17:37:11] [INIT] FW:      (unknown)
-[2026-07-17 17:37:11] [INIT] SUB:     (unknown)
-[2026-07-17 17:37:11] [INIT] AP_FW:   (unknown)
-[2026-07-17 17:37:11] [INIT] CP_FW:   (unknown)
-[2026-07-17 17:37:11] [INIT] IMSI:    460089087110299
-[2026-07-17 17:37:11] [INIT] Operator:+COPS: 0,2,"46000",7
-[2026-07-17 17:37:11] [INIT] CFUN:    +CFUN: 1
-[2026-07-17 17:37:11] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
+[2026-08-04 22:58:00] [SIM] sim_init OK
+[2026-08-04 22:58:00] [INIT] ICCID: (empty)
+[2026-08-04 22:58:00] [INIT] SIM state: READY
+[2026-08-04 22:58:00] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-08-04 22:58:00] [INIT] APN set success
+[2026-08-04 22:58:00] [INIT] set_reconnect_mode(NORMAL): OK
+[2026-08-04 22:58:00] [INIT] ql_data_call_config: OK
+[2026-08-04 22:58:00] [INIT] Starting Data Call...
+[2026-08-04 22:58:00] [INIT] IMEI:    865965086914080
+[2026-08-04 22:58:00] [INIT] FW:      (unknown)
+[2026-08-04 22:58:00] [INIT] SUB:     (unknown)
+[2026-08-04 22:58:00] [INIT] AP_FW:   (unknown)
+[2026-08-04 22:58:00] [INIT] CP_FW:   (unknown)
+[2026-08-04 22:58:00] [INIT] IMSI:    460089087110299
+[2026-08-04 22:58:00] [INIT] Operator:+COPS: 0,2,"46000",7
+[2026-08-04 22:58:00] [INIT] CFUN:    +CFUN: 1
+[2026-08-04 22:58:00] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
 ##### PRO type 
-[2026-07-17 17:37:11] [LED] startup, send blink
-[2026-07-17 17:37:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:0s
-[2026-07-17 17:37:11] [INFO] SDK auto-reconnect phase started (interval=25s). L1 at 300s, L2 at 600s, L3 at 2100s.
-[2026-07-17 17:37:11] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
-[2026-07-17 17:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:18s
-[2026-07-17 17:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:48s
-[2026-07-17 17:38:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:78s
-[2026-07-17 17:40:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:108s
-[2026-07-17 17:40:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:139s
-[2026-07-17 17:40:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:169s
-[2026-07-17 17:40:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:199s
-[2026-07-17 17:42:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:229s
-[2026-07-17 17:42:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:259s
-[2026-07-17 17:42:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:289s
-[2026-07-17 17:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:319s
-[2026-07-17 17:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:349s
-[2026-07-17 17:43:51] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:379s
-[2026-07-17 17:45:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:411s
-[2026-07-17 17:45:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:441s
-[2026-07-17 17:45:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:471s
-[2026-07-17 17:45:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:502s
-[2026-07-17 17:47:11] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:18 | TEMP:-1 | DownTime:532s
-[2026-07-17 17:47:11] [EVENT] Exit requested. Turning LED off and leaving dial_loop.
+[2026-08-04 22:58:00] [LED] startup, send blink
+[2026-08-04 22:58:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:0s
+[2026-08-04 22:58:00] [INFO] SDK auto-reconnect phase started (interval=25s). L1 at 300s, L2 at 600s, L3 at 2100s.
+[2026-08-04 22:58:00] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
+[2026-08-04 22:58:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:17s
+[2026-08-04 22:59:40] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:47s
+[2026-08-04 22:59:40] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:77s
+[2026-08-04 22:59:40] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:107s
+[2026-08-04 23:01:20] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:137s
+[2026-08-04 23:01:20] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:167s
+[2026-08-04 23:01:20] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:198s
+[2026-08-04 23:03:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:228s
+[2026-08-04 23:03:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:260s
+[2026-08-04 23:03:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:290s
+[2026-08-04 23:04:40] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:320s
+[2026-08-04 23:04:40] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:350s
+[2026-08-04 23:04:40] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:380s
+[2026-08-04 23:04:40] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:411s
+[2026-08-04 23:06:20] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:441s
+[2026-08-04 23:06:20] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:471s
+[2026-08-04 23:06:20] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:501s
+[2026-08-04 23:08:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:18 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | TEMP:-1 | DownTime:531s
+[2026-08-04 23:08:00] [EVENT] Exit requested. Turning LED off and leaving dial_loop.

@@ -1,3 +1,16 @@
+/media/sdcard not exists 
+/media/sdcard not exists 
+/media/sdcard not exists 
+/media/sdcard not exists 
+/media/sdcard not exists 
+/media/sdcard not exists 
+/media/sdcard not exists 
+/media/sdcard not exists 
+/media/sdcard not exists 
+/media/sdcard not exists 
+ /media/sdcard does not exist or free space < 1GB
+2026-08-04 23:07:29.080 [INFO] [0martery_product_main (main.c:180) - DIAL Version: 1.29.15
+
 >> Read response urc, len = 6, content : 
 OK
 
@@ -9,204 +22,857 @@ EG25GGBR07A08M2G_OCPU_30.200.30.200
 
 OK
 
-2026-07-17 17:26:49.734 [ERROR] [0mroamlink_probe (roamlink.c:68) - roamlink: RBMaster not found at /usrdata/roamlink/RBMaster -> NO_PACKAGE
-2026-07-17 17:26:49.824 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:26:49.874 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:26:49.925 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:26:49.976 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.027 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.078 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.128 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.179 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.230 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.285 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.338 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.389 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.440 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.490 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.543 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.594 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.645 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.696 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.748 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.803 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.854 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.905 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:27:49.956 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.007 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.057 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.108 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.159 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.211 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.262 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.317 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.370 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.420 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.471 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.523 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.573 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.623 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.677 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.730 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.781 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.838 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.889 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.940 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:28:49.991 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.041 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.092 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.143 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.194 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.244 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.295 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.349 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.400 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.467 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.518 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.581 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.632 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.690 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.743 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.796 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.851 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.902 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:29:49.953 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.004 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.056 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.106 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.165 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.216 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.269 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.327 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.386 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.448 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.498 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.558 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.609 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.662 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.717 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.767 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.819 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.870 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.926 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:30:49.977 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.027 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.078 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.131 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.181 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.232 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.283 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.333 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.384 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.441 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.493 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.544 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.601 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.655 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.706 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.758 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.809 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.872 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:31:49.872 [ERROR] [0mdial_task (dial.c:1062) - reg_check timeout (300s), policy=4
-2026-07-17 17:31:49.872 [ERROR] [0mdial_task (dial.c:2070) - reg timeout: policy=4, cfun reset and retry
+2026-08-04 23:07:29.083 [INFO] [0mroamlink_read_policy (roamlink.c:312) - roamlink: /usrdata/network.ini not found, use default policy 4
+2026-08-04 23:07:29.086 [INFO] [0mroamlink_is_master_running (roamlink.c:391) - roamlink: RBMaster process not found in /proc
+2026-08-04 23:07:29.086 [ERROR] [0mroamlink_probe (roamlink.c:68) - roamlink: RBMaster not found at /usrdata/roamlink/RBMaster -> NO_PACKAGE
+2026-08-04 23:07:29.086 [INFO] [0mprint_init_info (main.c:133) - [INIT] policy=4
+>> Read response urc, len = 25, content : 
+867929069681908
+
+OK
+
+2026-08-04 23:07:29.086 [INFO] [0mprint_init_info (main.c:140) - [INIT] IMEI: 867929069681908
+>> Read response urc, len = 45, content : 
+EG25GGBR07A08M2G_OCPU_30.200.30.200
+
+OK
+
+2026-08-04 23:07:29.088 [INFO] [0mprint_init_info (main.c:144) - [INIT] FW: EG25GGBR07A08M2G_OCPU_30.200.30.200
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
->> Read response urc, len = 6, content : 
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
 OK
 
-2026-07-17 17:32:49.020 [ERROR] [0mdial_task (dial.c:1646) - dial_stat_start_cfun
->> Read response urc, len = 6, content : 
+2026-08-04 23:07:29.089 [INFO] [0mprint_init_info (main.c:162) - [INIT] COPS: +COPS: 0,2,"46000",7 (mode=0 auto) | CEREG: +CEREG: 0,1
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
 OK
 
-2026-07-17 17:32:49.173 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.224 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.274 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.327 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.378 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.428 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.480 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.539 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.595 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.646 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.697 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.747 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.798 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.848 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.900 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:32:49.951 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.001 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.057 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.108 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.158 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.209 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.260 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.311 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.362 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.412 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.463 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.514 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.569 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.620 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.670 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.721 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.772 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.823 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.874 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.925 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:33:49.978 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.029 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.083 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.134 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.184 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.235 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.286 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.338 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.388 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.439 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.490 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.541 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.595 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.646 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.697 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.747 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.798 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.849 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.899 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:34:49.950 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.001 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.052 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.107 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.158 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.209 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.259 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.311 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.362 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.412 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.465 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.516 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.567 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.624 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.675 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.728 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.779 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.829 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.880 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.931 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:35:49.981 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.032 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.084 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.145 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.196 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.247 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.298 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.348 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.399 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.451 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.502 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.556 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.606 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.663 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
-2026-07-17 17:36:49.713 [ERROR] [0mdial_task (dial.c:1056) - Dial_st: dial_stat_reg_check failed
+2026-08-04 23:07:29.093 [INFO] [0mdial_task (dial.c:918) - state: (start) -> none
+2026-08-04 23:07:29.094 [INFO] [0mdial_task (dial.c:981) - dial: policy=4, initial channel: physical SIM
+2026-08-04 23:07:29.111 [INFO] [0mdial_task (dial.c:918) - state: none -> init
+2026-08-04 23:07:29.128 [INFO] [0mdial_task (dial.c:918) - state: init -> sim_init
+2026-08-04 23:07:29.145 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
+2026-08-04 23:07:29.162 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
+2026-08-04 23:07:29.162 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
+2026-08-04 23:07:29.162 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:07:29.178 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
+2026-08-04 23:07:29.195 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-04 23:07:29.213 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-04 23:07:29.230 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-04 23:07:29.230 [ERROR] [0mapn_scan_from_json (apn.c:117) - fp is NULL
+2026-08-04 23:07:29.230 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-04 23:07:29.230 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:07:29.264 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-04 23:07:29.281 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:08:29.107 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=22 SRV:2 RAT:LTE DENY:0 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:08:29.297 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:08:29.298 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:08:29.299 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-04 23:08:29.315 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-04 23:08:29.333 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-04 23:08:29.351 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:08:29.368 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-04 23:08:29.368 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-04 23:08:29.368 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-04 23:08:29.402 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-04 23:08:29.419 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:09:29.121 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=22 SRV:2 RAT:LTE DENY:0 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:09:29.421 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:09:29.423 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:09:29.423 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-04 23:09:29.441 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-04 23:09:29.458 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:09:29.476 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-04 23:09:29.493 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-04 23:09:29.493 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-04 23:09:29.493 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-04 23:09:29.528 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:09:29.545 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:10:29.140 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=22 SRV:2 RAT:LTE DENY:0 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:10:29.555 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:10:29.556 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:10:29.556 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:10:29.573 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-04 23:10:29.591 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-04 23:10:29.608 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-04 23:10:29.625 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-04 23:10:29.625 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-04 23:10:29.625 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:10:29.663 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-04 23:10:29.680 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:11:29.154 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=22 SRV:2 RAT:LTE DENY:0 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:11:29.692 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:11:29.693 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:11:29.693 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-04 23:11:29.710 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-04 23:11:29.727 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-04 23:11:29.745 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:11:29.762 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-04 23:11:29.763 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-04 23:11:29.763 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-04 23:11:29.796 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-04 23:11:29.813 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+>> Read response urc, len = 104, content : 
++QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+
+OK
+
+2026-08-04 23:12:29.085 [INFO] [0martery_product_main (main.c:258) - [HEARTBEAT] OPER:SIMNET 46000 cereg=1 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:12:29.171 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=22 SRV:2 RAT:LTE DENY:0 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:12:29.822 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:12:29.823 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:12:29.823 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-04 23:12:29.840 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:12:29.857 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-04 23:12:29.875 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-04 23:12:29.892 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-04 23:12:29.892 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-04 23:12:29.892 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-04 23:12:29.927 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:12:29.944 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:13:29.182 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=22 SRV:2 RAT:LTE DENY:0 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:13:29.958 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:13:29.958 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:13:29.958 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-04 23:13:29.975 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-04 23:13:29.992 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-04 23:14:29.010 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:14:29.027 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-04 23:14:29.027 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-04 23:14:29.027 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-04 23:14:29.061 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-04 23:14:29.078 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:14:29.196 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=22 SRV:2 RAT:LTE DENY:0 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:15:29.079 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:15:29.080 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:15:29.080 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-04 23:15:29.097 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-04 23:15:29.114 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:15:29.133 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-04 23:15:29.149 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-04 23:15:29.150 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-04 23:15:29.150 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-04 23:15:29.183 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-04 23:15:29.200 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:15:29.211 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=22 SRV:2 RAT:LTE DENY:0 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:16:29.215 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:16:29.216 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-04 23:16:29.216 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:16:29.223 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=22 SRV:2 RAT:LTE DENY:0 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-04 23:16:29.238 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-04 23:16:29.255 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-04 23:16:29.274 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-04 23:16:29.292 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-04 23:16:29.292 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-04 23:16:29.292 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+2026-08-04 23:16:29.325 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-04 23:16:29.342 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 22,99
+
+OK
+

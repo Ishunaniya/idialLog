@@ -1,95 +1,95 @@
-[2026-07-17 17:37:46] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
-[2026-07-17 17:37:46] [INIT] Starting dial initialization...
-[2026-07-17 17:37:46] [INIT] Waiting for ql_data_call_init...
-[2026-07-17 17:37:46] [INIT] data_call_init OK.
+[2026-08-04 22:52:22] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-08-04 22:52:22] [INIT] Starting dial initialization...
+[2026-08-04 22:52:22] [INIT] Waiting for ql_data_call_init...
+[2026-08-04 22:52:22] [INIT] data_call_init OK.
+[2026-08-04 22:52:22] [INIT] NW service init OK.
 ql_sim_init ok
-[2026-07-17 17:37:46] [SIM] sim_init OK
-[2026-07-17 17:37:46] [SLOT] config: no /usr/dial/dualsim.json, seed write failed, use built-in defaults
-[2026-07-17 17:37:46] [OPER] overseas operator-select (dualsim.json oper_select): 0
-[2026-07-17 17:37:46] [SLOT] init: enable=1 primary_phy=1(eSIM) switch_after=600s denied_after=0s(0=follow) cooldown=120s budget=3 fast_boot=1 last_good_ttl=86400s data_dead_settle=120s weak_csq=6 probe_back=0s(0=off)
-[2026-07-17 17:37:46] [SLOT] fast-boot: no valid last-good, fall back to cold select
-[2026-07-17 17:37:46] [SLOT] cold select: probing both physical slots (data-verified)
-[2026-07-17 17:37:46] [SLOT] switch to Phy
-[2026-07-17 17:39:26] [SLOT] active now eSIM (card READY)
-[2026-07-17 17:39:26] [SLOT] cur ICCID: (empty) (eSIM)
-[2026-07-17 17:39:26] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-07-17 17:39:26] [SLOT] data start OK
-[2026-07-17 17:39:26] [SLOT] probe RAT=0 (+0)
-[2026-07-17 17:39:26] [SLOT] probe score: REG=1 CSQ=3 -> score=6003
-[2026-07-17 17:39:26] [SLOT] cold probe Phy: score=6003
-[2026-07-17 17:39:26] [SLOT] switch to eSIM
-[2026-07-17 17:39:26] [SLOT] active now eSIM (card READY)
-[2026-07-17 17:39:26] [SLOT] cur ICCID: (empty) (eSIM)
-[2026-07-17 17:39:26] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-07-17 17:39:26] [SLOT] data start OK
-[2026-07-17 17:39:26] [SLOT] probe RAT=0 (+0)
-[2026-07-17 17:39:26] [SLOT] probe score: REG=1 CSQ=3 -> score=6003
-[2026-07-17 17:39:26] [SLOT] cold probe eSIM: score=6003
-[2026-07-17 17:39:26] [SLOT] cold select result: best=Phy (score=6003) -> drive Phy
-[2026-07-17 17:39:26] [SLOT] switch to Phy
-[2026-07-17 17:39:26] [SLOT] active now eSIM (card READY)
-[2026-07-17 17:39:26] [SLOT] slot select done, Fast-Fail timer rebased.
-[2026-07-17 17:39:26] [INIT] ICCID: (empty)
-[2026-07-17 17:39:26] [INIT] SIM state: READY
-[2026-07-17 17:39:26] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-07-17 17:39:26] [INIT] APN set success
-[2026-07-17 17:39:26] [INIT] set_reconnect_mode(NORMAL): OK
-[2026-07-17 17:39:26] [INIT] ql_data_call_config: OK
-[2026-07-17 17:39:26] [INIT] Starting Data Call...
-[2026-07-17 17:39:26] [INIT] IMEI:    865965086914080
-[2026-07-17 17:39:26] [INIT] FW:      (unknown)
-[2026-07-17 17:39:26] [INIT] SUB:     (unknown)
-[2026-07-17 17:39:26] [INIT] AP_FW:   (unknown)
-[2026-07-17 17:39:26] [INIT] CP_FW:   (unknown)
-[2026-07-17 17:39:26] [INIT] IMSI:    460089087110299
-[2026-07-17 17:39:26] [INIT] Operator:+COPS: 0,2,"46000",7
-[2026-07-17 17:39:26] [INIT] CFUN:    +CFUN: 1
-[2026-07-17 17:39:26] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
+[2026-08-04 22:52:22] [SIM] sim_init OK
+[2026-08-04 22:52:22] [SLOT] config: no /usr/dial/dualsim.json, seed write failed, use built-in defaults
+[2026-08-04 22:52:22] [OPER] overseas operator-select (dualsim.json oper_select): 0
+[2026-08-04 22:52:22] [SLOT] init: enable=1 primary_phy=1(eSIM) switch_after=600s denied_after=0s(0=follow) cooldown=120s budget=3 fast_boot=1 last_good_ttl=86400s data_dead_settle=120s weak_csq=6 probe_back=0s(0=off)
+[2026-08-04 22:52:22] [SLOT] fast-boot: no valid last-good, fall back to cold select
+[2026-08-04 22:52:22] [SLOT] cold select: probing both physical slots (data-verified)
+[2026-08-04 22:52:22] [SLOT] switch to Phy
+[2026-08-04 22:52:22] [SLOT] active now eSIM (card READY)
+[2026-08-04 22:52:22] [SLOT] cur ICCID: (empty) (eSIM)
+[2026-08-04 22:52:22] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-08-04 22:52:22] [SLOT] data start OK
+[2026-08-04 22:52:22] [SLOT] probe RAT=4 (+300)
+[2026-08-04 22:52:22] [SLOT] probe score: REG=1 CSQ=3 -> score=6303
+[2026-08-04 22:52:22] [SLOT] cold probe Phy: score=6303
+[2026-08-04 22:52:22] [SLOT] switch to eSIM
+[2026-08-04 22:52:22] [SLOT] active now eSIM (card READY)
+[2026-08-04 22:52:22] [SLOT] cur ICCID: (empty) (eSIM)
+[2026-08-04 22:52:22] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-08-04 22:52:22] [SLOT] data start OK
+[2026-08-04 22:52:22] [SLOT] probe RAT=4 (+300)
+[2026-08-04 22:52:22] [SLOT] probe score: REG=1 CSQ=3 -> score=6303
+[2026-08-04 22:52:22] [SLOT] cold probe eSIM: score=6303
+[2026-08-04 22:52:22] [SLOT] cold select result: best=Phy (score=6303) -> drive Phy
+[2026-08-04 22:52:22] [SLOT] switch to Phy
+[2026-08-04 22:52:22] [SLOT] active now eSIM (card READY)
+[2026-08-04 22:54:02] [SLOT] slot select done, Fast-Fail timer rebased.
+[2026-08-04 22:54:02] [INIT] ICCID: (empty)
+[2026-08-04 22:54:02] [INIT] SIM state: READY
+[2026-08-04 22:54:02] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-08-04 22:54:02] [INIT] APN set success
+[2026-08-04 22:54:02] [INIT] set_reconnect_mode(NORMAL): OK
+[2026-08-04 22:54:02] [INIT] ql_data_call_config: OK
+[2026-08-04 22:54:02] [INIT] Starting Data Call...
+[2026-08-04 22:54:02] [INIT] IMEI:    865965086914080
+[2026-08-04 22:54:02] [INIT] FW:      (unknown)
+[2026-08-04 22:54:02] [INIT] SUB:     (unknown)
+[2026-08-04 22:54:02] [INIT] AP_FW:   (unknown)
+[2026-08-04 22:54:02] [INIT] CP_FW:   (unknown)
+[2026-08-04 22:54:02] [INIT] IMSI:    460089087110299
+[2026-08-04 22:54:02] [INIT] Operator:+COPS: 0,2,"46000",7
+[2026-08-04 22:54:02] [INIT] CFUN:    +CFUN: 1
+[2026-08-04 22:54:02] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
 ##### PRO type 
-[2026-07-17 17:39:26] [LED] startup, send blink
-[2026-07-17 17:39:26] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:0s | SLOT:eSIM
-[2026-07-17 17:39:26] [INFO] SDK auto-reconnect phase started (interval=25s). L1 at 300s, L2 at 600s, L3 at 2100s.
-[2026-07-17 17:39:26] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
-[2026-07-17 17:39:26] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:19s | SLOT:eSIM
-[2026-07-17 17:41:06] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:49s | SLOT:eSIM
-[2026-07-17 17:41:06] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:79s | SLOT:eSIM
-[2026-07-17 17:41:06] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:109s | SLOT:eSIM
-[2026-07-17 17:42:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:139s | SLOT:eSIM
-[2026-07-17 17:42:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:169s | SLOT:eSIM
-[2026-07-17 17:42:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:200s | SLOT:eSIM
-[2026-07-17 17:44:26] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:230s | SLOT:eSIM
-[2026-07-17 17:44:26] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:261s | SLOT:eSIM
-[2026-07-17 17:44:26] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:291s | SLOT:eSIM
-[2026-07-17 17:44:26] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:321s | SLOT:eSIM
-[2026-07-17 17:46:06] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:352s | SLOT:eSIM
-[2026-07-17 17:46:06] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:384s | SLOT:eSIM
-[2026-07-17 17:46:06] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:414s | SLOT:eSIM
-[2026-07-17 17:47:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:444s | SLOT:eSIM
-[2026-07-17 17:47:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:474s | SLOT:eSIM
-[2026-07-17 17:47:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:504s | SLOT:eSIM
-[2026-07-17 17:49:26] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:535s | SLOT:eSIM
-[2026-07-17 17:49:26] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:565s | SLOT:eSIM
-[2026-07-17 17:49:26] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:595s | SLOT:eSIM
-[2026-07-17 17:49:26] [SLOT] trigger(A-no-net): down 601s REG=1 CSQ=3 count=0/3 -> switch card
-[2026-07-17 17:49:26] [SLOT] switching to role=SECONDARY (Phy)
-[2026-07-17 17:49:26] [SLOT] switch to Phy
-[2026-07-17 17:49:26] [SLOT] active now eSIM (card READY)
-[2026-07-17 17:49:26] [SLOT] cur ICCID: (empty) (eSIM)
-[2026-07-17 17:49:26] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-07-17 17:49:26] [SLOT] data start OK
-[2026-07-17 17:49:26] [INFO] never-connected, policy recovery (L1/L2/L3) gated. Downtime 618s, REG=1, data service OK but no data -- suspected SIM/account issue (e.g. suspended / no data plan).
-[2026-07-17 17:51:06] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:626s | SLOT:eSIM
-[2026-07-17 17:51:06] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:657s | SLOT:eSIM
-[2026-07-17 17:51:06] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:687s | SLOT:eSIM
-[2026-07-17 17:52:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:725s | SLOT:eSIM
-[2026-07-17 17:52:46] [SLOT] trigger(A-no-net): down 725s REG=1 CSQ=3 count=1/3 -> switch card
-[2026-07-17 17:52:46] [SLOT] switching to role=SECONDARY (Phy)
-[2026-07-17 17:52:46] [SLOT] switch to Phy
-[2026-07-17 17:52:46] [SLOT] active now eSIM (card READY)
-[2026-07-17 17:52:46] [SLOT] cur ICCID: (empty) (eSIM)
-[2026-07-17 17:52:46] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-07-17 17:52:46] [SLOT] data start OK
-[2026-07-17 17:52:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:756s | SLOT:eSIM
-[2026-07-17 17:52:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:787s | SLOT:eSIM
-[2026-07-17 17:52:46] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:3 | TEMP:-1 | DownTime:817s | SLOT:eSIM
-[2026-07-17 17:52:46] [EVENT] Exit requested. Turning LED off and leaving dial_loop.
+[2026-08-04 22:54:02] [LED] startup, send blink
+[2026-08-04 22:54:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-08-04 22:54:02] [INFO] SDK auto-reconnect phase started (interval=25s). L1 at 300s, L2 at 600s, L3 at 2100s.
+[2026-08-04 22:54:02] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
+[2026-08-04 22:54:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:16s | SLOT:eSIM
+[2026-08-04 22:54:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:48s | SLOT:eSIM
+[2026-08-04 22:55:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:78s | SLOT:eSIM
+[2026-08-04 22:55:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:108s | SLOT:eSIM
+[2026-08-04 22:55:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:138s | SLOT:eSIM
+[2026-08-04 22:57:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:168s | SLOT:eSIM
+[2026-08-04 22:57:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:199s | SLOT:eSIM
+[2026-08-04 22:57:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:229s | SLOT:eSIM
+[2026-08-04 22:59:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:260s | SLOT:eSIM
+[2026-08-04 22:59:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:290s | SLOT:eSIM
+[2026-08-04 22:59:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:320s | SLOT:eSIM
+[2026-08-04 22:59:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:352s | SLOT:eSIM
+[2026-08-04 23:00:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:383s | SLOT:eSIM
+[2026-08-04 23:00:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:414s | SLOT:eSIM
+[2026-08-04 23:00:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:444s | SLOT:eSIM
+[2026-08-04 23:02:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:475s | SLOT:eSIM
+[2026-08-04 23:02:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:506s | SLOT:eSIM
+[2026-08-04 23:02:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:536s | SLOT:eSIM
+[2026-08-04 23:04:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:567s | SLOT:eSIM
+[2026-08-04 23:04:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:598s | SLOT:eSIM
+[2026-08-04 23:04:02] [SLOT] trigger(A-no-net): down 605s REG=1 CSQ=3 count=0/3 -> switch card
+[2026-08-04 23:04:02] [SLOT] switching to role=SECONDARY (Phy)
+[2026-08-04 23:04:02] [SLOT] switch to Phy
+[2026-08-04 23:04:02] [SLOT] active now eSIM (card READY)
+[2026-08-04 23:04:02] [SLOT] cur ICCID: (empty) (eSIM)
+[2026-08-04 23:04:02] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-08-04 23:04:02] [SLOT] data start OK
+[2026-08-04 23:04:02] [INFO] never-connected, policy recovery (L1/L2/L3) gated. Downtime 623s, REG=1, data service OK but no data -- suspected SIM/account issue (e.g. suspended / no data plan).
+[2026-08-04 23:04:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:628s | SLOT:eSIM
+[2026-08-04 23:05:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:658s | SLOT:eSIM
+[2026-08-04 23:05:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:688s | SLOT:eSIM
+[2026-08-04 23:05:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:719s | SLOT:eSIM
+[2026-08-04 23:05:42] [SLOT] trigger(A-no-net): down 728s REG=1 CSQ=3 count=1/3 -> switch card
+[2026-08-04 23:05:42] [SLOT] switching to role=SECONDARY (Phy)
+[2026-08-04 23:05:42] [SLOT] switch to Phy
+[2026-08-04 23:05:42] [SLOT] active now eSIM (card READY)
+[2026-08-04 23:05:42] [SLOT] cur ICCID: (empty) (eSIM)
+[2026-08-04 23:05:42] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-08-04 23:05:42] [SLOT] data start OK
+[2026-08-04 23:05:42] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:750s | SLOT:eSIM
+[2026-08-04 23:07:22] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:3 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:780s | SLOT:eSIM
+[2026-08-04 23:07:22] [EVENT] Exit requested. Turning LED off and leaving dial_loop.

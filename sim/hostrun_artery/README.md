@@ -7,13 +7,15 @@
 | `../hostrun` | modem_mng `ec200a/dial/dial.cpp`(EC200A + AG35) | 1756 |
 | `../hostrun_open_dial` | open_dial `dial.c` | 880 |
 | `../hostrun_eg25` | modem_mng `eg25/dial/dial.c` | 2116 |
-| **`.`(本目录)** | **artery `src/dial/dial.c`** | **2049** |
+| **`.`(本目录)** | **artery `src/main.c` + `src/dial/dial.c`** | 产品入口 + 拨号任务 |
 
 ## artery 的特点
 
 - **日志体系不同**:`seas_log`(不是 `dial_log`)。真代码产出的日志带**毫秒 + 级别 + 函数名 +
   真实 ESC 字节**(实测 746 个),正是 `FMT_SEAS` 格式。
 - **连通判定是第四种**:不是 ping 而是 **TCP**(`tcp_fail_count`,`main.c:228`)。
+- **心跳也跑产品入口**:`main.c` 被改名后直接链接进 driver,故新增的
+  `SRV/RAT/DENY/RSRP/RSRQ/SNR/RSSI/OPER` 由真实产品代码打印,不是桩手写日志。
 - 与 modem_mng EG25 **同一套 Quectel SDK** → include 链、`fakemodem.so`(PTY 假模组)
   直接复用,14 个真实模块**一次全过**(EG25 那轮踩的坑全省了)。
 

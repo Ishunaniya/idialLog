@@ -104,9 +104,14 @@ struct Stall {
 struct MetricRow {
     long long t = 0;
     std::string ts, ch, csq, tmax, cf, rx, drx;
+    std::string srv, rat, deny, oper, rssi;
     int  csqVal  = -1;      // -1=无效/99
     int  rsrp    = 1;       // dBm,负值(约-70~-120,越大越好);1=无效(正数不可能是真值)
     int  rsrq    = 1;       // dB,负值(约-3~-20);1=无效
+    int  snr10   = 100000;  // SDK 原值,单位 0.1dB;100000=无效(超出 int16_t 范围)
+    int  rssiVal = 1;       // dBm,负值;1=无效
+    int  srvVal  = -1;      // SDK 服务状态:0=NONE,1=LIMITED,2=FULL;-1=无效
+    int  denyVal = -1;      // SDK 原始拒绝码;两套 SDK 编码不同,-1=无效
     bool drxZero = false;   // ΔRX == 0 → 数据不通征兆
     size_t lineNo = 0;
 };

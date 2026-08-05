@@ -1,91 +1,91 @@
-[2026-07-17 17:37:37] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
-[2026-07-17 17:37:37] [INIT] Starting dial initialization...
-[2026-07-17 17:37:37] [INIT] Waiting for ql_data_call_init...
-[2026-07-17 17:37:37] [INIT] data_call_init OK.
+[2026-08-04 22:52:13] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-08-04 22:52:13] [INIT] Starting dial initialization...
+[2026-08-04 22:52:13] [INIT] Waiting for ql_data_call_init...
+[2026-08-04 22:52:13] [INIT] data_call_init OK.
+[2026-08-04 22:52:13] [INIT] NW service init OK.
 ql_sim_init ok
-[2026-07-17 17:37:37] [SIM] sim_init OK
-[2026-07-17 17:37:37] [SLOT] config: no /usr/dial/dualsim.json, seed write failed, use built-in defaults
-[2026-07-17 17:37:37] [OPER] overseas operator-select (dualsim.json oper_select): 0
-[2026-07-17 17:37:37] [SLOT] init: enable=1 primary_phy=1(eSIM) switch_after=600s denied_after=0s(0=follow) cooldown=120s budget=3 fast_boot=1 last_good_ttl=86400s data_dead_settle=120s weak_csq=6 probe_back=0s(0=off)
-[2026-07-17 17:37:37] [SLOT] fast-boot: no valid last-good, fall back to cold select
-[2026-07-17 17:37:37] [SLOT] cold select: probing both physical slots (data-verified)
-[2026-07-17 17:37:37] [SLOT] switch to Phy
-[2026-07-17 17:39:17] [SLOT] switch_slot FAIL ret=-1
-[2026-07-17 17:39:17] [SLOT] probe Phy: no card/not ready, skip
-[2026-07-17 17:39:17] [SLOT] cold probe Phy: score=-1
-[2026-07-17 17:39:17] [SLOT] switch to eSIM
-[2026-07-17 17:39:17] [SLOT] switch_slot FAIL ret=-1
-[2026-07-17 17:39:17] [SLOT] probe eSIM: no card/not ready, skip
-[2026-07-17 17:39:17] [SLOT] cold probe eSIM: score=-1
-[2026-07-17 17:39:17] [SLOT] cold select result: best=? (score=-1) -> drive eSIM
-[2026-07-17 17:39:17] [SLOT] slot select done, Fast-Fail timer rebased.
-[2026-07-17 17:39:17] [INIT] ICCID: (empty)
-[2026-07-17 17:39:17] [INIT] SIM state: READY
-[2026-07-17 17:39:17] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-07-17 17:39:17] [INIT] APN set success
-[2026-07-17 17:39:17] [INIT] set_reconnect_mode(NORMAL): OK
-[2026-07-17 17:39:17] [INIT] ql_data_call_config: OK
-[2026-07-17 17:39:17] [INIT] Starting Data Call...
-[2026-07-17 17:39:17] [INIT] IMEI:    865965086914080
-[2026-07-17 17:39:17] [INIT] FW:      (unknown)
-[2026-07-17 17:39:17] [INIT] SUB:     (unknown)
-[2026-07-17 17:39:17] [INIT] AP_FW:   (unknown)
-[2026-07-17 17:39:17] [INIT] CP_FW:   (unknown)
-[2026-07-17 17:39:17] [INIT] IMSI:    460089087110299
-[2026-07-17 17:39:17] [INIT] Operator:+COPS: 0,2,"46000",7
-[2026-07-17 17:39:17] [INIT] CFUN:    +CFUN: 1
-[2026-07-17 17:39:17] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
+[2026-08-04 22:52:13] [SIM] sim_init OK
+[2026-08-04 22:52:13] [SLOT] config: no /usr/dial/dualsim.json, seed write failed, use built-in defaults
+[2026-08-04 22:52:13] [OPER] overseas operator-select (dualsim.json oper_select): 0
+[2026-08-04 22:52:13] [SLOT] init: enable=1 primary_phy=1(eSIM) switch_after=600s denied_after=0s(0=follow) cooldown=120s budget=3 fast_boot=1 last_good_ttl=86400s data_dead_settle=120s weak_csq=6 probe_back=0s(0=off)
+[2026-08-04 22:52:13] [SLOT] fast-boot: no valid last-good, fall back to cold select
+[2026-08-04 22:52:13] [SLOT] cold select: probing both physical slots (data-verified)
+[2026-08-04 22:52:13] [SLOT] switch to Phy
+[2026-08-04 22:52:13] [SLOT] switch_slot FAIL ret=-1
+[2026-08-04 22:52:13] [SLOT] probe Phy: no card/not ready, skip
+[2026-08-04 22:52:13] [SLOT] cold probe Phy: score=-1
+[2026-08-04 22:52:13] [SLOT] switch to eSIM
+[2026-08-04 22:52:13] [SLOT] switch_slot FAIL ret=-1
+[2026-08-04 22:52:13] [SLOT] probe eSIM: no card/not ready, skip
+[2026-08-04 22:52:13] [SLOT] cold probe eSIM: score=-1
+[2026-08-04 22:52:13] [SLOT] cold select result: best=? (score=-1) -> drive eSIM
+[2026-08-04 22:52:13] [SLOT] slot select done, Fast-Fail timer rebased.
+[2026-08-04 22:52:13] [INIT] ICCID: (empty)
+[2026-08-04 22:52:13] [INIT] SIM state: READY
+[2026-08-04 22:52:13] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-08-04 22:52:13] [INIT] APN set success
+[2026-08-04 22:52:13] [INIT] set_reconnect_mode(NORMAL): OK
+[2026-08-04 22:52:13] [INIT] ql_data_call_config: OK
+[2026-08-04 22:52:13] [INIT] Starting Data Call...
+[2026-08-04 22:52:13] [INIT] IMEI:    865965086914080
+[2026-08-04 22:52:13] [INIT] FW:      (unknown)
+[2026-08-04 22:52:13] [INIT] SUB:     (unknown)
+[2026-08-04 22:52:13] [INIT] AP_FW:   (unknown)
+[2026-08-04 22:52:13] [INIT] CP_FW:   (unknown)
+[2026-08-04 22:52:13] [INIT] IMSI:    460089087110299
+[2026-08-04 22:52:13] [INIT] Operator:+COPS: 0,2,"46000",7
+[2026-08-04 22:52:13] [INIT] CFUN:    +CFUN: 1
+[2026-08-04 22:52:13] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
 ##### PRO type 
-[2026-07-17 17:39:17] [LED] startup, send blink
-[2026-07-17 17:39:17] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:0s | SLOT:eSIM
-[2026-07-17 17:39:17] [INFO] SDK auto-reconnect phase started (interval=25s). L1 at 300s, L2 at 600s, L3 at 2100s.
-[2026-07-17 17:39:17] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
-[2026-07-17 17:39:17] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:19s | SLOT:eSIM
-[2026-07-17 17:39:17] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:50s | SLOT:eSIM
-[2026-07-17 17:40:57] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:80s | SLOT:eSIM
-[2026-07-17 17:40:57] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:111s | SLOT:eSIM
-[2026-07-17 17:40:57] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:142s | SLOT:eSIM
-[2026-07-17 17:40:57] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:172s | SLOT:eSIM
-[2026-07-17 17:42:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:202s | SLOT:eSIM
-[2026-07-17 17:42:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:233s | SLOT:eSIM
-[2026-07-17 17:42:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:263s | SLOT:eSIM
-[2026-07-17 17:44:17] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:293s | SLOT:eSIM
-[2026-07-17 17:44:17] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:324s | SLOT:eSIM
-[2026-07-17 17:44:17] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:354s | SLOT:eSIM
-[2026-07-17 17:45:57] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:384s | SLOT:eSIM
-[2026-07-17 17:45:57] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:414s | SLOT:eSIM
-[2026-07-17 17:45:57] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:446s | SLOT:eSIM
-[2026-07-17 17:47:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:477s | SLOT:eSIM
-[2026-07-17 17:47:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:507s | SLOT:eSIM
-[2026-07-17 17:47:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:537s | SLOT:eSIM
-[2026-07-17 17:47:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:567s | SLOT:eSIM
-[2026-07-17 17:49:17] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:598s | SLOT:eSIM
-[2026-07-17 17:49:17] [SLOT] trigger(A-no-net): down 602s REG=1 CSQ=4 count=0/3 -> switch card
-[2026-07-17 17:49:17] [SLOT] switching to role=SECONDARY (Phy)
-[2026-07-17 17:49:17] [SLOT] switch to Phy
-[2026-07-17 17:49:17] [SLOT] switch_slot FAIL ret=-1
-[2026-07-17 17:49:17] [SLOT] switch failed r=-1 (keep start_fail_ts for L3)
-[2026-07-17 17:49:17] [SLOT] switch failed ret=-1, budget still consumed
-[2026-07-17 17:49:17] [INFO] never-connected, policy recovery (L1/L2/L3) gated. Downtime 613s, REG=1, data service OK but no data -- suspected SIM/account issue (e.g. suspended / no data plan).
-[2026-07-17 17:49:17] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:628s | SLOT:eSIM
-[2026-07-17 17:49:17] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:658s | SLOT:eSIM
-[2026-07-17 17:50:57] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:688s | SLOT:eSIM
-[2026-07-17 17:50:57] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:719s | SLOT:eSIM
-[2026-07-17 17:50:57] [SLOT] trigger(A-no-net): down 722s REG=1 CSQ=4 count=1/3 -> switch card
-[2026-07-17 17:50:57] [SLOT] switching to role=SECONDARY (Phy)
-[2026-07-17 17:50:57] [SLOT] switch to Phy
-[2026-07-17 17:50:57] [SLOT] switch_slot FAIL ret=-1
-[2026-07-17 17:50:57] [SLOT] switch failed r=-1 (keep start_fail_ts for L3)
-[2026-07-17 17:50:57] [SLOT] switch failed ret=-1, budget still consumed
-[2026-07-17 17:50:57] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:750s | SLOT:eSIM
-[2026-07-17 17:52:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:780s | SLOT:eSIM
-[2026-07-17 17:52:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:811s | SLOT:eSIM
-[2026-07-17 17:52:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:841s | SLOT:eSIM
-[2026-07-17 17:52:37] [SLOT] trigger(A-no-net): down 844s REG=1 CSQ=4 count=2/3 -> switch card
-[2026-07-17 17:52:37] [SLOT] switching to role=SECONDARY (Phy)
-[2026-07-17 17:52:37] [SLOT] switch to Phy
-[2026-07-17 17:52:37] [SLOT] switch_slot FAIL ret=-1
-[2026-07-17 17:52:37] [SLOT] switch failed r=-1 (keep start_fail_ts for L3)
-[2026-07-17 17:52:37] [SLOT] switch failed ret=-1, budget still consumed
-[2026-07-17 17:52:37] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:4 | TEMP:-1 | DownTime:871s | SLOT:eSIM
-[2026-07-17 17:52:37] [EVENT] Exit requested. Turning LED off and leaving dial_loop.
+[2026-08-04 22:52:13] [LED] startup, send blink
+[2026-08-04 22:52:13] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:0s | SLOT:eSIM
+[2026-08-04 22:52:13] [INFO] SDK auto-reconnect phase started (interval=25s). L1 at 300s, L2 at 600s, L3 at 2100s.
+[2026-08-04 22:52:13] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
+[2026-08-04 22:52:13] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:11s | SLOT:eSIM
+[2026-08-04 22:53:53] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:42s | SLOT:eSIM
+[2026-08-04 22:53:53] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:72s | SLOT:eSIM
+[2026-08-04 22:53:53] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:103s | SLOT:eSIM
+[2026-08-04 22:55:33] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:134s | SLOT:eSIM
+[2026-08-04 22:55:33] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:165s | SLOT:eSIM
+[2026-08-04 22:55:33] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:195s | SLOT:eSIM
+[2026-08-04 22:57:13] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:225s | SLOT:eSIM
+[2026-08-04 22:57:13] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:255s | SLOT:eSIM
+[2026-08-04 22:57:13] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:285s | SLOT:eSIM
+[2026-08-04 22:57:13] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:316s | SLOT:eSIM
+[2026-08-04 22:58:53] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:348s | SLOT:eSIM
+[2026-08-04 22:58:53] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:378s | SLOT:eSIM
+[2026-08-04 22:58:53] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:409s | SLOT:eSIM
+[2026-08-04 23:00:33] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:440s | SLOT:eSIM
+[2026-08-04 23:00:33] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:471s | SLOT:eSIM
+[2026-08-04 23:00:33] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:501s | SLOT:eSIM
+[2026-08-04 23:02:13] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:531s | SLOT:eSIM
+[2026-08-04 23:02:13] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:562s | SLOT:eSIM
+[2026-08-04 23:02:13] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:593s | SLOT:eSIM
+[2026-08-04 23:02:13] [SLOT] trigger(A-no-net): down 601s REG=1 CSQ=4 count=0/3 -> switch card
+[2026-08-04 23:02:13] [SLOT] switching to role=SECONDARY (Phy)
+[2026-08-04 23:02:13] [SLOT] switch to Phy
+[2026-08-04 23:02:13] [SLOT] switch_slot FAIL ret=-1
+[2026-08-04 23:02:13] [SLOT] switch failed r=-1 (keep start_fail_ts for L3)
+[2026-08-04 23:02:13] [SLOT] switch failed ret=-1, budget still consumed
+[2026-08-04 23:02:13] [INFO] never-connected, policy recovery (L1/L2/L3) gated. Downtime 613s, REG=1, data service OK but no data -- suspected SIM/account issue (e.g. suspended / no data plan).
+[2026-08-04 23:03:53] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:624s | SLOT:eSIM
+[2026-08-04 23:03:53] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:654s | SLOT:eSIM
+[2026-08-04 23:03:53] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:684s | SLOT:eSIM
+[2026-08-04 23:03:53] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:716s | SLOT:eSIM
+[2026-08-04 23:05:33] [SLOT] trigger(A-no-net): down 724s REG=1 CSQ=4 count=1/3 -> switch card
+[2026-08-04 23:05:33] [SLOT] switching to role=SECONDARY (Phy)
+[2026-08-04 23:05:33] [SLOT] switch to Phy
+[2026-08-04 23:05:33] [SLOT] switch_slot FAIL ret=-1
+[2026-08-04 23:05:33] [SLOT] switch failed r=-1 (keep start_fail_ts for L3)
+[2026-08-04 23:05:33] [SLOT] switch failed ret=-1, budget still consumed
+[2026-08-04 23:05:33] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:747s | SLOT:eSIM
+[2026-08-04 23:05:33] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:777s | SLOT:eSIM
+[2026-08-04 23:05:33] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:808s | SLOT:eSIM
+[2026-08-04 23:07:13] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:4 | RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 | TEMP:-1 | DownTime:838s | SLOT:eSIM
+[2026-08-04 23:07:13] [SLOT] trigger(A-no-net): down 846s REG=1 CSQ=4 count=2/3 -> switch card
+[2026-08-04 23:07:13] [SLOT] switching to role=SECONDARY (Phy)
+[2026-08-04 23:07:13] [SLOT] switch to Phy
+[2026-08-04 23:07:13] [SLOT] switch_slot FAIL ret=-1
+[2026-08-04 23:07:13] [SLOT] switch failed r=-1 (keep start_fail_ts for L3)
+[2026-08-04 23:07:13] [SLOT] switch failed ret=-1, budget still consumed
+[2026-08-04 23:07:13] [EVENT] Exit requested. Turning LED off and leaving dial_loop.

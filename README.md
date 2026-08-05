@@ -39,10 +39,10 @@
 
 | 平台 | 心跳字段 | 出处 |
 |---|---|---|
-| EC200A | `SIM_AT / SIM_CB / REG / CSQ / **TEMP**(大写) / DownTime` | `ec200a/dial/dial.cpp:1077` |
-| AG35 | 同上 + `SLOT` | `ec200a/dial/dial.cpp:1074` |
-| EG25 | `CH / SIM / [REG] / CSQ / **Temp**(小写) / DownTime / ConsecFail / [RL_FAIL] / [RX_PKT]`;<br>5min 扩展行另有 `cereg= / ifname= / rx_packets=`(**等号**赋值) | `eg25/diag/diag.c:109-157` |
-| artery | `state= / csq= / tcp_fail= / rl_fail=`;扩展 `cereg= / ifname= / ip= / rx_packets=`(空格分隔 k=v) | `main.c:217/239` |
+| EC200A / open_dial | `SIM_AT / SIM_CB / REG / CSQ / TEMP / DownTime` + `SRV / RAT / DENY / RSRP / RSRQ / SNR / RSSI`;周期扩展行含 `OPER` | `ec200a/dial/dial.cpp` / `open_dial/dial.c` |
+| AG35 | 同 EC200A + `SLOT` | `ec200a/dial/dial.cpp` |
+| EG25 | `CH / SIM / [REG] / CSQ / Temp / DownTime / ConsecFail / [RL_FAIL] / [RX_PKT]` + `SRV / RAT / DENY / RSRP / RSRQ / SNR / RSSI`;<br>周期扩展行另有 `cereg= / ifname= / rx_packets= / OPER=`(**等号**赋值) | `eg25/diag/diag.c` |
+| artery | `state= / csq= / tcp_fail= / rl_fail=` + `SRV / RAT / DENY / RSRP / RSRQ / SNR / RSSI`;扩展 `cereg= / ifname= / ip= / rx_packets= / OPER=`(空格分隔 k=v) | `main.c` |
 
 字段解析器同时支持 `K:V` 与 `K=V`,并按“空白 + 标识符 + 分隔符”切分,
 否则 `RSRP:-104 RSRQ:-10`(`diag.c:33`)会把 RSRQ 吞进 RSRP 的值。
@@ -55,16 +55,19 @@
   照常工作。焦点在筛选输入框里时 Ctrl+V 仍是正常粘贴文字,不会误触发。
   粘贴内容若一行都认不出,会直接弹出两种支持格式说明,而不是留个空界面让你猜。
 - **总览**:上半是**仪表盘** —— hero 数字(可用率,配状态标签)+ 指标卡(断网次数/最长断网/
-  未识别行/CSQ 三值)+ 断网时长分布横条;下半是仪表盘装不下的明细(温度、通道占比、
+  未识别行/CSQ 与 LTE 信号质量)+ 断网时长分布横条;下半是仪表盘装不下的明细(温度、通道占比、
   **RX_PKT 停滞**、报错/告警、关键事件计数)。上下不重复。
 - **结论 ★**(核心):自动根因 + 处置建议 + **每条结论的日志证据(行号/时间戳)**。
-  覆盖:断网根因分类(弱信号 / 数据假死 / 切卡选网期间 / 注册被拒)、
+  覆盖:断网根因分类(弱信号 / 数据假死 / 切卡选网期间 / 注册被拒)、SDK `DENY`
+  注册异常与 SNR 持续偏低提示、
   恢复阶梯 L1/L2/L3 是否触发及**被什么门控挡住**、CP dump、温度、解析覆盖率。
   **无证据支撑的结论一律不输出**(宁可少说,不臆测)。
 - **时间线**:剔除心跳/小区噪声,只留状态变化,按类型着色。
 - **断网**:逐次断网表,时长超阈值标红。
-- **指标 / 信号图**:上方自绘 **CSQ 折线 + 断网红带 + 弱信号阈值线**;
-  下方指标表(**ΔRX=0 单元格粉色高亮 = 数据不通**,弱信号 CSQ 黄色高亮),可**导出 CSV**。
+- **指标 / 信号图**:上半为 **CSQ + 断网红带 + 弱信号阈值线**,下半可点击切换
+  **RSRP / RSRQ / SNR**;两个量纲分成上下两个单 Y 轴,不使用双 Y 轴。
+  指标表和 CSV 同步包含 `SNR(dB) / RSSI / SRV / RAT / DENY / OPER`;
+  **ΔRX=0** 单元格粉色高亮,弱信号 CSQ 与 `SNR <= 0 dB` 黄色高亮。
 - **标签**:标签直方图。
 - **原始行**:筛选后的原始日志(截断前 5000 行)。
 - **未识别行 ★**:解析器**跳过**的行(行号 + 原文 + 粗分类)。这是“完完整整不漏消息”的
@@ -81,7 +84,7 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # 产物: dialLog_v1.2.0.exe(文件名自带版本号)
+make                     # 产物: dialLog_v1.10.0.exe(文件名自带版本号)
 make version             # 只打印当前版本号
 ```
 
@@ -131,6 +134,10 @@ make selftest
 > 那段 13m34s 被真实样本拆成 4m31s + 3m30s。
 
 ### ⚠️ 仅源码实证 + 合成夹具,**未经真机日志验证**
+- **四份产品新增心跳字段**:`SRV/RAT/DENY`、`RSRP/RSRQ/SNR/RSSI` 与 `OPER` 已由产品源码、
+  SDK 头文件和四套 host-run 真代码输出共同验证;但现有真机日志来自旧版本,尚未包含这些字段。
+  SDK 头文件直证 `SNR` 原始单位为 0.1 dB;“至少 5 个样本且半数 `SNR <= 0 dB`”仅为
+  **【推断】提示**,不会单独归因断网。不同 SDK 的 `DENY` 枚举表不同,工具保留原始码而不跨产品套名称。
 - **EC200A / AG35 分支**:格式取自源码,夹具见 `samples/`(按来源分目录,见 `samples/README.md`)
   (`ec200a_synthetic.log` / `ag35_synthetic.log`)。本机无 EC200A/AG35 真机日志。
 - **artery(seas_log)分支**:全机**无 artery 真机日志**;仅
@@ -151,9 +158,9 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.2.0.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.10.0.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.2.0 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.10.0 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 用 `dialLog_v*.exe` 通配,升版本后旧 exe 一并清掉。
@@ -164,6 +171,10 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | 1.1.0 | 双格式(+artery `seas_log`)、平台自动识别、未识别行审计、结论引擎 |
 | 1.2.0 | 剪贴板粘贴分析(按钮 / Ctrl+V / `--paste`) |
 | 1.3.0 | 修 CP dump 假阳性(正常设备曾被报"基带崩溃")、恢复阶梯改按**事件**计数(4 次曾被报成 8 次)、多行条目续行并入上一条、混合大小写标签 `[NetCheck]`、接活死分支"数据服务未就绪" |
+| 1.4.0–1.7.2 | 多文件定序、压缩包直读、跨文件/时钟跳变防御、DPI/配色与 open_dial 断网兼容修复 |
+| 1.8.0 | RSRP/RSRQ 提取、质量评价与 SDK 短断网归类 |
+| 1.9.0–1.9.3 | 信号曲线与后续修订 |
+| 1.10.0 | 跟进四份产品的新心跳字段;SNR 加入表格、CSV、总览、图表和保守诊断;信号图改为上下两个单 Y 轴 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞 1.2MB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。
@@ -186,7 +197,7 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | 文件 | 说明 |
 |---|---|
 | `logmodel.h/.cpp` | 解析 + 分析 + 结论引擎(纯标准 C++17,无 Win32 依赖,可单独测试) |
-| `ui.cpp` | Win32 界面层(页签/列表/自绘 CSQ 图/拖拽/粘贴/导出) |
+| `ui.cpp` | Win32 界面层(页签/列表/自绘 CSQ + LTE 质量图/拖拽/粘贴/导出) |
 | `selftest.cpp` | 解析层自测(含审计自洽校验、结论必带证据校验) |
 | `resource.rc` + `app.manifest` | 嵌入清单:comctl32 v6 现代控件外观 + DPI 感知 + 版本信息 |
 | `version.h` | **版本号单一来源**(C++ 与 resource.rc 共用);改版本只改这里 |

@@ -16,6 +16,7 @@
 #include <shellapi.h>
 
 #include <algorithm>
+#include <climits>
 #include <map>
 #include <string>
 #include <vector>
@@ -77,9 +78,10 @@ struct SumCard {
 static std::vector<SumCard> g_sumCards;
 static std::vector<COLORREF> g_tlColors, g_ogColors;
 static std::vector<std::pair<long long,int>> g_csq;   // 供图表
-static std::vector<std::pair<long long,int>> g_rsrp;  // 供图表:RSRP dBm(负值,右轴)
-static std::vector<std::pair<long long,int>> g_rsrq;  // 供图表:RSRQ dB(负值,与RSRP共右轴,点击切换)
-static bool g_chartShowRsrq = false;                  // 右轴当前显示:false=RSRP true=RSRQ
+static std::vector<std::pair<long long,int>> g_rsrp;  // LTE 详情图:RSRP dBm
+static std::vector<std::pair<long long,int>> g_rsrq;  // LTE 详情图:RSRQ dB
+static std::vector<std::pair<long long,int>> g_snr10; // LTE 详情图:SNR SDK原值(0.1dB)
+static int  g_chartDetail    = 0;                     // 0=RSRP 1=RSRQ 2=SNR,点击循环
 static int  g_chartHoverX   = -1;                     // 悬停 X(客户区),-1=未悬停
 static int g_curPage = 0;
 
@@ -93,7 +95,7 @@ static inline int SF(int logicalNeg) { return -MulDiv(-logicalNeg, g_dpi, 96); }
 
 // 这些原来是编译期常量,DPI 化后必须运行期算(依赖 g_dpi),故改成取值函数。
 static inline int TOP_H()   { return S(78); }
-static inline int CHART_H() { return S(190); }
+static inline int CHART_H() { return S(300); }
 
 // ============================ 字符串工具 ============================
 static std::wstring U8ToW(const std::string& s) {
@@ -646,7 +648,10 @@ static LRESULT CALLBACK SummaryProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     EndPaint(hwnd, &ps);
     return 0;
 }
-static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+#if 0
+// v1.9.x 旧双 Y 轴实现。theme.h 明确禁止双 Y 轴；保留在本次差异上下文中便于审阅，
+// 实际编译使用下方“CSQ 上图 + LTE 单轴下图”实现。
+static LRESULT CALLBACK ChartProcLegacy(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_ERASEBKGND) return 1;   // 交给 WM_PAINT,避免闪烁
     if (msg == WM_LBUTTONDOWN) {          // 点击图区:右轴 RSRP/RSRQ 切换
         if (!g_rsrp.empty() || !g_rsrq.empty()) {
@@ -892,6 +897,233 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     EndPaint(hwnd, &ps);
     return 0;
 }
+#endif
+
+static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    auto detailSeries = [](int mode) -> const std::vector<std::pair<long long,int>>& {
+        return mode == 1 ? g_rsrq : (mode == 2 ? g_snr10 : g_rsrp);
+    };
+    if (msg == WM_ERASEBKGND) return 1;
+    if (msg == WM_LBUTTONDOWN) {
+        for (int step = 1; step <= 3; ++step) {
+            int next = (g_chartDetail + step) % 3;
+            if (!detailSeries(next).empty()) { g_chartDetail = next; break; }
+        }
+        InvalidateRect(hwnd, nullptr, FALSE);
+        return 0;
+    }
+    if (msg == WM_SETCURSOR) {
+        SetCursor(LoadCursorW(nullptr,
+            (!g_rsrp.empty() || !g_rsrq.empty() || !g_snr10.empty()) ? IDC_HAND : IDC_ARROW));
+        return TRUE;
+    }
+    if (msg == WM_MOUSEMOVE) {
+        int mx = (int)(short)LOWORD(lp);
+        if (mx != g_chartHoverX) {
+            g_chartHoverX = mx;
+            InvalidateRect(hwnd, nullptr, FALSE);
+            TRACKMOUSEEVENT tme{};
+            tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = hwnd;
+            TrackMouseEvent(&tme);
+        }
+        return 0;
+    }
+    if (msg == WM_MOUSELEAVE) {
+        g_chartHoverX = -1;
+        InvalidateRect(hwnd, nullptr, FALSE);
+        return 0;
+    }
+    if (msg != WM_PAINT) return DefWindowProcW(hwnd, msg, wp, lp);
+
+    PAINTSTRUCT ps;
+    HDC hdcWin = BeginPaint(hwnd, &ps);
+    RECT rc{};
+    GetClientRect(hwnd, &rc);
+    HDC hdc = CreateCompatibleDC(hdcWin);
+    HBITMAP bmp = CreateCompatibleBitmap(hdcWin, rc.right, rc.bottom);
+    HGDIOBJ oldBmp = SelectObject(hdc, bmp);
+    HBRUSH bg = CreateSolidBrush(th::surface);
+    FillRect(hdc, &rc, bg);
+    DeleteObject(bg);
+    SelectObject(hdc, hFontUI);
+    SetBkMode(hdc, TRANSPARENT);
+
+    const auto& detail = detailSeries(g_chartDetail);
+    const wchar_t* detailName = g_chartDetail == 1 ? L"RSRQ" : (g_chartDetail == 2 ? L"SNR" : L"RSRP");
+    const int detailLo = g_chartDetail == 1 ? -25 : (g_chartDetail == 2 ? -200 : -120);
+    const int detailHi = g_chartDetail == 1 ?   0 : (g_chartDetail == 2 ?  300 :  -60);
+
+    bool haveAny = !g_csq.empty() || !detail.empty();
+    if (!haveAny || rc.right < S(140) || rc.bottom < S(140)) {
+        SetTextColor(hdc, th::inkMuted);
+        const wchar_t* t = haveAny ? L"窗口过小，无法显示信号图" : L"加载含心跳的日志后显示信号趋势";
+        TextOutW(hdc, S(42), std::max(S(8), (int)(rc.bottom / 2)), t, (int)wcslen(t));
+        BitBlt(hdcWin, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
+        SelectObject(hdc, oldBmp); DeleteObject(bmp); DeleteDC(hdc); EndPaint(hwnd, &ps);
+        return 0;
+    }
+
+    long long t0 = 0, t1 = 0;
+    auto takeRange = [&](const std::vector<std::pair<long long,int>>& s) {
+        if (s.empty()) return;
+        if (t0 == 0 || s.front().first < t0) t0 = s.front().first;
+        if (t1 == 0 || s.back().first  > t1) t1 = s.back().first;
+    };
+    takeRange(g_csq);
+    takeRange(detail);
+    const double total = std::max<double>(1.0, (double)(t1 - t0));
+    const int left = S(48), right = rc.right - S(12);
+    const int mid = rc.bottom / 2;
+    RECT top{ left, S(24), right, mid - S(13) };
+    RECT bot{ left, mid + S(22), right, rc.bottom - S(24) };
+    auto X = [&](long long t) {
+        return left + (int)((double)(t - t0) / total * (right - left));
+    };
+
+    auto paintOutages = [&](const RECT& pr) {
+        HBRUSH band = CreateSolidBrush(th::outageBand);
+        for (const auto& o : g_outages) {
+            long long e = o.recovered ? o.end : t1;
+            int xs = X(o.start), xe = X(e);
+            if (xe < xs + 2) xe = xs + 2;
+            if (xe < pr.left || xs > pr.right) continue;
+            RECT rb{ std::max(xs, (int)pr.left), pr.top,
+                     std::min(xe, (int)pr.right), pr.bottom };
+            FillRect(hdc, &rb, band);
+        }
+        DeleteObject(band);
+    };
+
+    auto drawPlot = [&](const RECT& pr, const std::vector<std::pair<long long,int>>& series,
+                        int lo, int hi, COLORREF color, int threshold, bool showThreshold,
+                        bool scaled10) {
+        auto Y = [&](int v) {
+            int c = std::max(lo, std::min(hi, v));
+            return pr.bottom - (int)((double)(c - lo) / (hi - lo) * (pr.bottom - pr.top));
+        };
+        paintOutages(pr);
+        HPEN gridPen = CreatePen(PS_SOLID, 1, th::grid);
+        HGDIOBJ oldPen = SelectObject(hdc, gridPen);
+        SetTextColor(hdc, th::inkMuted);
+        for (int i = 0; i < 4; ++i) {
+            int val = hi - (hi - lo) * i / 3;
+            int y = Y(val);
+            MoveToEx(hdc, pr.left, y, nullptr); LineTo(hdc, pr.right, y);
+            std::wstring lb = scaled10 ? FmtW(L"%.1f", val / 10.0) : FmtW(L"%d", val);
+            SIZE sz{}; GetTextExtentPoint32W(hdc, lb.c_str(), (int)lb.size(), &sz);
+            TextOutW(hdc, pr.left - sz.cx - S(5), y - sz.cy / 2, lb.c_str(), (int)lb.size());
+        }
+        SelectObject(hdc, oldPen); DeleteObject(gridPen);
+
+        HPEN axisPen = CreatePen(PS_SOLID, 1, th::axis);
+        oldPen = SelectObject(hdc, axisPen);
+        HGDIOBJ oldBr = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+        Rectangle(hdc, pr.left, pr.top, pr.right, pr.bottom);
+        SelectObject(hdc, oldBr); SelectObject(hdc, oldPen); DeleteObject(axisPen);
+
+        if (showThreshold) {
+            HPEN thresholdPen = CreatePen(PS_SOLID, 1, th::warning);
+            oldPen = SelectObject(hdc, thresholdPen);
+            MoveToEx(hdc, pr.left, Y(threshold), nullptr);
+            LineTo(hdc, pr.right, Y(threshold));
+            SelectObject(hdc, oldPen); DeleteObject(thresholdPen);
+        }
+
+        if (!series.empty()) {
+            HPEN dataPen = CreatePen(PS_SOLID, 2, color);
+            oldPen = SelectObject(hdc, dataPen);
+            bool first = true;
+            for (const auto& p : series) {
+                int x = X(p.first), y = Y(p.second);
+                if (first) { MoveToEx(hdc, x, y, nullptr); first = false; }
+                else LineTo(hdc, x, y);
+            }
+            if (series.size() == 1)
+                LineTo(hdc, X(series[0].first) + 1, Y(series[0].second));
+            SelectObject(hdc, oldPen); DeleteObject(dataPen);
+        }
+    };
+
+    SetTextColor(hdc, th::inkMuted);
+    const wchar_t* topTitle = L"CSQ (0–31)   黄线=弱信号提示阈值10   红带=断网";
+    TextOutW(hdc, top.left, S(4), topTitle, (int)wcslen(topTitle));
+    std::wstring bottomTitle = g_chartDetail == 2
+        ? L"LTE SNR (dB，SDK原值×0.1)   黄线=0dB推断提示线   [点击切换 RSRP/RSRQ/SNR]"
+        : FmtW(L"LTE %s (%s)   [点击切换 RSRP/RSRQ/SNR]",
+               detailName, g_chartDetail == 0 ? L"dBm" : L"dB");
+    TextOutW(hdc, bot.left, mid + S(4), bottomTitle.c_str(), (int)bottomTitle.size());
+
+    drawPlot(top, g_csq, 0, 31, th::s1_blue, 10, true, false);
+    drawPlot(bot, detail, detailLo, detailHi, th::s7_violet, 0, g_chartDetail == 2, g_chartDetail == 2);
+
+    // 共享时间轴：只在下图标注，竖线同时贯穿两张图，便于对齐而不引入第二量纲。
+    SetTextColor(hdc, th::inkMuted);
+    long long spanSec = t1 - t0;
+    int stepH = 1;
+    const int cand[] = { 1, 2, 3, 6, 12, 24 };
+    for (int v : cand) { stepH = v; if (spanSec / (v * 3600LL) <= 10) break; }
+    long long stepSec = stepH * 3600LL;
+    long long firstT = ((t0 + stepSec - 1) / stepSec) * stepSec;
+    HPEN timePen = CreatePen(PS_SOLID, 1, th::grid);
+    HGDIOBJ oldPen = SelectObject(hdc, timePen);
+    for (long long t = firstT; t <= t1; t += stepSec) {
+        int x = X(t);
+        MoveToEx(hdc, x, top.top, nullptr); LineTo(hdc, x, top.bottom);
+        MoveToEx(hdc, x, bot.top, nullptr); LineTo(hdc, x, bot.bottom);
+        std::wstring lb = U8ToW(fmtTime(t, "HM"));
+        SIZE sz{}; GetTextExtentPoint32W(hdc, lb.c_str(), (int)lb.size(), &sz);
+        TextOutW(hdc, x - sz.cx / 2, bot.bottom + S(3), lb.c_str(), (int)lb.size());
+    }
+    SelectObject(hdc, oldPen); DeleteObject(timePen);
+
+    // 悬停：共享一条时间准线，同时报告上图 CSQ 与当前 LTE 详情值。
+    if (g_chartHoverX >= left && g_chartHoverX <= right) {
+        double frac = (double)(g_chartHoverX - left) / std::max(1, right - left);
+        long long ht = t0 + (long long)(frac * (t1 - t0));
+        auto nearest = [&](const std::vector<std::pair<long long,int>>& s,
+                           long long target, long long* dist) -> const std::pair<long long,int>* {
+            const std::pair<long long,int>* best = nullptr;
+            for (const auto& p : s) {
+                long long d = p.first > target ? p.first - target : target - p.first;
+                if (!best || d < *dist) { best = &p; *dist = d; }
+            }
+            return best;
+        };
+        long long cd = LLONG_MAX, dd = LLONG_MAX;
+        const auto* cp = nearest(g_csq, ht, &cd);
+        const auto* dp = nearest(detail, ht, &dd);
+        long long markT = cp ? cp->first : (dp ? dp->first : ht);
+        int hx = X(markT);
+        HPEN crossPen = CreatePen(PS_SOLID, 1, th::inkMuted);
+        oldPen = SelectObject(hdc, crossPen);
+        MoveToEx(hdc, hx, top.top, nullptr); LineTo(hdc, hx, bot.bottom);
+        SelectObject(hdc, oldPen); DeleteObject(crossPen);
+
+        std::wstring info = U8ToW(fmtTime(markT, "HM"));
+        if (cp && cd <= 600) info += FmtW(L"   CSQ %d", cp->second);
+        if (dp && dd <= 600) {
+            if (g_chartDetail == 2) info += FmtW(L"   SNR %.1f dB", dp->second / 10.0);
+            else info += FmtW(L"   %s %d %s", detailName, dp->second,
+                              g_chartDetail == 0 ? L"dBm" : L"dB");
+        }
+        SIZE sz{}; GetTextExtentPoint32W(hdc, info.c_str(), (int)info.size(), &sz);
+        int bx = hx + S(8);
+        if (bx + sz.cx + S(10) > right) bx = hx - sz.cx - S(14);
+        RECT ib{ bx - S(4), top.top + S(3), bx + sz.cx + S(6), top.top + sz.cy + S(8) };
+        HBRUSH ibg = CreateSolidBrush(th::surface); FillRect(hdc, &ib, ibg); DeleteObject(ibg);
+        HPEN ibd = CreatePen(PS_SOLID, 1, th::border);
+        HGDIOBJ op = SelectObject(hdc, ibd), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+        Rectangle(hdc, ib.left, ib.top, ib.right, ib.bottom);
+        SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(ibd);
+        SetTextColor(hdc, th::inkPri);
+        TextOutW(hdc, bx, top.top + S(5), info.c_str(), (int)info.size());
+    }
+
+    BitBlt(hdcWin, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
+    SelectObject(hdc, oldBmp); DeleteObject(bmp); DeleteDC(hdc);
+    EndPaint(hwnd, &ps);
+    return 0;
+}
 
 // ============================ 渲染 ============================
 static COLORREF RowColor(const LogLine& l) {
@@ -975,7 +1207,11 @@ static void RenderSummary() {
     long long tSum = 0; int tN = 0, tMax = -9999, hot = 0;
     int rsrpN = 0, rsrpMin = 9999, rsrpMax = -9999; long long rsrpSum = 0;
     int rsrqN = 0, rsrqMin = 9999, rsrqMax = -9999; long long rsrqSum = 0;
+    int snrN = 0, snrMin = 100000, snrMax = -100000, snrNonPositive = 0;
+    long long snrSum10 = 0;
     std::map<std::string, int> chans;
+    std::map<std::string, int> srvs, rats, opers;
+    int denyNonzero = 0, denyN = 0;
     std::vector<std::pair<long long,long long>> rxs;
     for (const auto& m : g_metrics) {
         if (m.csqVal >= 0) {
@@ -986,14 +1222,23 @@ static void RenderSummary() {
         }
         if (m.rsrp < 0) { rsrpSum += m.rsrp; rsrpN++; rsrpMin = std::min(rsrpMin, m.rsrp); rsrpMax = std::max(rsrpMax, m.rsrp); }
         if (m.rsrq < 0) { rsrqSum += m.rsrq; rsrqN++; rsrqMin = std::min(rsrqMin, m.rsrq); rsrqMax = std::max(rsrqMax, m.rsrq); }
+        if (m.snr10 != 100000) {
+            snrSum10 += m.snr10; snrN++;
+            snrMin = std::min(snrMin, m.snr10); snrMax = std::max(snrMax, m.snr10);
+            if (m.snr10 <= 0) snrNonPositive++;
+        }
         if (m.tmax != "-") { int v = atoi(m.tmax.c_str()); tSum += v; tN++; tMax = std::max(tMax, v); if (v >= 85) hot++; }
         if (m.ch != "-") chans[m.ch]++;
+        if (m.srv != "-") srvs[m.srv]++;
+        if (m.rat != "-") rats[m.rat]++;
+        if (m.denyVal >= 0) { denyN++; if (m.denyVal > 0) denyNonzero++; }
+        if (m.oper != "-") opers[m.oper]++;
         if (m.rx != "-") rxs.push_back({ m.t, atoll(m.rx.c_str()) });
     }
     if (csqN && weak)
         add(L"信号 CSQ", { FmtW(L"弱信号(<10)  %d 次 / 共 %d 样本   首次 %s", weak, csqN, U8ToW(fmtTime(weakFirst, "MD")).c_str()) }, 1);
-    // RSRP/RSRQ 信号质量(dBm 精确值,附 3GPP 通用分档评价)
-    if (rsrpN || rsrqN) {
+    // LTE 详情。SNR 是 SDK 原值(0.1dB);阈值仅作工程观察,不冒充协议定论。
+    if (rsrpN || rsrqN || snrN) {
         // 质量分档:RSRP ≥-90 良 / -90~-100 中 / <-100 差;RSRQ ≥-15 良 / -15~-20 中 / <-20 差
         auto rateP = [](int v) { return v >= -90 ? L"良" : (v >= -100 ? L"中" : L"差"); };
         auto rateQ = [](int v) { return v >= -15 ? L"良" : (v >= -20 ? L"中" : L"差"); };
@@ -1012,7 +1257,30 @@ static void RenderSummary() {
             ls.push_back(L"      (≥-15 良 / -15~-20 中 / <-20 差)");
             if (avg < -20) acc = std::max(acc, 1);
         }
-        add(L"信号质量 RSRP / RSRQ", ls, acc);
+        if (snrN) {
+            double avg = (double)snrSum10 / (10.0 * snrN);
+            ls.push_back(FmtW(L"SNR   最低 %.1f / 均 %.1f / 最高 %.1f dB   非正值 %d/%d",
+                              snrMin / 10.0, avg, snrMax / 10.0, snrNonPositive, snrN));
+            ls.push_back(L"      【源码直证】日志原值单位 0.1dB；【推断】≤0 dB 仅作低质量观察阈值。");
+            if (snrN >= 5 && snrNonPositive * 2 >= snrN) acc = std::max(acc, 1);
+        }
+        add(L"LTE 信号质量 RSRP / RSRQ / SNR", ls, acc);
+    }
+    if (!srvs.empty() || !rats.empty() || denyN || !opers.empty()) {
+        auto dist = [](const std::map<std::string, int>& xs) {
+            std::wstring s;
+            for (const auto& kv : xs) {
+                if (!s.empty()) s += L"    ";
+                s += U8ToW(kv.first) + L":" + std::to_wstring(kv.second);
+            }
+            return s;
+        };
+        std::vector<std::wstring> ls;
+        if (!srvs.empty()) ls.push_back(L"SRV  " + dist(srvs) + L"    (0=NONE / 1=LIMITED / 2=FULL)");
+        if (!rats.empty()) ls.push_back(L"RAT  " + dist(rats));
+        if (denyN) ls.push_back(FmtW(L"DENY 非零 %d/%d（保留 SDK 原始码；不同产品 SDK 编码表不同）", denyNonzero, denyN));
+        if (!opers.empty()) ls.push_back(L"OPER " + dist(opers));
+        add(L"注网 / 运营商", ls, denyNonzero ? 1 : 0);
     }
     if (tN) {
         std::wstring s = FmtW(L"max=%d°C   avg=%.0f°C", tMax, (double)tSum / tN);
@@ -1066,7 +1334,7 @@ static void RenderSummary() {
         { FmtW(L"通道切换:%d   SDK断开:%d   状态迁移:%d   CFUN:%d   切卡:%d   选网:%d   小区变更:%d",
                sw, disc, states, cfun, slot, oper, cells),
           L"",
-          L"提示: “时间线”看事件流, “断网”看逐次, “指标/信号图”看 CSQ 与 ΔRX(=0 即数据不通)。" });
+          L"提示: “时间线”看事件流，“断网”看逐次，“指标/信号图”看 CSQ、LTE 详情与 ΔRX(=0 即数据不通)。" });
 
     if (hSummary) InvalidateRect(hSummary, nullptr, FALSE);
 }
@@ -1113,6 +1381,7 @@ static void RenderMetrics() {
     g_csq.clear();
     g_rsrp.clear();
     g_rsrq.clear();
+    g_snr10.clear();
     int row = 0;
     for (const auto& m : g_metrics) {
         LvAddRow(hMetric, row, U8ToW(m.ts));
@@ -1124,10 +1393,24 @@ static void RenderMetrics() {
         LvSet(hMetric, row, 6, U8ToW(m.drx));
         LvSet(hMetric, row, 7, m.rsrp < 0 ? FmtW(L"%d", m.rsrp) : L"-");
         LvSet(hMetric, row, 8, m.rsrq < 0 ? FmtW(L"%d", m.rsrq) : L"-");
+        LvSet(hMetric, row, 9, m.snr10 != 100000 ? FmtW(L"%.1f", m.snr10 / 10.0) : L"-");
+        LvSet(hMetric, row, 10, m.rssiVal < 0 ? FmtW(L"%d", m.rssiVal) : L"-");
+        LvSet(hMetric, row, 11, U8ToW(m.srv));
+        LvSet(hMetric, row, 12, U8ToW(m.rat));
+        LvSet(hMetric, row, 13, U8ToW(m.deny));
+        LvSet(hMetric, row, 14, U8ToW(m.oper));
         if (m.csqVal >= 0) g_csq.push_back({ m.t, m.csqVal });
         if (m.rsrp < 0)    g_rsrp.push_back({ m.t, m.rsrp });
         if (m.rsrq < 0)    g_rsrq.push_back({ m.t, m.rsrq });
+        if (m.snr10 != 100000) g_snr10.push_back({ m.t, m.snr10 });
         row++;
+    }
+    const bool detailEmpty = g_chartDetail == 0 ? g_rsrp.empty() :
+                             (g_chartDetail == 1 ? g_rsrq.empty() : g_snr10.empty());
+    if (detailEmpty) {
+        if (!g_rsrp.empty()) g_chartDetail = 0;
+        else if (!g_rsrq.empty()) g_chartDetail = 1;
+        else if (!g_snr10.empty()) g_chartDetail = 2;
     }
     InvalidateRect(hChart, nullptr, TRUE);
 }
@@ -1419,17 +1702,31 @@ static void DoExportCsv() {
     if (!GetSaveFileNameW(&ofn)) return;
 
     std::string out = "\xEF\xBB\xBF";              // UTF-8 BOM,Excel 中文不乱码
-    out += "time,ch,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq\r\n";
+    auto csv = [](const std::string& s) {
+        if (s.find_first_of(",\"\r\n") == std::string::npos) return s;
+        std::string q = "\"";
+        for (char c : s) { q += c; if (c == '\"') q += '\"'; }
+        q += '\"';
+        return q;
+    };
+    out += "time,ch,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper\r\n";
     for (const auto& m : g_metrics) {
-        out += m.ts; out += ',';
-        out += m.ch; out += ',';
-        out += m.csq; out += ',';
-        out += m.tmax; out += ',';
-        out += m.cf; out += ',';
-        out += m.rx; out += ',';
-        out += m.drx; out += ',';
+        out += csv(m.ts); out += ',';
+        out += csv(m.ch); out += ',';
+        out += csv(m.csq); out += ',';
+        out += csv(m.tmax); out += ',';
+        out += csv(m.cf); out += ',';
+        out += csv(m.rx); out += ',';
+        out += csv(m.drx); out += ',';
         out += (m.rsrp < 0 ? std::to_string(m.rsrp) : ""); out += ',';
-        out += (m.rsrq < 0 ? std::to_string(m.rsrq) : ""); out += "\r\n";
+        out += (m.rsrq < 0 ? std::to_string(m.rsrq) : ""); out += ',';
+        if (m.snr10 != 100000) { char b[32]; snprintf(b, sizeof(b), "%.1f", m.snr10 / 10.0); out += b; }
+        out += ',';
+        out += (m.rssiVal < 0 ? std::to_string(m.rssiVal) : ""); out += ',';
+        out += csv(m.srv); out += ',';
+        out += csv(m.rat); out += ',';
+        out += csv(m.deny); out += ',';
+        out += csv(m.oper); out += "\r\n";
     }
     HANDLE h = CreateFileW(file, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) { MessageBoxW(hMain, L"写入失败。", L"错误", MB_ICONERROR); return; }
@@ -1584,7 +1881,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         hOutage   = MkLv(IDC_OUTAGE,   { {L"#", 44}, {L"开始", 160}, {L"恢复", 160}, {L"时长", 90} });
         hMetric   = MkLv(IDC_METRIC,   { {L"时间", 140}, {L"CH", 90}, {L"CSQ", 60}, {L"Tmax", 60},
                                          {L"ConsecFail", 90}, {L"RX_PKT", 110}, {L"ΔRX", 80},
-                                         {L"RSRP", 70}, {L"RSRQ", 70} });
+                                         {L"RSRP", 70}, {L"RSRQ", 70}, {L"SNR(dB)", 80},
+                                         {L"RSSI", 70}, {L"SRV", 55}, {L"RAT", 80},
+                                         {L"DENY", 60}, {L"OPER", 150} });
         hTags     = MkLv(IDC_TAGS,     { {L"标签", 150}, {L"次数", 80}, {L"占比", 600} });
         hRaw = Mk(L"EDIT", L"", WS_BORDER | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY,
                   0, 0, 10, 10, IDC_RAW, hFontMono);
@@ -1683,7 +1982,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             g_sessions.clear(); g_outages.clear(); g_metrics.clear();
             g_findings.clear(); g_sumCards.clear();
             g_tlColors.clear(); g_ogColors.clear();
-            g_csq.clear(); g_rsrp.clear(); g_rsrq.clear();
+            g_csq.clear(); g_rsrp.clear(); g_rsrq.clear(); g_snr10.clear();
+            g_chartDetail = 0;
             g_audit = ParseAudit{};
             g_plat  = PlatformInfo{};
             g_findScroll = g_findContentH = 0;
@@ -1751,8 +2051,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 if (i < g_metrics.size()) {
                     const MetricRow& m = g_metrics[i];
                     // 高亮单元格优先级高于斑马纹(覆盖)
-                    if (sub == 6 && m.drxZero)                      cd->clrTextBk = RGB(255, 214, 245);
-                    else if (sub == 2 && m.csqVal >= 0 && m.csqVal < 10) cd->clrTextBk = RGB(255, 238, 200);
+                    if (sub == 6 && m.drxZero)                           cd->clrTextBk = th::cellStall;
+                    else if (sub == 2 && m.csqVal >= 0 && m.csqVal < 10) cd->clrTextBk = th::cellWeak;
+                    else if (sub == 9 && m.snr10 != 100000 && m.snr10 <= 0) cd->clrTextBk = th::cellSnrLow;
                 }
                 return CDRF_DODEFAULT;
             }

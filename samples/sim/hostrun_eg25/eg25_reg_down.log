@@ -1,32 +1,75 @@
-[2026-07-17 16:50:32] [ROAMLINK] /usrdata/network.ini not found, use default policy 4
-[2026-07-17 16:50:32] [ROAMLINK] RBMaster not found at /usrdata/roamlink/RBMaster → NO_PACKAGE
-[2026-07-17 16:50:32] [ROAMLINK] probe NO_PACKAGE: RBMaster missing, force SIM
-[2026-07-17 16:50:32] [ROAMLINK] RBMaster process not found in /proc
+[2026-08-04 23:06:58] [ROAMLINK] /usrdata/network.ini not found, use default policy 4
+[2026-08-04 23:06:58] [ROAMLINK] RBMaster not found at /usrdata/roamlink/RBMaster → NO_PACKAGE
+[2026-08-04 23:06:58] [ROAMLINK] probe NO_PACKAGE: RBMaster missing, force SIM
+[2026-08-04 23:06:58] [ROAMLINK] RBMaster process not found in /proc
 ##### PRO type 
-[2026-07-17 16:50:32] [LED] state -1 -> 1, send
+[2026-08-04 23:06:58] [LED] state -1 -> 1, send
 begin dial 
-[2026-07-17 16:50:32] [STATE] (start) -> none
-[2026-07-17 16:50:32] [STATE] none -> init
-[2026-07-17 16:50:32] [MODEM] Model:   (unknown)
-[2026-07-17 16:50:32] [MODEM] FW:      EG25GGBR07A08M2G_OCPU_30.200.30.200
-[2026-07-17 16:50:32] [MODEM] SubEd:   (unknown)
-[2026-07-17 16:50:32] [MODEM] CFUN:    1 (full)
-[2026-07-17 16:50:32] [MODEM] Temp:    40,35,35
-[2026-07-17 16:50:32] [STATE] init -> sim_init
-[2026-07-17 16:50:32] [STATE] sim_init -> sim_check
+[2026-08-04 23:06:58] [STATE] (start) -> none
+[2026-08-04 23:06:58] [STATE] none -> init
+[2026-08-04 23:06:58] [MODEM] Model:   (unknown)
+[2026-08-04 23:06:58] [MODEM] FW:      EG25GGBR07A08M2G_OCPU_30.200.30.200
+[2026-08-04 23:06:58] [MODEM] SubEd:   (unknown)
+[2026-08-04 23:06:58] [MODEM] CFUN:    1 (full)
+[2026-08-04 23:06:58] [MODEM] Temp:    40,35,35
+[2026-08-04 23:06:58] [STATE] init -> sim_init
+[2026-08-04 23:06:58] [STATE] sim_init -> sim_check
+[2026-08-04 23:06:58] [STATE] sim_check -> sim_op
+[2026-08-04 23:06:58] [INIT] ICCID: (empty)
+[2026-08-04 23:06:58] [INIT] IMSI:  (empty)
+[2026-08-04 23:06:58] [INIT] IMEI:  867929069681908
+[2026-08-04 23:06:58] [INIT] PDP:   +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
+[2026-08-04 23:06:58] [INIT] FW:    EG25GGBR07A08M2G_OCPU_30.200.30.200
+[2026-08-04 23:06:58] [INIT] policy=4
+[2026-08-04 23:06:58] [INIT] COPS: +COPS: 0,2,"46000",7 (mode=0 auto) | CEREG: +CEREG: 0,0
+[2026-08-04 23:06:58] [STATE] sim_op -> reg_check
 Resetting module...
-[2026-07-17 16:52:12] [CELL CHANGE] init -> D17C148 | +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
-[2026-07-17 16:52:12] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:0s | ConsecFail:1
-[2026-07-17 16:53:52] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:0s | ConsecFail:2
-[2026-07-17 16:55:32] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
-[2026-07-17 16:55:32] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:0s | ConsecFail:3
-[2026-07-17 16:55:32] [DIAG] RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3" | +QTEMP: 40,35,35 | +CEER: 0,-1 | +CGACT: 1,1
+[2026-08-04 23:08:38] [CELL CHANGE] init -> D17C148 | +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:08:38] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | SRV:0 RAT:LTE DENY:6 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:15 | Temp:40,35,35 | DownTime:0s | ConsecFail:1
+[2026-08-04 23:10:18] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | SRV:0 RAT:LTE DENY:6 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:15 | Temp:40,35,35 | DownTime:0s | ConsecFail:2
+[2026-08-04 23:11:58] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-08-04 23:11:58] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | SRV:0 RAT:LTE DENY:6 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:15 | Temp:40,35,35 | DownTime:0s | ConsecFail:3
+[2026-08-04 23:11:58] [DIAG] RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3" | +QTEMP: 40,35,35 | +CEER: 0,-1 | +CGACT: 1,1
 Resetting module...
-[2026-07-17 16:57:12] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:100s | ConsecFail:4
-[2026-07-17 16:58:52] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:200s | ConsecFail:5
-[2026-07-17 17:00:32] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:300s | ConsecFail:6
+[2026-08-04 23:11:58] [REG TIMEOUT] COPS already auto, skip COPS=0
+[2026-08-04 23:11:58] [REG TIMEOUT] policy=4, cfun reset and retry
+[2026-08-04 23:11:58] [REG DIAG] cold-start no-reg | +CEREG: 0,0 | +COPS: 0,2,"46000",7 | +CEER: 0,-1 | +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:11:58] [STATE] reg_check -> stop_cfun
+[2026-08-04 23:11:58] [CFUN] Sending AT+CFUN=0 (stop RF)
+[2026-08-04 23:11:58] [CFUN] AT+CFUN=0 success, response: 
+OK
+
+[2026-08-04 23:11:58] [STATE] stop_cfun -> start_cfun
+[2026-08-04 23:11:58] [CFUN] Sending AT+CFUN=1 (start RF)
+[2026-08-04 23:11:58] [CFUN] AT+CFUN=1 success, response: 
+OK
+
+[2026-08-04 23:11:58] [STATE] start_cfun -> sim_init
+[2026-08-04 23:11:58] [STATE] sim_init -> sim_check
+[2026-08-04 23:11:58] [STATE] sim_check -> sim_op
+[2026-08-04 23:11:58] [STATE] sim_op -> reg_check
+[2026-08-04 23:13:38] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | SRV:0 RAT:LTE DENY:6 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:15 | Temp:40,35,35 | DownTime:100s | ConsecFail:4
+[2026-08-04 23:15:18] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | SRV:0 RAT:LTE DENY:6 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:15 | Temp:40,35,35 | DownTime:200s | ConsecFail:5
+[2026-08-04 23:16:58] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | SRV:0 RAT:LTE DENY:6 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:15 | Temp:40,35,35 | DownTime:300s | ConsecFail:6
 Resetting module...
-[2026-07-17 17:02:12] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:400s | ConsecFail:7
-[2026-07-17 17:03:52] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:500s | ConsecFail:8
-[2026-07-17 17:05:32] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:15 | Temp:40,35,35 | DownTime:600s | ConsecFail:9
+[2026-08-04 23:16:58] [REG TIMEOUT] COPS already auto, skip COPS=0
+[2026-08-04 23:16:58] [REG TIMEOUT] policy=4, cfun reset and retry
+[2026-08-04 23:16:58] [REG DIAG] cold-start no-reg | +CEREG: 0,0 | +COPS: 0,2,"46000",7 | +CEER: 0,-1 | +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:16:58] [STATE] reg_check -> stop_cfun
+[2026-08-04 23:16:58] [CFUN] Sending AT+CFUN=0 (stop RF)
+[2026-08-04 23:16:58] [CFUN] AT+CFUN=0 success, response: 
+OK
+
+[2026-08-04 23:16:58] [STATE] stop_cfun -> start_cfun
+[2026-08-04 23:16:58] [CFUN] Sending AT+CFUN=1 (start RF)
+[2026-08-04 23:16:58] [CFUN] AT+CFUN=1 success, response: 
+OK
+
+[2026-08-04 23:16:58] [STATE] start_cfun -> sim_init
+[2026-08-04 23:16:58] [STATE] sim_init -> sim_check
+[2026-08-04 23:16:58] [STATE] sim_check -> sim_op
+[2026-08-04 23:16:58] [STATE] sim_op -> reg_check
+[2026-08-04 23:18:38] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | SRV:0 RAT:LTE DENY:6 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:15 | Temp:40,35,35 | DownTime:400s | ConsecFail:7
+[2026-08-04 23:20:18] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | SRV:0 RAT:LTE DENY:6 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:15 | Temp:40,35,35 | DownTime:500s | ConsecFail:8
+[2026-08-04 23:21:58] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | SRV:0 RAT:LTE DENY:6 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:15 | Temp:40,35,35 | DownTime:600s | ConsecFail:9
 Resetting module...

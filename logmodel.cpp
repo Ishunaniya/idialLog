@@ -707,6 +707,11 @@ std::vector<MetricRow> buildMetrics(const std::vector<LogLine>& lines) {
         }
         v = pick(f, {"CSQ", "csq"});             m.csq = v ? *v : "-";
         v = pick(f, {"ConsecFail", "tcp_fail"}); m.cf  = v ? *v : "-";
+        v = pick(f, {"SRV"});                     m.srv = v ? *v : "-";
+        v = pick(f, {"RAT"});                     m.rat = v ? *v : "-";
+        v = pick(f, {"DENY"});                    m.deny = v ? *v : "-";
+        v = pick(f, {"OPER"});                    m.oper = v ? *v : "-";
+        v = pick(f, {"RSSI", "rssi"});           m.rssi = v ? *v : "-";
 
         m.tmax = "-";
         if ((v = pick(f, {"Temp", "TEMP"}))) {
@@ -773,6 +778,29 @@ std::vector<MetricRow> buildMetrics(const std::vector<LogLine>& lines) {
             long r = std::strtol(v->c_str(), &endp, 10);
             if (endp != v->c_str() && r < 0) m.rsrq = (int)r;
         }
+        // 两套 SDK 的 LTE SNR 都是 int16_t 原值,单位 0.1dB(真头示例:246=24.6dB)。
+        // 0 与正值均有效,不能沿用 RSRP/RSRQ 的“只收负值”规则。
+        if ((v = pick(f, {"SNR", "snr"}))) {
+            char* endp = nullptr;
+            long r = std::strtol(v->c_str(), &endp, 10);
+            if (endp != v->c_str() && *endp == '\0' && r >= -32768 && r <= 32767)
+                m.snr10 = (int)r;
+        }
+        if ((v = pick(f, {"RSSI", "rssi"}))) {
+            char* endp = nullptr;
+            long r = std::strtol(v->c_str(), &endp, 10);
+            if (endp != v->c_str() && *endp == '\0' && r < 0) m.rssiVal = (int)r;
+        }
+        if ((v = pick(f, {"SRV"}))) {
+            char* endp = nullptr;
+            long r = std::strtol(v->c_str(), &endp, 10);
+            if (endp != v->c_str() && *endp == '\0' && r >= 0 && r <= 2) m.srvVal = (int)r;
+        }
+        if ((v = pick(f, {"DENY"}))) {
+            char* endp = nullptr;
+            long r = std::strtol(v->c_str(), &endp, 10);
+            if (endp != v->c_str() && *endp == '\0' && r >= 0) m.denyVal = (int)r;
+        }
         rows.push_back(std::move(m));
     }
     return rows;
@@ -788,6 +816,12 @@ static Evidence mkEv(const LogLine& l) {
     e.ts     = l.ts;
     e.text   = (l.tag.empty() ? "" : "[" + l.tag + "] ") + l.msg.substr(0, 160);
     return e;
+}
+
+static std::string fmtSnr10(int raw) {
+    char b[32];
+    std::snprintf(b, sizeof(b), "%.1f", raw / 10.0);
+    return b;
 }
 
 // 断网根因分类(取值即 Finding 的分组键)
@@ -852,6 +886,11 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
         if (l.tag == "OPER")                                evOper.push_back(&l);
         if (l.tag == "CFUN")                                evCfun.push_back(&l);
     }
+    // SDK 注网摘要是 2026-07/08 四份产品代码新增字段。只有 SRV!=FULL 且 DENY>0
+    // 才算拒绝证据；DENY=0 不臆测。两套 SDK 的 DENY 数字表不同,这里只保留原码。
+    std::vector<const MetricRow*> evSdkDeny;
+    for (const auto& m : mets)
+        if (m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0) evSdkDeny.push_back(&m);
 
     // ---- 1. 从未联网(SIM/账户问题):恢复阶梯被 has_connected_once 门控 ----
     if (!evNeverConn.empty()) {
@@ -868,15 +907,22 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
     }
 
     // ---- 2. 注册被拒 ----
-    if (!evDenied.empty()) {
+    if (!evDenied.empty() || !evSdkDeny.empty()) {
         Finding f;
         f.severity = 2;
-        f.title  = "网络注册被拒绝(Registration Denied)";
-        f.detail = "REG 状态为 3(拒绝)。运营商侧拒绝该 IMSI 接入,属 SIM/账户/位置区限制,"
-                   "不是信号问题。";
+        f.title  = "网络注册被拒绝(Registration Denied / SDK DENY)";
+        f.detail = "【源码直证】日志出现 REG=3 的 Registration Denied,或 SDK 摘要同时满足"
+                   "SRV!=2(FULL) 且 DENY>0。DENY 是平台 SDK 原始码；EC200A 与 EG25 编码表不同,"
+                   "工具不跨平台套用名称。";
         f.advice = "核对卡状态(欠费/停机/未开通漫游或数据)、IMSI 与运营商签约是否一致;"
                    "海外场景确认是否需要选网(COPS)。";
         for (size_t i = 0; i < evDenied.size() && i < 3; ++i) f.ev.push_back(mkEv(*evDenied[i]));
+        for (size_t i = 0; i < evSdkDeny.size() && f.ev.size() < 3; ++i) {
+            Evidence e; e.lineNo = evSdkDeny[i]->lineNo; e.ts = evSdkDeny[i]->ts;
+            e.text = "SDK注网摘要 SRV=" + evSdkDeny[i]->srv + " RAT=" + evSdkDeny[i]->rat +
+                     " DENY=" + evSdkDeny[i]->deny;
+            f.ev.push_back(std::move(e));
+        }
         fs.push_back(std::move(f));
     }
 
@@ -921,12 +967,13 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
         int  minCsq = 999; bool sawZeroRx = false;
         int  minRsrp = 9999;                              // 窗口内最低 RSRP(dBm,越低越差)
         const MetricRow* mZero = nullptr; const MetricRow* mWeak = nullptr;
-        const MetricRow* mRsrp = nullptr;
+        const MetricRow* mRsrp = nullptr; const MetricRow* mDeny = nullptr;
         for (const auto& m : mets) {
             if (m.t < lo || m.t > hi) continue;
             if (m.csqVal >= 0 && m.csqVal < minCsq) { minCsq = m.csqVal; mWeak = &m; }
             if (m.rsrp < 0 && m.rsrp < minRsrp) { minRsrp = m.rsrp; mRsrp = &m; }
             if (m.drxZero) { sawZeroRx = true; if (!mZero) mZero = &m; }
+            if (!mDeny && m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0) mDeny = &m;
         }
         // RSRP < -110 dBm = 3GPP 极差覆盖(基本不可用)。比 CS<10 更灵敏:
         // CSQ 是 0-31 粗档,可能读到中间值,而 RSRP 已探底 —— 覆盖问题此时才现形。
@@ -945,6 +992,7 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
         const LogLine* evl = nullptr;
         const MetricRow* evm = nullptr;
         if (dn)                          { c = C_DENIED;    evl = dn; }
+        else if (mDeny)                  { c = C_DENIED;    evm = mDeny; }
         /* 服务未就绪排在信号/假死之前:数据服务没起来时,CSQ 再好也拨不上,
          * 归因成"弱信号"会把排查引偏(见 ec200a 数据服务未就绪诊断的教训)。 */
         else if (nr)                     { c = C_NOTREADY;  evl = nr; }
@@ -963,10 +1011,16 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
             if (evl) e = mkEv(*evl);
             else if (evm) {
                 e.lineNo = evm->lineNo; e.ts = evm->ts;
-                std::string sig = "心跳 CSQ=" + evm->csq;
-                if (evm->rsrp < 0) sig += " RSRP=" + std::to_string(evm->rsrp) + "dBm";
-                sig += " ΔRX=" + evm->drx;
-                e.text = sig + " (断网 " + fmtTime(o.start, "MD") + " 起)";
+                if (c == C_DENIED) {
+                    e.text = "SDK注网摘要 SRV=" + evm->srv + " RAT=" + evm->rat +
+                             " DENY=" + evm->deny + " (断网 " + fmtTime(o.start, "MD") + " 起)";
+                } else {
+                    std::string sig = "心跳 CSQ=" + evm->csq;
+                    if (evm->rsrp < 0) sig += " RSRP=" + std::to_string(evm->rsrp) + "dBm";
+                    if (evm->snr10 != 100000) sig += " SNR=" + fmtSnr10(evm->snr10) + "dB";
+                    sig += " ΔRX=" + evm->drx;
+                    e.text = sig + " (断网 " + fmtTime(o.start, "MD") + " 起)";
+                }
             } else {
                 e.lineNo = o.startLine; e.ts = fmtTime(o.start, "FULL");
                 e.text = "断网起点(无弱信号/无 ΔRX=0/无切卡选网痕迹)";
@@ -998,7 +1052,7 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
             f.advice = "若次数不多可视为正常;频繁发生则查切卡触发条件是否过于敏感。";
             break;
         case C_DENIED:
-            f.detail = "断网窗口内出现 Registration Denied。";
+            f.detail = "断网窗口内出现 Registration Denied,或 SDK 摘要为 SRV!=2 且 DENY>0。";
             f.advice = "按 SIM/账户问题处理,见上方结论。";
             break;
         case C_NOTREADY:
@@ -1125,6 +1179,37 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
                 f.ev.push_back(e);
                 fs.push_back(std::move(f));
             }
+        }
+    }
+
+    // ---- 6c. LTE SNR 非正值提示 ----
+    // 【源码直证】两套 SDK 真头均定义 SNR 为 0.1dB 有符号整数。
+    // 【推断】SNR<=0dB 表示期望信号功率不高于噪声+干扰；“至少5样本且半数命中”是
+    // 工程提示门槛,不是产品源码/SDK 常量。无新版真机日志前不把它单独归为断网根因。
+    {
+        long long sum = 0; int n = 0, nonPositive = 0, worst = 100000;
+        const MetricRow* mWorst = nullptr;
+        for (const auto& m : mets) {
+            if (m.snr10 == 100000) continue;
+            sum += m.snr10; n++;
+            if (m.snr10 <= 0) nonPositive++;
+            if (m.snr10 < worst) { worst = m.snr10; mWorst = &m; }
+        }
+        if (n >= 5 && nonPositive * 2 >= n && mWorst) {
+            int avg10 = (int)(sum / n);
+            Finding f;
+            f.severity = 0;
+            f.title = "LTE SNR偏低提示:非正值 " + std::to_string(nonPositive) + "/" +
+                      std::to_string(n) + " 样本,均值 " + fmtSnr10(avg10) + " dB";
+            f.detail = "【推断】至少5个有效样本且半数以上 SNR≤0dB。该门槛用于提示噪声/同频干扰,"
+                       "不是 SDK 或产品源码故障阈值；尚无新版真机日志验证,不单独据此归因断网。";
+            f.advice = "结合 RSRP/RSRQ、断网时段和安装环境复核；若 RSRP尚可但SNR持续非正,"
+                       "重点排查同频干扰、天线位置及馈线。";
+            Evidence e; e.lineNo = mWorst->lineNo; e.ts = mWorst->ts;
+            e.text = "最低 SNR=" + fmtSnr10(worst) + "dB (原值 " + std::to_string(worst) +
+                     ",均值 " + fmtSnr10(avg10) + "dB)";
+            f.ev.push_back(std::move(e));
+            fs.push_back(std::move(f));
         }
     }
 

@@ -53,6 +53,11 @@ inline const COLORREF s8_red     = HEX2RGB(0xe34948);
 // ---- 断网带:critical 的极淡水洗(~10% 不透明度压在 surface 上),不是饱和色块 ----
 inline const COLORREF outageBand = HEX2RGB(0xf8e5e5);
 
+// ---- 指标表状态底色(必须与单元格文字/列名共同表达,不可只靠颜色) ----
+inline const COLORREF cellStall  = HEX2RGB(0xffe1f4);  // ΔRX=0
+inline const COLORREF cellWeak   = HEX2RGB(0xffeec8);  // CSQ<10
+inline const COLORREF cellSnrLow = HEX2RGB(0xf8e5e5);  // 【推断】SNR≤0dB
+
 // ---- 时间线行着色(小字号,需 WCAG≥4.5,与图表/仪表盘的大元素色解耦)----
 // 序列色(good/s1_blue/s5_aqua)是为大色块/大字设计的,直接做小字对比度不足
 // (good 3.35 / s1_blue 4.42 / s5_aqua 2.82)。这里给行文字用同色相的加深版,

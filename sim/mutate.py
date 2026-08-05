@@ -16,7 +16,8 @@ mutate.py — 变异测试:把已知正确的行为**故意改错**,看测试抓
 shell 的多层引号转义极易出错(踩过:'~'/'.'  在 heredoc 里转义后匹配不上,
 误报"变异点不存在")。Python 里就是普通字符串,无转义地狱。
 
-优化:变异只改 logmodel.cpp → 编一次 .o,4 个测试共享链接(全量编译 12s→链接秒级)。
+优化:变异只改临时目录里的 logmodel.cpp 副本 → 编一次 .o,多个测试共享链接。
+工作树从不被改写,所以能安全验证尚未提交的正当改动,进程被杀也不会留下变异源码。
 用法: python3 sim/mutate.py
 """
 import os
@@ -152,6 +153,16 @@ MUTATIONS = [
     ('信号劣化结论阈值反向(≤-100退回≥)',
      'if (avg <= -100 && mWorst) {',
      'if (avg >= -100 && mWorst) {'),
+    # ── 新 SDK 心跳字段 SNR / DENY —— baselinetest 精确值与结论边界的靶子 ──
+    ('SNR原始0.1dB被误除10(246不再精确保留)',
+     'm.snr10 = (int)r;',
+     'm.snr10 = (int)r / 10;'),
+    ('SNR推断提示被关闭',
+     'if (n >= 5 && nonPositive * 2 >= n && mWorst) {',
+     'if (false && mWorst) {'),
+    ('SDK DENY拒绝证据被漏掉',
+     'if (m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0) evSdkDeny.push_back(&m);',
+     'if (m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 999) evSdkDeny.push_back(&m);'),
     # ── SDK L0 短断网归类 —— baselinetest 靶子 ──
     ('SDK L0标志失效(不认(L0))',
      'o.l0Recovered = (l.msg.find("(L0)") != std::string::npos);',
@@ -188,13 +199,13 @@ def _miniz_obj():
     return path
 
 
-def run_tests(tmp, mut_name=""):
+def run_tests(tmp, source, mut_name=""):
     """编 logmodel.o + 链接测试 + 跑。全绿返回 True(=变异存活)。
     优化:archivetest 每次要带 miniz 重编 logmodel(慢)。只有触及 archive/BOM 代码的
     变异才需要它 —— 非 archive 变异即使 archivetest 不跑也不影响结论(它抓不到这些洞)。
     靠变异名里的关键词判断是否 archive 相关。"""
     obj = os.path.join(tmp, "lm.o")
-    if subprocess.run(CXX + ["-c", SRC, "-o", obj], cwd=ROOT,
+    if subprocess.run(CXX + ["-I", ROOT, "-c", source, "-o", obj], cwd=ROOT,
                       stderr=subprocess.DEVNULL).returncode != 0:
         return False  # 编不过 = 变异被抓住
     # 是否 archive 相关变异(名字含这些词) → 才编 archivetest
@@ -203,7 +214,8 @@ def run_tests(tmp, mut_name=""):
     obj_mz = os.path.join(tmp, "lm_mz.o")
     mzobj = _miniz_obj()
     have_mz = (is_arch and "archivetest" in TESTS and mzobj is not None
-               and subprocess.run(CXX + ["-DDL_HAVE_MINIZ", "-c", SRC, "-o", obj_mz], cwd=ROOT,
+               and subprocess.run(CXX + ["-DDL_HAVE_MINIZ", "-I", ROOT,
+                                         "-c", source, "-o", obj_mz], cwd=ROOT,
                                   stderr=subprocess.DEVNULL).returncode == 0)
     run_list = [t for t in TESTS if not (t == "archivetest" and not is_arch)]
     for t in run_list + ["selftest"]:
@@ -230,56 +242,10 @@ def run_tests(tmp, mut_name=""):
     return True
 
 
-PRISTINE = os.path.join(os.path.dirname(__file__), ".logmodel.pristine")
-
-
-def _git_head_src():
-    """从 git HEAD 取 SRC 的干净内容(权威基线)。失败返回 None。"""
-    rel = os.path.relpath(SRC, ROOT)
-    r = subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT,
-                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    return r.stdout.decode("utf-8") if r.returncode == 0 else None
-
-
 def main():
-    # 崩溃安全:变异会改 SRC,进程若被 SIGKILL(超时 kill 无法捕获)会把变异态留在磁盘,
-    # 下次 git add -A 就可能提交坏解析器。
-    #
-    # 【教训】旧自愈只在"SRC 含特定标记(ZZ 等)"时才还原 —— 非标记型变异(如把
-    # `return a.hasT` 改成 `return !a.hasT`)残留时认不出,且会把坏内容再存进 PRISTINE,
-    # 污染叠加。现改为:
-    #   ① 优先信任 git HEAD 作为基线(权威,不会被上次运行污染);
-    #   ② 只要磁盘 SRC 与基线**逐字节不一致**就还原,不再匹配任何标记;
-    #   ③ PRISTINE 仅作 git 不可用时的兜底,且写入前先用 git 校验过。
-    baseline = _git_head_src()
-    if baseline is not None:
-        disk = open(SRC, encoding="utf-8").read()
-        if disk != baseline:
-            # 与 HEAD 不一致:可能是上次残留,也可能是**未提交的正当改动**。
-            # 无法区分,保守起见提示并中止,让用户自己确认 —— 绝不静默覆盖用户改动。
-            print("⚠ SRC 与 git HEAD 不一致。若这是上次变异残留,请手动还原:")
-            print(f"    git checkout -- {os.path.relpath(SRC, ROOT)}")
-            print("  若这是你未提交的正当改动,请先 commit 或 stash 再跑变异测试。")
-            sys.exit(2)
-    elif os.path.exists(PRISTINE):
-        # git 不可用的兜底:PRISTINE 是上次由本脚本(经校验后)落盘的
-        disk = open(SRC, encoding="utf-8").read()
-        pris = open(PRISTINE, encoding="utf-8").read()
-        if disk != pris:
-            print("⚠ 检测到 SRC 与 PRISTINE 不一致,还原(git 不可用,用兜底副本)")
-            open(SRC, "w", encoding="utf-8").write(pris)
-
     orig = open(SRC, encoding="utf-8").read()
-    open(PRISTINE, "w", encoding="utf-8").write(orig)   # 落盘原始副本
-
-    import signal
-    def _restore(*_):
-        open(SRC, "w", encoding="utf-8").write(orig)
-        os._exit(2)
-    signal.signal(signal.SIGTERM, _restore)
-    signal.signal(signal.SIGINT, _restore)
-
     tmp = tempfile.mkdtemp()
+    mutated_src = os.path.join(tmp, "logmodel.cpp")
     caught = survived = bad = 0
     print("════ 变异测试:把修过的 bug 故意改回去,看测试抓不抓得住 ════")
     try:
@@ -288,9 +254,9 @@ def main():
                 print(f"  {name:<40s} ⚠ 变异点不存在(片段对不上,修 mutate.py)")
                 bad += 1
                 continue
-            open(SRC, "w", encoding="utf-8").write(orig.replace(old, new, 1))
-            survived_now = run_tests(tmp, name)
-            open(SRC, "w", encoding="utf-8").write(orig)  # 立即还原
+            with open(mutated_src, "w", encoding="utf-8") as f:
+                f.write(orig.replace(old, new, 1))
+            survived_now = run_tests(tmp, mutated_src, name)
             if survived_now:
                 print(f"  {name:<40s} ❌ 存活 —— 测试没抓住,有洞")
                 survived += 1
@@ -298,10 +264,7 @@ def main():
                 print(f"  {name:<40s} ✅ 被抓住")
                 caught += 1
     finally:
-        open(SRC, "w", encoding="utf-8").write(orig)  # 兜底还原
         shutil.rmtree(tmp, ignore_errors=True)
-        try: os.remove(PRISTINE)  # 正常结束才删副本;异常退出时保留它供下次自愈
-        except OSError: pass
 
     print(f"\n════ {len(MUTATIONS)} 个变异:{caught} 被抓住,{survived} 存活,{bad} 片段失配 ════")
     if survived:

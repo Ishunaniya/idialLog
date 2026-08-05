@@ -8,6 +8,14 @@
 #include "ql_sim.h"
 #include "ql_atc.h"
 
+static int sim_int(const char *name, int fallback) {
+    const char *s = getenv(name);
+    return (s && *s) ? atoi(s) : fallback;
+}
+static int sim_registered(void) {
+    return !sim_int("SIM_CARD_ABSENT", 0) && sim_int("SIM_CEREG", 1) != 0;
+}
+
 int ql_data_call_config(int call_id, ql_data_call_param_t *param) { return 0; }
 int ql_data_call_create(int call_id, const char *call_name, int is_background) { return 0; }
 int ql_data_call_deinit() { return 0; }
@@ -31,12 +39,43 @@ int ql_data_call_stop(int call_id) { return 0; }
 int ql_nw_deinit() { return 0; }
 int ql_nw_get_cell_access_status(QL_NW_CELL_ACCESS_STATE_TYPE_E *p_info) { return 0; }
 int ql_nw_get_cell_info(ql_nw_cell_info_t *p_info) { return 0; }
-int ql_nw_get_data_reg_status(ql_nw_reg_status_info_t *p_info) { return 0; }
+int ql_nw_get_data_reg_status(ql_nw_reg_status_info_t *p_info) {
+    int registered;
+    if (!p_info) return -1;
+    memset(p_info, 0, sizeof(*p_info));
+    registered = sim_registered();
+    p_info->tech_domain = QL_NW_TECH_DOMAIN_3GPP;
+    p_info->radio_tech = QL_NW_RADIO_TECH_LTE;
+    p_info->reg_state = (QL_NW_SERVICE_TYPE_E)(registered ? QL_NW_SERVICE_FULL : 0);
+    p_info->deny_reason = (QL_NW_DENY_REASON_TYPE_E)sim_int("SIM_DENY", registered ? 0 : 6);
+    return 0;
+}
 int ql_nw_get_etws_config(uint8_t* p_enable_etws) { return 0; }
-int ql_nw_get_mobile_operator_name(ql_nw_mobile_operator_name_info_t *p_info) { return 0; }
+int ql_nw_get_mobile_operator_name(ql_nw_mobile_operator_name_info_t *p_info) {
+    if (!p_info) return -1;
+    memset(p_info, 0, sizeof(*p_info));
+    snprintf(p_info->short_eons, sizeof(p_info->short_eons), "%s", getenv("SIM_OPERATOR") ? getenv("SIM_OPERATOR") : "SIMNET");
+    snprintf(p_info->mcc, sizeof(p_info->mcc), "%s", "460");
+    snprintf(p_info->mnc, sizeof(p_info->mnc), "%s", "00");
+    return 0;
+}
 int ql_nw_get_nitz_time_info(ql_nw_nitz_time_info_t *p_info) { return 0; }
 int ql_nw_get_pref_nwmode_roaming(ql_nw_pref_nwmode_roaming_info_t *p_info) { return 0; }
-int ql_nw_get_signal_strength(ql_nw_signal_strength_info_t *p_info, QL_NW_SIGNAL_STRENGTH_LEVEL_E* p_level) { return 0; }
+int ql_nw_get_signal_strength(ql_nw_signal_strength_info_t *p_info, QL_NW_SIGNAL_STRENGTH_LEVEL_E* p_level) {
+    int csq, weak;
+    if (!p_info) return -1;
+    memset(p_info, 0, sizeof(*p_info));
+    csq = sim_int("SIM_CSQ", 18);
+    if (!sim_int("SIM_LTE_VALID", csq != 99)) return 0;
+    weak = csq < 10;
+    p_info->has_lte = 1;
+    p_info->lte.rsrp = (int16_t)sim_int("SIM_RSRP", weak ? -115 : -88);
+    p_info->lte.rsrq = (int8_t)sim_int("SIM_RSRQ", weak ? -19 : -10);
+    p_info->lte.snr = (int16_t)sim_int("SIM_SNR", weak ? -20 : 180);
+    p_info->lte.rssi = (int8_t)sim_int("SIM_RSSI", weak ? -100 : -65);
+    if (p_level) *p_level = QL_NW_SIGNAL_STRENGTH_LEVEL_NONE;
+    return 0;
+}
 int ql_nw_get_voice_reg_status(ql_nw_reg_status_info_t *p_info) { return 0; }
 int ql_nw_get_wea_config(ql_nw_wea_config_t *p_config) { return 0; }
 int ql_nw_init() { return 0; }

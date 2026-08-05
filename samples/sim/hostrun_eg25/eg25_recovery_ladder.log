@@ -1,12 +1,10 @@
-[2026-07-17 16:50:07] [ROAMLINK] /usrdata/network.ini not found, use default policy 4
-[2026-07-17 16:50:07] [ROAMLINK] RBMaster not found at /usrdata/roamlink/RBMaster → NO_PACKAGE
-[2026-07-17 16:50:07] [ROAMLINK] probe NO_PACKAGE: RBMaster missing, force SIM
-[2026-07-17 16:50:07] [ROAMLINK] RBMaster process not found in /proc
+[2026-08-04 23:06:33] [ROAMLINK] /usrdata/network.ini not found, use default policy 4
+[2026-08-04 23:06:33] [ROAMLINK] RBMaster not found at /usrdata/roamlink/RBMaster → NO_PACKAGE
+[2026-08-04 23:06:33] [ROAMLINK] probe NO_PACKAGE: RBMaster missing, force SIM
+[2026-08-04 23:06:33] [ROAMLINK] RBMaster process not found in /proc
 ##### PRO type 
-[2026-07-17 16:50:07] [LED] state -1 -> 1, send
-[2026-07-17 16:50:07] [LED] state 1 -> 2, send
-network has connected 
-network has connected 
+[2026-08-04 23:06:33] [LED] state -1 -> 1, send
+[2026-08-04 23:06:33] [LED] state 1 -> 2, send
 network has connected 
 network has connected 
 network has connected 
@@ -79,73 +77,216 @@ network has connected
 network has connected 
 network has connected 
 begin dial 
-[2026-07-17 17:00:07] [LED] state 2 -> 1, send
-[2026-07-17 17:00:07] [CELL CHANGE] init -> D17C148 | +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
-[2026-07-17 17:00:07] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:0s | ConsecFail:1 | cereg=1 | ifname=? | rx_packets=0 | RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3"
-[2026-07-17 17:00:07] [STATE] (start) -> none
-[2026-07-17 17:00:07] [STATE] none -> init
-[2026-07-17 17:00:07] [MODEM] Model:   (unknown)
-[2026-07-17 17:00:07] [MODEM] FW:      EG25GGBR07A08M2G_OCPU_30.200.30.200
-[2026-07-17 17:00:07] [MODEM] SubEd:   (unknown)
-[2026-07-17 17:00:07] [MODEM] CFUN:    1 (full)
-[2026-07-17 17:00:07] [MODEM] Temp:    40,35,35
-[2026-07-17 17:00:07] [STATE] init -> sim_init
-[2026-07-17 17:00:07] [STATE] sim_init -> sim_check
+[2026-08-04 23:16:33] [LED] state 2 -> 1, send
+[2026-08-04 23:16:33] [CELL CHANGE] init -> D17C148 | +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:16:33] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | SRV:N/A RAT:N/A DENY:N/A | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | CSQ:18 | Temp:40,35,35 | DownTime:0s | ConsecFail:1 | OPER:N/A | cereg=1 | cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB | ifname=(none) | ip=0.0.0.0 | rx_packets=0
+[2026-08-04 23:16:33] [STATE] (start) -> none
+[2026-08-04 23:16:33] [STATE] none -> init
+[2026-08-04 23:16:33] [MODEM] Model:   (unknown)
+[2026-08-04 23:16:33] [MODEM] FW:      EG25GGBR07A08M2G_OCPU_30.200.30.200
+[2026-08-04 23:16:33] [MODEM] SubEd:   (unknown)
+[2026-08-04 23:16:33] [MODEM] CFUN:    1 (full)
+[2026-08-04 23:16:33] [MODEM] Temp:    40,35,35
+[2026-08-04 23:16:33] [STATE] init -> sim_init
+[2026-08-04 23:16:33] [STATE] sim_init -> sim_check
+[2026-08-04 23:16:33] [STATE] sim_check -> sim_op
+[2026-08-04 23:16:33] [INIT] ICCID: (empty)
+[2026-08-04 23:16:33] [INIT] IMSI:  (empty)
+[2026-08-04 23:16:33] [INIT] IMEI:  867929069681908
+[2026-08-04 23:16:33] [INIT] PDP:   +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
+[2026-08-04 23:16:33] [INIT] FW:    EG25GGBR07A08M2G_OCPU_30.200.30.200
+[2026-08-04 23:16:33] [INIT] policy=4
+[2026-08-04 23:16:33] [INIT] COPS: +COPS: 0,2,"46000",7 (mode=0 auto) | CEREG: +CEREG: 0,1
+[2026-08-04 23:16:33] [STATE] sim_op -> reg_check
+[2026-08-04 23:16:33] [STATE] reg_check -> cereg_check
+[2026-08-04 23:16:33] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:16:33] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:16:33] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:16:33] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:16:33] [STATE] pre_start_call -> start_call
+[2026-08-04 23:16:33] [STATE] start_call -> wait_for_connect
 Resetting module...
-[2026-07-17 17:02:37] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:0s | ConsecFail:2
-[2026-07-17 17:05:07] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
-[2026-07-17 17:05:07] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:0s | ConsecFail:3 | cereg=1 | ifname=? | rx_packets=0 | RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3"
-[2026-07-17 17:05:07] [DIAG] RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3" | +QTEMP: 40,35,35 | +CEER: 0,-1 | +CGACT: 1,1
+[2026-08-04 23:19:03] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:0s | ConsecFail:2
+[2026-08-04 23:19:03] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:19:03] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:19:03] [STATE] reg_check -> cereg_check
+[2026-08-04 23:19:03] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:19:03] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:19:03] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:19:03] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:19:03] [STATE] pre_start_call -> start_call
+[2026-08-04 23:19:03] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:19:03] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:19:03] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:19:03] [STATE] reg_check -> cereg_check
+[2026-08-04 23:19:03] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:19:03] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:19:03] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:19:03] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:21:33] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-08-04 23:21:33] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:0s | ConsecFail:3 | OPER:SIMNET 46000 | cereg=1 | cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB | ifname=(none) | ip=0.0.0.0 | rx_packets=0
+[2026-08-04 23:21:33] [DIAG] RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3" | +QTEMP: 40,35,35 | +CEER: 0,-1 | +CGACT: 1,1
+[2026-08-04 23:21:33] [STATE] pre_start_call -> start_call
+[2026-08-04 23:21:33] [STATE] start_call -> wait_for_connect
 Resetting module...
-[2026-07-17 17:07:37] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:150s | ConsecFail:4
-[2026-07-17 17:07:37] [RECOVERY L1] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
-[2026-07-17 17:07:37] [RECOVERY L1] REG down, skip redial (downtime=150s)
-[2026-07-17 17:10:07] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:300s | ConsecFail:5 | cereg=1 | ifname=? | rx_packets=0 | RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3"
-[2026-07-17 17:10:07] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
-[2026-07-17 17:10:07] [RECOVERY L2] AT+CFUN=0 rsp: 
+[2026-08-04 23:21:33] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:21:33] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:21:33] [STATE] reg_check -> cereg_check
+[2026-08-04 23:21:33] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:21:33] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:21:33] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:21:33] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:21:33] [STATE] pre_start_call -> start_call
+[2026-08-04 23:21:33] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:24:03] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:150s | ConsecFail:4
+[2026-08-04 23:24:03] [RECOVERY L1] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
+[2026-08-04 23:24:03] [RECOVERY L1] REG live, soft redial: stop, hand off to state machine (downtime=150s)
+[2026-08-04 23:24:03] [RECOVERY L1] stopped, waiting state machine to redial
+[2026-08-04 23:24:03] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:24:03] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:24:03] [STATE] reg_check -> cereg_check
+[2026-08-04 23:24:03] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:24:03] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:24:03] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:24:03] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:24:03] [STATE] pre_start_call -> start_call
+[2026-08-04 23:24:03] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:26:33] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:300s | ConsecFail:5 | OPER:SIMNET 46000 | cereg=1 | cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB | ifname=(none) | ip=0.0.0.0 | rx_packets=0
+[2026-08-04 23:26:33] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
+[2026-08-04 23:26:33] [RECOVERY L2] AT+CFUN=0 rsp: 
 OK
 
-[2026-07-17 17:10:07] [RECOVERY L2] AT+CFUN=1 rsp: 
-OK
-
-Resetting module...
-[2026-07-17 17:12:37] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:450s | ConsecFail:6
-[2026-07-17 17:15:07] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:600s | ConsecFail:7 | cereg=1 | ifname=? | rx_packets=0 | RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3"
-[2026-07-17 17:15:07] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
-[2026-07-17 17:15:07] [RECOVERY L2] AT+CFUN=0 rsp: 
-OK
-
-[2026-07-17 17:15:07] [RECOVERY L2] AT+CFUN=1 rsp: 
-OK
-
-Resetting module...
-[2026-07-17 17:17:37] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:750s | ConsecFail:8
-[2026-07-17 17:20:07] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:900s | ConsecFail:9 | cereg=1 | ifname=? | rx_packets=0 | RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3"
-[2026-07-17 17:20:07] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
-[2026-07-17 17:20:07] [RECOVERY L2] AT+CFUN=0 rsp: 
-OK
-
-[2026-07-17 17:20:07] [RECOVERY L2] AT+CFUN=1 rsp: 
-OK
-
-Resetting module...
-[2026-07-17 17:22:37] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:1050s | ConsecFail:10
-[2026-07-17 17:25:07] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:1200s | ConsecFail:11 | cereg=1 | ifname=? | rx_packets=0 | RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3"
-[2026-07-17 17:25:07] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
-[2026-07-17 17:25:07] [RECOVERY L2] AT+CFUN=0 rsp: 
-OK
-
-[2026-07-17 17:25:07] [RECOVERY L2] AT+CFUN=1 rsp: 
-OK
-
-Resetting module...
-[2026-07-17 17:27:37] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:1350s | ConsecFail:12
-[2026-07-17 17:30:07] [HEARTBEAT] CH:SIM | SIM:0 | REG:0 | CSQ:18 | Temp:40,35,35 | DownTime:1500s | ConsecFail:13 | cereg=1 | ifname=? | rx_packets=0 | RSRP:-101 RSRQ:-6 | Cell:D17C148 | +CGPADDR: 1,"10.1.2.3"
-[2026-07-17 17:30:07] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
-[2026-07-17 17:30:07] [RECOVERY L2] AT+CFUN=0 rsp: 
-OK
-
-[2026-07-17 17:30:07] [RECOVERY L2] AT+CFUN=1 rsp: 
+[2026-08-04 23:26:33] [RECOVERY L2] AT+CFUN=1 rsp: 
 OK
 
 Resetting module...
+[2026-08-04 23:26:33] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:26:33] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:26:33] [STATE] reg_check -> cereg_check
+[2026-08-04 23:26:33] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:26:33] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:26:33] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:26:33] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:26:33] [STATE] pre_start_call -> start_call
+[2026-08-04 23:26:33] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:29:03] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:450s | ConsecFail:6
+[2026-08-04 23:29:03] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:29:03] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:29:03] [STATE] reg_check -> cereg_check
+[2026-08-04 23:29:03] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:29:03] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:29:03] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:29:03] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:29:03] [STATE] pre_start_call -> start_call
+[2026-08-04 23:29:03] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:31:33] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:600s | ConsecFail:7 | OPER:SIMNET 46000 | cereg=1 | cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB | ifname=(none) | ip=0.0.0.0 | rx_packets=0
+[2026-08-04 23:31:33] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
+[2026-08-04 23:31:33] [RECOVERY L2] AT+CFUN=0 rsp: 
+OK
+
+[2026-08-04 23:31:33] [RECOVERY L2] AT+CFUN=1 rsp: 
+OK
+
+Resetting module...
+[2026-08-04 23:31:33] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:31:33] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:31:33] [STATE] reg_check -> cereg_check
+[2026-08-04 23:31:33] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:31:33] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:31:33] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:31:33] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:31:33] [STATE] pre_start_call -> start_call
+[2026-08-04 23:31:33] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:34:03] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:750s | ConsecFail:8
+[2026-08-04 23:34:03] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:34:03] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:34:03] [STATE] reg_check -> cereg_check
+[2026-08-04 23:34:03] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:34:03] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:34:03] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:34:03] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:34:03] [STATE] pre_start_call -> start_call
+[2026-08-04 23:34:03] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:34:03] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:34:03] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:34:03] [STATE] reg_check -> cereg_check
+[2026-08-04 23:34:03] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:34:03] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:36:33] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:900s | ConsecFail:9 | OPER:SIMNET 46000 | cereg=1 | cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB | ifname=(none) | ip=0.0.0.0 | rx_packets=0
+[2026-08-04 23:36:33] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
+[2026-08-04 23:36:33] [RECOVERY L2] AT+CFUN=0 rsp: 
+OK
+
+[2026-08-04 23:36:33] [RECOVERY L2] AT+CFUN=1 rsp: 
+OK
+
+[2026-08-04 23:36:33] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:36:33] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:36:33] [STATE] pre_start_call -> start_call
+[2026-08-04 23:36:33] [STATE] start_call -> wait_for_connect
+Resetting module...
+[2026-08-04 23:36:33] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:36:33] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:36:33] [STATE] reg_check -> cereg_check
+[2026-08-04 23:36:33] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:36:33] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:36:33] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:36:33] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:36:33] [STATE] pre_start_call -> start_call
+[2026-08-04 23:36:33] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:39:03] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:1050s | ConsecFail:10
+[2026-08-04 23:39:03] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:39:03] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:39:03] [STATE] reg_check -> cereg_check
+[2026-08-04 23:39:03] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:39:03] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:39:03] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:39:03] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:39:03] [STATE] pre_start_call -> start_call
+[2026-08-04 23:39:03] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:41:33] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:1200s | ConsecFail:11 | OPER:SIMNET 46000 | cereg=1 | cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB | ifname=(none) | ip=0.0.0.0 | rx_packets=0
+[2026-08-04 23:41:33] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
+[2026-08-04 23:41:33] [RECOVERY L2] AT+CFUN=0 rsp: 
+OK
+
+[2026-08-04 23:41:33] [RECOVERY L2] AT+CFUN=1 rsp: 
+OK
+
+Resetting module...
+[2026-08-04 23:41:33] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:41:33] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:41:33] [STATE] reg_check -> cereg_check
+[2026-08-04 23:41:33] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:41:33] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:41:33] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:41:33] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:41:33] [STATE] pre_start_call -> start_call
+[2026-08-04 23:41:33] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:44:03] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:1350s | ConsecFail:12
+[2026-08-04 23:44:03] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:44:03] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:44:03] [STATE] reg_check -> cereg_check
+[2026-08-04 23:44:03] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:44:03] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:44:03] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:44:03] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:44:03] [STATE] pre_start_call -> start_call
+[2026-08-04 23:44:03] [STATE] start_call -> wait_for_connect
+[2026-08-04 23:46:33] [HEARTBEAT] CH:SIM | SIM:1 | REG:1 | SRV:2 RAT:LTE DENY:0 | RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 | CSQ:18 | Temp:40,35,35 | DownTime:1500s | ConsecFail:13 | OPER:SIMNET 46000 | cereg=1 | cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB | ifname=(none) | ip=0.0.0.0 | rx_packets=0
+[2026-08-04 23:46:33] [RECOVERY L2] LastErr: +CEER: 0,-1 | PDP: +CGACT: 1,1
+[2026-08-04 23:46:33] [RECOVERY L2] AT+CFUN=0 rsp: 
+OK
+
+[2026-08-04 23:46:33] [RECOVERY L2] AT+CFUN=1 rsp: 
+OK
+
+Resetting module...
+[2026-08-04 23:46:33] [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto)
+[2026-08-04 23:46:33] [STATE] wait_for_connect -> reg_check
+[2026-08-04 23:46:33] [STATE] reg_check -> cereg_check
+[2026-08-04 23:46:33] [CELL] Init: +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+[2026-08-04 23:46:33] [STATE] cereg_check -> precondition_check
+[2026-08-04 23:46:33] [STATE] precondition_check -> pre_start_call
+[2026-08-04 23:46:33] [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+[2026-08-04 23:46:33] [STATE] pre_start_call -> start_call
+[2026-08-04 23:46:33] [STATE] start_call -> wait_for_connect

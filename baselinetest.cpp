@@ -70,6 +70,11 @@ static std::string titleWith(const std::vector<Finding>& fs, const std::string& 
         if (f.title.find(sub) != std::string::npos) return f.title;
     return "(无此结论)";
 }
+static const Finding* findingWith(const std::vector<Finding>& fs, const std::string& sub) {
+    for (const auto& f : fs)
+        if (f.title.find(sub) != std::string::npos) return &f;
+    return nullptr;
+}
 
 int main() {
     // ── 真机 EG25(ROAMLINK 通道,2861 行,现网日志)──
@@ -278,6 +283,66 @@ int main() {
         else std::printf("   ✓ RSRP≤-110 断网归类为弱信号(CSQ 未触发)\n");
         if (!sigDeg) { std::printf("   ✗ RSRP 均值≤-100 未报信号质量长期偏低\n"); g_fail++; }
         else std::printf("   ✓ RSRP 均值≤-100 报信号质量长期偏低\n");
+    }
+
+    // ── 四份产品代码新心跳字段(2026-07/08):精确值必须全部落入指标模型 ──
+    // SNR 是 SDK 原始 0.1dB 单位,不能误当成整数 dB。
+    {
+        std::printf("── 新心跳字段 SRV/RAT/DENY/RSRP/RSRQ/SNR/RSSI/OPER\n");
+        std::vector<std::string> raw = {
+            "[2026-08-03 10:00:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | SRV:2 RAT:LTE DENY:0 | CSQ:22 | RSRP:-88 RSRQ:-11 SNR:246 RSSI:-65 | TEMP:35 | DownTime:0s",
+            "[2026-08-03 10:00:30] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | SRV:N/A | CSQ:99 | LTE:N/A | TEMP:35 | DownTime:30s",
+            "[2026-08-03 10:01:00] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | SRV:1 RAT:LTE DENY:6 | RSRP:-105 RSRQ:-19 SNR:-25 RSSI:-99 | CSQ:15 | Temp:38 | DownTime:60s | ConsecFail:2",
+            "2026-08-03 10:01:30.123 [INFO] \x1b[0mmain (main.c:234) - [HEARTBEAT] state=sim_connected csq=20 SRV:2 RAT:LTE DENY:0 RSRP:-90 RSRQ:-12 SNR:35 RSSI:-70 tcp_fail=0 rl_fail=0",
+            "[2026-08-03 10:05:00] [HEARTBEAT] OPER:CMCC 46000 | Cell:1234 | IP:10.0.0.2"
+        };
+        std::vector<LogLine> lines; std::vector<std::string> sess; ParseAudit a;
+        parseLines(raw, lines, sess, &a);
+        auto ms = buildMetrics(lines);
+        cki((long)ms.size(), 5, "五条新心跳均形成指标行");
+        if (ms.size() == 5) {
+            cki(ms[0].srvVal, 2, "EC200A SRV=2");
+            ck(ms[0].rat == "LTE", "EC200A RAT=LTE", ms[0].rat, "LTE");
+            cki(ms[0].denyVal, 0, "EC200A DENY=0");
+            cki(ms[0].snr10, 246, "EC200A SNR原值246(=24.6dB)");
+            cki(ms[0].rssiVal, -65, "EC200A RSSI=-65dBm");
+            cki(ms[1].snr10, 100000, "N/A 不伪造 SNR 数字");
+            cki(ms[2].snr10, -25, "EG25 SNR原值-25(=-2.5dB)");
+            cki(ms[2].denyVal, 6, "EG25 DENY=6原码保留");
+            cki(ms[3].snr10, 35, "artery 空格分隔 SNR=35");
+            ck(ms[4].oper == "CMCC 46000", "OPER 保留名称与PLMN", ms[4].oper, "CMCC 46000");
+        }
+    }
+
+    // ── SDK DENY 与 SNR 提示结论:钉死数字、证据等级和不越界归因 ──
+    {
+        std::printf("── SDK DENY 与 SNR 推断提示\n");
+        std::vector<std::string> raw = {
+            "[2026-08-03 11:00:00] [HEARTBEAT] CH:SIM | SRV:0 RAT:LTE DENY:6 | CSQ:18 | RSRP:-92 RSRQ:-12 SNR:-10 RSSI:-70",
+            "[2026-08-03 11:00:30] [HEARTBEAT] CH:SIM | SRV:0 RAT:LTE DENY:6 | CSQ:18 | RSRP:-92 RSRQ:-12 SNR:0 RSSI:-70",
+            "[2026-08-03 11:01:00] [HEARTBEAT] CH:SIM | SRV:0 RAT:LTE DENY:6 | CSQ:18 | RSRP:-92 RSRQ:-12 SNR:-20 RSSI:-70",
+            "[2026-08-03 11:01:30] [HEARTBEAT] CH:SIM | SRV:0 RAT:LTE DENY:6 | CSQ:18 | RSRP:-92 RSRQ:-12 SNR:10 RSSI:-70",
+            "[2026-08-03 11:02:00] [HEARTBEAT] CH:SIM | SRV:0 RAT:LTE DENY:6 | CSQ:18 | RSRP:-92 RSRQ:-12 SNR:-30 RSSI:-70"
+        };
+        std::vector<LogLine> lines; std::vector<std::string> sess; ParseAudit a;
+        parseLines(raw, lines, sess, &a);
+        auto mets = buildMetrics(lines);
+        auto fs = analyze(lines, collectOutages(lines), mets, detectPlatform(lines), a);
+        const Finding* deny = findingWith(fs, "SDK DENY");
+        ck(deny != nullptr, "SDK DENY 形成注册拒绝结论", deny ? deny->title : "(无)", "有");
+        if (deny) {
+            ck(!deny->ev.empty() && deny->ev[0].text.find("SRV=0 RAT=LTE DENY=6") != std::string::npos,
+               "DENY证据钉死0/LTE/6", deny->ev.empty() ? "(无证据)" : deny->ev[0].text,
+               "SRV=0 RAT=LTE DENY=6");
+        }
+        const Finding* snr = findingWith(fs, "LTE SNR偏低提示");
+        ck(snr != nullptr && snr->title.find("4/5") != std::string::npos &&
+           snr->title.find("-1.0 dB") != std::string::npos,
+           "SNR提示钉死4/5、均值-1.0dB", snr ? snr->title : "(无)", "…4/5…-1.0 dB");
+        if (snr)
+            ck(snr->detail.find("【推断】") != std::string::npos &&
+               snr->detail.find("不单独据此归因断网") != std::string::npos,
+               "SNR结论明确推断边界", snr->detail, "含【推断】且不单独归因");
     }
 
     // ── SDK L0 短断网归类(v1.8.x):open_dial "Network Recovered in SDK phase (L0)"

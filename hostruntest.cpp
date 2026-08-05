@@ -45,6 +45,8 @@ static std::vector<Case> cases() {
           { "数据服务未就绪" }, { "CP dump" }, PLAT_EC200A },
         { "samples/sim/hostrun/all_normal.log",
           {}, { "CP dump", "从未成功联网", "L3 已触发" }, PLAT_EC200A },   // 正常设备:零严重结论
+        { "samples/sim/hostrun/reg_down.log",
+          { "SDK DENY" }, { "CP dump" }, PLAT_EC200A },
 
         // ── AG35 双卡(须 AG35=1 重编 driver,否则 slot_mgr 是空 TU、[SLOT] 一条都没有)──
         { "samples/sim/hostrun/ag35_cold_select.log", {}, { "CP dump" }, PLAT_AG35 },
@@ -62,11 +64,15 @@ static std::vector<Case> cases() {
         { "samples/sim/hostrun_eg25/eg25_recovery_ladder.log",
           { "恢复阶梯已生效" }, {}, PLAT_EG25 },
         { "samples/sim/hostrun_eg25/eg25_weak_signal.log",
-          { "弱信号" }, { "CP dump" }, PLAT_EG25 },
+          { "SNR偏低" }, { "CP dump" }, PLAT_EG25 },
+        { "samples/sim/hostrun_eg25/eg25_reg_down.log",
+          { "SDK DENY" }, { "CP dump" }, PLAT_EG25 },
+        { "samples/sim/hostrun_eg25/eg25_all_normal.log",
+          {}, { "CP dump", "SDK DENY" }, PLAT_EG25 },
 
         // ── artery(sim/hostrun_artery,真代码 src/dial/dial.c 产出,seas_log 格式)──
         { "samples/sim/hostrun_artery/artery_all_normal.log", {}, { "CP dump" }, PLAT_ARTERY },
-        { "samples/sim/hostrun_artery/artery_reg_down.log",   {}, { "CP dump" }, PLAT_ARTERY },
+        { "samples/sim/hostrun_artery/artery_reg_down.log",   { "SDK DENY" }, { "CP dump" }, PLAT_ARTERY },
     };
 }
 
@@ -117,7 +123,51 @@ int main() {
                     ok ? "✓" : "✗", pi.name.c_str(), fs.size(), audit.unparsed);
         if (!ok) fail++;
     }
-    std::printf("\n===== %zu 例:%d 失败,%d 跳过 =====\n", cases().size(), fail, skip);
+
+    // 新打印不能只断言“能解析”：这里把 SDK 桩注入的原值逐字段钉死。
+    // 这些日志由四份产品真代码自产，桩只提供 SDK 返回值，故证据等级仍是【源码执行实证】。
+    struct MetricExpect {
+        const char *file;
+        int srv, deny, rsrp, rsrq, snr10, rssi;
+        const char *oper;                 // 空串=本例不要求 5min OPER 行
+    } mex[] = {
+        { "samples/sim/hostrun/all_normal.log",                    2, 0, -88,  -10, 180, -65, "SIMNET 46000" },
+        { "samples/sim/hostrun_open_dial/od_all_normal.log",       2, 0, -88,  -10, 180, -65, "SIMNET 46000" },
+        { "samples/sim/hostrun_eg25/eg25_recovery_ladder.log",     2, 0, -88,  -10, 180, -65, "SIMNET 46000" },
+        { "samples/sim/hostrun_artery/artery_all_normal.log",      2, 0, -88,  -10, 180, -65, "SIMNET 46000" },
+        { "samples/sim/hostrun/reg_down.log",                      0, 6, -88,  -10, 180, -65, "" },
+        { "samples/sim/hostrun_eg25/eg25_reg_down.log",            0, 6, -88,  -10, 180, -65, "" },
+        { "samples/sim/hostrun_artery/artery_reg_down.log",        0, 6, -88,  -10, 180, -65, "" },
+        { "samples/sim/hostrun/weak_signal.log",                   2, 0, -115, -19, -20, -100, "" },
+        { "samples/sim/hostrun_open_dial/od_weak_signal.log",      2, 0, -115, -19, -20, -100, "" },
+        { "samples/sim/hostrun_eg25/eg25_weak_signal.log",         2, 0, -115, -19, -20, -100, "" },
+        { "samples/sim/hostrun_artery/artery_weak_signal.log",     2, 0, -115, -19, -20, -100, "" },
+    };
+    int metricFail = 0;
+    for (const auto& x : mex) {
+        std::ifstream in(x.file, std::ios::binary);
+        if (!in) { std::printf("── %-52s ⚠ 缺日志\n", x.file); skip++; continue; }
+        std::vector<std::string> raw; std::string line;
+        while (std::getline(in, line)) raw.push_back(line);
+        std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+        parseLines(raw, lines, sessions, &audit);
+        auto mets = buildMetrics(lines);
+        bool exact = false, oper = !*x.oper;
+        for (const auto& m : mets) {
+            if (m.srvVal == x.srv && m.rat == "LTE" && m.denyVal == x.deny &&
+                m.rsrp == x.rsrp && m.rsrq == x.rsrq && m.snr10 == x.snr10 &&
+                m.rssiVal == x.rssi) exact = true;
+            if (*x.oper && m.oper == x.oper) oper = true;
+        }
+        bool ok = exact && oper;
+        std::printf("── 新字段 %-43s %s (SRV=%d DENY=%d SNR=%.1fdB OPER=%s)\n",
+                    x.file, ok ? "✓" : "✗", x.srv, x.deny, x.snr10 / 10.0,
+                    *x.oper ? x.oper : "不要求");
+        if (!ok) { fail++; metricFail++; }
+    }
+    std::printf("\n===== %zu 结论例 + %zu 新字段例:%d 失败,%d 跳过 =====\n",
+                cases().size(), sizeof(mex) / sizeof(mex[0]), fail, skip);
+    if (metricFail) std::printf("新字段精确断言失败:%d\n", metricFail);
     std::printf("注:本测试用的是**真代码产出**的日志(证据等级【源码执行实证】),\n"
                 "    比 simtest 的手写日志高一档 —— 手写版曾被证明是残缺的。\n");
     return fail ? 1 : 0;

@@ -12,7 +12,7 @@ REAL_C := $(A)/src/dial/dial.c $(A)/src/at/at.c $(A)/src/nw/nw.c $(A)/src/apn/ap
           $(A)/src/seas_log/seas_log.c $(A)/src/json/cJSON.c \
           $(wildcard $(A)/src/status/*.c) $(wildcard $(A)/src/opt_iniparser/*.c) \
           $(wildcard $(A)/src/cc_deque/*.c)
-REAL_OBJ := $(notdir $(REAL_C:.c=.o))
+REAL_OBJ := artery_main.o $(notdir $(REAL_C:.c=.o))
 
 all: driver
 
@@ -23,6 +23,10 @@ driver: driver.o stubs.o sdk_stubs.o $(REAL_OBJ)
 vpath %.c $(A) $(A)/src/dial $(A)/src/at $(A)/src/nw $(A)/src/apn $(A)/src/sim $(A)/src/tz \
           $(A)/src/roamlink $(A)/src/seas_log $(A)/src/json $(A)/src/status \
           $(A)/src/opt_iniparser $(A)/src/cc_deque .
+
+# 产品 main 与 host-run 驱动都叫 main；仅在编译产物里重命名入口，源码不改。
+artery_main.o: $(A)/main.c
+	$(CC) -c $(CFLAGS) -Dmain=artery_product_main $< -o $@
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@
