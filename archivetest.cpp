@@ -7,7 +7,8 @@
 //    我们的 gzip 头跳过 / tar 512 块拆分 / zip 中央目录遍历都对。
 // ✅ stripBom:断言 BOM 被剥掉后首行恢复可解析(否则首戳判定失败,波及定序/时基)。
 // ✅ archiveKindOf 按魔数(非扩展名)判格式;非压缩内容返回 ARC_NONE。
-// ⚠️ 不覆盖损坏包 / 加密 zip / >4GB。现场日志包不会是这些形态,留待有样本再加。
+// ✅ 损坏 gzip 的头边界、CRC32、ISIZE 与解压大小上限均有负向断言。
+// ⚠️ 不覆盖加密 zip / ZIP64；本工具明确拒绝无法安全展开的输入。
 //
 // 构建运行:make archivetest && ./archivetest      (rc=0 全过)
 #include "logmodel.h"
@@ -29,17 +30,10 @@ static std::string readFile(const char* p) {
     return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
 }
 
-// 从原始字节切成行(复刻 ui.cpp 的 SplitLines,含 stripBom),用于比对
+// 从原始字节切成行,与 UI 共用同一实现。
 static std::vector<std::string> splitLines(std::string buf) {
-    stripBom(buf);
     std::vector<std::string> out;
-    size_t a = 0;
-    while (a <= buf.size()) {
-        size_t b = buf.find('\n', a);
-        if (b == std::string::npos) { if (a < buf.size()) out.push_back(buf.substr(a)); break; }
-        out.push_back(buf.substr(a, b - a));
-        a = b + 1;
-    }
+    splitTextLines(std::move(buf), out);
     return out;
 }
 
@@ -133,6 +127,40 @@ static void t6_reject() {
     ok(es.empty(), "失败时不产出条目");
 }
 
+// ============================ T7:损坏 gzip / 资源上限 ============================
+static void t7_damaged_gzip() {
+    std::printf("== T7 损坏 gzip 被明确拒绝 ==\n");
+    std::string src = readFile("samples/archive/single.log.gz");
+    ok(src.size() >= 18, "损坏测试基准 gzip 可用");
+    if (src.size() < 18) return;
+
+    std::vector<ArchiveEntry> es; std::string err;
+    std::string badCrc = src;
+    badCrc[badCrc.size() - 8] ^= 1;
+    ok(!extractArchive(badCrc, es, err) && err.find("CRC32") != std::string::npos,
+       "CRC32 不匹配 → 拒绝,不返回部分条目");
+    ok(es.empty(), "CRC32 失败后 entries 为空");
+
+    std::string tooLarge = src;
+    size_t n = tooLarge.size();
+    // ISIZE=0x10000001=256MiB+1,在分配前即应被上限挡住。
+    tooLarge[n-4] = 0x01; tooLarge[n-3] = 0x00;
+    tooLarge[n-2] = 0x00; tooLarge[n-1] = 0x10;
+    ok(!extractArchive(tooLarge, es, err) && err.find("256MiB") != std::string::npos,
+       "ISIZE 超过 256MiB → 分配前拒绝");
+
+    // 20 字节伪 gzip:声明 FNAME,终止 NUL 恰落在 8 字节 trailer 起点。
+    // 旧实现会让 p 越过 trailer 后做 size-p-8 无符号下溢。
+    std::string badHeader(20, 'A');
+    badHeader[0] = 0x1F; badHeader[1] = (char)0x8B; badHeader[2] = 8; badHeader[3] = 0x08;
+    badHeader[12] = '\0';
+    ok(!extractArchive(badHeader, es, err) && err.find("FNAME") != std::string::npos,
+       "FNAME 侵入 trailer → 边界检查拒绝");
+
+    es.push_back(ArchiveEntry{"stale", "stale"});
+    ok(!extractArchive("plain", es, err) && es.empty(), "每次调用先清空旧 entries");
+}
+
 int main() {
     t1_kind();
     t2_bom();
@@ -140,6 +168,7 @@ int main() {
     t4_targz();
     t5_zip();
     t6_reject();
+    t7_damaged_gzip();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

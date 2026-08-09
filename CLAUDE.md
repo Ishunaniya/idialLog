@@ -19,17 +19,15 @@
 3. **真机日志不可替代**。合成夹具/主机模拟只能证明"我按源码理解的那样工作",证明不了"真设备真这样"。至今真机日志抓出 ~7 个 bug,合成夹具抓出 0 个。
 4. 编过了 ≠ 编进去了。`#ifdef` 平台宏关掉的文件会静默变成**空 TU**,必须 `nm` 验符号真的在(AG35 的 slot_mgr 栽过)。
 
-## 五层测试(改任何东西后全跑一遍)
+## 完整测试(改任何东西后全跑一遍)
 
 ```bash
-make selftest      && ./selftest <log>   # 解析层不崩 + 审计自洽
-make simtest       && ./simtest          # 手写场景断言(只留真代码注入不了的:注册被拒/CP dump/多会话/温度)
-make hostruntest   && ./hostruntest      # 对**真代码产出**的日志断言(证据等级更高)
-make baselinetest  && ./baselinetest      # 把**真机日志的具体数字**钉死
-python3 sim/mutate.py                     # 变异测试:证明上面四层真有牙齿(14 变异须 0 存活)
+make check       # 七个测试程序:解析/场景/真代码/真机基线/合并/压缩/边界
+make check-full  # check + 44 个变异；须 0 存活、0 片段失配
 ```
 
-`hostruntest`/`baselinetest` 依赖 `sim/hostrun*/` 先跑出日志(见下)。**mutate.py 是 Python 不是 shell** —— shell 版有引号转义 bug 已删,别复活。
+`hostruntest`/`baselinetest` 依赖 `sim/hostrun*/` 已生成的日志(见下)。
+**mutate.py 是 Python 不是 shell** —— shell 版有引号转义 bug 已删,别复活。
 
 ## 核心分层(`logmodel.*` 是命脉)
 
@@ -70,7 +68,8 @@ python3 sim/mutate.py                     # 变异测试:证明上面四层真�
 
 ## 本机构建/验证环境
 
-- 交叉编译:`make`(需 `mingw-w64`;Makefile 用 `:=` 赋编译器,因为本机环境导出的 RK3576/buildroot `CXX` 会污染 `?=`)。
+- 交叉编译:`make`(默认 `CROSS=x86_64-w64-mingw32-`);32 位用
+  `make CROSS=i686-w64-mingw32-`;Windows 本机用 `mingw32-make CROSS=`。
 - GUI 验证:`wine`(prefix 在 `$HOME/.wine-diag`,含 Noto CJK 字体 + FontSubstitutes 映射,否则中文是方块)+ Xvfb 无头截图。**GUI 从没在真 Windows 上跑过,只 wine 截图。**
 
 ## 仍未覆盖(别声称"全部")

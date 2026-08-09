@@ -84,37 +84,43 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # 产物: dialLog_v1.10.0.exe(文件名自带版本号)
+make                     # 产物: dialLog_v1.10.1.exe(文件名自带版本号)
 make version             # 只打印当前版本号
 ```
 
 ### Windows 本机 MinGW
 
 ```bat
-mingw32-make CXX=g++ WINDRES=windres
+mingw32-make CROSS=
 ```
 
 ### 32 位
 
 ```bash
-make CXX=i686-w64-mingw32-g++ WINDRES=i686-w64-mingw32-windres
+make CROSS=i686-w64-mingw32-
 ```
 
-> **注意**:Makefile 里编译器用 `:=` 而非 `?=`。本机环境常导出 `CC`/`CXX`
-> (RK3576/buildroot 交叉链),`?=` 对已由环境定义的变量不生效,会误用 aarch64 编译器。
-> 命令行 `make CXX=...` 仍可正常覆盖。
+`CROSS` 同时派生 `CC/CXX/WINDRES`,避免 32 位 C++ 对象误混入 64 位 `miniz.o`。
+三个编译器仍用 `:=` 固定,不受本机导出的 RK3576/buildroot `CC/CXX` 污染；
+命令行显式传入的变量仍可覆盖。
 
-## 自测(解析层)
+## 自测
 
 `logmodel.*` 不含 Win32 依赖,可用本机 g++ 直接编译验证:
 
 ```bash
-make selftest
-./selftest samples/rtms_eg25/dial_20260630_000026.log
+make check       # 七个测试程序:解析、场景、真代码、真机基线、合并、压缩、边界
+make check-full  # check + 44 个变异；靶向路由、默认并发2、带逐项进度与超时
 ```
+
+变异并发数可用 `DL_MUTATE_JOBS=1..4` 调整。
 
 自测会做**审计自洽校验**(`已解析 + 会话标记 + 空行 + 未识别 == 原始行数`),
 不自洽即退出码 1;并校验“每条结论都有证据”,无证据的结论同样判失败。
+
+输入防御:单个文件最大 512MiB；压缩包单条目最大 256MiB、总解压最大 512MiB、
+最多 1000 个条目。gzip 会校验头部边界、ISIZE 与 CRC32；损坏包会明确报错,
+不会静默当普通文本分析。
 
 ## 已验证 / 未验证(事实与推断分开)
 
@@ -158,9 +164,9 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.10.0.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.10.1.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.10.0 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.10.1 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 用 `dialLog_v*.exe` 通配,升版本后旧 exe 一并清掉。
@@ -175,6 +181,7 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | 1.8.0 | RSRP/RSRQ 提取、质量评价与 SDK 短断网归类 |
 | 1.9.0–1.9.3 | 信号曲线与后续修订 |
 | 1.10.0 | 跟进四份产品的新心跳字段;SNR 加入表格、CSV、总览、图表和保守诊断;信号图改为上下两个单 Y 轴 |
+| 1.10.1 | 修复 CRLF 重复空行;强化文件/压缩包边界和 gzip 完整性校验;完善 Windows 双架构构建、CI 与变异测试 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞 1.2MB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

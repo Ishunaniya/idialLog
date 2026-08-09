@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <climits>
 #include <map>
+#include <new>
 #include <string>
 #include <vector>
 
@@ -131,47 +132,51 @@ static std::wstring FmtW(const wchar_t* fmt, ...) {
 }
 
 // ============================ 文件读取 ============================
-static bool ReadFileBytes(const std::wstring& path, std::string& buf) {
+static constexpr long long kMaxInputBytes = 512LL * 1024 * 1024;
+
+static bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstring& err) {
+    err.clear();
     HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (h == INVALID_HANDLE_VALUE) return false;
+    if (h == INVALID_HANDLE_VALUE) { err = L"无法打开文件"; return false; }
     LARGE_INTEGER sz;
-    if (!GetFileSizeEx(h, &sz)) { CloseHandle(h); return false; }
-    buf.assign((size_t)sz.QuadPart, '\0');
-    DWORD got = 0, total = 0;
-    while (total < (DWORD)sz.QuadPart) {
-        if (!ReadFile(h, &buf[total], (DWORD)sz.QuadPart - total, &got, nullptr) || got == 0) break;
+    if (!GetFileSizeEx(h, &sz) || sz.QuadPart < 0) {
+        CloseHandle(h); err = L"无法取得文件大小"; return false;
+    }
+    if (sz.QuadPart > kMaxInputBytes) {
+        CloseHandle(h); err = L"文件超过 512 MiB 输入限制"; return false;
+    }
+    try {
+        buf.assign((size_t)sz.QuadPart, '\0');
+    } catch (const std::bad_alloc&) {
+        CloseHandle(h); err = L"内存不足,无法读取文件"; return false;
+    }
+    DWORD got = 0;
+    size_t total = 0;
+    while (total < (size_t)sz.QuadPart) {
+        size_t remain = (size_t)sz.QuadPart - total;
+        DWORD want = (DWORD)std::min<size_t>(remain, 1024 * 1024);
+        if (!ReadFile(h, &buf[total], want, &got, nullptr) || got == 0) break;
         total += got;
     }
     CloseHandle(h);
-    buf.resize(total);
-    return true;
-}
-
-// 字节缓冲 → 文本行。先剥 UTF-8 BOM(见 stripBom 说明:BOM 会破坏首行时间戳判定)。
-static void SplitLines(std::string buf, std::vector<std::string>& out) {
-    dl::stripBom(buf);
-    size_t a = 0;
-    while (a <= buf.size()) {
-        size_t b = buf.find('\n', a);
-        if (b == std::string::npos) {
-            if (a < buf.size()) out.push_back(buf.substr(a));
-            break;
-        }
-        out.push_back(buf.substr(a, b - a));
-        a = b + 1;
+    if (total != (size_t)sz.QuadPart) {
+        buf.clear(); err = L"文件读取不完整"; return false;
     }
+    return true;
 }
 
 // 读一个路径 → 一到多份行缓冲(chunks)+ 各自展示名(labels)。
 // 压缩包(.zip/.tar.gz/.gz)在内存中解压;一个包里的每个文件成为独立 chunk,
 // 这样它们照常走后续的定序 / 时基混合防护(与手工解压后多选拖入等价)。
-// 返回 false = 连字节都读不到(路径错/占用);解压失败会退化为"把原始字节当普通日志"。
+// 返回 false 时 err 给出可展示原因。内容魔数已确认是压缩包却解压失败时必须明确报错,
+// 不把损坏的压缩字节静默当普通日志解析。
 static bool ReadPathExpand(const std::wstring& path,
                            std::vector<std::vector<std::string>>& chunks,
-                           std::vector<std::wstring>& labels) {
+                           std::vector<std::wstring>& labels,
+                           std::wstring& err) {
     std::string buf;
-    if (!ReadFileBytes(path, buf)) return false;
+    if (!ReadFileBytes(path, buf, err)) return false;
 
     // 取纯文件名用于包内条目命名
     std::wstring base = path;
@@ -180,11 +185,11 @@ static bool ReadPathExpand(const std::wstring& path,
 
     if (dl::archiveKindOf(buf) != dl::ARC_NONE) {
         std::vector<dl::ArchiveEntry> entries;
-        std::string err;
-        if (dl::extractArchive(buf, entries, err)) {
+        std::string archiveErr;
+        if (dl::extractArchive(buf, entries, archiveErr)) {
             for (auto& e : entries) {
                 std::vector<std::string> lines;
-                SplitLines(std::move(e.data), lines);
+                dl::splitTextLines(std::move(e.data), lines);
                 if (lines.empty()) continue;
                 chunks.push_back(std::move(lines));
                 // 展示名:包名!内部名(内部名可能为空,如单文件 .gz)
@@ -192,13 +197,16 @@ static bool ReadPathExpand(const std::wstring& path,
                 labels.push_back(inner.empty() ? base : (base + L"!" + inner));
             }
             if (!chunks.empty()) return true;
-            // 解压成功但没有可用条目 → 退化为普通读取
+            err = L"压缩包内没有非空日志";
+            return false;
         }
-        // 解压失败:静默退化,把原始字节当普通日志(可能只是扩展名碰巧像压缩包)
+        err = L"压缩包读取失败: " + U8ToW(archiveErr);
+        return false;
     }
 
     std::vector<std::string> lines;
-    SplitLines(std::move(buf), lines);
+    dl::splitTextLines(std::move(buf), lines);
+    if (lines.empty()) { err = L"文件为空"; return false; }
     chunks.push_back(std::move(lines));
     labels.push_back(base);
     return true;
@@ -1543,13 +1551,20 @@ static void LoadFiles(const std::vector<std::wstring>& paths) {
         // 展开后的 chunk 与手工解压后多选拖入完全等价,照常走定序 / 时基混合防护。
         std::vector<std::vector<std::string>> sub;
         std::vector<std::wstring> subLabels;
-        if (ReadPathExpand(p, sub, subLabels)) {
+        std::wstring readErr;
+        bool loaded = false;
+        try {
+            loaded = ReadPathExpand(p, sub, subLabels, readErr);
+        } catch (const std::bad_alloc&) {
+            readErr = L"内存不足,无法展开或切分日志";
+        }
+        if (loaded) {
             for (size_t i = 0; i < sub.size(); ++i) {
                 chunks.push_back(std::move(sub[i]));
                 ok.push_back(subLabels[i]);
             }
         } else {
-            MessageBoxW(hMain, (L"读取失败:\n" + p).c_str(), L"错误", MB_ICONERROR);
+            MessageBoxW(hMain, (L"读取失败:\n" + p + L"\n\n" + readErr).c_str(), L"错误", MB_ICONERROR);
         }
     }
     if (ok.empty()) return;
@@ -1626,25 +1641,38 @@ static void DoPaste() {
         return;
     }
     std::wstring w;
+    bool clipboardOom = false;
     if (HANDLE h = GetClipboardData(CF_UNICODETEXT)) {
-        if (const wchar_t* p = (const wchar_t*)GlobalLock(h)) { w = p; GlobalUnlock(h); }
+        if (const wchar_t* p = (const wchar_t*)GlobalLock(h)) {
+            try { w = p; }
+            catch (const std::bad_alloc&) { clipboardOom = true; }
+            GlobalUnlock(h);
+        }
     }
     CloseClipboard();
+    if (clipboardOom) {
+        MessageBoxW(hMain, L"内存不足,无法复制剪贴板文本。", L"错误", MB_ICONERROR);
+        return;
+    }
     if (w.empty()) {
         MessageBoxW(hMain, L"剪贴板文本为空。", L"提示", MB_ICONINFORMATION);
         return;
     }
-
-    // 按行切分(兼容 \r\n / \n / \r 三种换行)
-    std::string u8 = WToU8(w);
-    std::vector<std::string> raw;
-    std::string cur;
-    for (char c : u8) {
-        if (c == '\n') { raw.push_back(cur); cur.clear(); }
-        else if (c != '\r') cur += c;
-        else { raw.push_back(cur); cur.clear(); }   // 单独的 \r 也当换行(老式 Mac/终端粘贴)
+    // UTF-16 转 UTF-8 最坏每个码点 4 字节,在转换前即执行与文件相同的 512MiB 上限。
+    if (w.size() > (size_t)kMaxInputBytes / 4) {
+        MessageBoxW(hMain, L"剪贴板文本超过 512 MiB 输入限制。", L"内容过大", MB_ICONWARNING);
+        return;
     }
-    if (!cur.empty()) raw.push_back(cur);
+
+    // 按行切分(兼容 \r\n / \n / \r 三种换行);与文件读取共用纯 C++ 实现。
+    std::vector<std::string> raw;
+    try {
+        std::string u8 = WToU8(w);
+        dl::splitTextLines(std::move(u8), raw);
+    } catch (const std::bad_alloc&) {
+        MessageBoxW(hMain, L"内存不足,无法分析剪贴板文本。", L"错误", MB_ICONERROR);
+        return;
+    }
 
     LoadRawLines(raw, FmtW(L"[剪贴板粘贴 %d 行]", (int)raw.size()));
 

@@ -223,6 +223,11 @@ std::vector<LogLine> applyFilters(const std::vector<LogLine>& lines,
 // 实测为 us-ascii,无一带 BOM 或非 ASCII),GBK 支持无真机依据,不加。
 void stripBom(std::string& buf);
 
+// UTF-8 文本缓冲区切行:统一支持 LF / CRLF / CR,并剥离文件开头的 UTF-8 BOM。
+// 不保留“文本末尾换行”产生的额外空行,但保留正文中真实存在的空行。
+// 文件读取与剪贴板粘贴必须共用此实现,避免 Windows CRLF 被重复计为空行。
+void splitTextLines(std::string buf, std::vector<std::string>& out);
+
 // ---- 压缩包直读 ----
 // 现场日志多为打包回传(.zip/.tar.gz)。这里在内存中解压,免去手工先解压再拖入。
 // 只解压、不落地临时文件;逻辑纯 buffer→buffer,可单元测试。
@@ -242,6 +247,7 @@ struct ArchiveEntry {
 };
 
 // 解压缓冲区。成功返回 true 并填入 entries(至少一个);失败返回 false 并把原因写入 err。
+// 为防止损坏包/压缩炸弹耗尽内存,限制单条目 256MiB、总解压 512MiB、最多 1000 个条目。
 //   ARC_GZIP: 先 gunzip;若解出来是 tar(512 块魔数)再拆成多个条目,否则整体作单条目。
 //   ARC_ZIP : 遍历中央目录,解压每个非目录条目。
 // 非压缩内容(ARC_NONE)返回 false —— 调用方应把它当普通日志直接读。

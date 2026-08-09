@@ -25,10 +25,22 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC  = os.path.join(ROOT, "logmodel.cpp")
-CXX  = ["g++", "-std=c++17", "-O2"]
+# 变异测试只验证行为,不做性能基准。-O0 可把 44 次重复编译从数十分钟压到可接受范围。
+CXX  = ["g++", "-std=c++17", "-O0"]
+RUN_TIMEOUT_SECONDS = 120
+
+
+def run_cmd(cmd, **kwargs):
+    """所有编译/测试都有上限；超时按“变异被抓住”处理,避免整轮永久卡住。"""
+    try:
+        return subprocess.run(cmd, timeout=RUN_TIMEOUT_SECONDS, **kwargs)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(cmd, 124)
 
 # 每个变异:(名字, 源码里的原片段, 改坏成什么)。片段取**唯一**的核心串,避免上下文差异。
 MUTATIONS = [
@@ -113,8 +125,8 @@ MUTATIONS = [
      "buf[0] == 'P' && buf[1] == 'K' &&",
      "buf[0] == 'Q' && buf[1] == 'K' &&"),
     ('tar 大小字段进制读错(八进制当十进制)',
-     'long long fsize = std::strtoll(szbuf, nullptr, 8);',
-     'long long fsize = std::strtoll(szbuf, nullptr, 10);'),
+     'long long fsize = std::strtoll(szbuf, &sizeEnd, 8);',
+     'long long fsize = std::strtoll(szbuf, &sizeEnd, 10);'),
     ('tar 魔数判错(ustar)',
      'std::memcmp(d.data() + 257, "ustar", 5) == 0;',
      'std::memcmp(d.data() + 257, "ustaX", 5) == 0;'),
@@ -128,6 +140,21 @@ MUTATIONS = [
     ('时钟跳变检测关闭(clockJump 永不置位)',
      'if (prevUnsynced != curUnsynced) {',
      'if (false) {'),
+    # ── 公共文本切行 —— boundarytest T8 的靶子 ──
+    ('CRLF退回按两个换行处理(每行多造一个空行)',
+     "if (buf[i] == '\\r' && i + 1 < buf.size() && buf[i + 1] == '\\n') ++i;",
+     "if (false && i + 1 < buf.size() && buf[i + 1] == '\\n') ++i;"),
+    # ── gzip 完整性与头边界 —— archivetest T7 的靶子 ──
+    ('gzip FNAME边界退回按整个buf而非trailer判断',
+     '''while (z < trailer && buf[z]) ++z;
+            if (z >= trailer) { err = std::string("gzip ") + field + " 越界"; return false; }
+            p = z + 1;''',
+     '''while (z < buf.size() && buf[z]) ++z;
+            if (z >= buf.size()) { err = std::string("gzip ") + field + " 越界"; return false; }
+            p = z + 1;'''),
+    ('gzip CRC32校验被关闭',
+     'if ((uint32_t)actualCrc != expectedCrc) { err = "gzip CRC32 校验失败"; return false; }',
+     'if (false) { err = "gzip CRC32 校验失败"; return false; }'),
     # ── 断网引擎 open_dial 'Down:' 格式识别 —— baselinetest 靶子 ──
     ('断网漏认 open_dial 的 Down: 格式(回退只认 after)',
      'if (lo.find("network recovered") != std::string::npos) {',
@@ -172,14 +199,22 @@ MUTATIONS = [
      'else if (false)                  { c = C_SDK_L0; }'),
 ]
 
-# 变异后跑的测试(全绿=变异存活=测试有洞)
-TESTS = ["simtest", "hostruntest", "baselinetest", "mergetest", "archivetest", "boundarytest"]
-SELFTEST_LOGS = [
-    "samples/rtms_eg25/dial_20260630_000026.log",
-    "samples/rtms_eg25/real_eg25_1.31.15_unsynced.log",
-    "samples/rtms_ag35/real_ag35_1.32.16_console.log",
-    "samples/dial_eg25/real_artery_1.29.13.log",
-]
+# `make check-full` 已先跑全部测试；每个变异这里只链接最能抓它的靶向测试。
+# 若路由选错,该变异会“存活”并令整轮失败,不会被静默放过。
+def target_test(mut_name):
+    lower_name = mut_name.lower()
+    if any(k in mut_name for k in ("跨文件", "时钟跳变", "CRLF")):
+        return "boundarytest"
+    # 用 startswith 避免 "Started" / "trailer" 中间恰含 "tar" 而误路由。
+    if (lower_name.startswith(("gzip", "zip", "tar", "stripbom")) or
+            any(k in lower_name for k in ("bom", "miniz", "解压", "压缩", "魔数"))):
+        return "archivetest"
+    if any(k in mut_name for k in ("定序", "firstTimestamp", "chunk", "时基", "detectMix",
+                                   "未同步误分", "stable")):
+        return "mergetest"
+    if "never-connected" in mut_name:
+        return "hostruntest"
+    return "baselinetest"
 
 
 _MINIZ_CACHE = [None]   # miniz.o 只编一次(与变异无关),全局缓存路径
@@ -191,82 +226,91 @@ def _miniz_obj():
         return _MINIZ_CACHE[0]
     import tempfile
     path = os.path.join(tempfile.gettempdir(), "dl_mutate_miniz.o")
-    if subprocess.run(["gcc", "-std=c11", "-O2", "-DMINIZ_NO_STDIO", "-DMINIZ_NO_TIME",
-                       "-c", "miniz.c", "-o", path], cwd=ROOT,
-                      stderr=subprocess.DEVNULL).returncode != 0:
+    if run_cmd(["gcc", "-std=c11", "-O2", "-DMINIZ_NO_STDIO", "-DMINIZ_NO_TIME",
+                "-c", "miniz.c", "-o", path], cwd=ROOT,
+               stderr=subprocess.DEVNULL).returncode != 0:
         return None
     _MINIZ_CACHE[0] = path
     return path
 
 
 def run_tests(tmp, source, mut_name=""):
-    """编 logmodel.o + 链接测试 + 跑。全绿返回 True(=变异存活)。
-    优化:archivetest 每次要带 miniz 重编 logmodel(慢)。只有触及 archive/BOM 代码的
-    变异才需要它 —— 非 archive 变异即使 archivetest 不跑也不影响结论(它抓不到这些洞)。
-    靠变异名里的关键词判断是否 archive 相关。"""
-    obj = os.path.join(tmp, "lm.o")
-    if subprocess.run(CXX + ["-I", ROOT, "-c", source, "-o", obj], cwd=ROOT,
-                      stderr=subprocess.DEVNULL).returncode != 0:
-        return False  # 编不过 = 变异被抓住
-    # 是否 archive 相关变异(名字含这些词) → 才编 archivetest
-    arch_kw = ("gzip", "zip", "tar", "bom", "miniz", "解压", "压缩", "魔数", "BOM")
-    is_arch = any(k.lower() in mut_name.lower() for k in arch_kw)
-    obj_mz = os.path.join(tmp, "lm_mz.o")
-    mzobj = _miniz_obj()
-    have_mz = (is_arch and "archivetest" in TESTS and mzobj is not None
-               and subprocess.run(CXX + ["-DDL_HAVE_MINIZ", "-I", ROOT,
-                                         "-c", source, "-o", obj_mz], cwd=ROOT,
-                                  stderr=subprocess.DEVNULL).returncode == 0)
-    run_list = [t for t in TESTS if not (t == "archivetest" and not is_arch)]
-    for t in run_list + ["selftest"]:
-        exe = os.path.join(tmp, t)
-        if t == "archivetest":
-            if not have_mz:
-                return False   # archivetest 该跑却编不出 miniz obj → 视为抓住(保守)
-            cmd = CXX + ["-DDL_HAVE_MINIZ", "-o", exe, t + ".cpp", obj_mz, mzobj]
-        else:
-            cmd = CXX + ["-o", exe, t + ".cpp", obj]
-        if subprocess.run(cmd, cwd=ROOT, stderr=subprocess.DEVNULL).returncode != 0:
+    """编变异 logmodel 对象,只链接并运行对应靶向测试。全绿=变异存活=测试有洞。"""
+    test = target_test(mut_name)
+    exe = os.path.join(tmp, test)
+    if test == "archivetest":
+        obj = os.path.join(tmp, "lm_mz.o")
+        mzobj = _miniz_obj()
+        if mzobj is None or run_cmd(CXX + ["-DDL_HAVE_MINIZ", "-I", ROOT,
+                                              "-c", source, "-o", obj], cwd=ROOT,
+                                       stderr=subprocess.DEVNULL).returncode != 0:
             return False
-    for t in run_list:
-        if subprocess.run([os.path.join(tmp, t)], cwd=ROOT,
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
+        cmd = CXX + ["-DDL_HAVE_MINIZ", "-o", exe, test + ".cpp", obj, mzobj]
+    else:
+        obj = os.path.join(tmp, "lm.o")
+        if run_cmd(CXX + ["-I", ROOT, "-c", source, "-o", obj], cwd=ROOT,
+                   stderr=subprocess.DEVNULL).returncode != 0:
             return False
-    self_exe = os.path.join(tmp, "selftest")
-    for log in SELFTEST_LOGS:
-        if not os.path.exists(os.path.join(ROOT, log)):
-            continue
-        if subprocess.run([self_exe, log], cwd=ROOT,
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
-            return False
-    return True
+        cmd = CXX + ["-o", exe, test + ".cpp", obj]
+    if run_cmd(cmd, cwd=ROOT, stderr=subprocess.DEVNULL).returncode != 0:
+        return False
+    return run_cmd([exe], cwd=ROOT, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL).returncode == 0
+
+
+def run_mutation(tmp_root, orig, idx, name, old, new, total):
+    """在独立临时目录运行一个变异；返回 (状态,耗时)。"""
+    started = time.monotonic()
+    print(f"  [{idx:02d}/{total:02d}] {name}", flush=True)
+    if old not in orig:
+        return "bad", time.monotonic() - started
+    tmp = os.path.join(tmp_root, f"m{idx:02d}")
+    os.makedirs(tmp)
+    source = os.path.join(tmp, "logmodel.cpp")
+    with open(source, "w", encoding="utf-8") as f:
+        f.write(orig.replace(old, new, 1))
+    survived = run_tests(tmp, source, name)
+    return ("survived" if survived else "caught"), time.monotonic() - started
 
 
 def main():
     orig = open(SRC, encoding="utf-8").read()
-    tmp = tempfile.mkdtemp()
-    mutated_src = os.path.join(tmp, "logmodel.cpp")
+    tmp = tempfile.mkdtemp(prefix="diallog_mutate_")
     caught = survived = bad = 0
-    print("════ 变异测试:把修过的 bug 故意改回去,看测试抓不抓得住 ════")
+    all_started = time.monotonic()
     try:
-        for name, old, new in MUTATIONS:
-            if old not in orig:
-                print(f"  {name:<40s} ⚠ 变异点不存在(片段对不上,修 mutate.py)")
-                bad += 1
-                continue
-            with open(mutated_src, "w", encoding="utf-8") as f:
-                f.write(orig.replace(old, new, 1))
-            survived_now = run_tests(tmp, mutated_src, name)
-            if survived_now:
-                print(f"  {name:<40s} ❌ 存活 —— 测试没抓住,有洞")
-                survived += 1
-            else:
-                print(f"  {name:<40s} ✅ 被抓住")
-                caught += 1
+        requested_jobs = int(os.environ.get("DL_MUTATE_JOBS", "2"))
+    except ValueError:
+        requested_jobs = 2
+    jobs = min(4, max(1, requested_jobs))
+    print(f"════ 变异测试:把修过的 bug 故意改回去,看测试抓不抓得住 "
+          f"(并发 {jobs}) ════", flush=True)
+    try:
+        # 避免多个 archive 变异同时争抢同一个 miniz 缓存文件。
+        _miniz_obj()
+        with ThreadPoolExecutor(max_workers=jobs) as pool:
+            futures = {}
+            for idx, (name, old, new) in enumerate(MUTATIONS, 1):
+                fut = pool.submit(run_mutation, tmp, orig, idx, name, old, new, len(MUTATIONS))
+                futures[fut] = name
+            for fut in as_completed(futures):
+                status, elapsed = fut.result()
+                name = futures[fut]
+                if status == "bad":
+                    print(f"      ⚠ {name}:变异点不存在(片段对不上) ({elapsed:.1f}s)", flush=True)
+                    bad += 1
+                elif status == "survived":
+                    print(f"      ❌ {name}:存活 —— 测试没抓住,有洞 ({elapsed:.1f}s)", flush=True)
+                    survived += 1
+                else:
+                    print(f"      ✅ {name}:被抓住 ({elapsed:.1f}s)", flush=True)
+                    caught += 1
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
-    print(f"\n════ {len(MUTATIONS)} 个变异:{caught} 被抓住,{survived} 存活,{bad} 片段失配 ════")
+    total_elapsed = time.monotonic() - all_started
+    print(f"\n════ {len(MUTATIONS)} 个变异:{caught} 被抓住,{survived} 存活,{bad} 片段失配"
+          f"，总耗时 {total_elapsed:.1f}s ════", flush=True)
     if survived:
         print("存活 = 测试有洞,必须补断言(不是代码没问题)")
     if bad:

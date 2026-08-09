@@ -20,11 +20,13 @@
 //   1.9.0  RSRP 曲线并入信号图
 //   1.10.0  跟进四份产品的新心跳:SRV/RAT/DENY、RSRP/RSRQ/SNR/RSSI、OPER;
 //           SNR 加入明细/CSV/总览/信号图及保守诊断,信号图改为上下两个单 Y 轴
+//   1.10.1  修复 CRLF 重复空行;强化文件/压缩包边界和 gzip 完整性校验;
+//           完善 Windows x64/x86 构建、自动回归与变异测试
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 0
+#define DL_VER_PATCH 1
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

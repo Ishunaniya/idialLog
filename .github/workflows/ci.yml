@@ -1,0 +1,64 @@
+name: dialLog CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 18 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run complete host regression
+        run: make check
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run with ASan and UBSan
+        run: >-
+          make check
+          HOST_CXXFLAGS='-std=c++17 -O1 -g -Wall -Wextra -fsanitize=address,undefined -fno-omit-frame-pointer'
+          HOST_LDFLAGS='-fsanitize=address,undefined'
+
+  windows-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            cross: x86_64-w64-mingw32-
+          - arch: x86
+            cross: i686-w64-mingw32-
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MinGW
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64
+      - name: Build ${{ matrix.arch }} executable
+        run: make -B CROSS=${{ matrix.cross }} TARGET=/tmp/dialLog-${{ matrix.arch }}.exe
+      - name: Verify PE architecture
+        run: file /tmp/dialLog-${{ matrix.arch }}.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dialLog-${{ matrix.arch }}
+          path: /tmp/dialLog-${{ matrix.arch }}.exe
+
+  mutation:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run regression and all mutations
+        run: make check-full

@@ -156,18 +156,31 @@ static void t7_real_unsynced_fixture_no_jump() {
         size_t n;
         while ((n = std::fread(buf, 1, sizeof(buf), f)) > 0) acc.append(buf, n);
         std::fclose(f);
-        size_t a = 0;
-        while (a <= acc.size()) {
-            size_t b = acc.find('\n', a);
-            if (b == std::string::npos) { if (a < acc.size()) raw.push_back(acc.substr(a)); break; }
-            raw.push_back(acc.substr(a, b - a)); a = b + 1;
-        }
+        splitTextLines(std::move(acc), raw);
         std::vector<LogLine> ll; std::vector<std::string> ss; ParseAudit ad;
         parseLines(raw, ll, ss, &ad);
         std::string base = p; size_t sl = base.find_last_of('/');
         if (sl != std::string::npos) base = base.substr(sl + 1);
         ok(!ad.clockJump, (base + " 无跳变(证实真机无此样本,检测也不误报)").c_str());
     }
+}
+
+// 文件与 Windows 剪贴板共用的切行规则。CRLF 必须只产生一个行边界。
+static void t8_text_line_endings() {
+    std::printf("== T8 LF / CRLF / CR 统一切行 ==\n");
+    std::vector<std::string> lf, crlf, cr, blank, bom, empty;
+    splitTextLines("a\nb\n", lf);
+    splitTextLines("a\r\nb\r\n", crlf);
+    splitTextLines("a\rb\r", cr);
+    splitTextLines("a\r\n\r\nb", blank);
+    splitTextLines("\xEF\xBB\xBF" "a\r\nb", bom);
+    splitTextLines("", empty);
+    ok(lf == L({"a", "b"}), "LF:末尾换行不额外造空行");
+    ok(crlf == L({"a", "b"}), "CRLF:每行只切一次(Windows 粘贴回归)");
+    ok(cr == L({"a", "b"}), "CR:老式终端换行可识别");
+    ok(blank == L({"a", "", "b"}), "正文中的真实空行被保留");
+    ok(bom == L({"a", "b"}), "BOM + CRLF 同时正确处理");
+    ok(empty.empty(), "空文本不产生伪造行");
 }
 
 int main() {
@@ -178,6 +191,7 @@ int main() {
     t5_no_false_jump_on_normal();
     t6_pure_unsynced_no_jump();
     t7_real_unsynced_fixture_no_jump();
+    t8_text_line_endings();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }
