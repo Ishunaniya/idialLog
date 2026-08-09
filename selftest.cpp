@@ -148,5 +148,52 @@ int main(int argc, char** argv) {
     auto badrx = applyFilters(lines, "", "((((", "", "", &bad);
     std::printf("  非法正则 '((((' -> 未崩溃, grepBad=%s\n", bad ? "是" : "否");
 
+    // 轻量视图必须与拥有对象的旧 API 语义一致,且每个元素直接借用原始 lines。
+    LogView allView = applyFilterView(lines, "", "", "", "", nullptr);
+    bool ptrOk = allView.size() == lines.size();
+    for (size_t i = 0; ptrOk && i < allView.size(); ++i) ptrOk = allView[i] == &lines[i];
+    auto viewOuts = collectOutages(allView);
+    auto viewRows = buildMetrics(allView);
+    auto viewFinds = analyze(allView, viewOuts, viewRows, pi, audit);
+    bool same = ptrOk && viewOuts.size() == outs.size() && viewRows.size() == rows.size() &&
+                viewFinds.size() == finds.size();
+    for (size_t i = 0; same && i < outs.size(); ++i)
+        same = viewOuts[i].start == outs[i].start && viewOuts[i].end == outs[i].end &&
+               viewOuts[i].dur == outs[i].dur && viewOuts[i].recovered == outs[i].recovered &&
+               viewOuts[i].l0Recovered == outs[i].l0Recovered &&
+               viewOuts[i].startLine == outs[i].startLine && viewOuts[i].endLine == outs[i].endLine;
+    auto sameMetric = [](const MetricRow& a, const MetricRow& b) {
+        return a.t == b.t && a.ts == b.ts && a.ch == b.ch && a.csq == b.csq &&
+               a.tmax == b.tmax && a.cf == b.cf && a.rx == b.rx && a.drx == b.drx &&
+               a.srv == b.srv && a.rat == b.rat && a.deny == b.deny && a.oper == b.oper &&
+               a.rssi == b.rssi && a.csqVal == b.csqVal && a.rsrp == b.rsrp &&
+               a.rsrq == b.rsrq && a.snr10 == b.snr10 && a.rssiVal == b.rssiVal &&
+               a.srvVal == b.srvVal && a.denyVal == b.denyVal && a.drxZero == b.drxZero &&
+               a.lineNo == b.lineNo;
+    };
+    for (size_t i = 0; same && i < rows.size(); ++i) same = sameMetric(viewRows[i], rows[i]);
+    auto sameFinding = [](const Finding& a, const Finding& b) {
+        if (a.severity != b.severity || a.title != b.title || a.detail != b.detail ||
+            a.advice != b.advice || a.ev.size() != b.ev.size()) return false;
+        for (size_t i = 0; i < a.ev.size(); ++i)
+            if (a.ev[i].lineNo != b.ev[i].lineNo || a.ev[i].ts != b.ev[i].ts ||
+                a.ev[i].text != b.ev[i].text) return false;
+        return true;
+    };
+    for (size_t i = 0; same && i < finds.size(); ++i) same = sameFinding(viewFinds[i], finds[i]);
+    auto onlyView = applyFilterView(lines, "ROAMLINK", "switching|Policy", "", "", nullptr);
+    bool filterSame = onlyView.size() == only.size();
+    std::map<size_t, const LogLine*> byLine;
+    for (const LogLine* l : allView) byLine[l->lineNo] = l;
+    for (size_t i = 0; filterSame && i < only.size(); ++i) {
+        auto it = byLine.find(only[i].lineNo);
+        filterSame = it != byLine.end() && it->second == onlyView[i] &&
+                     onlyView[i]->lineNo == only[i].lineNo &&
+                     onlyView[i]->msg == only[i].msg;
+    }
+    std::printf("== 轻量视图自检 ==\n  全量指针归属:%s  分析结果一致:%s  筛选结果一致:%s\n",
+                ptrOk ? "是" : "否", same ? "是" : "否", filterSame ? "是" : "否");
+    if (!same || !filterSame) return 1;
+
     return 0;
 }

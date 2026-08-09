@@ -35,6 +35,11 @@ static std::string lower(std::string s) {
     return s;
 }
 
+// 分析实现同时服务拥有对象的 vector<LogLine> 与只借用对象的 LogView。
+// 统一在这里解引用,避免维护两份诊断逻辑而产生语义漂移。
+static const LogLine& lineRef(const LogLine& l) { return l; }
+static const LogLine& lineRef(const LogLine* l) { return *l; }
+
 // 大小写无关的子串查找(对齐 Python 的 re.IGNORECASE)
 static bool icontains(const std::string& hay, const char* needle) {
     return lower(hay).find(lower(needle)) != std::string::npos;
@@ -611,12 +616,14 @@ bool isEventLine(const LogLine& l) {
 }
 
 // ============================ 分析 ============================
-std::vector<Outage> collectOutages(const std::vector<LogLine>& lines) {
+template <typename Lines>
+static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
     std::vector<Outage> outs;
     bool have = false;
     long long start = 0;
     size_t startLine = 0;
-    for (const auto& l : lines) {
+    for (const auto& item : lines) {
+        const LogLine& l = lineRef(item);
         if (isFaultStart(l.msg) && !have) { have = true; start = l.t; startLine = l.lineNo; }
         int dur = 0;
         if (isRecovered(l.msg, &dur)) {
@@ -637,6 +644,14 @@ std::vector<Outage> collectOutages(const std::vector<LogLine>& lines) {
         outs.push_back(o);
     }
     return outs;
+}
+
+std::vector<Outage> collectOutages(const std::vector<LogLine>& lines) {
+    return collectOutagesImpl(lines);
+}
+
+std::vector<Outage> collectOutages(const LogView& lines) {
+    return collectOutagesImpl(lines);
 }
 
 std::vector<Stall> detectRxStall(const std::vector<std::pair<long long,long long>>& rxs,
@@ -685,12 +700,14 @@ static const std::string* pick(const std::map<std::string,std::string>& f,
     return nullptr;
 }
 
-std::vector<MetricRow> buildMetrics(const std::vector<LogLine>& lines) {
+template <typename Lines>
+static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
     std::vector<MetricRow> rows;
     bool haveLastRx = false;
     long long lastRx = 0;
 
-    for (const auto& l : lines) {
+    for (const auto& item : lines) {
+        const LogLine& l = lineRef(item);
         if (l.tag.compare(0, 9, "HEARTBEAT") != 0) continue;
         auto f = hbFields(l.msg);
         if (f.empty()) continue;
@@ -808,6 +825,14 @@ std::vector<MetricRow> buildMetrics(const std::vector<LogLine>& lines) {
     return rows;
 }
 
+std::vector<MetricRow> buildMetrics(const std::vector<LogLine>& lines) {
+    return buildMetricsImpl(lines);
+}
+
+std::vector<MetricRow> buildMetrics(const LogView& lines) {
+    return buildMetricsImpl(lines);
+}
+
 // ============================ 结论引擎 ============================
 // 铁律:每条结论必须能追溯到具体日志证据(行号+时间戳),ev 为空的结论一律不输出。
 // 各判据的源码出处逐条标注;凡"仅源码推断、未经真机实证"的分支已明确标注。
@@ -853,11 +878,12 @@ static const LogLine* firstLineInWindow(const std::vector<const LogLine*>& v,
     return nullptr;
 }
 
-std::vector<Finding> analyze(const std::vector<LogLine>& lines,
-                             const std::vector<Outage>& outs,
-                             const std::vector<MetricRow>& mets,
-                             const PlatformInfo& pi,
-                             const ParseAudit& audit)
+template <typename Lines>
+static std::vector<Finding> analyzeImpl(const Lines& lines,
+                                        const std::vector<Outage>& outs,
+                                        const std::vector<MetricRow>& mets,
+                                        const PlatformInfo& pi,
+                                        const ParseAudit& audit)
 {
     std::vector<Finding> fs;
     if (lines.empty()) return fs;
@@ -865,7 +891,8 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
     // ---- 预扫:各类特征行(全部留证据指针)----
     std::vector<const LogLine*> evNeverConn, evPolicy, evRecL1, evRecL2, evRecL3,
                                 evDenied, evCpdump, evSlot, evOper, evCfun, evNotReady;
-    for (const auto& l : lines) {
+    for (const auto& item : lines) {
+        const LogLine& l = lineRef(item);
         // EC200A 门控日志(ec200a/dial/dial.cpp:1615/1622)。EG25 无对应日志:
         // 其门控是静默的(eg25/dial/dial.c:974 的 has_connected_once 条件)。
         if (icontains(l.msg, "never-connected"))            evNeverConn.push_back(&l);
@@ -992,7 +1019,7 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
     size_t causeCnt[C_N] = {0};
     std::vector<Evidence> causeEv[C_N];
     for (const auto& o : outs) {
-        long long lo = o.start - 90, hi = o.recovered ? o.end : lines.back().t;
+        long long lo = o.start - 90, hi = o.recovered ? o.end : lineRef(lines.back()).t;
         int  minCsq = 999; bool sawZeroRx = false;
         int  minRsrp = 9999;                              // 窗口内最低 RSRP(dBm,越低越差)
         const MetricRow* mZero = nullptr; const MetricRow* mWeak = nullptr;
@@ -1275,6 +1302,22 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
     return fs;
 }
 
+std::vector<Finding> analyze(const std::vector<LogLine>& lines,
+                             const std::vector<Outage>& outs,
+                             const std::vector<MetricRow>& mets,
+                             const PlatformInfo& pi,
+                             const ParseAudit& audit) {
+    return analyzeImpl(lines, outs, mets, pi, audit);
+}
+
+std::vector<Finding> analyze(const LogView& lines,
+                             const std::vector<Outage>& outs,
+                             const std::vector<MetricRow>& mets,
+                             const PlatformInfo& pi,
+                             const ParseAudit& audit) {
+    return analyzeImpl(lines, outs, mets, pi, audit);
+}
+
 // ============================ 过滤 ============================
 static bool parseBound(const std::string& s, const LogLine& base, long long& out) {
     std::string t = trim(s);
@@ -1300,10 +1343,10 @@ static bool parseBound(const std::string& s, const LogLine& base, long long& out
     return false;
 }
 
-std::vector<LogLine> applyFilters(const std::vector<LogLine>& lines,
-                                  const std::string& tag, const std::string& grep,
-                                  const std::string& since, const std::string& until,
-                                  bool* grepBad)
+LogView applyFilterView(const std::vector<LogLine>& lines,
+                        const std::string& tag, const std::string& grep,
+                        const std::string& since, const std::string& until,
+                        bool* grepBad)
 {
     if (grepBad) *grepBad = false;
 
@@ -1339,7 +1382,7 @@ std::vector<LogLine> applyFilters(const std::vector<LogLine>& lines,
     bool hasLo = false, hasHi = false;
     long long lo = 0, hi = 0;
 
-    std::vector<LogLine> out;
+    LogView out;
     const bool noConditions = want.empty() && !useRegex && !needBounds;
     out.reserve(noConditions ? lines.size() : std::min<size_t>(lines.size(), 65536));
     for (const auto& l : lines) {
@@ -1362,8 +1405,20 @@ std::vector<LogLine> applyFilters(const std::vector<LogLine>& lines,
         }
         if (hasLo && l.t < lo) continue;
         if (hasHi && l.t > hi) continue;
-        out.push_back(l);
+        out.push_back(&l);
     }
+    return out;
+}
+
+std::vector<LogLine> applyFilters(const std::vector<LogLine>& lines,
+                                  const std::string& tag, const std::string& grep,
+                                  const std::string& since, const std::string& until,
+                                  bool* grepBad)
+{
+    LogView view = applyFilterView(lines, tag, grep, since, until, grepBad);
+    std::vector<LogLine> out;
+    out.reserve(view.size());
+    for (const LogLine* l : view) out.push_back(*l);
     return out;
 }
 

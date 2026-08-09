@@ -61,7 +61,8 @@ static HWND hSummary, hTimeline, hOutage, hMetric, hTags, hRaw, hChart, hExport,
 static HWND hFindings, hUnparsed;
 static HFONT hFontUI, hFontMono;
 
-static std::vector<LogLine>  g_all, g_view;
+static std::vector<LogLine>  g_all;
+static LogView               g_view;      // 借用 g_all,不复制每行的字符串
 static std::vector<std::string> g_sessions;
 static std::vector<Outage>   g_outages;
 static std::vector<MetricRow> g_metrics;
@@ -388,7 +389,7 @@ static LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
 
     // ---- 统计 ----
-    const long long t0 = g_view.front().t, t1 = g_view.back().t;
+    const long long t0 = g_view.front()->t, t1 = g_view.back()->t;
     const double span = (double)(t1 - t0);
     long long total = 0, longest = 0;
     int b[4] = {0,0,0,0};
@@ -1387,7 +1388,7 @@ static void RenderSummary() {
 
     // 报错
     std::vector<const LogLine*> errs;
-    for (const auto& l : g_view) if (isErrLine(l)) errs.push_back(&l);
+    for (const LogLine* l : g_view) if (isErrLine(*l)) errs.push_back(l);
     if (!errs.empty()) {
         std::vector<std::wstring> ls;
         for (size_t i = 0; i < errs.size() && i < 12; ++i)
@@ -1399,7 +1400,8 @@ static void RenderSummary() {
 
     // 关键事件计数
     int sw = 0, disc = 0, states = 0, cfun = 0, slot = 0, oper = 0, cells = 0;
-    for (const auto& l : g_view) {
+    for (const LogLine* item : g_view) {
+        const LogLine& l = *item;
         if (l.msg.find("switching to SIM") != std::string::npos ||
             l.msg.find("switching to Roamlink") != std::string::npos) sw++;
         if (l.msg.find("DataCall disconnected") != std::string::npos) disc++;
@@ -1423,7 +1425,8 @@ static void RenderTimeline() {
     ListView_DeleteAllItems(hTimeline);
     g_tlColors.clear();
     int row = 0;
-    for (const auto& l : g_view) {
+    for (const LogLine* item : g_view) {
+        const LogLine& l = *item;
         bool keep = isEventLine(l);
         if (l.tag.compare(0, 9, "HEARTBEAT") == 0 && (isFaultStart(l.msg) || isRecovered(l.msg, nullptr)))
             keep = true;
@@ -1498,7 +1501,7 @@ static void RenderMetrics() {
 static void RenderTags() {
     ListView_DeleteAllItems(hTags);
     std::map<std::string, int> tc;
-    for (const auto& l : g_view) tc[l.tag.empty() ? "(无标签)" : l.tag]++;
+    for (const LogLine* l : g_view) tc[l->tag.empty() ? "(无标签)" : l->tag]++;
     int mx = 1;
     for (auto& kv : tc) mx = std::max(mx, kv.second);
     std::vector<std::pair<std::string,int>> v(tc.begin(), tc.end());
@@ -1517,7 +1520,8 @@ static void RenderRaw() {
     std::string s;
     s.reserve(256 * 1024);
     size_t n = 0;
-    for (const auto& l : g_view) {
+    for (const LogLine* item : g_view) {
+        const LogLine& l = *item;
         s += l.ts;
         // seas_log(artery)的严重度在 level 字段、且多数行没有内嵌 [TAG];
         // 无标签时不要打出空的 "[]"
@@ -1591,8 +1595,8 @@ static void ShowPage(int page) {
 static void RefreshAll() {
     if (g_all.empty()) { SetWindowTextW(hStatus, L"尚未加载日志。"); return; }
     bool bad = false;
-    g_view = applyFilters(g_all, WToU8(GetText(hTagBox)), WToU8(GetText(hGrepBox)),
-                          WToU8(GetText(hSinceBox)), WToU8(GetText(hUntilBox)), &bad);
+    g_view = applyFilterView(g_all, WToU8(GetText(hTagBox)), WToU8(GetText(hGrepBox)),
+                             WToU8(GetText(hSinceBox)), WToU8(GetText(hUntilBox)), &bad);
     g_outages = collectOutages(g_view);
     g_metrics = buildMetrics(g_view);
 
@@ -1615,10 +1619,12 @@ static void RefreshAll() {
     SetWindowTextW(hStatus, st.c_str());
 }
 
-// 载入的公共尾段:拿到原始行之后的处理,文件与剪贴板共用
-static void LoadRawLines(const std::vector<std::string>& raw, const std::wstring& srcLabel,
+// 载入的公共尾段:移动接管原始行,解析后立即释放,不让 raw 与后续分析结果长期共存。
+static void LoadRawLines(std::vector<std::string> raw, const std::wstring& srcLabel,
                          const std::vector<size_t>& fileBoundaries = {}) {
+    g_view.clear();  // parseLines 会重建 g_all,先解除所有借用指针
     parseLines(raw, g_all, g_sessions, &g_audit, fileBoundaries);
+    std::vector<std::string>().swap(raw);
     g_plat = detectPlatform(g_all);   // 平台识别用全量行(不受筛选影响)
     std::wstring lbl = srcLabel;
     lbl += FmtW(L"   (%d 行, %d 会话, %s)", (int)g_all.size(), (int)g_sessions.size(),
@@ -1731,7 +1737,7 @@ static void LoadFiles(const std::vector<std::wstring>& paths) {
         if (noTs > 0) lbl += FmtW(L",其中 %d 份扫不到时间戳→拼在最后", noTs);
         lbl += excludedNote;
     }
-    LoadRawLines(raw, lbl, fileBoundaries);
+    LoadRawLines(std::move(raw), lbl, fileBoundaries);
 }
 
 // 从剪贴板粘贴日志文本分析(SSH 里 cat 日志后直接选中复制的场景,手上没有文件)
@@ -1780,7 +1786,8 @@ static void DoPaste() {
         return;
     }
 
-    LoadRawLines(raw, FmtW(L"[剪贴板粘贴 %d 行]", (int)raw.size()));
+    std::wstring pasteLabel = FmtW(L"[剪贴板粘贴 %d 行]", (int)raw.size());
+    LoadRawLines(std::move(raw), pasteLabel);
 
     // 粘贴的往往是片段,若一行都没认出来,直接把原因摆出来(而不是让用户对着空界面猜)
     if (g_all.empty()) {
@@ -2121,7 +2128,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         case IDC_CLOSELOG: {
             // 关闭日志:卸载数据回到"尚未加载"。RefreshAll 对空数据会提前 return
             // (不刷各页),故此处手动逐页渲染,否则列表/卡片残留上一份日志。
-            g_all.clear(); g_view.clear();
+            g_view.clear(); g_all.clear();
             g_sessions.clear(); g_outages.clear(); g_metrics.clear();
             g_findings.clear(); g_sumCards.clear();
             g_tlColors.clear(); g_ogColors.clear();

@@ -1,7 +1,7 @@
 // perftest.cpp — 大日志性能基准。默认跑 10万/50万/100万行。
 //
 // 这不是墙钟阈值测试(共享 CI 机器的耗时会波动),而是可重复的数据规模与结果校验:
-// 每轮打印解析/筛选/分析耗时,同时钉死行数、筛选数、断网数和审计自洽。
+// 每轮打印解析/筛选/分析耗时,同时钉死行数、筛选数、断网数、审计自洽和视图归属。
 #include "logmodel.h"
 
 #include <chrono>
@@ -58,7 +58,7 @@ static bool runOne(size_t n) {
     std::vector<std::string>().swap(raw);
 
     bool grepBad = false;
-    std::vector<LogLine> view = applyFilters(lines, "HEARTBEAT", "", "", "", &grepBad);
+    LogView view = applyFilterView(lines, "HEARTBEAT", "", "", "", &grepBad);
     auto t2 = Clock::now();
 
     std::vector<Outage> outages = collectOutages(view);
@@ -68,17 +68,34 @@ static bool runOne(size_t n) {
     std::vector<Finding> findings = analyze(view, outages, metrics, platform, audit);
     auto t5 = Clock::now();
 
+    // UI 无筛选时是最坏情况:视图含全部行。它只能拥有 N 个指针,不能复制 LogLine/string。
+    LogView fullView = applyFilterView(lines, "", "", "", "", nullptr);
+    bool viewOwnedByLines = fullView.size() == lines.size();
+    for (size_t i = 0; viewOwnedByLines && i < fullView.size(); ++i)
+        viewOwnedByLines = fullView[i] == &lines[i];
+    bool filteredOwnedByLines = view.size() == (n + 9) / 10;
+    for (size_t i = 0; filteredOwnedByLines && i < view.size(); ++i)
+        filteredOwnedByLines = view[i] == &lines[i * 10];
+    size_t viewBytes = fullView.capacity() * sizeof(LogView::value_type);
+    size_t copiedObjectFloor = fullView.size() * sizeof(LogLine);
+    bool compactView = viewBytes <= fullView.size() * sizeof(LogView::value_type) * 2 &&
+                       copiedObjectFloor >= viewBytes * 8;
+
     size_t expectedView = (n + 9) / 10;       // HEARTBEAT 恰好每 10 行一条
     size_t expectedOutages = (n + 9999) / 10000;
     bool ok = lines.size() == n && audit.rawTotal == n && audit.parsed == n &&
               audit.unparsed == 0 && view.size() == expectedView && !grepBad &&
-              outages.size() == expectedOutages && !metrics.empty() && !findings.empty();
+              outages.size() == expectedOutages && !metrics.empty() && !findings.empty() &&
+              viewOwnedByLines && filteredOwnedByLines && compactView;
 
     std::printf("%8zu 行 | 解析+平台 %6lld ms | 筛选 %6lld ms"
                 " | 断网 %4lld ms 指标 %6lld ms 结论 %6lld ms"
                 " | 视图 %zu 指标 %zu 断网 %zu | %s\n",
                 n, ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5),
                 view.size(), metrics.size(), outages.size(), ok ? "通过" : "失败");
+    std::printf("           全量轻量视图 %.1f MiB | 旧式对象数组下限 %.1f MiB | %s\n",
+                viewBytes / 1048576.0, copiedObjectFloor / 1048576.0,
+                viewOwnedByLines && compactView ? "通过" : "失败");
     return ok;
 }
 

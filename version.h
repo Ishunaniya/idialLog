@@ -26,11 +26,13 @@
 //           CSV 改为原子写入,修复 DPI 切换后等宽字体丢失
 //   1.10.3  筛选改为单次遍历;断网分析增加时间窗口索引和乱序回退;
 //           页面按需渲染,新增百万行性能基准
+//   1.10.4  筛选结果改为借用原始日志的轻量指针视图;
+//           断网/指标/结论复用同一套拥有/借用分析实现,解析后提前释放原始文本
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 3
+#define DL_VER_PATCH 4
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

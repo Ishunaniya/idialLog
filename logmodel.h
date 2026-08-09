@@ -42,6 +42,10 @@ struct LogLine {
     size_t lineNo = 0;      // 原始文件行号(1 基),供结论证据溯源
 };
 
+// 筛选后的轻量视图:只保存指向原始 LogLine 的指针,不复制时间戳/标签/正文。
+// 所有指针只在来源 vector<LogLine> 未清空、未增删、未触发重新分配时有效。
+using LogView = std::vector<const LogLine*>;
+
 // 未识别行(审计用)
 struct UnparsedLine {
     size_t lineNo = 0;
@@ -196,12 +200,19 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines);
 
 // ---- 分析 ----
 std::vector<Outage> collectOutages(const std::vector<LogLine>& lines);
+std::vector<Outage> collectOutages(const LogView& lines);
 std::vector<Stall>  detectRxStall(const std::vector<std::pair<long long,long long>>& rxs,
                                   long long minStallSec = 120);
 std::vector<MetricRow> buildMetrics(const std::vector<LogLine>& lines);
+std::vector<MetricRow> buildMetrics(const LogView& lines);
 
 // 结论引擎:每条结论必须带证据(ev 非空),否则不输出
 std::vector<Finding> analyze(const std::vector<LogLine>& lines,
+                             const std::vector<Outage>& outs,
+                             const std::vector<MetricRow>& mets,
+                             const PlatformInfo& pi,
+                             const ParseAudit& audit);
+std::vector<Finding> analyze(const LogView& lines,
                              const std::vector<Outage>& outs,
                              const std::vector<MetricRow>& mets,
                              const PlatformInfo& pi,
@@ -210,6 +221,12 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
 // ---- 过滤 ----
 // tag: "A,B" 逗号分隔; grep: 正则(忽略大小写); since/until: "HH:MM[:SS]" 或 "MM-DD HH:MM"
 // grepBad 置为 true 表示正则非法(调用方可提示)
+LogView applyFilterView(const std::vector<LogLine>& lines,
+                        const std::string& tag, const std::string& grep,
+                        const std::string& since, const std::string& until,
+                        bool* grepBad = nullptr);
+
+// 兼容旧调用:返回拥有数据的副本。新 UI 应优先使用 applyFilterView 避免复制正文。
 std::vector<LogLine> applyFilters(const std::vector<LogLine>& lines,
                                   const std::string& tag, const std::string& grep,
                                   const std::string& since, const std::string& until,
