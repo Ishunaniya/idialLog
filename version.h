@@ -24,11 +24,13 @@
 //           完善 Windows x64/x86 构建、自动回归与变异测试
 //   1.10.2  隔离 x64/x86 构建目录;限制批量输入总量并减少合并复制;
 //           CSV 改为原子写入,修复 DPI 切换后等宽字体丢失
+//   1.10.3  筛选改为单次遍历;断网分析增加时间窗口索引和乱序回退;
+//           页面按需渲染,新增百万行性能基准
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 2
+#define DL_VER_PATCH 3
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

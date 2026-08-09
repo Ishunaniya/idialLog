@@ -183,6 +183,57 @@ static void t8_text_line_endings() {
     ok(empty.empty(), "空文本不产生伪造行");
 }
 
+// 时间索引只对单调数据使用；时钟倒退时必须退回全扫描,不能漏掉窗口内证据。
+static void t9_unsorted_analysis_fallback() {
+    std::printf("== T9 分析时间乱序时回退全扫描 ==\n");
+    Outage outage;
+    outage.start = 150; outage.end = 170; outage.dur = 20; outage.recovered = true;
+    outage.startLine = 2; outage.endLine = 3;
+    PlatformInfo pi;
+    ParseAudit audit;
+
+    auto hasTitle = [](const std::vector<Finding>& fs, const char* needle) {
+        for (const auto& f : fs)
+            if (f.title.find(needle) != std::string::npos) return true;
+        return false;
+    };
+    auto findTitle = [](const std::vector<Finding>& fs, const char* needle) -> const Finding* {
+        for (const auto& f : fs)
+            if (f.title.find(needle) != std::string::npos) return &f;
+        return nullptr;
+    };
+
+    // 指标顺序 300→160(倒退),弱信号证据在窗口内的第二项。
+    LogLine a, b;
+    a.t = 300; a.ts = "300"; a.lineNo = 1; a.msg = "outside";
+    b.t = 100; b.ts = "100"; b.lineNo = 2; b.msg = "before";
+    MetricRow outside, weak;
+    outside.t = 300; outside.csqVal = 20; outside.csq = "20"; outside.lineNo = 1;
+    weak.t = 160; weak.csqVal = 5; weak.csq = "5"; weak.lineNo = 2; weak.ts = "160";
+    auto weakFs = analyze({a, b}, {outage}, {outside, weak}, pi, audit);
+    ok(hasTitle(weakFs, "断网根因分类:弱信号"),
+       "乱序指标回退全扫描,窗口内弱信号未漏掉");
+
+    // 事件顺序同样倒退；窗口内 SLOT 必须仍能归类为切卡/选网。
+    LogLine slotOutside, slotInside, operInside, cfunInside;
+    slotOutside.t = 300; slotOutside.ts = "300"; slotOutside.lineNo = 1;
+    slotOutside.tag = "SLOT"; slotOutside.msg = "outside switch";
+    slotInside.t = 160; slotInside.ts = "160"; slotInside.lineNo = 2;
+    slotInside.tag = "SLOT"; slotInside.msg = "switch in outage";
+    operInside.t = 161; operInside.ts = "161"; operInside.lineNo = 3;
+    operInside.tag = "OPER"; operInside.msg = "operator change in outage";
+    cfunInside.t = 162; cfunInside.ts = "162"; cfunInside.lineNo = 4;
+    cfunInside.tag = "CFUN"; cfunInside.msg = "CFUN reset in outage";
+    auto switchFs = analyze({slotOutside, slotInside, operInside, cfunInside},
+                            {outage}, {}, pi, audit);
+    ok(hasTitle(switchFs, "断网根因分类:切卡/选网/CFUN 期间"),
+       "乱序事件回退全扫描,窗口内切卡事件未漏掉");
+    const Finding* switchFinding =
+        findTitle(switchFs, "断网根因分类:切卡/选网/CFUN 期间");
+    ok(switchFinding && !switchFinding->ev.empty() && switchFinding->ev[0].lineNo == 4,
+       "同窗 SLOT/OPER/CFUN 保持旧证据顺序,CFUN 覆盖前两类");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -192,6 +243,7 @@ int main() {
     t6_pure_unsynced_no_jump();
     t7_real_unsynced_fixture_no_jump();
     t8_text_line_endings();
+    t9_unsorted_analysis_fallback();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

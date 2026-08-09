@@ -24,6 +24,7 @@
 ```bash
 make check       # 七个测试程序:解析/场景/真代码/真机基线/合并/压缩/边界
 make check-full  # check + 44 个变异；须 0 存活、0 片段失配
+make perf        # 10万/50万/100万行性能与结果规模基准
 ```
 
 `hostruntest`/`baselinetest` 依赖 `sim/hostrun*/` 已生成的日志(见下)。

@@ -18,6 +18,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run complete host regression
         run: make check
+      - name: Run large-log performance invariants
+        run: make perf
 
   sanitizers:
     runs-on: ubuntu-latest

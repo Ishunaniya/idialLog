@@ -41,3 +41,4 @@ baselinetest
 archivetest
 miniz_host.o
 boundarytest
+perftest

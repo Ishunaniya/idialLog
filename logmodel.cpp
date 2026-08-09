@@ -834,6 +834,25 @@ static const char* kCauseName[C_N] = {
     "SDK 短断网(链路抖动,非设备故障)", "未能归类"
 };
 
+static bool linePtrTimesSorted(const std::vector<const LogLine*>& v) {
+    return std::is_sorted(v.begin(), v.end(),
+                          [](const LogLine* a, const LogLine* b) { return a->t < b->t; });
+}
+
+// 正常日志按时间单调,可二分到断网窗口；若检测到时钟倒退,退回原顺序全扫，
+// 保持旧行为及证据选择顺序。sorted 由调用方预先算一次,不在每次断网里重复 O(N)。
+static const LogLine* firstLineInWindow(const std::vector<const LogLine*>& v,
+                                        long long lo, long long hi, bool sorted) {
+    if (sorted) {
+        auto it = std::lower_bound(v.begin(), v.end(), lo,
+                                   [](const LogLine* l, long long t) { return l->t < t; });
+        return it != v.end() && (*it)->t <= hi ? *it : nullptr;
+    }
+    for (const auto* l : v)
+        if (l->t >= lo && l->t <= hi) return l;
+    return nullptr;
+}
+
 std::vector<Finding> analyze(const std::vector<LogLine>& lines,
                              const std::vector<Outage>& outs,
                              const std::vector<MetricRow>& mets,
@@ -893,6 +912,14 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
     std::vector<const MetricRow*> evSdkDeny;
     for (const auto& m : mets)
         if (m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0) evSdkDeny.push_back(&m);
+
+    const bool metsTimeSorted = std::is_sorted(
+        mets.begin(), mets.end(), [](const MetricRow& a, const MetricRow& b) { return a.t < b.t; });
+    const bool slotTimeSorted = linePtrTimesSorted(evSlot);
+    const bool operTimeSorted = linePtrTimesSorted(evOper);
+    const bool cfunTimeSorted = linePtrTimesSorted(evCfun);
+    const bool deniedTimeSorted = linePtrTimesSorted(evDenied);
+    const bool notReadyTimeSorted = linePtrTimesSorted(evNotReady);
 
     // ---- 1. 从未联网(SIM/账户问题):恢复阶梯被 has_connected_once 门控 ----
     if (!evNeverConn.empty()) {
@@ -970,8 +997,16 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
         int  minRsrp = 9999;                              // 窗口内最低 RSRP(dBm,越低越差)
         const MetricRow* mZero = nullptr; const MetricRow* mWeak = nullptr;
         const MetricRow* mRsrp = nullptr; const MetricRow* mDeny = nullptr;
-        for (const auto& m : mets) {
-            if (m.t < lo || m.t > hi) continue;
+        auto mb = mets.begin(), me = mets.end();
+        if (metsTimeSorted) {
+            mb = std::lower_bound(mets.begin(), mets.end(), lo,
+                                  [](const MetricRow& m, long long t) { return m.t < t; });
+            me = std::upper_bound(mb, mets.end(), hi,
+                                  [](long long t, const MetricRow& m) { return t < m.t; });
+        }
+        for (auto it = mb; it != me; ++it) {
+            const auto& m = *it;
+            if (!metsTimeSorted && (m.t < lo || m.t > hi)) continue;
             if (m.csqVal >= 0 && m.csqVal < minCsq) { minCsq = m.csqVal; mWeak = &m; }
             if (m.rsrp < 0 && m.rsrp < minRsrp) { minRsrp = m.rsrp; mRsrp = &m; }
             if (m.drxZero) { sawZeroRx = true; if (!mZero) mZero = &m; }
@@ -982,13 +1017,16 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
         bool weakByRsrp = (minRsrp <= -110);
         bool weakByCsq  = (minCsq < 10 && mWeak);
         const LogLine* sw = nullptr;
-        for (const auto* v : { &evSlot, &evOper, &evCfun })
-            for (const auto* l : *v)
-                if (l->t >= lo && l->t <= hi) { sw = l; break; }
-        const LogLine* dn = nullptr;
-        for (const auto* l : evDenied) if (l->t >= lo && l->t <= hi) { dn = l; break; }
-        const LogLine* nr = nullptr;
-        for (const auto* l : evNotReady) if (l->t >= lo && l->t <= hi) { nr = l; break; }
+        const std::vector<const LogLine*>* switchEvents[] = { &evSlot, &evOper, &evCfun };
+        const bool switchSorted[] = { slotTimeSorted, operTimeSorted, cfunTimeSorted };
+        // 保持旧证据选择顺序:后面的类别覆盖前面(SLOT < OPER < CFUN)。
+        for (size_t i = 0; i < 3; ++i) {
+            const LogLine* candidate =
+                firstLineInWindow(*switchEvents[i], lo, hi, switchSorted[i]);
+            if (candidate) sw = candidate;
+        }
+        const LogLine* dn = firstLineInWindow(evDenied, lo, hi, deniedTimeSorted);
+        const LogLine* nr = firstLineInWindow(evNotReady, lo, hi, notReadyTimeSorted);
 
         Cause c = C_UNKNOWN;
         const LogLine* evl = nullptr;
@@ -1268,12 +1306,12 @@ std::vector<LogLine> applyFilters(const std::vector<LogLine>& lines,
                                   bool* grepBad)
 {
     if (grepBad) *grepBad = false;
-    std::vector<LogLine> cur(lines.begin(), lines.end());
 
-    // 标签
+    // 条件只预处理一次。旧实现先完整复制 lines,再为标签/正则/时间各建一份 next,
+    // 大日志会反复复制 LogLine 里的多个字符串；这里在一次遍历中完成全部判断。
+    std::vector<std::string> want;
     std::string tg = trim(tag);
     if (!tg.empty()) {
-        std::vector<std::string> want;
         size_t a = 0;
         while (a <= tg.size()) {
             size_t b = tg.find(',', a);
@@ -1282,52 +1320,51 @@ std::vector<LogLine> applyFilters(const std::vector<LogLine>& lines,
             if (b == std::string::npos) break;
             a = b + 1;
         }
-        if (!want.empty()) {
-            std::vector<LogLine> next;
-            for (const auto& l : cur) {
-                std::string lt = lower(l.tag);
-                std::string first = lt;
-                size_t sp = lt.find(' ');
-                if (sp != std::string::npos) first = lt.substr(0, sp);
-                if (std::find(want.begin(), want.end(), lt) != want.end() ||
-                    std::find(want.begin(), want.end(), first) != want.end())
-                    next.push_back(l);
-            }
-            cur.swap(next);
-        }
     }
 
-    // 正则
+    std::regex rx;
+    bool useRegex = false;
     std::string gp = trim(grep);
     if (!gp.empty()) {
         try {
-            std::regex rx(gp, std::regex::icase);
-            std::vector<LogLine> next;
-            for (const auto& l : cur)
-                if (std::regex_search(l.msg, rx)) next.push_back(l);
-            cur.swap(next);
+            rx = std::regex(gp, std::regex::icase);
+            useRegex = true;
         } catch (const std::regex_error&) {
             if (grepBad) *grepBad = true;   // 非法正则:忽略该条件,由调用方提示
         }
     }
 
-    // 时间段(以筛选后首行的年月日为基准补齐)
-    if ((!trim(since).empty() || !trim(until).empty()) && !cur.empty()) {
-        LogLine base = cur.front();
-        long long lo = 0, hi = 0;
-        bool hasLo = parseBound(since, base, lo);
-        bool hasHi = parseBound(until, base, hi);
-        if (hasLo || hasHi) {
-            std::vector<LogLine> next;
-            for (const auto& l : cur) {
-                if (hasLo && l.t < lo) continue;
-                if (hasHi && l.t > hi) continue;
-                next.push_back(l);
-            }
-            cur.swap(next);
+    const bool needBounds = !trim(since).empty() || !trim(until).empty();
+    bool boundsReady = !needBounds;
+    bool hasLo = false, hasHi = false;
+    long long lo = 0, hi = 0;
+
+    std::vector<LogLine> out;
+    const bool noConditions = want.empty() && !useRegex && !needBounds;
+    out.reserve(noConditions ? lines.size() : std::min<size_t>(lines.size(), 65536));
+    for (const auto& l : lines) {
+        if (!want.empty()) {
+            std::string lt = lower(l.tag);
+            std::string first = lt;
+            size_t sp = lt.find(' ');
+            if (sp != std::string::npos) first.resize(sp);
+            if (std::find(want.begin(), want.end(), lt) == want.end() &&
+                std::find(want.begin(), want.end(), first) == want.end())
+                continue;
         }
+        if (useRegex && !std::regex_search(l.msg, rx)) continue;
+
+        // 与旧语义一致:HH:MM 的年月日取“标签+正则筛选后第一行”,不是最终时间窗首行。
+        if (!boundsReady) {
+            hasLo = parseBound(since, l, lo);
+            hasHi = parseBound(until, l, hi);
+            boundsReady = true;
+        }
+        if (hasLo && l.t < lo) continue;
+        if (hasHi && l.t > hi) continue;
+        out.push_back(l);
     }
-    return cur;
+    return out;
 }
 
 // ============================ BOM 剥离 / 压缩包直读 ============================

@@ -86,6 +86,7 @@ static std::vector<std::pair<long long,int>> g_snr10; // LTE 详情图:SNR SDK�
 static int  g_chartDetail    = 0;                     // 0=RSRP 1=RSRQ 2=SNR,点击循环
 static int  g_chartHoverX   = -1;                     // 悬停 X(客户区),-1=未悬停
 static int g_curPage = 0;
+static bool g_pageDirty[8] = { true, true, true, true, true, true, true, true };
 
 // ============================ DPI 缩放中枢 ============================
 // PerMonitorV2:所有尺寸以 96 DPI 逻辑像素书写,经 S() 换算成当前显示器物理像素。
@@ -1549,8 +1550,32 @@ static void RenderUnparsed() {
     }
 }
 
+static void MarkAllPagesDirty() {
+    std::fill(std::begin(g_pageDirty), std::end(g_pageDirty), true);
+}
+
+// 数据更新时只刷新当前页；其它页保留脏标记,用户首次切过去时再生成控件内容。
+// 这样筛选大日志不再无条件执行五个 ListView 的逐行插入和整页 UTF-16 转换。
+static void RenderPage(int page) {
+    if (page < 0 || page >= 8 || !g_pageDirty[page]) return;
+    switch (page) {
+    case 0: RenderSummary(); InvalidateRect(hDash, nullptr, TRUE); break;
+    case 1: RenderFindings(); break;
+    case 2: RenderTimeline(); break;
+    case 3: RenderOutages(); break;
+    case 4: RenderMetrics(); break;
+    case 5: RenderTags(); break;
+    case 6: RenderRaw(); break;
+    case 7: RenderUnparsed(); break;
+    }
+    g_pageDirty[page] = false;
+}
+
 static void ShowPage(int page) {
     // 页序:0总览 1结论 2时间线 3断网 4指标 5标签 6原始行 7未识别行
+    if (page < 0 || page >= 8) return;
+    g_curPage = page;
+    RenderPage(page);   // 页仍隐藏时填充,减少 ListView 大批插入时的可见闪烁
     struct { HWND* h; int page; } items[] = {
         { &hDash, 0 }, { &hSummary, 0 }, { &hFindings, 1 }, { &hTimeline, 2 }, { &hOutage, 3 },
         { &hChart, 4 }, { &hMetric, 4 }, { &hExport, 4 },
@@ -1561,7 +1586,6 @@ static void ShowPage(int page) {
         ShowWindow(*it.h, on ? SW_SHOW : SW_HIDE);
         if (on) SetWindowPos(*it.h, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
-    g_curPage = page;
 }
 
 static void RefreshAll() {
@@ -1575,14 +1599,8 @@ static void RefreshAll() {
     // 结论基于**筛选后**的视图,与各页展示保持一致
     g_findings = analyze(g_view, g_outages, g_metrics, g_plat, g_audit);
 
-    RenderSummary();
-    RenderFindings();
-    RenderTimeline();
-    RenderOutages();
-    RenderMetrics();
-    RenderTags();
-    RenderRaw();
-    RenderUnparsed();
+    MarkAllPagesDirty();
+    RenderPage(g_curPage);
 
     std::wstring st = FmtW(L"  筛选后 %d / 共 %d 行   ·   断网 %d 次   ·   会话(重启) %d",
                            (int)g_view.size(), (int)g_all.size(), (int)g_outages.size(), (int)g_sessions.size());
@@ -1595,7 +1613,6 @@ static void RefreshAll() {
                    (int)g_audit.unparsed, g_audit.unparsedRatio() * 100.0);
     if (bad) st += L"   ·   ⚠ 正则非法,已忽略该条件";
     SetWindowTextW(hStatus, st.c_str());
-    InvalidateRect(hDash, nullptr, TRUE);
 }
 
 // 载入的公共尾段:拿到原始行之后的处理,文件与剪贴板共用
@@ -2118,10 +2135,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             SetWindowTextW(hGrepBox, L"");
             SetWindowTextW(hSinceBox, L"");
             SetWindowTextW(hUntilBox, L"");
-            RenderSummary(); RenderFindings(); RenderTimeline(); RenderOutages();
-            RenderMetrics(); RenderTags(); RenderRaw(); RenderUnparsed();
-            if (hChart) InvalidateRect(hChart, nullptr, TRUE);
-            if (hDash)  InvalidateRect(hDash,  nullptr, TRUE);
+            MarkAllPagesDirty();
+            RenderPage(g_curPage);
             SetWindowTextW(hFileLbl, L"");
             SetWindowTextW(hStatus, L"尚未加载日志。");
             return 0;

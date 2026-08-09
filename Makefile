@@ -69,6 +69,7 @@ MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 OBJS := $(BUILD_DIR)/ui.o $(BUILD_DIR)/logmodel.o \
         $(BUILD_DIR)/miniz.o $(BUILD_DIR)/resource.o
 TEST_BINS := selftest simtest hostruntest baselinetest mergetest archivetest boundarytest
+PERF_BIN := perftest
 
 all: $(TARGET)
 
@@ -146,6 +147,13 @@ archivetest: archivetest.cpp logmodel_archive_host.o miniz_host.o
 boundarytest: boundarytest.cpp logmodel_host.o
 	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
+# 大日志性能基准:默认 10万/50万/100万行,输出各阶段耗时并校验结果规模。
+perftest: perftest.cpp logmodel_host.o
+	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+
+perf: perftest
+	./perftest
+
 # 日常唯一回归入口。变异测试耗时较长,单独放在 check-full。
 check: $(TEST_BINS)
 	./selftest samples/rtms_eg25/dial_20260630_000026.log
@@ -161,9 +169,9 @@ check-full: check
 
 clean:
 	rm -rf build
-	rm -f logmodel_host.o logmodel_archive_host.o miniz_host.o $(TEST_BINS)
+	rm -f logmodel_host.o logmodel_archive_host.o miniz_host.o $(TEST_BINS) $(PERF_BIN)
 
 version:
 	@echo $(VER)
 
-.PHONY: all clean version check check-full windows-x64 windows-x86 windows-all release
+.PHONY: all clean version check check-full perf windows-x64 windows-x86 windows-all release
