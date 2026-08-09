@@ -84,7 +84,7 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # x64: build/x64/dialLog_v1.10.4.exe
+make                     # x64: build/x64/dialLog_v1.10.5.exe
 make windows-all         # 同时构建 build/x64 与 build/x86
 make release             # 正式 x64 产物复制到仓库根目录
 make version             # 只打印当前版本号
@@ -101,7 +101,7 @@ mingw32-make CROSS=
 ### 32 位
 
 ```bash
-make windows-x86         # build/x86/dialLog_v1.10.4.exe
+make windows-x86         # build/x86/dialLog_v1.10.5.exe
 ```
 
 `CROSS` 同时派生 `CC/CXX/WINDRES`;每种工具链使用独立构建目录,连续切换架构
@@ -114,13 +114,14 @@ make windows-x86         # build/x86/dialLog_v1.10.4.exe
 `logmodel.*` 不含 Win32 依赖,可用本机 g++ 直接编译验证:
 
 ```bash
-make check       # 七个测试程序:解析、场景、真代码、真机基线、合并、压缩、边界
+make check       # 八个测试程序:解析、场景、真代码、真机基线、合并、压缩、边界、虚拟表
 make check-full  # check + 44 个变异；靶向路由、默认并发2、带逐项进度与超时
-make perf        # 10万/50万/100万行:分阶段计时 + 轻量视图内存/归属断言
+make perf        # 10万/50万/100万行:分阶段计时 + 轻量视图/虚拟表规模断言
 ```
 
 变异并发数可用 `DL_MUTATE_JOBS=1..4` 调整。
-性能基准校验数据规模、分析结果和轻量视图归属,并对比指针视图与对象数组的结构字节数;
+性能基准校验数据规模、分析结果和轻量视图归属,对比指针视图与对象数组的结构字节数,
+并统计虚拟时间线/指标表省去的预写单元格数;
 不设置依赖机器负载的墙钟阈值。
 
 自测会做**审计自洽校验**(`已解析 + 会话标记 + 空行 + 未识别 == 原始行数`),
@@ -172,9 +173,9 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.10.4.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.10.5.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.10.4 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.10.5 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 只清理 `build/` 和测试程序,不会误删仓库根目录中已提交的发布 exe。
@@ -193,6 +194,7 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | 1.10.2 | 隔离 x64/x86 构建目录;限制批量输入总量并减少合并复制;CSV 原子写入;修复 DPI 切换后的等宽字体 |
 | 1.10.3 | 单遍筛选;断网时间窗口索引及乱序回退;页面按需渲染;新增百万行性能基准 |
 | 1.10.4 | 筛选结果改为轻量指针视图;复用同一套分析实现;解析后提前释放原始文本;新增内存断言 |
+| 1.10.5 | 时间线和指标表改为虚拟列表,只按需格式化可见单元格;新增表格格式回归和百万行免预写统计 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞 1.2MB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。
@@ -215,6 +217,7 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | 文件 | 说明 |
 |---|---|
 | `logmodel.h/.cpp` | 解析 + 分析 + 结论引擎(纯标准 C++17,无 Win32 依赖,可单独测试) |
+| `tablemodel.h/.cpp` | 虚拟时间线/指标表的数据源与单元格格式化(纯标准 C++17,可单独测试) |
 | `ui.cpp` | Win32 界面层(页签/列表/自绘 CSQ + LTE 质量图/拖拽/粘贴/导出) |
 | `selftest.cpp` | 解析层自测(含审计自洽校验、结论必带证据校验) |
 | `resource.rc` + `app.manifest` | 嵌入清单:comctl32 v6 现代控件外观 + DPI 感知 + 版本信息 |

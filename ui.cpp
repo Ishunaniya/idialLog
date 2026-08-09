@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "logmodel.h"
+#include "tablemodel.h"
 #include "version.h"
 #include "theme.h"
 
@@ -66,6 +67,7 @@ static LogView               g_view;      // 借用 g_all,不复制每行的字�
 static std::vector<std::string> g_sessions;
 static std::vector<Outage>   g_outages;
 static std::vector<MetricRow> g_metrics;
+static LogView               g_timelineRows; // 虚拟时间线借用 g_all,只保存可见行指针
 static ParseAudit            g_audit;      // 未识别行审计(“没漏消息”的硬证据)
 static PlatformInfo          g_plat;       // 自动识别的来源平台
 static std::vector<Finding>  g_findings;   // 结论引擎输出
@@ -79,7 +81,7 @@ struct SumCard {
     bool mono = false;               // 内容是否等宽(报错/证据类用等宽对齐)
 };
 static std::vector<SumCard> g_sumCards;
-static std::vector<COLORREF> g_tlColors, g_ogColors;
+static std::vector<COLORREF> g_ogColors;
 static std::vector<std::pair<long long,int>> g_csq;   // 供图表
 static std::vector<std::pair<long long,int>> g_rsrp;  // LTE 详情图:RSRP dBm
 static std::vector<std::pair<long long,int>> g_rsrq;  // LTE 详情图:RSRQ dB
@@ -1422,21 +1424,10 @@ static void RenderSummary() {
 }
 
 static void RenderTimeline() {
-    ListView_DeleteAllItems(hTimeline);
-    g_tlColors.clear();
-    int row = 0;
-    for (const LogLine* item : g_view) {
-        const LogLine& l = *item;
-        bool keep = isEventLine(l);
-        if (l.tag.compare(0, 9, "HEARTBEAT") == 0 && (isFaultStart(l.msg) || isRecovered(l.msg, nullptr)))
-            keep = true;
-        if (!keep) continue;
-        LvAddRow(hTimeline, row, U8ToW(fmtTime(l.t, "MD")));
-        LvSet(hTimeline, row, 1, U8ToW(l.tag));
-        LvSet(hTimeline, row, 2, U8ToW(l.msg.substr(0, 200)));
-        g_tlColors.push_back(RowColor(l));
-        row++;
-    }
+    buildTimelineView(g_view, g_timelineRows);
+    ListView_SetItemCountEx(hTimeline, (int)g_timelineRows.size(),
+                            LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
+    InvalidateRect(hTimeline, nullptr, TRUE);
 }
 
 static void RenderOutages() {
@@ -1460,34 +1451,19 @@ static void RenderOutages() {
 }
 
 static void RenderMetrics() {
-    ListView_DeleteAllItems(hMetric);
     g_csq.clear();
     g_rsrp.clear();
     g_rsrq.clear();
     g_snr10.clear();
-    int row = 0;
     for (const auto& m : g_metrics) {
-        LvAddRow(hMetric, row, U8ToW(m.ts));
-        LvSet(hMetric, row, 1, U8ToW(m.ch));
-        LvSet(hMetric, row, 2, U8ToW(m.csq));
-        LvSet(hMetric, row, 3, U8ToW(m.tmax));
-        LvSet(hMetric, row, 4, U8ToW(m.cf));
-        LvSet(hMetric, row, 5, U8ToW(m.rx));
-        LvSet(hMetric, row, 6, U8ToW(m.drx));
-        LvSet(hMetric, row, 7, m.rsrp < 0 ? FmtW(L"%d", m.rsrp) : L"-");
-        LvSet(hMetric, row, 8, m.rsrq < 0 ? FmtW(L"%d", m.rsrq) : L"-");
-        LvSet(hMetric, row, 9, m.snr10 != 100000 ? FmtW(L"%.1f", m.snr10 / 10.0) : L"-");
-        LvSet(hMetric, row, 10, m.rssiVal < 0 ? FmtW(L"%d", m.rssiVal) : L"-");
-        LvSet(hMetric, row, 11, U8ToW(m.srv));
-        LvSet(hMetric, row, 12, U8ToW(m.rat));
-        LvSet(hMetric, row, 13, U8ToW(m.deny));
-        LvSet(hMetric, row, 14, U8ToW(m.oper));
         if (m.csqVal >= 0) g_csq.push_back({ m.t, m.csqVal });
         if (m.rsrp < 0)    g_rsrp.push_back({ m.t, m.rsrp });
         if (m.rsrq < 0)    g_rsrq.push_back({ m.t, m.rsrq });
         if (m.snr10 != 100000) g_snr10.push_back({ m.t, m.snr10 });
-        row++;
     }
+    ListView_SetItemCountEx(hMetric, (int)g_metrics.size(),
+                            LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
+    InvalidateRect(hMetric, nullptr, TRUE);
     const bool detailEmpty = g_chartDetail == 0 ? g_rsrp.empty() :
                              (g_chartDetail == 1 ? g_rsrq.empty() : g_snr10.empty());
     if (detailEmpty) {
@@ -1558,8 +1534,16 @@ static void MarkAllPagesDirty() {
     std::fill(std::begin(g_pageDirty), std::end(g_pageDirty), true);
 }
 
+// OWNERDATA 控件只保存行数,数据仍属于下列 C++ 模型。模型即将重建/释放时必须先把
+// 行数归零,避免控件在重绘通知中索引已经失效的 g_metrics / g_timelineRows。
+static void ResetVirtualTables() {
+    if (hTimeline) ListView_SetItemCountEx(hTimeline, 0, LVSICF_NOSCROLL);
+    if (hMetric)   ListView_SetItemCountEx(hMetric,   0, LVSICF_NOSCROLL);
+    g_timelineRows.clear();
+}
+
 // 数据更新时只刷新当前页；其它页保留脏标记,用户首次切过去时再生成控件内容。
-// 这样筛选大日志不再无条件执行五个 ListView 的逐行插入和整页 UTF-16 转换。
+// 时间线/指标还使用 OWNERDATA 虚拟表,这里只设置行数,滚动到可见单元格时才转 UTF-16。
 static void RenderPage(int page) {
     if (page < 0 || page >= 8 || !g_pageDirty[page]) return;
     switch (page) {
@@ -1594,6 +1578,7 @@ static void ShowPage(int page) {
 
 static void RefreshAll() {
     if (g_all.empty()) { SetWindowTextW(hStatus, L"尚未加载日志。"); return; }
+    ResetVirtualTables();
     bool bad = false;
     g_view = applyFilterView(g_all, WToU8(GetText(hTagBox)), WToU8(GetText(hGrepBox)),
                              WToU8(GetText(hSinceBox)), WToU8(GetText(hUntilBox)), &bad);
@@ -1622,6 +1607,7 @@ static void RefreshAll() {
 // 载入的公共尾段:移动接管原始行,解析后立即释放,不让 raw 与后续分析结果长期共存。
 static void LoadRawLines(std::vector<std::string> raw, const std::wstring& srcLabel,
                          const std::vector<size_t>& fileBoundaries = {}) {
+    ResetVirtualTables();
     g_view.clear();  // parseLines 会重建 g_all,先解除所有借用指针
     parseLines(raw, g_all, g_sessions, &g_audit, fileBoundaries);
     std::vector<std::string>().swap(raw);
@@ -1935,9 +1921,12 @@ static HWND Mk(const wchar_t* cls, const wchar_t* txt, DWORD style, int x, int y
     return c;
 }
 
-static HWND MkLv(int id, std::initializer_list<std::pair<const wchar_t*, int>> cols) {
+static HWND MkLv(int id, std::initializer_list<std::pair<const wchar_t*, int>> cols,
+                 bool ownerData = false) {
+    DWORD style = WS_CHILD | WS_BORDER | LVS_REPORT | LVS_SHOWSELALWAYS;
+    if (ownerData) style |= LVS_OWNERDATA;
     HWND lv = CreateWindowExW(0, WC_LISTVIEWW, L"",
-                              WS_CHILD | WS_BORDER | LVS_REPORT | LVS_SHOWSELALWAYS,
+                              style,
                               0, 0, 10, 10, hMain, (HMENU)(INT_PTR)id, GetModuleHandleW(nullptr), nullptr);
     ListView_SetExtendedListViewStyle(lv, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);  // 不要网格线:老派且抢视觉
     SendMessageW(lv, WM_SETFONT, (WPARAM)hFontMono, TRUE);
@@ -2024,13 +2013,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                                     WS_CHILD | WS_VISIBLE | WS_VSCROLL,
                                     0, 0, 100, 100, hwnd, (HMENU)(INT_PTR)IDC_FINDINGS, GetModuleHandleW(nullptr), nullptr);
         hUnparsed = MkLv(IDC_UNPARSED, { {L"原始行号", 90}, {L"未识别的原文", 960} });
-        hTimeline = MkLv(IDC_TIMELINE, { {L"时间", 140}, {L"标签", 90}, {L"消息", 820} });
+        hTimeline = MkLv(IDC_TIMELINE, { {L"时间", 140}, {L"标签", 90}, {L"消息", 820} }, true);
         hOutage   = MkLv(IDC_OUTAGE,   { {L"#", 44}, {L"开始", 160}, {L"恢复", 160}, {L"时长", 90} });
         hMetric   = MkLv(IDC_METRIC,   { {L"时间", 140}, {L"CH", 90}, {L"CSQ", 60}, {L"Tmax", 60},
                                          {L"ConsecFail", 90}, {L"RX_PKT", 110}, {L"ΔRX", 80},
                                          {L"RSRP", 70}, {L"RSRQ", 70}, {L"SNR(dB)", 80},
                                          {L"RSSI", 70}, {L"SRV", 55}, {L"RAT", 80},
-                                         {L"DENY", 60}, {L"OPER", 150} });
+                                         {L"DENY", 60}, {L"OPER", 150} }, true);
         hTags     = MkLv(IDC_TAGS,     { {L"标签", 150}, {L"次数", 80}, {L"占比", 600} });
         hRaw = Mk(L"EDIT", L"", WS_BORDER | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY,
                   0, 0, 10, 10, IDC_RAW, hFontMono);
@@ -2128,10 +2117,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         case IDC_CLOSELOG: {
             // 关闭日志:卸载数据回到"尚未加载"。RefreshAll 对空数据会提前 return
             // (不刷各页),故此处手动逐页渲染,否则列表/卡片残留上一份日志。
+            ResetVirtualTables();
             g_view.clear(); g_all.clear();
             g_sessions.clear(); g_outages.clear(); g_metrics.clear();
             g_findings.clear(); g_sumCards.clear();
-            g_tlColors.clear(); g_ogColors.clear();
+            g_ogColors.clear();
             g_csq.clear(); g_rsrp.clear(); g_rsrq.clear(); g_snr10.clear();
             g_chartDetail = 0;
             g_audit = ParseAudit{};
@@ -2157,18 +2147,41 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             ShowPage(TabCtrl_GetCurSel(hTab));
             return 0;
         }
+        if (hdr->code == LVN_GETDISPINFOW &&
+            (hdr->hwndFrom == hTimeline || hdr->hwndFrom == hMetric)) {
+            NMLVDISPINFOW* di = reinterpret_cast<NMLVDISPINFOW*>(lp);
+            if ((di->item.mask & LVIF_TEXT) && di->item.pszText && di->item.cchTextMax > 0 &&
+                di->item.iItem >= 0 && di->item.iSubItem >= 0) {
+                const size_t row = (size_t)di->item.iItem;
+                const size_t col = (size_t)di->item.iSubItem;
+                std::string text;
+                if (hdr->hwndFrom == hTimeline && row < g_timelineRows.size() &&
+                    col < kTimelineColumnCount) {
+                    text = timelineCellText(*g_timelineRows[row], col);
+                } else if (hdr->hwndFrom == hMetric && row < g_metrics.size() &&
+                           col < kMetricColumnCount) {
+                    text = metricCellText(g_metrics[row], col);
+                }
+                const std::wstring wide = U8ToW(text);
+                lstrcpynW(di->item.pszText, wide.c_str(), di->item.cchTextMax);
+            }
+            return 0;
+        }
         if (hdr->code == NM_CUSTOMDRAW &&
             (hdr->hwndFrom == hTimeline || hdr->hwndFrom == hOutage || hdr->hwndFrom == hMetric ||
              hdr->hwndFrom == hTags || hdr->hwndFrom == hUnparsed)) {
             LPNMLVCUSTOMDRAW cd = (LPNMLVCUSTOMDRAW)lp;
             // 时间线 / 断网:整行文字着色 + 斑马纹底
             if (hdr->hwndFrom == hTimeline || hdr->hwndFrom == hOutage) {
-                const std::vector<COLORREF>& cols = (hdr->hwndFrom == hTimeline) ? g_tlColors : g_ogColors;
                 switch (cd->nmcd.dwDrawStage) {
                 case CDDS_PREPAINT:     return CDRF_NOTIFYITEMDRAW;
                 case CDDS_ITEMPREPAINT: {
                     size_t i = (size_t)cd->nmcd.dwItemSpec;
-                    if (i < cols.size()) cd->clrText = cols[i];
+                    if (hdr->hwndFrom == hTimeline) {
+                        if (i < g_timelineRows.size()) cd->clrText = RowColor(*g_timelineRows[i]);
+                    } else if (i < g_ogColors.size()) {
+                        cd->clrText = g_ogColors[i];
+                    }
                     cd->clrTextBk = (i & 1) ? th::zebra : GetSysColor(COLOR_WINDOW);   // 斑马纹
                     return CDRF_DODEFAULT;
                 }
