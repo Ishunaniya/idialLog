@@ -208,8 +208,8 @@ static void t9_unsorted_analysis_fallback() {
     a.t = 300; a.ts = "300"; a.lineNo = 1; a.msg = "outside";
     b.t = 100; b.ts = "100"; b.lineNo = 2; b.msg = "before";
     MetricRow outside, weak;
-    outside.t = 300; outside.csqVal = 20; outside.csq = "20"; outside.lineNo = 1;
-    weak.t = 160; weak.csqVal = 5; weak.csq = "5"; weak.lineNo = 2; weak.ts = "160";
+    outside.t = 300; outside.csqVal = 20; outside.csqRaw = 20; outside.lineNo = 1;
+    weak.t = 160; weak.csqVal = 5; weak.csqRaw = 5; weak.lineNo = 2;
     auto weakFs = analyze({a, b}, {outage}, {outside, weak}, pi, audit);
     ok(hasTitle(weakFs, "断网根因分类:弱信号"),
        "乱序指标回退全扫描,窗口内弱信号未漏掉");
@@ -217,13 +217,13 @@ static void t9_unsorted_analysis_fallback() {
     // 事件顺序同样倒退；窗口内 SLOT 必须仍能归类为切卡/选网。
     LogLine slotOutside, slotInside, operInside, cfunInside;
     slotOutside.t = 300; slotOutside.ts = "300"; slotOutside.lineNo = 1;
-    slotOutside.tag = "SLOT"; slotOutside.msg = "outside switch";
+    slotOutside.setTag("SLOT"); slotOutside.msg = "outside switch";
     slotInside.t = 160; slotInside.ts = "160"; slotInside.lineNo = 2;
-    slotInside.tag = "SLOT"; slotInside.msg = "switch in outage";
+    slotInside.setTag("SLOT"); slotInside.msg = "switch in outage";
     operInside.t = 161; operInside.ts = "161"; operInside.lineNo = 3;
-    operInside.tag = "OPER"; operInside.msg = "operator change in outage";
+    operInside.setTag("OPER"); operInside.msg = "operator change in outage";
     cfunInside.t = 162; cfunInside.ts = "162"; cfunInside.lineNo = 4;
-    cfunInside.tag = "CFUN"; cfunInside.msg = "CFUN reset in outage";
+    cfunInside.setTag("CFUN"); cfunInside.msg = "CFUN reset in outage";
     auto switchFs = analyze({slotOutside, slotInside, operInside, cfunInside},
                             {outage}, {}, pi, audit);
     ok(hasTitle(switchFs, "断网根因分类:切卡/选网/CFUN 期间"),
@@ -232,6 +232,73 @@ static void t9_unsorted_analysis_fallback() {
         findTitle(switchFs, "断网根因分类:切卡/选网/CFUN 期间");
     ok(switchFinding && !switchFinding->ev.empty() && switchFinding->ev[0].lineNo == 4,
        "同窗 SLOT/OPER/CFUN 保持旧证据顺序,CFUN 覆盖前两类");
+}
+
+static void t10_streaming_parser_equivalence() {
+    std::printf("== T10 增量解析与批量入口等价 ==\n");
+    std::vector<std::string> raw = L({
+        "=== Dial Log Opened [2026-06-30 10:00:00] daykey=20260630 ===",
+        "[2026-06-30 10:00:01] [RECOVERY L2] AT+CFUN=0 rsp:",
+        "OK",
+        "[2026-06-30 10:00:03] [HEARTBEAT] CH:SIM | CSQ:20 | RX_PKT:100"
+    });
+    std::vector<LogLine> batch, stream;
+    std::vector<std::string> batchSessions, streamSessions;
+    ParseAudit batchAudit, streamAudit;
+    parseLines(raw, batch, batchSessions, &batchAudit, {2});
+
+    StreamingLogParser parser(stream, streamSessions, raw.size());
+    parser.beginFile();
+    parser.pushLine(raw[0]);
+    parser.pushLine(raw[1]);
+    parser.beginFile();
+    parser.pushLine(raw[2]);
+    parser.pushLine(raw[3]);
+    parser.finish(&streamAudit);
+
+    bool sameLines = batch.size() == stream.size();
+    for (size_t i = 0; sameLines && i < batch.size(); ++i) {
+        sameLines = batch[i].t == stream[i].t &&
+                    batch[i].lineNo == stream[i].lineNo &&
+                    batch[i].ts == stream[i].ts &&
+                    batch[i].tagText() == stream[i].tagText() &&
+                    batch[i].msg == stream[i].msg &&
+                    batch[i].fmt == stream[i].fmt &&
+                    batch[i].level == stream[i].level;
+    }
+    bool sameAudit = batchAudit.rawTotal == streamAudit.rawTotal &&
+                     batchAudit.parsed == streamAudit.parsed &&
+                     batchAudit.session == streamAudit.session &&
+                     batchAudit.blank == streamAudit.blank &&
+                     batchAudit.continuation == streamAudit.continuation &&
+                     batchAudit.unparsed == streamAudit.unparsed &&
+                     batchAudit.unparsedKinds == streamAudit.unparsedKinds;
+    ok(sameLines && batchSessions == streamSessions && sameAudit,
+       "逐文件 pushLine 的行、会话、审计与 parseLines 完全一致");
+}
+
+static void t11_compact_record_boundaries() {
+    std::printf("== T11 紧凑记录数值与未知标签边界 ==\n");
+    std::vector<std::string> raw = L({
+        "[2026-06-30 10:00:00] [HEARTBEAT] CSQ:+20 | Temp:-2000,+50 | RX_PKT:9223372036854775807",
+        "[2026-06-30 10:00:01] [HEARTBEAT] CSQ:21 | RSRP:-2147483649 | RX_PKT:-9223372036854775808",
+        "[2026-06-30 10:00:02] [RuntimeMixedTag] future firmware payload"
+    });
+    std::vector<LogLine> lines;
+    std::vector<std::string> sessions;
+    parseLines(raw, lines, sessions);
+    auto metrics = buildMetrics(lines);
+    ok(metrics.size() == 2 && metrics[0].csqRaw == 20 && metrics[0].tempMax == 50,
+       "显式正号与多温度仍按旧语义解析");
+    ok(metrics.size() == 2 && metrics[1].drx == LLONG_MIN && metrics[1].rsrp == 1,
+       "RX 差值溢出与超 int 信号值保持无效标记");
+
+    bool unknownPreserved = lines.size() == 3 &&
+                            lines[2].tagText() == "RuntimeMixedTag";
+    LogLine copied = lines.size() == 3 ? lines[2] : LogLine{};
+    if (lines.size() == 3) lines[2].setTag("ChangedAfterCopy");
+    ok(unknownPreserved && copied.tagText() == "RuntimeMixedTag",
+       "未知标签保留原文且 LogLine 深拷贝不悬空");
 }
 
 int main() {
@@ -244,6 +311,8 @@ int main() {
     t7_real_unsynced_fixture_no_jump();
     t8_text_line_endings();
     t9_unsorted_analysis_fallback();
+    t10_streaming_parser_equivalence();
+    t11_compact_record_boundaries();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

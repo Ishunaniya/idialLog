@@ -46,8 +46,8 @@ def run_cmd(cmd, **kwargs):
 MUTATIONS = [
     # ── 分类/结论逻辑 ──
     ("CP dump 退回'见标签就报'",
-     'l.tag == "CPDUMP" && icontains(l.msg, "existing CP dump")',
-     'l.tag == "CPDUMP" && true'),
+     'l.tagText() == "CPDUMP" && icontains(l.msg, "existing CP dump")',
+     'l.tagText() == "CPDUMP" && true'),
     ("恢复阶梯退回按行计数",
      'if (!v.empty() && l.t - v.back()->t <= 30) return;',
      'if (false) return;'),
@@ -167,12 +167,12 @@ MUTATIONS = [
      'bool isOpened = line.find("Dial Log Opened") != std::string::npos ||\n                        line.find("Dial Program Started") != std::string::npos;',
      'bool isOpened = line.find("Dial Log Opened") != std::string::npos ||\n                        line.find("Dial Program StartedZZ") != std::string::npos;'),
     # ── RSRP/RSRQ 提取 —— baselinetest 靶子 ──
-    ('RSRP 提取失效(pick键改错)',
-     'if ((v = pick(f, {"RSRP", "rsrp"}))) {',
-     'if ((v = pick(f, {"RSRPZZ", "rsrp"}))) {'),
+    ('RSRP 提取失效(字段键改错)',
+     'else if (k == "RSRP")        f.rsrpUpper = v;',
+     'else if (k == "RSRPZZ")      f.rsrpUpper = v;'),
     ('RSRP 负值过滤反向(只收正数→全废)',
-     'if (endp != v->c_str() && r < 0) m.rsrp = (int)r;',
-     'if (endp != v->c_str() && r > 0) m.rsrp = (int)r;'),
+     'if (parseLong(firstOf(f.rsrpUpper, f.rsrpLower), number) &&\n            number >= INT_MIN && number < 0) m.rsrp = (int)number;',
+     'if (parseLong(firstOf(f.rsrpUpper, f.rsrpLower), number) &&\n            number >= INT_MIN && number > 0) m.rsrp = (int)number;'),
     # ── RSRP 断网分类 + 信号劣化结论 —— baselinetest 靶子 ──
     ('RSRP断网分类失效(阈值-110退回不可能值)',
      'bool weakByRsrp = (minRsrp <= -110);',
@@ -182,8 +182,8 @@ MUTATIONS = [
      'if (avg >= -100 && mWorst) {'),
     # ── 新 SDK 心跳字段 SNR / DENY —— baselinetest 精确值与结论边界的靶子 ──
     ('SNR原始0.1dB被误除10(246不再精确保留)',
-     'm.snr10 = (int)r;',
-     'm.snr10 = (int)r / 10;'),
+     'm.snr10 = (int)number;',
+     'm.snr10 = (int)number / 10;'),
     ('SNR推断提示被关闭',
      'if (n >= 5 && nonPositive * 2 >= n && mWorst) {',
      'if (false && mWorst) {'),

@@ -38,7 +38,7 @@ int main() {
         auto it = byLine.find(l->lineNo);
         borrowed = borrowed && it != byLine.end() && it->second == l;
         cells = cells && timelineCellText(*l, 0) == fmtTime(l->t, "MD") &&
-                timelineCellText(*l, 1) == l->tag &&
+                timelineCellText(*l, 1) == l->tagText() &&
                 timelineCellText(*l, 2) == l->msg.substr(0, 200);
     }
     ok(borrowed, "时间线行全部借用筛选视图,不复制 LogLine");
@@ -46,12 +46,12 @@ int main() {
 
     std::puts("== T2 指标虚拟列格式 ==");
     MetricRow m;
-    m.ts = "06-30 00:00:00"; m.ch = "SIM"; m.csq = "20"; m.tmax = "60";
-    m.cf = "0"; m.rx = "100"; m.drx = "5"; m.rsrp = -104; m.rsrq = -10;
-    m.snr10 = -25; m.rssiVal = -65; m.srv = "2"; m.rat = "LTE";
-    m.deny = "0"; m.oper = "CMCC 46000";
-    const char* expected[kMetricColumnCount] = {
-        "06-30 00:00:00", "SIM", "20", "60", "0", "100", "5",
+    m.t = 1782758400; m.ch = "SIM"; m.csqRaw = 20; m.tempMax = 60;
+    m.consecFail = 0; m.rx = 100; m.drx = 5; m.rsrp = -104; m.rsrq = -10;
+    m.snr10 = -25; m.rssiVal = -65; m.srvVal = 2; m.rat = "LTE";
+    m.denyVal = 0; m.oper = "CMCC 46000";
+    const std::string expected[kMetricColumnCount] = {
+        fmtTime(m.t, "MD"), "SIM", "20", "60", "0", "100", "5",
         "-104", "-10", "-2.5", "-65", "2", "LTE", "0", "CMCC 46000"
     };
     bool metricCells = true;

@@ -157,6 +157,10 @@ static bool runOne(size_t n) {
 }
 
 int main(int argc, char** argv) {
+    const bool compactRecords = sizeof(LogLine) <= 112 && sizeof(MetricRow) <= 192;
+    std::printf("== 紧凑记录布局 ==\n"
+                "   LogLine %zu B (上限 112) | MetricRow %zu B (上限 192) | %s\n",
+                sizeof(LogLine), sizeof(MetricRow), compactRecords ? "通过" : "失败");
     std::vector<size_t> sizes;
     for (int i = 1; i < argc; ++i) {
         char* end = nullptr;
@@ -170,7 +174,7 @@ int main(int argc, char** argv) {
     if (sizes.empty()) sizes = {100000, 500000, 1000000};
 
     std::puts("== 大日志性能基准 ==");
-    bool ok = true;
+    bool ok = compactRecords;
     for (size_t n : sizes) ok = runOne(n) && ok;
     return ok ? 0 : 1;
 }

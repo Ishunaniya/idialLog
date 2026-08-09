@@ -2,6 +2,7 @@
 #include "tablemodel.h"
 
 #include <algorithm>
+#include <climits>
 #include <cstdio>
 
 namespace dl {
@@ -13,7 +14,7 @@ void buildTimelineView(const LogView& lines, LogView& timeline) {
     timeline.reserve(std::min<size_t>(lines.size(), 65536));
     for (const LogLine* line : lines) {
         bool keep = isEventLine(*line);
-        if (line->tag.compare(0, 9, "HEARTBEAT") == 0 &&
+        if (line->tagText().compare(0, 9, "HEARTBEAT") == 0 &&
             (isFaultStart(line->msg) || isRecovered(line->msg, nullptr)))
             keep = true;
         if (keep) timeline.push_back(line);
@@ -23,7 +24,7 @@ void buildTimelineView(const LogView& lines, LogView& timeline) {
 std::string timelineCellText(const LogLine& line, size_t column) {
     switch (column) {
     case 0: return fmtTime(line.t, "MD");
-    case 1: return line.tag;
+    case 1: return line.tagText();
     case 2: return line.msg.substr(0, 200);
     default: return {};
     }
@@ -31,13 +32,13 @@ std::string timelineCellText(const LogLine& line, size_t column) {
 
 std::string metricCellText(const MetricRow& m, size_t column) {
     switch (column) {
-    case 0:  return m.ts;
-    case 1:  return m.ch;
-    case 2:  return m.csq;
-    case 3:  return m.tmax;
-    case 4:  return m.cf;
-    case 5:  return m.rx;
-    case 6:  return m.drx;
+    case 0:  return fmtTime(m.t, "MD");
+    case 1:  return m.ch.empty() ? "-" : m.ch;
+    case 2:  return m.csqRaw >= 0 ? std::to_string(m.csqRaw) : "-";
+    case 3:  return m.tempMax != INT_MIN ? std::to_string(m.tempMax) : "-";
+    case 4:  return m.consecFail != INT_MIN ? std::to_string(m.consecFail) : "-";
+    case 5:  return m.rx != LLONG_MIN ? std::to_string(m.rx) : "-";
+    case 6:  return m.drx != LLONG_MIN ? std::to_string(m.drx) : "-";
     case 7:  return m.rsrp < 0 ? std::to_string(m.rsrp) : "-";
     case 8:  return m.rsrq < 0 ? std::to_string(m.rsrq) : "-";
     case 9: {
@@ -47,10 +48,10 @@ std::string metricCellText(const MetricRow& m, size_t column) {
         return buf;
     }
     case 10: return m.rssiVal < 0 ? std::to_string(m.rssiVal) : "-";
-    case 11: return m.srv;
-    case 12: return m.rat;
-    case 13: return m.deny;
-    case 14: return m.oper;
+    case 11: return m.srvVal >= 0 ? std::to_string(m.srvVal) : "-";
+    case 12: return m.rat.empty() ? "-" : m.rat;
+    case 13: return m.denyVal >= 0 ? std::to_string(m.denyVal) : "-";
+    case 14: return m.oper.empty() ? "-" : m.oper;
     default: return {};
     }
 }

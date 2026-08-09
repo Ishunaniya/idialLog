@@ -17,7 +17,7 @@
 
 #include <algorithm>
 #include <climits>
-#include <iterator>
+#include <limits>
 #include <map>
 #include <new>
 #include <string>
@@ -188,6 +188,98 @@ static bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstri
     return true;
 }
 
+// 普通日志按 1 MiB 分块切行。carry 只保留跨块的半行；典型日志的输入峰值由
+// “整文件字节串 + 全部 string 行”降为一个块和一条未完成行。
+template <class Sink>
+static bool ReadPlainLines(const std::wstring& path, size_t maxLines, Sink&& sink,
+                           size_t* fileBytes, std::wstring& err) {
+    err.clear();
+    HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) { err = L"无法打开文件"; return false; }
+    LARGE_INTEGER sz;
+    if (!GetFileSizeEx(h, &sz) || sz.QuadPart < 0) {
+        CloseHandle(h); err = L"无法取得文件大小"; return false;
+    }
+    if (sz.QuadPart > kMaxInputBytes) {
+        CloseHandle(h); err = L"文件超过 512 MiB 输入限制"; return false;
+    }
+    if (fileBytes) *fileBytes = (size_t)sz.QuadPart;
+
+    std::vector<char> block;
+    std::string carry;
+    try {
+        block.resize(1024 * 1024);
+    } catch (const std::bad_alloc&) {
+        CloseHandle(h); err = L"内存不足,无法建立读取缓冲"; return false;
+    }
+
+    size_t total = 0, emitted = 0;
+    bool first = true;
+    try {
+        while (total < (size_t)sz.QuadPart) {
+            DWORD want = (DWORD)std::min<size_t>(block.size(), (size_t)sz.QuadPart - total);
+            DWORD got = 0;
+            if (!ReadFile(h, block.data(), want, &got, nullptr) || got == 0) break;
+            total += got;
+            carry.append(block.data(), got);
+            if (first) { dl::stripBom(carry); first = false; }
+
+            const bool eof = total == (size_t)sz.QuadPart;
+            size_t start = 0, i = 0;
+            while (i < carry.size()) {
+                if (carry[i] != '\n' && carry[i] != '\r') { ++i; continue; }
+                // CRLF 被块边界切开时先留下 CR，等下一块一起判定。
+                if (carry[i] == '\r' && i + 1 == carry.size() && !eof) break;
+                sink(carry.substr(start, i - start));
+                ++emitted;
+                if (carry[i] == '\r' && i + 1 < carry.size() && carry[i + 1] == '\n') ++i;
+                start = ++i;
+                if (emitted >= maxLines) {
+                    CloseHandle(h);
+                    return true;
+                }
+            }
+            if (start) carry.erase(0, start);
+        }
+    } catch (...) {
+        CloseHandle(h);
+        throw;
+    }
+    CloseHandle(h);
+    if (total != (size_t)sz.QuadPart) {
+        err = L"文件读取不完整";
+        return false;
+    }
+    if (!carry.empty() && emitted < maxLines) sink(std::move(carry));
+    return true;
+}
+
+static bool InspectFile(const std::wstring& path, dl::ArchiveKind& kind,
+                        size_t& fileBytes, std::wstring& err) {
+    err.clear();
+    HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) { err = L"无法打开文件"; return false; }
+    LARGE_INTEGER sz;
+    if (!GetFileSizeEx(h, &sz) || sz.QuadPart < 0) {
+        CloseHandle(h); err = L"无法取得文件大小"; return false;
+    }
+    if (sz.QuadPart > kMaxInputBytes) {
+        CloseHandle(h); err = L"文件超过 512 MiB 输入限制"; return false;
+    }
+    char magic[4]{};
+    DWORD got = 0;
+    DWORD want = (DWORD)std::min<long long>(4, sz.QuadPart);
+    if (want && (!ReadFile(h, magic, want, &got, nullptr) || got != want)) {
+        CloseHandle(h); err = L"文件读取不完整"; return false;
+    }
+    CloseHandle(h);
+    fileBytes = (size_t)sz.QuadPart;
+    kind = dl::archiveKindOf(std::string(magic, magic + got));
+    return true;
+}
+
 // CSV 先完整写到目标目录中的临时文件,Flush 成功后再原子替换目标。
 // 写盘中断/磁盘写满时旧文件保持不变,不会留下半份 CSV 冒充成功结果。
 static bool WriteFileBytesAtomic(const std::wstring& path, const std::string& data,
@@ -301,6 +393,20 @@ static bool ReadPathExpand(const std::wstring& path,
     chunks.push_back(std::move(lines));
     labels.push_back(base);
     return true;
+}
+
+struct LoadSource {
+    bool streamPlain = false;
+    std::wstring path;
+    std::wstring label;
+    size_t textBytes = 0;
+    std::vector<std::string> lines;  // 仅压缩包条目持有
+    std::vector<std::string> probe;  // 普通文件前 200 行/压缩条目前 200 行
+};
+
+static std::wstring FileNameOf(const std::wstring& path) {
+    size_t slash = path.find_last_of(L"\\/");
+    return slash == std::wstring::npos ? path : path.substr(slash + 1);
 }
 
 // ============================ ListView 工具 ============================
@@ -1249,13 +1355,13 @@ static COLORREF RowColor(const LogLine& l) {
 
     // 恢复(绿):断网引擎认的 + SDK 相 + recovery 快照 + RECOVERY 动作 tag
     if (isRecovered(m, nullptr) || has("Network Recovered") || has("_recovery_") ||
-        l.tag.compare(0, 8, "RECOVERY") == 0)
+        l.tagText().compare(0, 8, "RECOVERY") == 0)
         return th::rowRecovered;
     // 故障(红):断网引擎认的 + fault 快照 + 硬告警
     if (isFaultStart(m) || has("_fault_") || has("Net Fail Duration"))
         return th::rowFault;
 
-    std::string t = l.tag;
+    std::string t = l.tagText();
     if (t == "ERROR" || t == "FATAL" || t == "CFUN") return th::rowErr;
     if (t == "WARN" || t == "WARNING" || t == "ALARM" || t == "SLOT" || t == "OPER") return th::rowWarn;
     if (t == "ROAMLINK") return th::rowRoamlink;
@@ -1338,13 +1444,13 @@ static void RenderSummary() {
             snrMin = std::min(snrMin, m.snr10); snrMax = std::max(snrMax, m.snr10);
             if (m.snr10 <= 0) snrNonPositive++;
         }
-        if (m.tmax != "-") { int v = atoi(m.tmax.c_str()); tSum += v; tN++; tMax = std::max(tMax, v); if (v >= 85) hot++; }
-        if (m.ch != "-") chans[m.ch]++;
-        if (m.srv != "-") srvs[m.srv]++;
-        if (m.rat != "-") rats[m.rat]++;
+        if (m.tempMax != INT_MIN) { int v = m.tempMax; tSum += v; tN++; tMax = std::max(tMax, v); if (v >= 85) hot++; }
+        if (!m.ch.empty()) chans[m.ch]++;
+        if (m.srvVal >= 0) srvs[std::to_string(m.srvVal)]++;
+        if (!m.rat.empty()) rats[m.rat]++;
         if (m.denyVal >= 0) { denyN++; if (m.denyVal > 0) denyNonzero++; }
-        if (m.oper != "-") opers[m.oper]++;
-        if (m.rx != "-") rxs.push_back({ m.t, atoll(m.rx.c_str()) });
+        if (!m.oper.empty()) opers[m.oper]++;
+        if (m.rx != LLONG_MIN) rxs.push_back({ m.t, m.rx });
     }
     if (csqN && weak)
         add(L"信号 CSQ", { FmtW(L"弱信号(<10)  %d 次 / 共 %d 样本   首次 %s", weak, csqN, U8ToW(fmtTime(weakFirst, "MD")).c_str()) }, 1);
@@ -1423,7 +1529,7 @@ static void RenderSummary() {
         std::vector<std::wstring> ls;
         for (size_t i = 0; i < errs.size() && i < 12; ++i)
             ls.push_back(FmtW(L"%s  [%s] %s", U8ToW(errs[i]->ts).c_str(),
-                         U8ToW(errs[i]->tag).c_str(), U8ToW(errs[i]->msg.substr(0, 90)).c_str()));
+                         U8ToW(errs[i]->tagText()).c_str(), U8ToW(errs[i]->msg.substr(0, 90)).c_str()));
         if (errs.size() > 12) ls.push_back(FmtW(L"... 另有 %d 条", (int)errs.size() - 12));
         add(FmtW(L"报错/告警 (%d)", (int)errs.size()), ls, 2, true);
     }
@@ -1435,12 +1541,12 @@ static void RenderSummary() {
         if (l.msg.find("switching to SIM") != std::string::npos ||
             l.msg.find("switching to Roamlink") != std::string::npos) sw++;
         if (l.msg.find("DataCall disconnected") != std::string::npos) disc++;
-        if (l.tag == "STATE") states++;
-        if (l.tag == "CFUN" || l.msg.find("CFUN=0") != std::string::npos ||
+        if (l.tagText() == "STATE") states++;
+        if (l.tagText() == "CFUN" || l.msg.find("CFUN=0") != std::string::npos ||
             l.msg.find("CFUN toggle") != std::string::npos) cfun++;
-        if (l.tag == "SLOT") slot++;
-        if (l.tag == "OPER") oper++;
-        if (l.tag.compare(0, 4, "CELL") == 0) cells++;
+        if (l.tagText() == "SLOT") slot++;
+        if (l.tagText() == "OPER") oper++;
+        if (l.tagText().compare(0, 4, "CELL") == 0) cells++;
     }
     add(L"关键事件计数",
         { FmtW(L"通道切换:%d   SDK断开:%d   状态迁移:%d   CFUN:%d   切卡:%d   选网:%d   小区变更:%d",
@@ -1512,7 +1618,10 @@ static void RenderMetrics() {
 static void RenderTags() {
     ListView_DeleteAllItems(hTags);
     std::map<std::string, int> tc;
-    for (const LogLine* l : g_view) tc[l->tag.empty() ? "(无标签)" : l->tag]++;
+    for (const LogLine* l : g_view) {
+        const std::string& tag = l->tagText();
+        tc[tag.empty() ? "(无标签)" : tag]++;
+    }
     int mx = 1;
     for (auto& kv : tc) mx = std::max(mx, kv.second);
     std::vector<std::pair<std::string,int>> v(tc.begin(), tc.end());
@@ -1536,8 +1645,10 @@ static void RenderRaw() {
         s += l.ts;
         // seas_log(artery)的严重度在 level 字段、且多数行没有内嵌 [TAG];
         // 无标签时不要打出空的 "[]"
-        if (l.fmt == FMT_SEAS && !l.level.empty()) { s += " ["; s += l.level; s += "]"; }
-        if (!l.tag.empty())                        { s += " ["; s += l.tag;   s += "]"; }
+        const std::string& level = l.levelText();
+        const std::string& tag = l.tagText();
+        if (l.fmt == FMT_SEAS && !level.empty()) { s += " ["; s += level; s += "]"; }
+        if (!tag.empty())                        { s += " ["; s += tag;   s += "]"; }
         s += " "; s += l.msg; s += "\r\n";
         if (++n >= CAP) { s += "\r\n… 已截断,仅显示前 5000 行(用筛选缩小范围)\r\n"; break; }
     }
@@ -1697,52 +1808,87 @@ static void LoadRawLines(std::vector<std::string> raw, const std::wstring& srcLa
 }
 
 static void LoadFiles(const std::vector<std::wstring>& paths) {
-    // 逐份读入 → 跨时基混合防护 → 按首时间戳定序 → 拼接。
+    // 逐份探测 → 跨时基混合防护 → 按首时间戳定序 → 增量解析。
     // 拖入顺序(资源管理器多选)与文件对话框返回顺序都不保证按时间,而 parseLines 不排序,
     // 顺序拼接会让时间线/断网/可用率全错(v1.3.0 及之前的行为)。定序与时基判定逻辑均在
-    // logmodel(orderByTime / detectMix),此处只做 I/O、排除、拼接、提示。
-    std::vector<std::vector<std::string>> chunks;
-    std::vector<std::wstring> ok;
+    // logmodel(orderByTime / detectMix),此处只做 I/O、排除、增量投喂、提示。
+    std::vector<LoadSource> sources;
     size_t batchTextBytes = 0;
     for (const auto& p : paths) {
-        // ReadPathExpand:普通文件 → 1 个 chunk;压缩包 → 包内每个文件各 1 个 chunk。
-        // 展开后的 chunk 与手工解压后多选拖入完全等价,照常走定序 / 时基混合防护。
-        std::vector<std::vector<std::string>> sub;
-        std::vector<std::wstring> subLabels;
-        size_t subTextBytes = 0;
         std::wstring readErr;
         bool loaded = false;
         try {
-            loaded = ReadPathExpand(p, sub, subLabels, subTextBytes, readErr);
-        } catch (const std::bad_alloc&) {
-            readErr = L"内存不足,无法展开或切分日志";
-        }
-        if (loaded && subTextBytes > kMaxBatchTextBytes - batchTextBytes) {
-            loaded = false;
-            readErr = L"本次选择的展开后日志文本总量超过 512 MiB";
-        }
-        if (loaded) {
-            batchTextBytes += subTextBytes;
-            for (size_t i = 0; i < sub.size(); ++i) {
-                chunks.push_back(std::move(sub[i]));
-                ok.push_back(subLabels[i]);
+            dl::ArchiveKind kind = dl::ARC_NONE;
+            size_t pathBytes = 0;
+            loaded = InspectFile(p, kind, pathBytes, readErr);
+            if (loaded && kind == dl::ARC_NONE) {
+                LoadSource source;
+                source.streamPlain = true;
+                source.path = p;
+                source.label = FileNameOf(p);
+                source.textBytes = pathBytes;
+                loaded = ReadPlainLines(
+                    p, 200,
+                    [&](std::string line) { source.probe.push_back(std::move(line)); },
+                    nullptr, readErr);
+                if (loaded && source.probe.empty()) {
+                    loaded = false;
+                    readErr = L"文件为空";
+                }
+                if (loaded && source.textBytes > kMaxBatchTextBytes - batchTextBytes) {
+                    loaded = false;
+                    readErr = L"本次选择的日志文本总量超过 512 MiB";
+                }
+                if (loaded) {
+                    batchTextBytes += source.textBytes;
+                    sources.push_back(std::move(source));
+                }
+            } else if (loaded) {
+                // 压缩包仍需先解压，但每个条目随后直接投喂解析器，不再拼出第二份 raw。
+                std::vector<std::vector<std::string>> sub;
+                std::vector<std::wstring> subLabels;
+                size_t subTextBytes = 0;
+                loaded = ReadPathExpand(p, sub, subLabels, subTextBytes, readErr);
+                if (loaded && subTextBytes > kMaxBatchTextBytes - batchTextBytes) {
+                    loaded = false;
+                    readErr = L"本次选择的展开后日志文本总量超过 512 MiB";
+                }
+                if (loaded) {
+                    batchTextBytes += subTextBytes;
+                    for (size_t i = 0; i < sub.size(); ++i) {
+                        LoadSource source;
+                        source.label = subLabels[i];
+                        source.lines = std::move(sub[i]);
+                        const size_t n = std::min<size_t>(source.lines.size(), 200);
+                        source.probe.assign(source.lines.begin(), source.lines.begin() + n);
+                        sources.push_back(std::move(source));
+                    }
+                }
             }
-        } else {
+        } catch (const std::bad_alloc&) {
+            loaded = false;
+            readErr = L"内存不足,无法读取、展开或切分日志";
+        }
+        if (!loaded) {
             MessageBoxW(hMain, (L"读取失败:\n" + p + L"\n\n" + readErr).c_str(), L"错误", MB_ICONERROR);
         }
     }
-    if (ok.empty()) return;
+    if (sources.empty()) return;
+
+    std::vector<std::vector<std::string>> probes;
+    probes.reserve(sources.size());
+    for (const auto& source : sources) probes.push_back(source.probe);
 
     // 跨时基混合防护(方案A):同时含墙钟与"时钟未同步"日志时,未同步批与墙钟批不在同一
     // 时间坐标系,混合拼接会把跨度撑成几十年、可用率从"差"翻成"良好"。此处排除未同步批,
     // 只用墙钟批出结论,并明确列出被排除的文件让用户知情。未同步批未销毁,可单独再拖入分析。
-    MixReport mix = detectMix(chunks);
+    MixReport mix = detectMix(probes);
     std::wstring excludedNote;
     if (mix.mixed) {
         std::wstring names;
         for (size_t i : mix.unsyncedIdx) {
             // 只取文件名,不带路径,提示更短
-            const std::wstring& full = ok[i];
+            const std::wstring& full = sources[i].label;
             size_t slash = full.find_last_of(L"\\/");
             names += L"\n  · " + (slash == std::wstring::npos ? full : full.substr(slash + 1));
         }
@@ -1753,54 +1899,92 @@ static void LoadFiles(const std::vector<std::wstring>& paths) {
                                (int)mix.unsyncedIdx.size(), (int)mix.wallIdx.size(), names.c_str());
         MessageBoxW(hMain, msg.c_str(), L"时钟未同步日志已排除", MB_ICONWARNING | MB_OK);
 
-        // 用墙钟批重建 chunks / ok,后续定序拼接只在墙钟批内进行
-        std::vector<std::vector<std::string>> keptChunks;
-        std::vector<std::wstring> keptOk;
-        for (size_t i : mix.wallIdx) { keptChunks.push_back(std::move(chunks[i])); keptOk.push_back(ok[i]); }
-        chunks.swap(keptChunks);
-        ok.swap(keptOk);
+        // 用墙钟批重建来源/探针,后续定序只在墙钟批内进行
+        std::vector<LoadSource> keptSources;
+        std::vector<std::vector<std::string>> keptProbes;
+        for (size_t i : mix.wallIdx) {
+            keptSources.push_back(std::move(sources[i]));
+            keptProbes.push_back(std::move(probes[i]));
+        }
+        sources.swap(keptSources);
+        probes.swap(keptProbes);
         excludedNote = FmtW(L",已排除 %d 份未同步日志", (int)mix.unsyncedIdx.size());
     }
-    if (ok.empty()) return;   // 理论上不会:mixed 时 wallIdx 必非空,防御性保留
+    if (sources.empty()) return;   // 理论上不会:mixed 时 wallIdx 必非空,防御性保留
 
-    std::vector<size_t> ord = orderByTime(chunks);
+    std::vector<size_t> ord = orderByTime(probes);
 
     bool reordered = false;
     int noTs = 0;
     for (size_t i = 0; i < ord.size(); ++i) {
         if (ord[i] != i) reordered = true;
-        if (!firstTimestamp(chunks[ord[i]], nullptr)) noTs++;
+        if (!firstTimestamp(probes[ord[i]], nullptr)) noTs++;
     }
 
-    std::vector<std::string> raw;
-    std::vector<size_t> fileBoundaries;   // 各文件在 raw 中的起始下标 → 阻止跨文件续行
-    try {
-        size_t totalLines = 0;
-        for (size_t i : ord) totalLines += chunks[i].size();
-        raw.reserve(totalLines);
-        fileBoundaries.reserve(ord.size());
-        for (size_t i : ord) {
-            fileBoundaries.push_back(raw.size());   // 本文件从这里开始
-            raw.insert(raw.end(),
-                       std::make_move_iterator(chunks[i].begin()),
-                       std::make_move_iterator(chunks[i].end()));
+    // 读入和探测都成功后再卸载旧日志；普通文件从磁盘分块投喂，压缩条目移动投喂。
+    // 不再同时持有 chunks + 合并 raw + LogLine 三份大对象。
+    size_t reserveHint = 0;
+    size_t plainReserveHint = 0;
+    for (const auto& source : sources) {
+        if (!source.streamPlain) {
+            reserveHint += source.lines.size();
+        } else if (!source.probe.empty()) {
+            size_t probeBytes = 0;
+            for (const auto& line : source.probe) probeBytes += line.size() + 1;
+            size_t avg = std::max<size_t>(probeBytes / source.probe.size(), 32);
+            plainReserveHint += source.textBytes / avg + 1;
         }
+    }
+    // 多个短行文件的估算可能很大；统一只预留前 100 万行，其余让 vector 按需增长，
+    // 避免仅凭 200 行样本就在解析前一次性申请数 GiB。
+    reserveHint += std::min<size_t>(plainReserveHint, 1000000);
+    ReleaseLoadedData();
+    bool parseOk = true;
+    std::wstring parseErr;
+    try {
+        StreamingLogParser parser(g_all, g_sessions, reserveHint);
+        for (size_t i : ord) {
+            parser.beginFile();
+            LoadSource& source = sources[i];
+            if (source.streamPlain) {
+                if (!ReadPlainLines(
+                        source.path, std::numeric_limits<size_t>::max(),
+                        [&](std::string line) { parser.pushLine(std::move(line)); },
+                        nullptr, parseErr)) {
+                    parseOk = false;
+                    break;
+                }
+            } else {
+                for (auto& line : source.lines) parser.pushLine(std::move(line));
+                releaseVector(source.lines);
+            }
+        }
+        if (parseOk) parser.finish(&g_audit);
     } catch (const std::bad_alloc&) {
-        MessageBoxW(hMain, L"内存不足,无法合并所选日志。", L"错误", MB_ICONERROR);
+        parseOk = false;
+        parseErr = L"内存不足,无法解析所选日志";
+    }
+    if (!parseOk) {
+        ReleaseLoadedData();
+        MessageBoxW(hMain, parseErr.c_str(), L"读取失败", MB_ICONERROR);
         return;
     }
 
     std::wstring lbl;
-    if (ok.size() == 1) {
-        lbl = ok[0] + excludedNote;   // 排除后只剩一份时,仍要带上排除提示
+    if (sources.size() == 1) {
+        lbl = sources[0].label + excludedNote;   // 排除后只剩一份时,仍要带上排除提示
     } else {
         // 多文件必须让人看见到底按什么顺序拼的 —— 否则重排是隐形的,出了错也无从察觉
-        lbl = FmtW(L"%d 个文件合并", (int)ok.size());
+        lbl = FmtW(L"%d 个文件合并", (int)sources.size());
         lbl += reordered ? L"(已按时间重排)" : L"(拖入顺序已是时间顺序)";
         if (noTs > 0) lbl += FmtW(L",其中 %d 份扫不到时间戳→拼在最后", noTs);
         lbl += excludedNote;
     }
-    LoadRawLines(std::move(raw), lbl, fileBoundaries);
+    g_plat = detectPlatform(g_all);
+    lbl += FmtW(L"   (%d 行, %d 会话, %s)", (int)g_all.size(), (int)g_sessions.size(),
+                U8ToW(g_plat.name).c_str());
+    SetWindowTextW(hFileLbl, lbl.c_str());
+    RefreshAll();
 }
 
 // 从剪贴板粘贴日志文本分析(SSH 里 cat 日志后直接选中复制的场景,手上没有文件)
@@ -1917,22 +2101,19 @@ static void DoExportCsv() {
         };
         out += "time,ch,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper\r\n";
         for (const auto& m : g_metrics) {
-            out += csv(m.ts); out += ',';
-            out += csv(m.ch); out += ',';
-            out += csv(m.csq); out += ',';
-            out += csv(m.tmax); out += ',';
-            out += csv(m.cf); out += ',';
-            out += csv(m.rx); out += ',';
-            out += csv(m.drx); out += ',';
+            for (size_t column = 0; column <= 6; ++column) {
+                out += csv(metricCellText(m, column));
+                out += ',';
+            }
             out += (m.rsrp < 0 ? std::to_string(m.rsrp) : ""); out += ',';
             out += (m.rsrq < 0 ? std::to_string(m.rsrq) : ""); out += ',';
             if (m.snr10 != 100000) { char b[32]; snprintf(b, sizeof(b), "%.1f", m.snr10 / 10.0); out += b; }
             out += ',';
             out += (m.rssiVal < 0 ? std::to_string(m.rssiVal) : ""); out += ',';
-            out += csv(m.srv); out += ',';
-            out += csv(m.rat); out += ',';
-            out += csv(m.deny); out += ',';
-            out += csv(m.oper); out += "\r\n";
+            for (size_t column = 11; column < kMetricColumnCount; ++column) {
+                out += csv(metricCellText(m, column));
+                out += (column + 1 == kMetricColumnCount) ? "\r\n" : ",";
+            }
         }
     } catch (const std::bad_alloc&) {
         MessageBoxW(hMain, L"内存不足,无法生成 CSV。", L"错误", MB_ICONERROR);
@@ -2279,7 +2460,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 if (i < g_metrics.size()) {
                     const MetricRow& m = g_metrics[i];
                     // 高亮单元格优先级高于斑马纹(覆盖)
-                    if (sub == 6 && m.drxZero)                           cd->clrTextBk = th::cellStall;
+                    if (sub == 6 && m.drx == 0)                         cd->clrTextBk = th::cellStall;
                     else if (sub == 2 && m.csqVal >= 0 && m.csqVal < 10) cd->clrTextBk = th::cellWeak;
                     else if (sub == 9 && m.snr10 != 100000 && m.snr10 <= 0) cd->clrTextBk = th::cellSnrLow;
                 }

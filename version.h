@@ -34,11 +34,13 @@
 //           悬停最近点改用二分查询,新增百万点图表规模/极值回归
 //   1.10.7  关闭/替换日志时按引用顺序释放模型及 vector 容量;
 //           降低连续分析大日志的驻留与切换峰值内存,新增百万行卸载容量回归
+//   1.10.8  压缩日志行/指标行布局,常见标签改字典 ID,心跳字段改零临时 map 扫描;
+//           普通文件分块流式解析,多文件/压缩条目不再合并复制 raw
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 7
+#define DL_VER_PATCH 8
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

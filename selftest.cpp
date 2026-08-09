@@ -2,6 +2,7 @@
 // 因为 logmodel.* 不含 Win32 依赖,本机(Linux)g++ 即可编译运行:
 //   g++ -std=c++17 -O2 -o selftest selftest.cpp logmodel.cpp && ./selftest <日志>
 #include "logmodel.h"
+#include <climits>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -82,9 +83,9 @@ int main(int argc, char** argv) {
             if (m.csqVal > csqMax) csqMax = m.csqVal;
             if (m.csqVal < 10) weak++;
         }
-        if (m.tmax != "-") { int v = std::atoi(m.tmax.c_str()); if (v > tmaxMax) tmaxMax = v; tSum += v; tN++; }
-        if (m.ch != "-") chans[m.ch]++;
-        if (m.rx != "-") rxs.push_back({m.t, std::atoll(m.rx.c_str())});
+        if (m.tempMax != INT_MIN) { int v = m.tempMax; if (v > tmaxMax) tmaxMax = v; tSum += v; tN++; }
+        if (!m.ch.empty()) chans[m.ch]++;
+        if (m.rx != LLONG_MIN) rxs.push_back({m.t, m.rx});
     }
     std::printf("== 心跳 ==\n");
     std::printf("  指标行:%zu\n", rows.size());
@@ -105,7 +106,7 @@ int main(int argc, char** argv) {
 
     // 标签
     std::map<std::string,int> tc;
-    for (auto& l : lines) tc[l.tag.empty() ? "(无标签)" : l.tag]++;
+    for (auto& l : lines) { const std::string& tag = l.tagText(); tc[tag.empty() ? "(无标签)" : tag]++; }
     std::printf("== 标签 ==\n");
     for (auto& kv : tc) std::printf("  %-14s %d\n", kv.first.c_str(), kv.second);
 
@@ -115,10 +116,10 @@ int main(int argc, char** argv) {
         if (l.msg.find("switching to SIM") != std::string::npos ||
             l.msg.find("switching to Roamlink") != std::string::npos) sw++;
         if (l.msg.find("DataCall disconnected") != std::string::npos) disc++;
-        if (l.tag == "STATE") states++;
-        if (l.tag.compare(0, 4, "CELL") == 0) cells++;
+        if (l.tagText() == "STATE") states++;
+        if (l.tagText().compare(0, 4, "CELL") == 0) cells++;
         bool keep = isEventLine(l);
-        if (l.tag.compare(0, 9, "HEARTBEAT") == 0 && (isFaultStart(l.msg) || isRecovered(l.msg, nullptr))) keep = true;
+        if (l.tagText().compare(0, 9, "HEARTBEAT") == 0 && (isFaultStart(l.msg) || isRecovered(l.msg, nullptr))) keep = true;
         if (keep) evt++;
     }
     std::printf("== 关键事件 ==\n  通道切换:%d SDK断开:%d 状态迁移:%d 小区变更:%d 时间线事件:%d\n",
@@ -163,12 +164,12 @@ int main(int argc, char** argv) {
                viewOuts[i].l0Recovered == outs[i].l0Recovered &&
                viewOuts[i].startLine == outs[i].startLine && viewOuts[i].endLine == outs[i].endLine;
     auto sameMetric = [](const MetricRow& a, const MetricRow& b) {
-        return a.t == b.t && a.ts == b.ts && a.ch == b.ch && a.csq == b.csq &&
-               a.tmax == b.tmax && a.cf == b.cf && a.rx == b.rx && a.drx == b.drx &&
-               a.srv == b.srv && a.rat == b.rat && a.deny == b.deny && a.oper == b.oper &&
-               a.rssi == b.rssi && a.csqVal == b.csqVal && a.rsrp == b.rsrp &&
+        return a.t == b.t && a.ch == b.ch && a.csqRaw == b.csqRaw &&
+               a.tempMax == b.tempMax && a.consecFail == b.consecFail &&
+               a.rx == b.rx && a.drx == b.drx && a.rat == b.rat && a.oper == b.oper &&
+               a.csqVal == b.csqVal && a.rsrp == b.rsrp &&
                a.rsrq == b.rsrq && a.snr10 == b.snr10 && a.rssiVal == b.rssiVal &&
-               a.srvVal == b.srvVal && a.denyVal == b.denyVal && a.drxZero == b.drxZero &&
+               a.srvVal == b.srvVal && a.denyVal == b.denyVal &&
                a.lineNo == b.lineNo;
     };
     for (size_t i = 0; same && i < rows.size(); ++i) same = sameMetric(viewRows[i], rows[i]);

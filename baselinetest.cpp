@@ -110,10 +110,10 @@ int main() {
             ck(L.pi.plat == PLAT_AG35, "平台=AG35", L.pi.name, "AG35");
             // 钉死 [NetCheck] —— 变异"标签只认大写"会让它丢失
             long nc = 0;
-            for (const auto& l : L.lines) if (l.tag == "NetCheck") nc++;
+            for (const auto& l : L.lines) if (l.tagText() == "NetCheck") nc++;
             cki(nc, 2, "[NetCheck] 标签数(混合大小写)");
             long slot = 0;
-            for (const auto& l : L.lines) if (l.tag == "SLOT") slot++;
+            for (const auto& l : L.lines) if (l.tagText() == "SLOT") slot++;
             cki(slot, 10, "[SLOT] 标签数");
         }
     }

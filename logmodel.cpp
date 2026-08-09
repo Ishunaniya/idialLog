@@ -1,6 +1,7 @@
 // logmodel.cpp — 解析/分析实现。手写扫描代替正则(快且可预期);仅用户 --grep 走 std::regex。
 #include "logmodel.h"
 #include <algorithm>
+#include <charconv>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -8,6 +9,7 @@
 #include <limits>
 #include <new>
 #include <regex>
+#include <string_view>
 #ifdef DL_HAVE_MINIZ
 // 只用 mz_ 前缀 API;关掉 zlib 兼容别名(inflate/crc32/... 那些 static inline),
 // 否则它们在本 TU 里未被引用会触发 -Wunused-function(本项目 -Wall -Wextra 零告警)。
@@ -119,6 +121,65 @@ std::string stripAnsi(const std::string& s) {
 }
 
 // ============================ 解析 ============================
+// 高频标签字典。顺序把百万行基准/真机最常见值放前面,线性匹配通常 1~3 次即命中；
+// 新固件出现未知标签时 customTag 仍原样保留,不会为了省内存静默丢信息。
+static const std::string kKnownTags[] = {
+    "", "HEARTBEAT", "TRACE", "STATE", "CELL CHANGE", "CELL", "SDK", "ROAMLINK",
+    "DIAG", "SLOT", "OPER", "RECOVERY L1", "RECOVERY L2", "RECOVERY L3",
+    "ERROR", "WARN", "WARNING", "FATAL", "INFO", "ALARM", "CFUN", "SIM", "APN",
+    "INIT", "MODEM", "EVENT", "STATUS", "LED", "TZ", "NANOMSG", "PING", "PING OUT",
+    "PING FAIL", "PING ERROR", "REG", "REG TIMEOUT", "REG DIAG", "ZERO", "ZERO ADDR",
+    "CPDUMP", "COPS", "SM", "LOGMIGR", "LOGCLEAN", "CLEANUP", "NetCheck"
+};
+
+LogLine::LogLine(const LogLine& o)
+    : t(o.t), lineNo(o.lineNo), ts(o.ts), msg(o.msg),
+      customTag(o.customTag ? std::make_unique<std::string>(*o.customTag) : nullptr),
+      ms(o.ms), tagId(o.tagId), fmt(o.fmt), level(o.level) {}
+
+LogLine& LogLine::operator=(const LogLine& o) {
+    if (this == &o) return *this;
+    t = o.t; lineNo = o.lineNo; ts = o.ts; msg = o.msg;
+    customTag = o.customTag ? std::make_unique<std::string>(*o.customTag) : nullptr;
+    ms = o.ms; tagId = o.tagId; fmt = o.fmt; level = o.level;
+    return *this;
+}
+
+void LogLine::setTag(std::string tag) {
+    for (std::uint16_t i = 0; i < sizeof(kKnownTags) / sizeof(kKnownTags[0]); ++i) {
+        if (tag == kKnownTags[i]) { tagId = i; customTag.reset(); return; }
+    }
+    tagId = 0;
+    customTag = std::make_unique<std::string>(std::move(tag));
+}
+
+const std::string& LogLine::tagText() const {
+    if (customTag) return *customTag;
+    if (tagId < sizeof(kKnownTags) / sizeof(kKnownTags[0])) return kKnownTags[tagId];
+    return kKnownTags[0];
+}
+
+void LogLine::setLevel(const std::string& text) {
+    std::string v = lower(text);
+    if      (v == "all")      level = LEVEL_ALL;
+    else if (v == "debug")    level = LEVEL_DEBUG;
+    else if (v == "info")     level = LEVEL_INFO;
+    else if (v == "notice")   level = LEVEL_NOTICE;
+    else if (v == "warning")  level = LEVEL_WARNING;
+    else if (v == "error")    level = LEVEL_ERROR;
+    else if (v == "fatal")    level = LEVEL_FATAL;
+    else if (v == "critical") level = LEVEL_CRITICAL;
+    else if (!v.empty())       level = LEVEL_OTHER;
+    else                       level = LEVEL_NONE;
+}
+
+const std::string& LogLine::levelText() const {
+    static const std::string names[] = {
+        "", "ALL", "DEBUG", "INFO", "NOTICE", "WARNING", "ERROR", "FATAL", "CRITICAL", "OTHER"
+    };
+    return names[level <= LEVEL_OTHER ? level : LEVEL_NONE];
+}
+
 // 从 rest 中剥出首个 "[TAG] ":首字符须大写字母或下划线,其余为 [A-Z0-9_ ]。
 // 多词标签实证存在(modem_mng/open_dial 源码穷举):RECOVERY L1/L2/L3、CELL CHANGE、
 // REG TIMEOUT、ZERO ADDR、PING OUT/FAIL/ERROR、REG DIAG 等。
@@ -136,7 +197,7 @@ static void splitTag(const std::string& rest, LogLine& L) {
         if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
               (c >= '0' && c <= '9') || c == '_' || c == ' ')) { ok = false; break; }
     if (!ok) { L.msg = rest; return; }
-    L.tag = trim(tag);
+    L.setTag(trim(tag));
     size_t q = e + 1;
     while (q < rest.size() && rest[q] == ' ') q++;
     L.msg = rest.substr(q);
@@ -147,10 +208,11 @@ static void splitTag(const std::string& rest, LogLine& L) {
 // A(modem_mng)与 B(open_dial)的 logger_sd.c 行格式完全一致(逐字节 diff 仅管道差异)。
 static bool parseSd(const std::string& line, LogLine& L) {
     if (line.size() < 22 || line[0] != '[' || line[20] != ']') return false;
+    int Y=0, Mo=0, D=0, h=0, mi=0, s=0;
     if (std::sscanf(line.c_str() + 1, "%4d-%2d-%2d %2d:%2d:%2d",
-                    &L.Y, &L.Mo, &L.D, &L.h, &L.mi, &L.s) != 6) return false;
+                    &Y, &Mo, &D, &h, &mi, &s) != 6) return false;
     L.ts  = line.substr(1, 19);
-    L.t   = mkEpoch(L.Y, L.Mo, L.D, L.h, L.mi, L.s);
+    L.t   = mkEpoch(Y, Mo, D, h, mi, s);
     L.fmt = FMT_SD;
     size_t p = 21;
     while (p < line.size() && line[p] == ' ') p++;
@@ -178,13 +240,13 @@ static bool parseSd(const std::string& line, LogLine& L) {
 static bool parseSeas(const std::string& line0, LogLine& L) {
     // 时间 + 毫秒
     if (line0.size() < 24) return false;
-    int ms = 0;
+    int Y=0, Mo=0, D=0, h=0, mi=0, s=0, ms=0;
     if (std::sscanf(line0.c_str(), "%4d-%2d-%2d %2d:%2d:%2d.%3d",
-                    &L.Y, &L.Mo, &L.D, &L.h, &L.mi, &L.s, &ms) != 7) return false;
+                    &Y, &Mo, &D, &h, &mi, &s, &ms) != 7) return false;
     if (line0[19] != '.') return false;
     L.ts  = line0.substr(0, 19);
     L.ms  = ms;
-    L.t   = mkEpoch(L.Y, L.Mo, L.D, L.h, L.mi, L.s);
+    L.t   = mkEpoch(Y, Mo, D, h, mi, s);
     L.fmt = FMT_SEAS;
 
     std::string line = stripAnsi(line0);   // 去掉 ESC[0m(及潜在色码)
@@ -195,29 +257,19 @@ static bool parseSeas(const std::string& line0, LogLine& L) {
     if (p < line.size() && line[p] == '[') {
         size_t e = line.find(']', p);
         if (e != std::string::npos) {
-            L.level = line.substr(p + 1, e - p - 1);
+            L.setLevel(line.substr(p + 1, e - p - 1));
             p = e + 1;
             while (p < line.size() && line[p] == ' ') p++;
         }
     }
     // func(到空格或 '(' 为止)
-    size_t fs = p;
     while (p < line.size() && line[p] != ' ' && line[p] != '(') p++;
-    if (p > fs) L.func = line.substr(fs, p - fs);
     while (p < line.size() && line[p] == ' ') p++;
 
     // (file:line)
     if (p < line.size() && line[p] == '(') {
         size_t e = line.find(')', p);
         if (e != std::string::npos) {
-            std::string inside = line.substr(p + 1, e - p - 1);
-            size_t c = inside.rfind(':');
-            if (c != std::string::npos) {
-                L.srcfile = inside.substr(0, c);
-                L.srcline = std::atoi(inside.c_str() + c + 1);
-            } else {
-                L.srcfile = inside;
-            }
             p = e + 1;
             while (p < line.size() && line[p] == ' ') p++;
         }
@@ -239,35 +291,34 @@ static std::string classifyUnparsed(const std::string& s) {
     return "其它(无时间戳)";
 }
 
-void parseLines(const std::vector<std::string>& raw,
-                std::vector<LogLine>& out,
-                std::vector<std::string>& sessions,
-                ParseAudit* audit,
-                const std::vector<size_t>& fileBoundaries)
-{
-    out.clear();
-    sessions.clear();
-    out.reserve(raw.size());
-    std::vector<long long> restartTs;   // 重启时刻(opened 标记 + 版本横幅,末尾合并去重)
+struct StreamingLogParser::Impl {
+    std::vector<LogLine>& out;
+    std::vector<std::string>& sessions;
+    std::vector<long long> restartTs;
     ParseAudit ad;
-    ad.rawTotal = raw.size();
-    // 文件边界集合(升序下标转成 set 便于 O(1) 查):当前行下标 == 某文件起点时,
-    // 禁止把它续到上一条(那属于上一个文件)。留空 = 无边界。
-    size_t nextBoundaryPos = 0;   // 指向 fileBoundaries 中下一个待命中的边界
+    bool nextIsFileStart = false;
+    bool finished = false;
 
-    for (size_t idx = 0; idx < raw.size(); ++idx) {
-        // 是否是某个文件的起始行(多文件合并时)。是 → 本行不得续到上一条(属上一个文件)。
-        bool atFileStart = false;
-        while (nextBoundaryPos < fileBoundaries.size() && fileBoundaries[nextBoundaryPos] < idx)
-            ++nextBoundaryPos;
-        if (nextBoundaryPos < fileBoundaries.size() && fileBoundaries[nextBoundaryPos] == idx)
-            atFileStart = true;
+    Impl(std::vector<LogLine>& outRef, std::vector<std::string>& sessionRef, size_t reserveHint)
+        : out(outRef), sessions(sessionRef) {
+        out.clear();
+        sessions.clear();
+        out.reserve(reserveHint);
+    }
 
+    void pushLine(std::string line);
+    void finish(ParseAudit* audit);
+};
+
+void StreamingLogParser::Impl::pushLine(std::string line) {
+        if (finished) return;
+        const size_t idx = ad.rawTotal++;
+        const bool atFileStart = nextIsFileStart;
+        nextIsFileStart = false;
         // 去掉行尾 \r\n
-        std::string line = raw[idx];
         while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) line.pop_back();
 
-        if (trim(line).empty()) { ad.blank++; continue; }
+        if (trim(line).empty()) { ad.blank++; return; }
 
         // 会话标记(logger_sd.c:424 "=== Dial Log Opened [ts] daykey=... ===" (modem_mng)
         //           open_dial:  "=== Dial Program Started [ts] ===" (对等开场标记)
@@ -288,7 +339,7 @@ void parseLines(const std::vector<std::string>& raw,
                     restartTs.push_back(mkEpoch(Y,Mo,D,h,mi,s));
             }
             ad.session++;
-            continue;
+            return;
         }
 
         LogLine L;
@@ -321,7 +372,7 @@ void parseLines(const std::vector<std::string>& raw,
                 }
             }
             out.push_back(std::move(L));
-            continue;
+            return;
         }
 
         // 无时间戳但紧跟在已解析行之后 → 多行日志条目的**续行**,并入上一条,不算未识别。
@@ -347,7 +398,7 @@ void parseLines(const std::vector<std::string>& raw,
                 out.back().msg += " ⏎ ";
                 out.back().msg += line;
                 ad.continuation++;
-                continue;
+                return;
             }
         }
 
@@ -356,6 +407,12 @@ void parseLines(const std::vector<std::string>& raw,
         ad.unparsedKinds[classifyUnparsed(line)]++;
         if (ad.samples.size() < ParseAudit::kMaxSamples)
             ad.samples.push_back(UnparsedLine{idx + 1, line.substr(0, 400)});
+}
+
+void StreamingLogParser::Impl::finish(ParseAudit* audit) {
+    if (finished) {
+        if (audit) *audit = ad;
+        return;
     }
     // 合并两种重启信号:同一次重启在 modem_mng 上既有 opened 标记又有版本横幅
     // (相隔几秒),去重防重复计数;artery/AG35控制台 只有其一。10s 内视为同一次。
@@ -366,7 +423,49 @@ void parseLines(const std::vector<std::string>& raw,
         prev = t;
     }
 
-    if (audit) *audit = std::move(ad);
+    finished = true;
+    if (audit) *audit = ad;
+}
+
+StreamingLogParser::StreamingLogParser(std::vector<LogLine>& out,
+                                       std::vector<std::string>& sessions,
+                                       size_t reserveHint)
+    : impl_(new Impl(out, sessions, reserveHint)) {}
+
+StreamingLogParser::~StreamingLogParser() = default;
+StreamingLogParser::StreamingLogParser(StreamingLogParser&&) noexcept = default;
+StreamingLogParser& StreamingLogParser::operator=(StreamingLogParser&&) noexcept = default;
+
+void StreamingLogParser::beginFile() {
+    if (impl_ && !impl_->finished) impl_->nextIsFileStart = true;
+}
+
+void StreamingLogParser::pushLine(std::string line) {
+    if (impl_) impl_->pushLine(std::move(line));
+}
+
+void StreamingLogParser::finish(ParseAudit* audit) {
+    if (impl_) impl_->finish(audit);
+}
+
+void parseLines(const std::vector<std::string>& raw,
+                std::vector<LogLine>& out,
+                std::vector<std::string>& sessions,
+                ParseAudit* audit,
+                const std::vector<size_t>& fileBoundaries)
+{
+    StreamingLogParser parser(out, sessions, raw.size());
+    size_t nextBoundaryPos = 0;
+    for (size_t idx = 0; idx < raw.size(); ++idx) {
+        while (nextBoundaryPos < fileBoundaries.size() &&
+               fileBoundaries[nextBoundaryPos] < idx)
+            ++nextBoundaryPos;
+        if (nextBoundaryPos < fileBoundaries.size() &&
+            fileBoundaries[nextBoundaryPos] == idx)
+            parser.beginFile();
+        parser.pushLine(raw[idx]);
+    }
+    parser.finish(audit);
 }
 
 // ============================ 多文件合并定序 ============================
@@ -454,10 +553,16 @@ MixReport detectMix(const std::vector<std::vector<std::string>>& chunks) {
 // 值的终止:下一个 '|',或下一处 “空白 + 标识符 + [:=]”(否则
 // "RSRP:-104 RSRQ:-10"(eg25/diag/diag.c:33)会把 RSRQ 吞进 RSRP 的值;
 // artery "state=x csq=20 tcp_fail=0"(main.c:217)也全靠这一条拆开)。
-std::map<std::string, std::string> hbFields(const std::string& msg) {
-    std::map<std::string, std::string> d;
-    if (msg.find(':') == std::string::npos && msg.find('=') == std::string::npos) return d;
+static std::string_view trimView(std::string_view s) {
+    while (!s.empty() && (unsigned char)s.front() <= ' ') s.remove_prefix(1);
+    while (!s.empty() && (unsigned char)s.back() <= ' ') s.remove_suffix(1);
+    return s;
+}
 
+template <typename Fn>
+static bool scanHbFields(const std::string& msg, Fn&& fn) {
+    if (msg.find(':') == std::string::npos && msg.find('=') == std::string::npos) return false;
+    bool found = false;
     size_t i = 0;
     while (i < msg.size()) {
         if (!isIdentChar(msg[i])) { i++; continue; }
@@ -466,7 +571,6 @@ std::map<std::string, std::string> hbFields(const std::string& msg) {
         if (j >= msg.size() || (msg[j] != ':' && msg[j] != '=')) { i = j; continue; }
 
         size_t k = j + 1;
-        // 找值的终点
         size_t e = msg.size();
         size_t bar = msg.find('|', k);
         if (bar != std::string::npos) e = bar;
@@ -478,9 +582,21 @@ std::map<std::string, std::string> hbFields(const std::string& msg) {
             while (t2 < e && isIdentChar(msg[t2])) t2++;
             if (t2 > r && t2 < e && (msg[t2] == ':' || msg[t2] == '=')) { e = q; break; }
         }
-        if (e > k) d[msg.substr(i, j - i)] = trim(msg.substr(k, e - k));
+        if (e > k) {
+            fn(std::string_view(msg.data() + i, j - i),
+               trimView(std::string_view(msg.data() + k, e - k)));
+            found = true;
+        }
         i = (e > k) ? e : j;
     }
+    return found;
+}
+
+std::map<std::string, std::string> hbFields(const std::string& msg) {
+    std::map<std::string, std::string> d;
+    scanHbFields(msg, [&](std::string_view key, std::string_view value) {
+        d[std::string(key)] = std::string(value);
+    });
     return d;
 }
 
@@ -507,10 +623,10 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
 
     for (const auto& l : lines) {
         if (l.fmt == FMT_SEAS) { seas++; if (!seasEv) seasEv = &l; }
-        if (!ag35Ev && (l.tag == "SLOT" || l.msg.find("SLOT:") != std::string::npos)) ag35Ev = &l;
+        if (!ag35Ev && (l.tagText() == "SLOT" || l.msg.find("SLOT:") != std::string::npos)) ag35Ev = &l;
         if (!ec200Ev && l.msg.find("SIM_AT:") != std::string::npos &&
             l.msg.find("SIM_CB:") != std::string::npos) ec200Ev = &l;
-        if (!eg25Ev && (l.tag == "ROAMLINK" ||
+        if (!eg25Ev && (l.tagText() == "ROAMLINK" ||
                         l.msg.find("CH:ROAMLINK") != std::string::npos ||
                         l.msg.find("CH:SIM") != std::string::npos ||
                         l.msg.find("RL_FAIL:") != std::string::npos)) eg25Ev = &l;
@@ -595,10 +711,10 @@ bool isErrTag(const std::string& tag) { return inList(kErrTags, tag); }
 // seas_log 的严重度在 level 字段(seas_log.c:239),不在标签里。
 // 级别取值见 seas_log.h:66-121:[ALL]/[DEBUG]/[INFO]/[NOTICE]/[WARNING]/[ERROR]/[FATAL]
 bool isErrLine(const LogLine& l) {
-    if (isErrTag(l.tag)) return true;
+    if (isErrTag(l.tagText())) return true;
     if (l.fmt == FMT_SEAS) {
-        std::string lv = lower(l.level);
-        return lv == "error" || lv == "warning" || lv == "fatal" || lv == "critical";
+        return l.level == LEVEL_ERROR || l.level == LEVEL_WARNING ||
+               l.level == LEVEL_FATAL || l.level == LEVEL_CRITICAL;
     }
     return false;
 }
@@ -606,11 +722,10 @@ bool isErrLine(const LogLine& l) {
 // 时间线保留:事件类标签,或 seas 的报错行(artery 大量日志无内嵌标签,
 // 只按标签过滤会让 artery 的时间线几乎全空)
 bool isEventLine(const LogLine& l) {
-    if (isEventTag(l.tag)) return true;
+    if (isEventTag(l.tagText())) return true;
     if (l.fmt == FMT_SEAS) {
         if (isErrLine(l)) return true;
-        std::string lv = lower(l.level);
-        return lv == "notice";
+        return l.level == LEVEL_NOTICE;
     }
     return false;
 }
@@ -691,13 +806,78 @@ std::vector<Stall> detectRxStall(const std::vector<std::pair<long long,long long
 //         EG25 扩展心跳 "rx_packets"(仅 SIM 通道,**等号**赋值,diag.c:157)
 //         artery "rx_packets"(main.c:239)
 //   信号  EG25/EC200A "CSQ";artery "csq"(main.c:217)
-static const std::string* pick(const std::map<std::string,std::string>& f,
-                               std::initializer_list<const char*> keys) {
-    for (const char* k : keys) {
-        auto it = f.find(k);
-        if (it != f.end()) return &it->second;
+// buildMetrics 的热路径不再构造 map/string:只保存原消息里的 string_view,随后立即转成
+// 紧凑数值或三个确需保留原文的字段。公共 hbFields 仍复用同一扫描器保持兼容。
+struct HeartbeatFields {
+    bool any = false;
+    std::string_view ch, slot, state, csqUpper, csqLower, tempTitle, tempUpper;
+    std::string_view failTitle, failLower, rxUpper, rxLower;
+    std::string_view rsrpUpper, rsrpLower, rsrqUpper, rsrqLower;
+    std::string_view snrUpper, snrLower, rssiUpper, rssiLower;
+    std::string_view srv, rat, deny, oper;
+};
+
+static HeartbeatFields heartbeatFields(const std::string& msg) {
+    HeartbeatFields f;
+    f.any = scanHbFields(msg, [&](std::string_view k, std::string_view v) {
+        if      (k == "CH")          f.ch = v;
+        else if (k == "SLOT")        f.slot = v;
+        else if (k == "state")       f.state = v;
+        else if (k == "CSQ")         f.csqUpper = v;
+        else if (k == "csq")         f.csqLower = v;
+        else if (k == "Temp")        f.tempTitle = v;
+        else if (k == "TEMP")        f.tempUpper = v;
+        else if (k == "ConsecFail")  f.failTitle = v;
+        else if (k == "tcp_fail")    f.failLower = v;
+        else if (k == "RX_PKT")      f.rxUpper = v;
+        else if (k == "rx_packets")  f.rxLower = v;
+        else if (k == "RSRP")        f.rsrpUpper = v;
+        else if (k == "rsrp")        f.rsrpLower = v;
+        else if (k == "RSRQ")        f.rsrqUpper = v;
+        else if (k == "rsrq")        f.rsrqLower = v;
+        else if (k == "SNR")         f.snrUpper = v;
+        else if (k == "snr")         f.snrLower = v;
+        else if (k == "RSSI")        f.rssiUpper = v;
+        else if (k == "rssi")        f.rssiLower = v;
+        else if (k == "SRV")         f.srv = v;
+        else if (k == "RAT")         f.rat = v;
+        else if (k == "DENY")        f.deny = v;
+        else if (k == "OPER")        f.oper = v;
+    });
+    return f;
+}
+
+static std::string_view firstOf(std::string_view a, std::string_view b) {
+    return !a.empty() ? a : b;
+}
+
+static bool parseLong(std::string_view text, long long& value, bool requireWhole = false) {
+    if (text.empty()) return false;
+    const char* first = text.data();
+    const char* last = first + text.size();
+    // std::strtoll 接受显式正号；from_chars 不接受。保留旧解析器对 "+20" 的兼容。
+    if (*first == '+') {
+        if (++first == last) return false;
     }
-    return nullptr;
+    auto result = std::from_chars(first, last, value, 10);
+    return result.ptr != first && result.ec == std::errc{} && (!requireWhole || result.ptr == last);
+}
+
+static bool viewContainsIgnoreCase(std::string_view text, std::string_view needle) {
+    if (needle.size() > text.size()) return false;
+    for (size_t i = 0; i + needle.size() <= text.size(); ++i) {
+        bool match = true;
+        for (size_t j = 0; j < needle.size(); ++j) {
+            if (std::tolower((unsigned char)text[i + j]) !=
+                std::tolower((unsigned char)needle[j])) { match = false; break; }
+        }
+        if (match) return true;
+    }
+    return false;
+}
+
+static void assignView(std::string& out, std::string_view value) {
+    if (!value.empty()) out.assign(value.data(), value.size());
 }
 
 template <typename Lines>
@@ -708,48 +888,45 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
 
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
-        if (l.tag.compare(0, 9, "HEARTBEAT") != 0) continue;
-        auto f = hbFields(l.msg);
-        if (f.empty()) continue;
+        if (l.tagText().compare(0, 9, "HEARTBEAT") != 0) continue;
+        HeartbeatFields f = heartbeatFields(l.msg);
+        if (!f.any) continue;
 
         MetricRow m;
         m.t  = l.t;
         m.lineNo = l.lineNo;
-        m.ts = fmtTime(l.t, "MD");
-
-        const std::string* v;
-        m.ch = "-";
-        if ((v = pick(f, {"CH"})))               m.ch = *v;
-        else if ((v = pick(f, {"SLOT"})))        m.ch = "SLOT" + *v;   // AG35
-        else if ((v = pick(f, {"state"}))) {                            // artery
-            m.ch = icontains(*v, "roamlink") ? "ROAMLINK" : "SIM";
+        if (!f.ch.empty()) assignView(m.ch, f.ch);
+        else if (!f.slot.empty()) {                                    // AG35
+            m.ch = "SLOT";
+            m.ch.append(f.slot.data(), f.slot.size());
+        } else if (!f.state.empty()) {                                 // artery
+            m.ch = viewContainsIgnoreCase(f.state, "roamlink") ? "ROAMLINK" : "SIM";
         }
-        v = pick(f, {"CSQ", "csq"});             m.csq = v ? *v : "-";
-        v = pick(f, {"ConsecFail", "tcp_fail"}); m.cf  = v ? *v : "-";
-        v = pick(f, {"SRV"});                     m.srv = v ? *v : "-";
-        v = pick(f, {"RAT"});                     m.rat = v ? *v : "-";
-        v = pick(f, {"DENY"});                    m.deny = v ? *v : "-";
-        v = pick(f, {"OPER"});                    m.oper = v ? *v : "-";
-        v = pick(f, {"RSSI", "rssi"});           m.rssi = v ? *v : "-";
+        assignView(m.rat, f.rat);
+        assignView(m.oper, f.oper);
 
-        m.tmax = "-";
-        if ((v = pick(f, {"Temp", "TEMP"}))) {
-            int best = -1000; bool ok = false;
-            std::string t = *v;
+        std::string_view temp = firstOf(f.tempTitle, f.tempUpper);
+        if (!temp.empty()) {
+            int best = INT_MIN; bool ok = false;
             size_t a = 0;
-            while (a <= t.size()) {
-                size_t b = t.find(',', a);
-                std::string piece = trim(t.substr(a, (b == std::string::npos ? t.size() : b) - a));
+            while (a <= temp.size()) {
+                size_t b = temp.find(',', a);
+                std::string_view piece = trimView(temp.substr(a, (b == std::string_view::npos ? temp.size() : b) - a));
                 if (!piece.empty()) {
-                    char* endp = nullptr;
-                    long v = std::strtol(piece.c_str(), &endp, 10);
-                    if (endp != piece.c_str()) { if ((int)v > best) best = (int)v; ok = true; }
+                    long long value = 0;
+                    if (parseLong(piece, value) && value >= INT_MIN && value <= INT_MAX) {
+                        if ((int)value > best) best = (int)value;
+                        ok = true;
+                    }
                 }
-                if (b == std::string::npos) break;
+                if (b == std::string_view::npos) break;
                 a = b + 1;
             }
-            if (ok) m.tmax = std::to_string(best);
+            if (ok) m.tempMax = best;
         }
+        long long number = 0;
+        if (parseLong(firstOf(f.failTitle, f.failLower), number) &&
+            number >= INT_MIN && number <= INT_MAX) m.consecFail = (int)number;
 
         // RX_PKT 与 rx_packets 是**同一个计数器**的两个打印点,故合并为一条序列:
         // 两者都来自 nw_get_rmnet_rx_packets_sum()(遍历 /sys/.../rmnet_data*/statistics/rx_packets
@@ -762,64 +939,37 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         // 注意(仅源码推断,未经实证):切通道时 roamlink_rx_packets 会被清零
         // (dial.c:1857/1875),故切换点附近可能出现一次负增量;负增量不等于 0,
         // 不会被 drxZero 误判为假死。
-        bool haveRx = false; long long rx = 0;
-        if ((v = pick(f, {"RX_PKT", "rx_packets"}))) {
-            char* endp = nullptr;
-            long long r = std::strtoll(v->c_str(), &endp, 10);
-            if (endp != v->c_str()) { haveRx = true; rx = r; }
-        }
-        m.rx = haveRx ? std::to_string(rx) : "-";
+        bool haveRx = parseLong(firstOf(f.rxUpper, f.rxLower), m.rx);
         if (haveRx && haveLastRx) {
-            long long d = rx - lastRx;
-            m.drx = std::to_string(d);
-            m.drxZero = (d == 0);
-        } else {
-            m.drx = "-";
+            const bool overflow = (lastRx > 0 && m.rx < LLONG_MIN + lastRx) ||
+                                  (lastRx < 0 && m.rx > LLONG_MAX + lastRx);
+            if (!overflow) m.drx = m.rx - lastRx;
         }
-        if (haveRx) { lastRx = rx; haveLastRx = true; }
+        if (haveRx) { lastRx = m.rx; haveLastRx = true; }
 
-        m.csqVal = -1;
-        if ((v = pick(f, {"CSQ", "csq"}))) {
-            char* endp = nullptr;
-            long c = std::strtol(v->c_str(), &endp, 10);
-            if (endp != v->c_str() && c != 99) m.csqVal = (int)c;   // 99 = AT+CSQ 未知
+        if (parseLong(firstOf(f.csqUpper, f.csqLower), number) &&
+            number >= INT_MIN && number <= INT_MAX) {
+            m.csqRaw = (int)number;
+            if (number != 99) m.csqVal = (int)number;               // 99 = AT+CSQ 未知
         }
         // RSRP/RSRQ:dBm 精确信号值(负数)。真机两种分隔 hbFields 均能切出:
         //   open_dial "RSRP:-94 | RSRQ:-18"(竖线) / modem_mng "RSRP:-104 RSRQ:-10"(空格)。
         // 只接受负值,正数视为异常(1=无效标记)。
-        if ((v = pick(f, {"RSRP", "rsrp"}))) {
-            char* endp = nullptr;
-            long r = std::strtol(v->c_str(), &endp, 10);
-            if (endp != v->c_str() && r < 0) m.rsrp = (int)r;
-        }
-        if ((v = pick(f, {"RSRQ", "rsrq"}))) {
-            char* endp = nullptr;
-            long r = std::strtol(v->c_str(), &endp, 10);
-            if (endp != v->c_str() && r < 0) m.rsrq = (int)r;
-        }
+        if (parseLong(firstOf(f.rsrpUpper, f.rsrpLower), number) &&
+            number >= INT_MIN && number < 0) m.rsrp = (int)number;
+        if (parseLong(firstOf(f.rsrqUpper, f.rsrqLower), number) &&
+            number >= INT_MIN && number < 0) m.rsrq = (int)number;
         // 两套 SDK 的 LTE SNR 都是 int16_t 原值,单位 0.1dB(真头示例:246=24.6dB)。
         // 0 与正值均有效,不能沿用 RSRP/RSRQ 的“只收负值”规则。
-        if ((v = pick(f, {"SNR", "snr"}))) {
-            char* endp = nullptr;
-            long r = std::strtol(v->c_str(), &endp, 10);
-            if (endp != v->c_str() && *endp == '\0' && r >= -32768 && r <= 32767)
-                m.snr10 = (int)r;
-        }
-        if ((v = pick(f, {"RSSI", "rssi"}))) {
-            char* endp = nullptr;
-            long r = std::strtol(v->c_str(), &endp, 10);
-            if (endp != v->c_str() && *endp == '\0' && r < 0) m.rssiVal = (int)r;
-        }
-        if ((v = pick(f, {"SRV"}))) {
-            char* endp = nullptr;
-            long r = std::strtol(v->c_str(), &endp, 10);
-            if (endp != v->c_str() && *endp == '\0' && r >= 0 && r <= 2) m.srvVal = (int)r;
-        }
-        if ((v = pick(f, {"DENY"}))) {
-            char* endp = nullptr;
-            long r = std::strtol(v->c_str(), &endp, 10);
-            if (endp != v->c_str() && *endp == '\0' && r >= 0) m.denyVal = (int)r;
-        }
+        if (parseLong(firstOf(f.snrUpper, f.snrLower), number, true) &&
+            number >= -32768 && number <= 32767) m.snr10 = (int)number;
+        if (parseLong(firstOf(f.rssiUpper, f.rssiLower), number, true) &&
+            number >= INT_MIN && number < 0)
+            m.rssiVal = (int)number;
+        if (parseLong(f.srv, number, true) && number >= 0 && number <= 2)
+            m.srvVal = (int)number;
+        if (parseLong(f.deny, number, true) && number >= 0 && number <= INT_MAX)
+            m.denyVal = (int)number;
         rows.push_back(std::move(m));
     }
     return rows;
@@ -841,7 +991,8 @@ static Evidence mkEv(const LogLine& l) {
     Evidence e;
     e.lineNo = l.lineNo;
     e.ts     = l.ts;
-    e.text   = (l.tag.empty() ? "" : "[" + l.tag + "] ") + l.msg.substr(0, 160);
+    const std::string& tag = l.tagText();
+    e.text   = (tag.empty() ? "" : "[" + tag + "] ") + l.msg.substr(0, 160);
     return e;
 }
 
@@ -907,9 +1058,9 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             if (!v.empty() && l.t - v.back()->t <= 30) return;   // 同一次的后续行,不另计
             v.push_back(&l);
         };
-        if (l.tag.compare(0, 11, "RECOVERY L1") == 0)       pushEvent(evRecL1);
-        if (l.tag.compare(0, 11, "RECOVERY L2") == 0)       pushEvent(evRecL2);
-        if (l.tag.compare(0, 11, "RECOVERY L3") == 0)       pushEvent(evRecL3);
+        if (l.tagText().compare(0, 11, "RECOVERY L1") == 0) pushEvent(evRecL1);
+        if (l.tagText().compare(0, 11, "RECOVERY L2") == 0) pushEvent(evRecL2);
+        if (l.tagText().compare(0, 11, "RECOVERY L3") == 0) pushEvent(evRecL3);
         // ec200a/dial/dial.cpp:1082 "[WARNING] Registration Denied! Code %d."
         if (icontains(l.msg, "Registration Denied"))        evDenied.push_back(&l);
         /* 数据服务未就绪:AP 侧数据服务(ql_netd)没起来 → ql_data_call_init 失败。
@@ -928,11 +1079,11 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         // "No existing CP dumps." 等。
         // 【样本实证】真机 EC200A 1.28.4(完全正常的设备)只打了 "Bind mounted ..." 和
         // "No existing CP dumps.",旧实现据此报出 [严重] 基带崩溃 —— 假阳性,会误导排查方向。
-        if (l.tag == "CPDUMP" && icontains(l.msg, "existing CP dump") &&
+        if (l.tagText() == "CPDUMP" && icontains(l.msg, "existing CP dump") &&
             !icontains(l.msg, "No existing"))                evCpdump.push_back(&l);
-        if (l.tag == "SLOT")                                evSlot.push_back(&l);
-        if (l.tag == "OPER")                                evOper.push_back(&l);
-        if (l.tag == "CFUN")                                evCfun.push_back(&l);
+        if (l.tagText() == "SLOT")                          evSlot.push_back(&l);
+        if (l.tagText() == "OPER")                          evOper.push_back(&l);
+        if (l.tagText() == "CFUN")                          evCfun.push_back(&l);
     }
     // SDK 注网摘要是 2026-07/08 四份产品代码新增字段。只有 SRV!=FULL 且 DENY>0
     // 才算拒绝证据；DENY=0 不臆测。两套 SDK 的 DENY 数字表不同,这里只保留原码。
@@ -974,9 +1125,10 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                    "海外场景确认是否需要选网(COPS)。";
         for (size_t i = 0; i < evDenied.size() && i < 3; ++i) f.ev.push_back(mkEv(*evDenied[i]));
         for (size_t i = 0; i < evSdkDeny.size() && f.ev.size() < 3; ++i) {
-            Evidence e; e.lineNo = evSdkDeny[i]->lineNo; e.ts = evSdkDeny[i]->ts;
-            e.text = "SDK注网摘要 SRV=" + evSdkDeny[i]->srv + " RAT=" + evSdkDeny[i]->rat +
-                     " DENY=" + evSdkDeny[i]->deny;
+            Evidence e; e.lineNo = evSdkDeny[i]->lineNo; e.ts = fmtTime(evSdkDeny[i]->t, "MD");
+            e.text = "SDK注网摘要 SRV=" + std::to_string(evSdkDeny[i]->srvVal) +
+                     " RAT=" + (evSdkDeny[i]->rat.empty() ? "-" : evSdkDeny[i]->rat) +
+                     " DENY=" + std::to_string(evSdkDeny[i]->denyVal);
             f.ev.push_back(std::move(e));
         }
         fs.push_back(std::move(f));
@@ -1036,7 +1188,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             if (!metsTimeSorted && (m.t < lo || m.t > hi)) continue;
             if (m.csqVal >= 0 && m.csqVal < minCsq) { minCsq = m.csqVal; mWeak = &m; }
             if (m.rsrp < 0 && m.rsrp < minRsrp) { minRsrp = m.rsrp; mRsrp = &m; }
-            if (m.drxZero) { sawZeroRx = true; if (!mZero) mZero = &m; }
+            if (m.drx == 0) { sawZeroRx = true; if (!mZero) mZero = &m; }
             if (!mDeny && m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0) mDeny = &m;
         }
         // RSRP < -110 dBm = 3GPP 极差覆盖(基本不可用)。比 CS<10 更灵敏:
@@ -1077,15 +1229,19 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             Evidence e;
             if (evl) e = mkEv(*evl);
             else if (evm) {
-                e.lineNo = evm->lineNo; e.ts = evm->ts;
+                e.lineNo = evm->lineNo; e.ts = fmtTime(evm->t, "MD");
                 if (c == C_DENIED) {
-                    e.text = "SDK注网摘要 SRV=" + evm->srv + " RAT=" + evm->rat +
-                             " DENY=" + evm->deny + " (断网 " + fmtTime(o.start, "MD") + " 起)";
+                    e.text = "SDK注网摘要 SRV=" + std::to_string(evm->srvVal) +
+                             " RAT=" + (evm->rat.empty() ? "-" : evm->rat) +
+                             " DENY=" + std::to_string(evm->denyVal) +
+                             " (断网 " + fmtTime(o.start, "MD") + " 起)";
                 } else {
-                    std::string sig = "心跳 CSQ=" + evm->csq;
+                    std::string sig = "心跳 CSQ=" +
+                                      (evm->csqRaw >= 0 ? std::to_string(evm->csqRaw) : "-");
                     if (evm->rsrp < 0) sig += " RSRP=" + std::to_string(evm->rsrp) + "dBm";
                     if (evm->snr10 != 100000) sig += " SNR=" + fmtSnr10(evm->snr10) + "dB";
-                    sig += " ΔRX=" + evm->drx;
+                    sig += " ΔRX=" +
+                           (evm->drx != LLONG_MIN ? std::to_string(evm->drx) : "-");
                     e.text = sig + " (断网 " + fmtTime(o.start, "MD") + " 起)";
                 }
             } else {
@@ -1205,8 +1361,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     {
         const MetricRow* hot = nullptr; int best = -999;
         for (const auto& m : mets) {
-            if (m.tmax == "-") continue;
-            int v = std::atoi(m.tmax.c_str());
+            if (m.tempMax == INT_MIN) continue;
+            int v = m.tempMax;
             if (v > best) { best = v; hot = &m; }
         }
         if (hot && best >= 75) {
@@ -1215,8 +1371,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.title  = "模组/CPU 温度偏高:峰值 " + std::to_string(best) + "℃";
             f.detail = "高温会导致射频性能下降甚至模组保护性降频。(75℃ 为经验提示阈值,非源码常量)";
             f.advice = "查散热与安装环境;若高温与断网时间吻合,优先排散热。";
-            Evidence e; e.lineNo = hot->lineNo; e.ts = hot->ts;
-            e.text = "心跳温度峰值 " + hot->tmax + "℃";
+            Evidence e; e.lineNo = hot->lineNo; e.ts = fmtTime(hot->t, "MD");
+            e.text = "心跳温度峰值 " + std::to_string(hot->tempMax) + "℃";
             f.ev.push_back(e);
             fs.push_back(std::move(f));
         }
@@ -1241,7 +1397,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                            " dBm。设备长期处于覆盖边缘,非偶发 —— 断网/低速大概率与此相关。";
                 f.advice = "系统性排查:天线选型/安装位置/朝向、是否室内深处或金属屏蔽;"
                            "必要时加装外置天线或选覆盖更好的运营商。";
-                Evidence e; e.lineNo = mWorst->lineNo; e.ts = mWorst->ts;
+                Evidence e; e.lineNo = mWorst->lineNo; e.ts = fmtTime(mWorst->t, "MD");
                 e.text = "最低 RSRP=" + std::to_string(worst) + "dBm (均值 " + std::to_string(avg) + "dBm)";
                 f.ev.push_back(e);
                 fs.push_back(std::move(f));
@@ -1272,7 +1428,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                        "不是 SDK 或产品源码故障阈值；尚无新版真机日志验证,不单独据此归因断网。";
             f.advice = "结合 RSRP/RSRQ、断网时段和安装环境复核；若 RSRP尚可但SNR持续非正,"
                        "重点排查同频干扰、天线位置及馈线。";
-            Evidence e; e.lineNo = mWorst->lineNo; e.ts = mWorst->ts;
+            Evidence e; e.lineNo = mWorst->lineNo; e.ts = fmtTime(mWorst->t, "MD");
             e.text = "最低 SNR=" + fmtSnr10(worst) + "dB (原值 " + std::to_string(worst) +
                      ",均值 " + fmtSnr10(avg10) + "dB)";
             f.ev.push_back(std::move(e));
@@ -1322,12 +1478,15 @@ std::vector<Finding> analyze(const LogView& lines,
 static bool parseBound(const std::string& s, const LogLine& base, long long& out) {
     std::string t = trim(s);
     if (t.empty()) return false;
+    int baseY = 0, baseMo = 0, baseD = 0;
+    if (std::sscanf(base.ts.c_str(), "%4d-%2d-%2d", &baseY, &baseMo, &baseD) != 3)
+        return false;
 
     // 含 '-' 视为 "MM-DD HH:MM"(年份取日志基准行的年)
     if (t.find('-') != std::string::npos) {
         int M = 0, D = 0, h = 0, mi = 0;
         if (std::sscanf(t.c_str(), "%d-%d %d:%d", &M, &D, &h, &mi) == 4) {
-            out = mkEpoch(base.Y, M, D, h, mi, 0);
+            out = mkEpoch(baseY, M, D, h, mi, 0);
             return true;
         }
         return false;
@@ -1337,7 +1496,7 @@ static bool parseBound(const std::string& s, const LogLine& base, long long& out
     int h = 0, mi = 0, sec = 0;
     int n = std::sscanf(t.c_str(), "%d:%d:%d", &h, &mi, &sec);
     if (n >= 2) {
-        out = mkEpoch(base.Y, base.Mo, base.D, h, mi, (n == 3 ? sec : 0));
+        out = mkEpoch(baseY, baseMo, baseD, h, mi, (n == 3 ? sec : 0));
         return true;
     }
     return false;
@@ -1387,7 +1546,7 @@ LogView applyFilterView(const std::vector<LogLine>& lines,
     out.reserve(noConditions ? lines.size() : std::min<size_t>(lines.size(), 65536));
     for (const auto& l : lines) {
         if (!want.empty()) {
-            std::string lt = lower(l.tag);
+            std::string lt = lower(l.tagText());
             std::string first = lt;
             size_t sp = lt.find(' ');
             if (sp != std::string::npos) first.resize(sp);

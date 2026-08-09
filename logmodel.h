@@ -6,6 +6,9 @@
 //   FMT_SEAS : "YYYY-MM-DD HH:MM:SS.mmm [LEVEL] <ESC>[0m func (file:line) - message"
 //              open_dial_for_artery/src/seas_log/seas_log.c seas_emit_log()
 #pragma once
+#include <climits>
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 #include <map>
@@ -13,7 +16,13 @@
 namespace dl {
 
 // 行格式
-enum Fmt { FMT_UNKNOWN = 0, FMT_SD, FMT_SEAS };
+enum Fmt : unsigned char { FMT_UNKNOWN = 0, FMT_SD, FMT_SEAS };
+
+// seas_log 级别来自固定枚举,不必让每一行都常驻一个 32B std::string。
+enum LogLevel : unsigned char {
+    LEVEL_NONE = 0, LEVEL_ALL, LEVEL_DEBUG, LEVEL_INFO, LEVEL_NOTICE,
+    LEVEL_WARNING, LEVEL_ERROR, LEVEL_FATAL, LEVEL_CRITICAL, LEVEL_OTHER
+};
 
 // 日志来源平台
 enum Platform {
@@ -28,18 +37,28 @@ enum Platform {
 // 一条已解析的日志行
 struct LogLine {
     long long   t = 0;      // epoch 秒(按字面时间解释,不做时区换算)
-    int Y=0, Mo=0, D=0, h=0, mi=0, s=0;
-    int  ms = -1;           // 毫秒;仅 FMT_SEAS 有,-1=无
-    std::string ts;         // 原始时间戳 "YYYY-MM-DD HH:MM:SS"
-    std::string tag;        // 首个 [TAG] 内容(可能含空格,如 "CELL CHANGE"/"RECOVERY L1")
-    std::string msg;        // 标签之后的正文(UTF-8,已剥离 ANSI 转义码)
-    // 以下仅 FMT_SEAS 有值
-    std::string level;      // INFO / ERROR / WARNING / NOTICE / ALL / FATAL(不含方括号)
-    std::string func;       // 打日志的函数名
-    std::string srcfile;    // 源文件名
-    int  srcline = 0;       // 源码行号
-    Fmt  fmt = FMT_UNKNOWN;
     size_t lineNo = 0;      // 原始文件行号(1 基),供结论证据溯源
+    std::string ts;         // 原始时间戳 "YYYY-MM-DD HH:MM:SS"
+    std::string msg;        // 标签之后的正文(UTF-8,已剥离 ANSI 转义码)
+    // 常见标签存字典 ID；只有未知/新标签才分配字符串。不会使用进程级永久池，关闭日志
+    // 后自定义标签照常释放。func/srcfile/srcline 解析后从未被消费,不再逐行保存。
+    std::unique_ptr<std::string> customTag;
+    int  ms = -1;           // 毫秒;仅 FMT_SEAS 有,-1=无
+    std::uint16_t tagId = 0;
+    Fmt  fmt = FMT_UNKNOWN;
+    LogLevel level = LEVEL_NONE;
+
+    LogLine() = default;
+    ~LogLine() = default;
+    LogLine(const LogLine& other);
+    LogLine& operator=(const LogLine& other);
+    LogLine(LogLine&&) noexcept = default;
+    LogLine& operator=(LogLine&&) noexcept = default;
+
+    void setTag(std::string tag);
+    const std::string& tagText() const;
+    void setLevel(const std::string& text);
+    const std::string& levelText() const;
 };
 
 // 筛选后的轻量视图:只保存指向原始 LogLine 的指针,不复制时间戳/标签/正文。
@@ -107,17 +126,21 @@ struct Stall {
 // 心跳指标行(供“指标”页)
 struct MetricRow {
     long long t = 0;
-    std::string ts, ch, csq, tmax, cf, rx, drx;
-    std::string srv, rat, deny, oper, rssi;
+    long long rx = LLONG_MIN;   // LLONG_MIN=无样本；允许 0
+    long long drx = LLONG_MIN;  // LLONG_MIN=首样本/无样本；允许负增量(计数器重置)
+    size_t lineNo = 0;
+    // CH/RAT/OPER 不是可靠的固定枚举，保留原文；其余字段均改为数值，显示时按需格式化。
+    std::string ch, rat, oper;
+    int  csqRaw  = -1;      // 原始数值；99=AT+CSQ 未知，-1=缺失/非法
     int  csqVal  = -1;      // -1=无效/99
+    int  tempMax = INT_MIN; // 多温度字段最大值；INT_MIN=无效
+    int  consecFail = INT_MIN;
     int  rsrp    = 1;       // dBm,负值(约-70~-120,越大越好);1=无效(正数不可能是真值)
     int  rsrq    = 1;       // dB,负值(约-3~-20);1=无效
     int  snr10   = 100000;  // SDK 原值,单位 0.1dB;100000=无效(超出 int16_t 范围)
     int  rssiVal = 1;       // dBm,负值;1=无效
     int  srvVal  = -1;      // SDK 服务状态:0=NONE,1=LIMITED,2=FULL;-1=无效
     int  denyVal = -1;      // SDK 原始拒绝码;两套 SDK 编码不同,-1=无效
-    bool drxZero = false;   // ΔRX == 0 → 数据不通征兆
-    size_t lineNo = 0;
 };
 
 // ---- 结论引擎(第 4 节)----
@@ -140,6 +163,29 @@ struct Finding {
 //   若 A 文件末行以冒号结尾、B 文件首行无时间戳,续行逻辑会把 B 首行误并入 A 末条(串味)。
 //   真机 72 种拼接组合虽未触发(日志通常正常结束),但机制真实,此为零风险防御。
 //   留空 = 单文件/剪贴板,无边界约束(行为与旧版完全一致)。
+class StreamingLogParser {
+public:
+    StreamingLogParser(std::vector<LogLine>& out,
+                       std::vector<std::string>& sessions,
+                       size_t reserveHint = 0);
+    ~StreamingLogParser();
+    StreamingLogParser(const StreamingLogParser&) = delete;
+    StreamingLogParser& operator=(const StreamingLogParser&) = delete;
+    StreamingLogParser(StreamingLogParser&&) noexcept;
+    StreamingLogParser& operator=(StreamingLogParser&&) noexcept;
+
+    // 在下一行前建立文件边界,阻止该行被并入上一文件末行的续行。
+    void beginFile();
+    // 接受一行原始文本；允许带行尾 CR/LF。调用后不再保留参数内容。
+    void pushLine(std::string line);
+    // 完成会话去重并取回审计。finish 后不再接受新行。
+    void finish(ParseAudit* audit = nullptr);
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
 void parseLines(const std::vector<std::string>& raw,
                 std::vector<LogLine>& out,
                 std::vector<std::string>& sessions,
