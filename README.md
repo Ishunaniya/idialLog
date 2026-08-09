@@ -84,7 +84,9 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # 产物: dialLog_v1.10.1.exe(文件名自带版本号)
+make                     # x64: build/x64/dialLog_v1.10.2.exe
+make windows-all         # 同时构建 build/x64 与 build/x86
+make release             # 正式 x64 产物复制到仓库根目录
 make version             # 只打印当前版本号
 ```
 
@@ -94,13 +96,16 @@ make version             # 只打印当前版本号
 mingw32-make CROSS=
 ```
 
+本机构建输出到 `build/native/`,不会与交叉编译对象混用。
+
 ### 32 位
 
 ```bash
-make CROSS=i686-w64-mingw32-
+make windows-x86         # build/x86/dialLog_v1.10.2.exe
 ```
 
-`CROSS` 同时派生 `CC/CXX/WINDRES`,避免 32 位 C++ 对象误混入 64 位 `miniz.o`。
+`CROSS` 同时派生 `CC/CXX/WINDRES`;每种工具链使用独立构建目录,连续切换架构
+也不会复用上一架构的对象或误把旧 exe 判为最新。
 三个编译器仍用 `:=` 固定,不受本机导出的 RK3576/buildroot `CC/CXX` 污染；
 命令行显式传入的变量仍可覆盖。
 
@@ -118,9 +123,9 @@ make check-full  # check + 44 个变异；靶向路由、默认并发2、带逐�
 自测会做**审计自洽校验**(`已解析 + 会话标记 + 空行 + 未识别 == 原始行数`),
 不自洽即退出码 1;并校验“每条结论都有证据”,无证据的结论同样判失败。
 
-输入防御:单个文件最大 512MiB；压缩包单条目最大 256MiB、总解压最大 512MiB、
-最多 1000 个条目。gzip 会校验头部边界、ISIZE 与 CRC32；损坏包会明确报错,
-不会静默当普通文本分析。
+输入防御:单个文件最大 512MiB,一次多选展开后的日志文本总量最大 512MiB；
+压缩包单条目最大 256MiB、总解压最大 512MiB、最多 1000 个条目。
+gzip 会校验头部边界、ISIZE 与 CRC32；损坏包会明确报错,不会静默当普通文本分析。
 
 ## 已验证 / 未验证(事实与推断分开)
 
@@ -164,12 +169,12 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.10.1.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.10.2.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.10.1 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.10.2 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
-`make clean` 用 `dialLog_v*.exe` 通配,升版本后旧 exe 一并清掉。
+`make clean` 只清理 `build/` 和测试程序,不会误删仓库根目录中已提交的发布 exe。
 
 | 版本 | 内容 |
 |---|---|
@@ -182,6 +187,7 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | 1.9.0–1.9.3 | 信号曲线与后续修订 |
 | 1.10.0 | 跟进四份产品的新心跳字段;SNR 加入表格、CSV、总览、图表和保守诊断;信号图改为上下两个单 Y 轴 |
 | 1.10.1 | 修复 CRLF 重复空行;强化文件/压缩包边界和 gzip 完整性校验;完善 Windows 双架构构建、CI 与变异测试 |
+| 1.10.2 | 隔离 x64/x86 构建目录;限制批量输入总量并减少合并复制;CSV 原子写入;修复 DPI 切换后的等宽字体 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞 1.2MB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

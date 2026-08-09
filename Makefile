@@ -1,13 +1,15 @@
 # Makefile — dialLog (Win32 原生 GUI, MinGW)
 #
 # 交叉编译(Linux 上生成 Windows exe,本仓库默认):
-#     make
+#     make                         # build/x64/dialLog_vX.Y.Z.exe
+#     make windows-all             # 同时构建 build/x64 与 build/x86
+#     make release                 # 正式 x64 产物复制到仓库根目录
 # Windows 本机 MinGW 编译:
 #     mingw32-make CROSS=
 # 32 位:
-#     make CROSS=i686-w64-mingw32-
+#     make windows-x86
 #
-# 产物 dialLog_vX.Y.Z.exe 为静态链接,不依赖任何 MinGW/MSVC 运行时 DLL,拷到 Windows 双击即用。
+# 产物为静态链接,不依赖任何 MinGW/MSVC 运行时 DLL,拷到 Windows 双击即用。
 # 文件名自带版本号 —— 发给别人/存档时不会搞混是哪个 build。
 
 # 注意:用 := 而非 ?=。本机环境常导出 CC/CXX(RK3576/buildroot 交叉链),
@@ -16,6 +18,20 @@ CROSS   ?= x86_64-w64-mingw32-
 CXX     := $(CROSS)g++
 CC      := $(CROSS)gcc
 WINDRES := $(CROSS)windres
+
+# 每种工具链使用独立目录。切换 CROSS 后不能复用上一架构的 .o 或 exe。
+# 未知交叉前缀可由调用方显式传 BUILD_FLAVOR=<名称>。
+ifeq ($(strip $(CROSS)),)
+BUILD_FLAVOR ?= native
+else ifneq ($(findstring i686,$(CROSS)),)
+BUILD_FLAVOR ?= x86
+else ifneq ($(findstring x86_64,$(CROSS)),)
+BUILD_FLAVOR ?= x64
+else
+BUILD_FLAVOR ?= cross
+endif
+BUILD_ROOT ?= build
+BUILD_DIR  ?= $(BUILD_ROOT)/$(BUILD_FLAVOR)
 
 # 解析层测试始终用本机编译器。单独命名,避免环境里的嵌入式 CC/CXX 污染。
 HOST_CXX      := g++
@@ -32,7 +48,8 @@ VER       := $(VER_MAJOR).$(VER_MINOR).$(VER_PATCH)
 ifeq ($(VER),..)
 $(error 无法从 version.h 解析版本号 —— 检查 DL_VER_MAJOR/MINOR/PATCH 的写法)
 endif
-TARGET    := dialLog_v$(VER).exe
+EXE_NAME  := dialLog_v$(VER).exe
+TARGET    ?= $(BUILD_DIR)/$(EXE_NAME)
 
 # -municode      : 使用 wWinMain 入口
 # -mwindows      : GUI 子系统(不弹控制台)
@@ -49,26 +66,46 @@ LIBS     := -lcomctl32 -lgdi32 -lcomdlg32 -lshell32 -luser32 -lkernel32
 MINIZ_DEF := -DDL_HAVE_MINIZ
 MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 
-OBJS := ui.o logmodel.o miniz.o resource.o
+OBJS := $(BUILD_DIR)/ui.o $(BUILD_DIR)/logmodel.o \
+        $(BUILD_DIR)/miniz.o $(BUILD_DIR)/resource.o
 TEST_BINS := selftest simtest hostruntest baselinetest mergetest archivetest boundarytest
 
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
+$(BUILD_DIR):
+	mkdir -p $@
+
+$(TARGET): $(OBJS) | $(BUILD_DIR)
 	$(CXX) $(OBJS) -o $@ $(LDFLAGS) $(LIBS)
 	@echo "==> 生成 $@ (静态链接,无运行时依赖)"
 
-ui.o: ui.cpp logmodel.h version.h theme.h
+$(BUILD_DIR)/ui.o: ui.cpp logmodel.h version.h theme.h | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
 
-logmodel.o: logmodel.cpp logmodel.h miniz.h
+$(BUILD_DIR)/logmodel.o: logmodel.cpp logmodel.h miniz.h | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
 
-miniz.o: miniz.c miniz.h
+$(BUILD_DIR)/miniz.o: miniz.c miniz.h | $(BUILD_DIR)
 	$(CC) $(MINIZ_CFLAGS) -c $< -o $@
 
-resource.o: resource.rc app.manifest version.h dialLog.ico
+$(BUILD_DIR)/resource.o: resource.rc app.manifest version.h dialLog.ico | $(BUILD_DIR)
 	$(WINDRES) -c 65001 $< -O coff -o $@
+
+# 双架构便捷入口。即使连续执行也只会复用各自目录里的正确对象。
+windows-x64:
+	$(MAKE) CROSS=x86_64-w64-mingw32- BUILD_FLAVOR=x64 \
+		TARGET=$(BUILD_ROOT)/x64/$(EXE_NAME) all
+
+windows-x86:
+	$(MAKE) CROSS=i686-w64-mingw32- BUILD_FLAVOR=x86 \
+		TARGET=$(BUILD_ROOT)/x86/$(EXE_NAME) all
+
+windows-all: windows-x64 windows-x86
+
+# 仓库根目录只保留一个供直接取用的正式 x64 exe。日常构建不碰它。
+release: windows-x64
+	cp $(BUILD_ROOT)/x64/$(EXE_NAME) $(EXE_NAME)
+	@echo "==> 发布产物 $(EXE_NAME)"
 
 # 解析层自测:logmodel 不含 Win32 依赖。普通测试共享同一个 host 对象,
 # 避免七个测试各自重复编译 1476 行的 logmodel.cpp。
@@ -81,7 +118,6 @@ logmodel_archive_host.o: logmodel.cpp logmodel.h miniz.h
 selftest: selftest.cpp logmodel_host.o
 	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
-# 用 dialLog_v*.exe 通配:升版本后旧版本的 exe 也一并清掉,不留残留
 # 场景模拟器 + 结论引擎断言测试(只验结论引擎,验不了解析器 —— 见 simtest.cpp 顶部说明)
 simtest: simtest.cpp logmodel_host.o
 	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
@@ -124,9 +160,10 @@ check-full: check
 	python3 sim/mutate.py
 
 clean:
-	rm -f $(OBJS) logmodel_host.o logmodel_archive_host.o miniz_host.o dialLog_v*.exe $(TEST_BINS)
+	rm -rf build
+	rm -f logmodel_host.o logmodel_archive_host.o miniz_host.o $(TEST_BINS)
 
 version:
 	@echo $(VER)
 
-.PHONY: all clean version check check-full
+.PHONY: all clean version check check-full windows-x64 windows-x86 windows-all release

@@ -2,6 +2,7 @@
 *.o
 selftest
 selftest.exe
+build/
 
 # 注意:dialLog_vX.Y.Z.exe 是**有意入库**的(方便直接取用,不必装 MinGW 重编)。
 # 代价:每次提交 exe 都会往历史里塞 ~1.2MB 且永久留存(git 删不掉历史里的二进制)。

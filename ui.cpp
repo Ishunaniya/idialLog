@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <iterator>
 #include <map>
 #include <new>
 #include <string>
@@ -133,6 +134,7 @@ static std::wstring FmtW(const wchar_t* fmt, ...) {
 
 // ============================ 文件读取 ============================
 static constexpr long long kMaxInputBytes = 512LL * 1024 * 1024;
+static constexpr size_t kMaxBatchTextBytes = 512ULL * 1024 * 1024;
 
 static bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstring& err) {
     err.clear();
@@ -166,6 +168,63 @@ static bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstri
     return true;
 }
 
+// CSV 先完整写到目标目录中的临时文件,Flush 成功后再原子替换目标。
+// 写盘中断/磁盘写满时旧文件保持不变,不会留下半份 CSV 冒充成功结果。
+static bool WriteFileBytesAtomic(const std::wstring& path, const std::string& data,
+                                 std::wstring& err) {
+    err.clear();
+    size_t slash = path.find_last_of(L"\\/");
+    std::wstring dir = slash == std::wstring::npos ? L"." : path.substr(0, slash + 1);
+    wchar_t tempPath[MAX_PATH]{};
+    if (dir.size() >= MAX_PATH) {
+        err = L"CSV 目标目录路径过长";
+        return false;
+    }
+    if (!GetTempFileNameW(dir.c_str(), L"dlg", 0, tempPath)) {
+        err = FmtW(L"无法在目标目录创建临时文件 (Windows 错误 %lu)", GetLastError());
+        return false;
+    }
+
+    HANDLE h = CreateFileW(tempPath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                           FILE_ATTRIBUTE_TEMPORARY, nullptr);
+    if (h == INVALID_HANDLE_VALUE) {
+        DWORD code = GetLastError();
+        DeleteFileW(tempPath);
+        err = FmtW(L"无法打开 CSV 临时文件 (Windows 错误 %lu)", code);
+        return false;
+    }
+
+    bool ok = true;
+    DWORD code = ERROR_SUCCESS;
+    size_t total = 0;
+    while (total < data.size()) {
+        DWORD want = (DWORD)std::min<size_t>(data.size() - total, 1024 * 1024);
+        DWORD wrote = 0;
+        if (!WriteFile(h, data.data() + total, want, &wrote, nullptr) || wrote != want) {
+            code = GetLastError();
+            if (code == ERROR_SUCCESS) code = ERROR_WRITE_FAULT;
+            ok = false;
+            break;
+        }
+        total += wrote;
+    }
+    if (ok && !FlushFileBuffers(h)) { code = GetLastError(); ok = false; }
+    if (!CloseHandle(h) && ok) { code = GetLastError(); ok = false; }
+
+    if (!ok) {
+        DeleteFileW(tempPath);
+        err = FmtW(L"CSV 写入未完成 (Windows 错误 %lu),原文件未修改", code);
+        return false;
+    }
+    if (!MoveFileExW(tempPath, path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        code = GetLastError();
+        DeleteFileW(tempPath);
+        err = FmtW(L"无法用完整 CSV 替换目标文件 (Windows 错误 %lu),原文件未修改", code);
+        return false;
+    }
+    return true;
+}
+
 // 读一个路径 → 一到多份行缓冲(chunks)+ 各自展示名(labels)。
 // 压缩包(.zip/.tar.gz/.gz)在内存中解压;一个包里的每个文件成为独立 chunk,
 // 这样它们照常走后续的定序 / 时基混合防护(与手工解压后多选拖入等价)。
@@ -174,7 +233,11 @@ static bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstri
 static bool ReadPathExpand(const std::wstring& path,
                            std::vector<std::vector<std::string>>& chunks,
                            std::vector<std::wstring>& labels,
+                           size_t& textBytes,
                            std::wstring& err) {
+    chunks.clear();
+    labels.clear();
+    textBytes = 0;
     std::string buf;
     if (!ReadFileBytes(path, buf, err)) return false;
 
@@ -188,9 +251,16 @@ static bool ReadPathExpand(const std::wstring& path,
         std::string archiveErr;
         if (dl::extractArchive(buf, entries, archiveErr)) {
             for (auto& e : entries) {
+                size_t entryBytes = e.data.size();
                 std::vector<std::string> lines;
                 dl::splitTextLines(std::move(e.data), lines);
                 if (lines.empty()) continue;
+                if (entryBytes > kMaxBatchTextBytes - textBytes) {
+                    chunks.clear(); labels.clear(); textBytes = 0;
+                    err = L"压缩包展开后的日志文本超过 512 MiB";
+                    return false;
+                }
+                textBytes += entryBytes;
                 chunks.push_back(std::move(lines));
                 // 展示名:包名!内部名(内部名可能为空,如单文件 .gz)
                 std::wstring inner = U8ToW(e.name);
@@ -205,8 +275,9 @@ static bool ReadPathExpand(const std::wstring& path,
     }
 
     std::vector<std::string> lines;
+    textBytes = buf.size();
     dl::splitTextLines(std::move(buf), lines);
-    if (lines.empty()) { err = L"文件为空"; return false; }
+    if (lines.empty()) { textBytes = 0; err = L"文件为空"; return false; }
     chunks.push_back(std::move(lines));
     labels.push_back(base);
     return true;
@@ -1546,19 +1617,26 @@ static void LoadFiles(const std::vector<std::wstring>& paths) {
     // logmodel(orderByTime / detectMix),此处只做 I/O、排除、拼接、提示。
     std::vector<std::vector<std::string>> chunks;
     std::vector<std::wstring> ok;
+    size_t batchTextBytes = 0;
     for (const auto& p : paths) {
         // ReadPathExpand:普通文件 → 1 个 chunk;压缩包 → 包内每个文件各 1 个 chunk。
         // 展开后的 chunk 与手工解压后多选拖入完全等价,照常走定序 / 时基混合防护。
         std::vector<std::vector<std::string>> sub;
         std::vector<std::wstring> subLabels;
+        size_t subTextBytes = 0;
         std::wstring readErr;
         bool loaded = false;
         try {
-            loaded = ReadPathExpand(p, sub, subLabels, readErr);
+            loaded = ReadPathExpand(p, sub, subLabels, subTextBytes, readErr);
         } catch (const std::bad_alloc&) {
             readErr = L"内存不足,无法展开或切分日志";
         }
+        if (loaded && subTextBytes > kMaxBatchTextBytes - batchTextBytes) {
+            loaded = false;
+            readErr = L"本次选择的展开后日志文本总量超过 512 MiB";
+        }
         if (loaded) {
+            batchTextBytes += subTextBytes;
             for (size_t i = 0; i < sub.size(); ++i) {
                 chunks.push_back(std::move(sub[i]));
                 ok.push_back(subLabels[i]);
@@ -1610,9 +1688,20 @@ static void LoadFiles(const std::vector<std::wstring>& paths) {
 
     std::vector<std::string> raw;
     std::vector<size_t> fileBoundaries;   // 各文件在 raw 中的起始下标 → 阻止跨文件续行
-    for (size_t i : ord) {
-        fileBoundaries.push_back(raw.size());   // 本文件从这里开始
-        raw.insert(raw.end(), chunks[i].begin(), chunks[i].end());
+    try {
+        size_t totalLines = 0;
+        for (size_t i : ord) totalLines += chunks[i].size();
+        raw.reserve(totalLines);
+        fileBoundaries.reserve(ord.size());
+        for (size_t i : ord) {
+            fileBoundaries.push_back(raw.size());   // 本文件从这里开始
+            raw.insert(raw.end(),
+                       std::make_move_iterator(chunks[i].begin()),
+                       std::make_move_iterator(chunks[i].end()));
+        }
+    } catch (const std::bad_alloc&) {
+        MessageBoxW(hMain, L"内存不足,无法合并所选日志。", L"错误", MB_ICONERROR);
+        return;
     }
 
     std::wstring lbl;
@@ -1729,38 +1818,44 @@ static void DoExportCsv() {
     ofn.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT;
     if (!GetSaveFileNameW(&ofn)) return;
 
-    std::string out = "\xEF\xBB\xBF";              // UTF-8 BOM,Excel 中文不乱码
-    auto csv = [](const std::string& s) {
-        if (s.find_first_of(",\"\r\n") == std::string::npos) return s;
-        std::string q = "\"";
-        for (char c : s) { q += c; if (c == '\"') q += '\"'; }
-        q += '\"';
-        return q;
-    };
-    out += "time,ch,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper\r\n";
-    for (const auto& m : g_metrics) {
-        out += csv(m.ts); out += ',';
-        out += csv(m.ch); out += ',';
-        out += csv(m.csq); out += ',';
-        out += csv(m.tmax); out += ',';
-        out += csv(m.cf); out += ',';
-        out += csv(m.rx); out += ',';
-        out += csv(m.drx); out += ',';
-        out += (m.rsrp < 0 ? std::to_string(m.rsrp) : ""); out += ',';
-        out += (m.rsrq < 0 ? std::to_string(m.rsrq) : ""); out += ',';
-        if (m.snr10 != 100000) { char b[32]; snprintf(b, sizeof(b), "%.1f", m.snr10 / 10.0); out += b; }
-        out += ',';
-        out += (m.rssiVal < 0 ? std::to_string(m.rssiVal) : ""); out += ',';
-        out += csv(m.srv); out += ',';
-        out += csv(m.rat); out += ',';
-        out += csv(m.deny); out += ',';
-        out += csv(m.oper); out += "\r\n";
+    std::string out;
+    try {
+        out = "\xEF\xBB\xBF";                      // UTF-8 BOM,Excel 中文不乱码
+        auto csv = [](const std::string& s) {
+            if (s.find_first_of(",\"\r\n") == std::string::npos) return s;
+            std::string q = "\"";
+            for (char c : s) { q += c; if (c == '\"') q += '\"'; }
+            q += '\"';
+            return q;
+        };
+        out += "time,ch,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper\r\n";
+        for (const auto& m : g_metrics) {
+            out += csv(m.ts); out += ',';
+            out += csv(m.ch); out += ',';
+            out += csv(m.csq); out += ',';
+            out += csv(m.tmax); out += ',';
+            out += csv(m.cf); out += ',';
+            out += csv(m.rx); out += ',';
+            out += csv(m.drx); out += ',';
+            out += (m.rsrp < 0 ? std::to_string(m.rsrp) : ""); out += ',';
+            out += (m.rsrq < 0 ? std::to_string(m.rsrq) : ""); out += ',';
+            if (m.snr10 != 100000) { char b[32]; snprintf(b, sizeof(b), "%.1f", m.snr10 / 10.0); out += b; }
+            out += ',';
+            out += (m.rssiVal < 0 ? std::to_string(m.rssiVal) : ""); out += ',';
+            out += csv(m.srv); out += ',';
+            out += csv(m.rat); out += ',';
+            out += csv(m.deny); out += ',';
+            out += csv(m.oper); out += "\r\n";
+        }
+    } catch (const std::bad_alloc&) {
+        MessageBoxW(hMain, L"内存不足,无法生成 CSV。", L"错误", MB_ICONERROR);
+        return;
     }
-    HANDLE h = CreateFileW(file, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (h == INVALID_HANDLE_VALUE) { MessageBoxW(hMain, L"写入失败。", L"错误", MB_ICONERROR); return; }
-    DWORD wr = 0;
-    WriteFile(h, out.data(), (DWORD)out.size(), &wr, nullptr);
-    CloseHandle(h);
+    std::wstring writeErr;
+    if (!WriteFileBytesAtomic(file, out, writeErr)) {
+        MessageBoxW(hMain, writeErr.c_str(), L"导出失败", MB_ICONERROR);
+        return;
+    }
     SetWindowTextW(hStatus, (std::wstring(L"  已导出 ") + file).c_str());
 }
 
@@ -1956,6 +2051,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         for (HWND c = GetWindow(hwnd, GW_CHILD); c; c = GetWindow(c, GW_HWNDNEXT))
             SendMessageW(c, WM_SETFONT, (WPARAM)hFontUI, TRUE);
         SendMessageW(hTab, WM_SETFONT, (WPARAM)hFontUI, TRUE);
+        // MkLv / 原始行编辑框初始使用等宽字体；上面的统一设置会覆盖它们，必须恢复。
+        for (HWND c : { hTimeline, hOutage, hMetric, hTags, hUnparsed, hRaw })
+            if (c) SendMessageW(c, WM_SETFONT, (WPARAM)hFontMono, TRUE);
         // 删旧字体
         for (HFONT f : { oUI, oMono, oHero, oTV, oTL, oSect }) if (f) DeleteObject(f);
         // 按系统建议矩形调整窗口(会触发 WM_SIZE → Layout)

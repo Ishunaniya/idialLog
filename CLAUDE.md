@@ -68,8 +68,9 @@ make check-full  # check + 44 个变异；须 0 存活、0 片段失配
 
 ## 本机构建/验证环境
 
-- 交叉编译:`make`(默认 `CROSS=x86_64-w64-mingw32-`);32 位用
-  `make CROSS=i686-w64-mingw32-`;Windows 本机用 `mingw32-make CROSS=`。
+- 交叉编译:`make`(默认 x64,输出 `build/x64/`);32 位用 `make windows-x86`；
+  双架构用 `make windows-all`;正式根目录 x64 产物用 `make release`；
+  Windows 本机用 `mingw32-make CROSS=`(输出 `build/native/`)。
 - GUI 验证:`wine`(prefix 在 `$HOME/.wine-diag`,含 Noto CJK 字体 + FontSubstitutes 映射,否则中文是方块)+ Xvfb 无头截图。**GUI 从没在真 Windows 上跑过,只 wine 截图。**
 
 ## 仍未覆盖(别声称"全部")

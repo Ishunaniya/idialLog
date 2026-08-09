@@ -22,11 +22,13 @@
 //           SNR 加入明细/CSV/总览/信号图及保守诊断,信号图改为上下两个单 Y 轴
 //   1.10.1  修复 CRLF 重复空行;强化文件/压缩包边界和 gzip 完整性校验;
 //           完善 Windows x64/x86 构建、自动回归与变异测试
+//   1.10.2  隔离 x64/x86 构建目录;限制批量输入总量并减少合并复制;
+//           CSV 改为原子写入,修复 DPI 切换后等宽字体丢失
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 1
+#define DL_VER_PATCH 2
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)
