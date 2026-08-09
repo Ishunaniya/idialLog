@@ -32,11 +32,13 @@
 //           新增虚拟表数据源/格式回归和百万行免预写单元格统计
 //   1.10.6  信号图按屏幕像素桶保留峰谷并缓存绘制点;
 //           悬停最近点改用二分查询,新增百万点图表规模/极值回归
+//   1.10.7  关闭/替换日志时按引用顺序释放模型及 vector 容量;
+//           降低连续分析大日志的驻留与切换峰值内存,新增百万行卸载容量回归
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 6
+#define DL_VER_PATCH 7
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

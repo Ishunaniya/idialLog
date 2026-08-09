@@ -5,11 +5,13 @@
 #include "logmodel.h"
 #include "tablemodel.h"
 #include "chartmodel.h"
+#include "memoryutil.h"
 
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 using namespace dl;
@@ -57,7 +59,7 @@ static bool runOne(size_t n) {
     auto t1 = Clock::now();
 
     // app 在解析后不再需要 raw；基准也释放它,避免把生成器缓存算进筛选峰值。
-    std::vector<std::string>().swap(raw);
+    releaseVector(raw);
 
     bool grepBad = false;
     LogView view = applyFilterView(lines, "HEARTBEAT", "", "", "", &grepBad);
@@ -123,7 +125,35 @@ static bool runOne(size_t n) {
     std::printf("           信号图 原始 %zu 点 -> 1920px 绘制 %zu 点 | 少画 %zu 点 | %s\n",
                 chart.size(), sampled.size(), chart.size() - sampled.size(),
                 compactChart ? "通过" : "失败");
-    return ok;
+
+    // 模拟 UI 的“关闭日志”顺序:先释放所有借用 LogLine 的指针视图,最后释放拥有者。
+    // 这里只统计 vector 主数组的结构下限；元素内部 string/map 的堆内存还会随析构
+    // 一并归还给分配器，但不在这个可移植、可重复的数字中臆测其大小。
+    auto vectorBytes = [](const auto& v) {
+        using Vector = std::decay_t<decltype(v)>;
+        return v.capacity() * sizeof(typename Vector::value_type);
+    };
+    size_t unloadFloor = vectorBytes(timeline) + vectorBytes(fullView) + vectorBytes(view) +
+                         vectorBytes(outages) + vectorBytes(metrics) + vectorBytes(findings) +
+                         vectorBytes(chart) + vectorBytes(sampled) + vectorBytes(sessions) +
+                         vectorBytes(lines);
+    releaseVector(timeline);
+    releaseVector(fullView);
+    releaseVector(view);
+    releaseVector(outages);
+    releaseVector(metrics);
+    releaseVector(findings);
+    releaseVector(chart);
+    releaseVector(sampled);
+    releaseVector(sessions);
+    releaseVector(lines);
+    bool unloaded = timeline.capacity() == 0 && fullView.capacity() == 0 && view.capacity() == 0 &&
+                    outages.capacity() == 0 && metrics.capacity() == 0 && findings.capacity() == 0 &&
+                    chart.capacity() == 0 && sampled.capacity() == 0 && sessions.capacity() == 0 &&
+                    lines.capacity() == 0;
+    std::printf("           显式卸载 vector 主数组下限 %.1f MiB -> 0 | %s\n",
+                unloadFloor / 1048576.0, unloaded ? "通过" : "失败");
+    return ok && unloaded;
 }
 
 int main(int argc, char** argv) {

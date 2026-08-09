@@ -26,6 +26,7 @@
 #include "logmodel.h"
 #include "tablemodel.h"
 #include "chartmodel.h"
+#include "memoryutil.h"
 #include "version.h"
 #include "theme.h"
 
@@ -1576,6 +1577,47 @@ static void ResetVirtualTables() {
     g_timelineRows.clear();
 }
 
+// 关闭/替换日志的冷路径:不仅清空元素,还释放所有大 vector 的 capacity。
+// 顺序是安全边界的一部分:OWNERDATA 行数和两个借用视图必须先失效,最后才能释放
+// g_all。普通筛选仍使用 clear()/赋值复用容量,避免每次点击“应用”都重新分配。
+static void ReleaseLoadedData() {
+    ResetVirtualTables();
+    releaseVector(g_timelineRows);
+    releaseVector(g_view);
+
+    // 非 OWNERDATA 控件自己持有单元格文本；替换日志前也立即丢掉旧内容，避免隐藏页
+    // 一直保留到用户下次切换页签才释放。
+    if (hOutage)   ListView_DeleteAllItems(hOutage);
+    if (hTags)     ListView_DeleteAllItems(hTags);
+    if (hUnparsed) ListView_DeleteAllItems(hUnparsed);
+    if (hRaw)      SetWindowTextW(hRaw, L"");
+
+    releaseVector(g_outages);
+    releaseVector(g_metrics);
+    releaseVector(g_findings);
+    releaseVector(g_sumCards);
+    releaseVector(g_ogColors);
+    releaseVector(g_csq);
+    releaseVector(g_rsrp);
+    releaseVector(g_rsrq);
+    releaseVector(g_snr10);
+
+    ResetChartSampleCache();
+    releaseVector(g_chartCsqDraw);
+    releaseVector(g_chartDetailDraw);
+
+    // 所有借用 g_all 的指针均已解除,现在才可释放拥有者。
+    releaseVector(g_all);
+    releaseVector(g_sessions);
+    g_audit = ParseAudit{};
+    g_plat  = PlatformInfo{};
+
+    g_chartDetail = 0;
+    g_chartHoverX = -1;
+    g_findScroll = g_findContentH = 0;
+    g_sumScroll  = g_sumContentH  = 0;
+}
+
 // 数据更新时只刷新当前页；其它页保留脏标记,用户首次切过去时再生成控件内容。
 // 时间线/指标还使用 OWNERDATA 虚拟表,这里只设置行数,滚动到可见单元格时才转 UTF-16。
 static void RenderPage(int page) {
@@ -1641,10 +1683,11 @@ static void RefreshAll() {
 // 载入的公共尾段:移动接管原始行,解析后立即释放,不让 raw 与后续分析结果长期共存。
 static void LoadRawLines(std::vector<std::string> raw, const std::wstring& srcLabel,
                          const std::vector<size_t>& fileBoundaries = {}) {
-    ResetVirtualTables();
-    g_view.clear();  // parseLines 会重建 g_all,先解除所有借用指针
+    // raw 已成功读取/合并后才卸载旧日志；读取失败仍保留当前分析。释放旧分析结果后再
+    // parse,避免“大旧日志模型 + 新日志原文 + 新分析模型”三者在切换期间重叠。
+    ReleaseLoadedData();
     parseLines(raw, g_all, g_sessions, &g_audit, fileBoundaries);
-    std::vector<std::string>().swap(raw);
+    releaseVector(raw);
     g_plat = detectPlatform(g_all);   // 平台识别用全量行(不受筛选影响)
     std::wstring lbl = srcLabel;
     lbl += FmtW(L"   (%d 行, %d 会话, %s)", (int)g_all.size(), (int)g_sessions.size(),
@@ -2151,18 +2194,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         case IDC_CLOSELOG: {
             // 关闭日志:卸载数据回到"尚未加载"。RefreshAll 对空数据会提前 return
             // (不刷各页),故此处手动逐页渲染,否则列表/卡片残留上一份日志。
-            ResetVirtualTables();
-            g_view.clear(); g_all.clear();
-            g_sessions.clear(); g_outages.clear(); g_metrics.clear();
-            g_findings.clear(); g_sumCards.clear();
-            g_ogColors.clear();
-            g_csq.clear(); g_rsrp.clear(); g_rsrq.clear(); g_snr10.clear();
-            ResetChartSampleCache();
-            g_chartDetail = 0;
-            g_audit = ParseAudit{};
-            g_plat  = PlatformInfo{};
-            g_findScroll = g_findContentH = 0;
-            g_sumScroll  = g_sumContentH  = 0;
+            ReleaseLoadedData();
             SetWindowTextW(hTagBox, L"");
             SetWindowTextW(hGrepBox, L"");
             SetWindowTextW(hSinceBox, L"");

@@ -81,7 +81,7 @@ $(TARGET): $(OBJS) | $(BUILD_DIR)
 	$(CXX) $(OBJS) -o $@ $(LDFLAGS) $(LIBS)
 	@echo "==> 生成 $@ (静态链接,无运行时依赖)"
 
-$(BUILD_DIR)/ui.o: ui.cpp logmodel.h tablemodel.h chartmodel.h version.h theme.h | $(BUILD_DIR)
+$(BUILD_DIR)/ui.o: ui.cpp logmodel.h tablemodel.h chartmodel.h memoryutil.h version.h theme.h | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
 
 $(BUILD_DIR)/logmodel.o: logmodel.cpp logmodel.h miniz.h | $(BUILD_DIR)
@@ -169,8 +169,8 @@ charttest: charttest.cpp chartmodel_host.o
 	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
 # 大日志性能基准:默认 10万/50万/100万行,输出各阶段耗时并校验结果规模。
-perftest: perftest.cpp chartmodel_host.o tablemodel_host.o logmodel_host.o
-	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+perftest: perftest.cpp chartmodel_host.o tablemodel_host.o logmodel_host.o memoryutil.h
+	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $(filter %.cpp %.o,$^) $(HOST_LDFLAGS)
 
 perf: perftest
 	./perftest
