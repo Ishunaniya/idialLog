@@ -67,8 +67,9 @@ MINIZ_DEF := -DDL_HAVE_MINIZ
 MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 
 OBJS := $(BUILD_DIR)/ui.o $(BUILD_DIR)/logmodel.o $(BUILD_DIR)/tablemodel.o \
+        $(BUILD_DIR)/chartmodel.o \
         $(BUILD_DIR)/miniz.o $(BUILD_DIR)/resource.o
-TEST_BINS := selftest simtest hostruntest baselinetest mergetest archivetest boundarytest tabletest
+TEST_BINS := selftest simtest hostruntest baselinetest mergetest archivetest boundarytest tabletest charttest
 PERF_BIN := perftest
 
 all: $(TARGET)
@@ -80,13 +81,16 @@ $(TARGET): $(OBJS) | $(BUILD_DIR)
 	$(CXX) $(OBJS) -o $@ $(LDFLAGS) $(LIBS)
 	@echo "==> 生成 $@ (静态链接,无运行时依赖)"
 
-$(BUILD_DIR)/ui.o: ui.cpp logmodel.h tablemodel.h version.h theme.h | $(BUILD_DIR)
+$(BUILD_DIR)/ui.o: ui.cpp logmodel.h tablemodel.h chartmodel.h version.h theme.h | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
 
 $(BUILD_DIR)/logmodel.o: logmodel.cpp logmodel.h miniz.h | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
 
 $(BUILD_DIR)/tablemodel.o: tablemodel.cpp tablemodel.h logmodel.h | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/chartmodel.o: chartmodel.cpp chartmodel.h | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/miniz.o: miniz.c miniz.h | $(BUILD_DIR)
@@ -112,7 +116,7 @@ release: windows-x64
 	@echo "==> 发布产物 $(EXE_NAME)"
 
 # 解析层自测:logmodel 不含 Win32 依赖。普通测试共享同一个 host 对象,
-# 避免八个测试各自重复编译 1476 行的 logmodel.cpp。
+# 避免九个测试各自重复编译 1476 行的 logmodel.cpp。
 logmodel_host.o: logmodel.cpp logmodel.h
 	$(HOST_CXX) $(HOST_CXXFLAGS) -c logmodel.cpp -o $@
 
@@ -157,8 +161,15 @@ tablemodel_host.o: tablemodel.cpp tablemodel.h logmodel.h
 tabletest: tabletest.cpp tablemodel_host.o logmodel_host.o
 	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
+chartmodel_host.o: chartmodel.cpp chartmodel.h
+	$(HOST_CXX) $(HOST_CXXFLAGS) -c chartmodel.cpp -o $@
+
+# 图表排序、像素桶峰谷降采样、百万点规模与二分悬停回归。
+charttest: charttest.cpp chartmodel_host.o
+	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+
 # 大日志性能基准:默认 10万/50万/100万行,输出各阶段耗时并校验结果规模。
-perftest: perftest.cpp tablemodel_host.o logmodel_host.o
+perftest: perftest.cpp chartmodel_host.o tablemodel_host.o logmodel_host.o
 	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
 perf: perftest
@@ -174,13 +185,14 @@ check: $(TEST_BINS)
 	./archivetest
 	./boundarytest
 	./tabletest
+	./charttest
 
 check-full: check
 	python3 sim/mutate.py
 
 clean:
 	rm -rf build
-	rm -f logmodel_host.o logmodel_archive_host.o tablemodel_host.o miniz_host.o $(TEST_BINS) $(PERF_BIN)
+	rm -f logmodel_host.o logmodel_archive_host.o tablemodel_host.o chartmodel_host.o miniz_host.o $(TEST_BINS) $(PERF_BIN)
 
 version:
 	@echo $(VER)

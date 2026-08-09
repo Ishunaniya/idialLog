@@ -42,4 +42,5 @@ archivetest
 miniz_host.o
 boundarytest
 tabletest
+charttest
 perftest

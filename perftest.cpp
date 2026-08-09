@@ -4,6 +4,7 @@
 // 每轮打印解析/筛选/分析耗时,同时钉死行数、筛选数、断网数、审计自洽和视图归属。
 #include "logmodel.h"
 #include "tablemodel.h"
+#include "chartmodel.h"
 
 #include <chrono>
 #include <cstdio>
@@ -70,6 +71,16 @@ static bool runOne(size_t n) {
     auto t5 = Clock::now();
     LogView timeline;
     buildTimelineView(view, timeline);
+    ChartSeries chart, sampled;
+    chart.reserve(metrics.size());
+    for (const auto& m : metrics)
+        if (m.csqVal >= 0) chart.push_back({m.t, m.csqVal});
+    sortChartSeriesByTime(chart);
+    if (!chart.empty())
+        downsampleChartSeries(chart, chart.front().first, chart.back().first, 1920, sampled);
+    long long hoverDistance = 0;
+    const ChartPoint* hover = chart.empty() ? nullptr :
+        nearestChartPoint(chart, chart[chart.size() / 2].first, &hoverDistance);
 
     // UI 无筛选时是最坏情况:视图含全部行。它只能拥有 N 个指针,不能复制 LogLine/string。
     LogView fullView = applyFilterView(lines, "", "", "", "", nullptr);
@@ -89,11 +100,15 @@ static bool runOne(size_t n) {
     size_t expectedTimeline = expectedOutages * 2;
     size_t avoidedCellWrites = metrics.size() * kMetricColumnCount +
                                timeline.size() * kTimelineColumnCount;
+    bool compactChart = sampled.size() <= 1920 * 2 + 2 &&
+                        (chart.empty() || (!sampled.empty() && sampled.front() == chart.front() &&
+                                           sampled.back() == chart.back())) &&
+                        (chart.empty() || (hover && hoverDistance == 0));
     bool ok = lines.size() == n && audit.rawTotal == n && audit.parsed == n &&
               audit.unparsed == 0 && view.size() == expectedView && !grepBad &&
               outages.size() == expectedOutages && !metrics.empty() && !findings.empty() &&
               timeline.size() == expectedTimeline &&
-              viewOwnedByLines && filteredOwnedByLines && compactView;
+              viewOwnedByLines && filteredOwnedByLines && compactView && compactChart;
 
     std::printf("%8zu 行 | 解析+平台 %6lld ms | 筛选 %6lld ms"
                 " | 断网 %4lld ms 指标 %6lld ms 结论 %6lld ms"
@@ -105,6 +120,9 @@ static bool runOne(size_t n) {
                 viewOwnedByLines && compactView ? "通过" : "失败");
     std::printf("           虚拟表 指标 %zu 行 / 时间线 %zu 行 | 免预写 %zu 单元格\n",
                 metrics.size(), timeline.size(), avoidedCellWrites);
+    std::printf("           信号图 原始 %zu 点 -> 1920px 绘制 %zu 点 | 少画 %zu 点 | %s\n",
+                chart.size(), sampled.size(), chart.size() - sampled.size(),
+                compactChart ? "通过" : "失败");
     return ok;
 }
 

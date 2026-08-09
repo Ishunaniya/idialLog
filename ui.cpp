@@ -25,6 +25,7 @@
 
 #include "logmodel.h"
 #include "tablemodel.h"
+#include "chartmodel.h"
 #include "version.h"
 #include "theme.h"
 
@@ -82,14 +83,28 @@ struct SumCard {
 };
 static std::vector<SumCard> g_sumCards;
 static std::vector<COLORREF> g_ogColors;
-static std::vector<std::pair<long long,int>> g_csq;   // 供图表
-static std::vector<std::pair<long long,int>> g_rsrp;  // LTE 详情图:RSRP dBm
-static std::vector<std::pair<long long,int>> g_rsrq;  // LTE 详情图:RSRQ dB
-static std::vector<std::pair<long long,int>> g_snr10; // LTE 详情图:SNR SDK原值(0.1dB)
+static ChartSeries g_csq;   // 供图表
+static ChartSeries g_rsrp;  // LTE 详情图:RSRP dBm
+static ChartSeries g_rsrq;  // LTE 详情图:RSRQ dB
+static ChartSeries g_snr10; // LTE 详情图:SNR SDK原值(0.1dB)
+// 图表绘制缓存:按当前窗口像素宽度对完整序列做峰谷降采样。鼠标每移动 1px 都会
+// 触发 WM_PAINT,缓存让这些重绘只消费数千点,不再反复扫描/绘制近十万点。
+static ChartSeries g_chartCsqDraw, g_chartDetailDraw;
+static unsigned long long g_chartDataRevision = 1, g_chartCacheRevision = 0;
+static int g_chartCacheWidth = -1, g_chartCacheDetail = -1;
+static long long g_chartCacheT0 = 0, g_chartCacheT1 = 0;
 static int  g_chartDetail    = 0;                     // 0=RSRP 1=RSRQ 2=SNR,点击循环
 static int  g_chartHoverX   = -1;                     // 悬停 X(客户区),-1=未悬停
 static int g_curPage = 0;
 static bool g_pageDirty[8] = { true, true, true, true, true, true, true, true };
+
+static void ResetChartSampleCache() {
+    if (++g_chartDataRevision == 0) g_chartDataRevision = 1; // 无符号回绕防御
+    g_chartCacheRevision = 0;
+    g_chartCacheWidth = g_chartCacheDetail = -1;
+    g_chartCsqDraw.clear();
+    g_chartDetailDraw.clear();
+}
 
 // ============================ DPI 缩放中枢 ============================
 // PerMonitorV2:所有尺寸以 96 DPI 逻辑像素书写,经 S() 换算成当前显示器物理像素。
@@ -983,7 +998,7 @@ static LRESULT CALLBACK ChartProcLegacy(HWND hwnd, UINT msg, WPARAM wp, LPARAM l
 #endif
 
 static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
-    auto detailSeries = [](int mode) -> const std::vector<std::pair<long long,int>>& {
+    auto detailSeries = [](int mode) -> const ChartSeries& {
         return mode == 1 ? g_rsrq : (mode == 2 ? g_snr10 : g_rsrp);
     };
     if (msg == WM_ERASEBKGND) return 1;
@@ -1047,10 +1062,17 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
 
     long long t0 = 0, t1 = 0;
-    auto takeRange = [&](const std::vector<std::pair<long long,int>>& s) {
+    bool haveRange = false;
+    auto takeRange = [&](const ChartSeries& s) {
         if (s.empty()) return;
-        if (t0 == 0 || s.front().first < t0) t0 = s.front().first;
-        if (t1 == 0 || s.back().first  > t1) t1 = s.back().first;
+        if (!haveRange) {
+            t0 = s.front().first;
+            t1 = s.back().first;
+            haveRange = true;
+        } else {
+            if (s.front().first < t0) t0 = s.front().first;
+            if (s.back().first  > t1) t1 = s.back().first;
+        }
     };
     takeRange(g_csq);
     takeRange(detail);
@@ -1062,6 +1084,19 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     auto X = [&](long long t) {
         return left + (int)((double)(t - t0) / total * (right - left));
     };
+
+    const int plotWidth = std::max(1, right - left + 1);
+    if (g_chartCacheRevision != g_chartDataRevision ||
+        g_chartCacheWidth != plotWidth || g_chartCacheDetail != g_chartDetail ||
+        g_chartCacheT0 != t0 || g_chartCacheT1 != t1) {
+        downsampleChartSeries(g_csq, t0, t1, (size_t)plotWidth, g_chartCsqDraw);
+        downsampleChartSeries(detail, t0, t1, (size_t)plotWidth, g_chartDetailDraw);
+        g_chartCacheRevision = g_chartDataRevision;
+        g_chartCacheWidth = plotWidth;
+        g_chartCacheDetail = g_chartDetail;
+        g_chartCacheT0 = t0;
+        g_chartCacheT1 = t1;
+    }
 
     auto paintOutages = [&](const RECT& pr) {
         HBRUSH band = CreateSolidBrush(th::outageBand);
@@ -1077,7 +1112,7 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         DeleteObject(band);
     };
 
-    auto drawPlot = [&](const RECT& pr, const std::vector<std::pair<long long,int>>& series,
+    auto drawPlot = [&](const RECT& pr, const ChartSeries& series,
                         int lo, int hi, COLORREF color, int threshold, bool showThreshold,
                         bool scaled10) {
         auto Y = [&](int v) {
@@ -1136,8 +1171,9 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                detailName, g_chartDetail == 0 ? L"dBm" : L"dB");
     TextOutW(hdc, bot.left, mid + S(4), bottomTitle.c_str(), (int)bottomTitle.size());
 
-    drawPlot(top, g_csq, 0, 31, th::s1_blue, 10, true, false);
-    drawPlot(bot, detail, detailLo, detailHi, th::s7_violet, 0, g_chartDetail == 2, g_chartDetail == 2);
+    drawPlot(top, g_chartCsqDraw, 0, 31, th::s1_blue, 10, true, false);
+    drawPlot(bot, g_chartDetailDraw, detailLo, detailHi, th::s7_violet, 0,
+             g_chartDetail == 2, g_chartDetail == 2);
 
     // 共享时间轴：只在下图标注，竖线同时贯穿两张图，便于对齐而不引入第二量纲。
     SetTextColor(hdc, th::inkMuted);
@@ -1163,18 +1199,9 @@ static LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (g_chartHoverX >= left && g_chartHoverX <= right) {
         double frac = (double)(g_chartHoverX - left) / std::max(1, right - left);
         long long ht = t0 + (long long)(frac * (t1 - t0));
-        auto nearest = [&](const std::vector<std::pair<long long,int>>& s,
-                           long long target, long long* dist) -> const std::pair<long long,int>* {
-            const std::pair<long long,int>* best = nullptr;
-            for (const auto& p : s) {
-                long long d = p.first > target ? p.first - target : target - p.first;
-                if (!best || d < *dist) { best = &p; *dist = d; }
-            }
-            return best;
-        };
         long long cd = LLONG_MAX, dd = LLONG_MAX;
-        const auto* cp = nearest(g_csq, ht, &cd);
-        const auto* dp = nearest(detail, ht, &dd);
+        const auto* cp = nearestChartPoint(g_csq, ht, &cd);
+        const auto* dp = nearestChartPoint(detail, ht, &dd);
         long long markT = cp ? cp->first : (dp ? dp->first : ht);
         int hx = X(markT);
         HPEN crossPen = CreatePen(PS_SOLID, 1, th::inkMuted);
@@ -1461,6 +1488,13 @@ static void RenderMetrics() {
         if (m.rsrq < 0)    g_rsrq.push_back({ m.t, m.rsrq });
         if (m.snr10 != 100000) g_snr10.push_back({ m.t, m.snr10 });
     }
+    // 合并日志理论上已按时间定序；若单文件内部确有乱序,只排序图表副本，表格与
+    // 结论仍保持原始证据顺序。排序一次后悬停即可稳定使用 O(log n) 二分查询。
+    sortChartSeriesByTime(g_csq);
+    sortChartSeriesByTime(g_rsrp);
+    sortChartSeriesByTime(g_rsrq);
+    sortChartSeriesByTime(g_snr10);
+    ResetChartSampleCache();
     ListView_SetItemCountEx(hMetric, (int)g_metrics.size(),
                             LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
     InvalidateRect(hMetric, nullptr, TRUE);
@@ -2123,6 +2157,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             g_findings.clear(); g_sumCards.clear();
             g_ogColors.clear();
             g_csq.clear(); g_rsrp.clear(); g_rsrq.clear(); g_snr10.clear();
+            ResetChartSampleCache();
             g_chartDetail = 0;
             g_audit = ParseAudit{};
             g_plat  = PlatformInfo{};

@@ -30,11 +30,13 @@
 //           断网/指标/结论复用同一套拥有/借用分析实现,解析后提前释放原始文本
 //   1.10.5  时间线与指标表改为 OWNERDATA 虚拟列表,只格式化屏幕当前所需单元格;
 //           新增虚拟表数据源/格式回归和百万行免预写单元格统计
+//   1.10.6  信号图按屏幕像素桶保留峰谷并缓存绘制点;
+//           悬停最近点改用二分查询,新增百万点图表规模/极值回归
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 5
+#define DL_VER_PATCH 6
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)
