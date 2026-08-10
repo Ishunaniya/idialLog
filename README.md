@@ -232,7 +232,8 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | `tablemodel.h/.cpp` | 虚拟时间线/指标表的数据源与单元格格式化(纯标准 C++17,可单独测试) |
 | `chartmodel.h/.cpp` | 图表时间排序、像素桶峰谷降采样与最近点二分查询(纯标准 C++17) |
 | `memoryutil.h` | 显式卸载大容器容量的共享工具(UI 与百万行回归共用) |
-| `ui.cpp` | Win32 界面层(页签/列表/自绘 CSQ + LTE 质量图/拖拽/粘贴/导出) |
+| `win_file_io.h/.cpp` | Win32 文件流式读取、原子写入与压缩日志来源展开 |
+| `ui.cpp` | Win32 界面与加载流程协调(页签/列表/自绘 CSQ + LTE 质量图/拖拽/粘贴/导出) |
 | `selftest.cpp` | 解析层自测(含审计自洽校验、结论必带证据校验) |
 | `resource.rc` + `app.manifest` | 嵌入清单:comctl32 v6 现代控件外观 + DPI 感知 + 版本信息 |
 | `version.h` | **版本号单一来源**(C++ 与 resource.rc 共用);改版本只改这里 |

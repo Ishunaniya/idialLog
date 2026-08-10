@@ -66,7 +66,7 @@ LIBS     := -lcomctl32 -lgdi32 -lcomdlg32 -lshell32 -luser32 -lkernel32
 MINIZ_DEF := -DDL_HAVE_MINIZ
 MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 
-OBJS := $(BUILD_DIR)/ui.o $(BUILD_DIR)/logmodel.o $(BUILD_DIR)/tablemodel.o \
+OBJS := $(BUILD_DIR)/ui.o $(BUILD_DIR)/win_file_io.o $(BUILD_DIR)/logmodel.o $(BUILD_DIR)/tablemodel.o \
         $(BUILD_DIR)/chartmodel.o \
         $(BUILD_DIR)/miniz.o $(BUILD_DIR)/resource.o
 TEST_BINS := selftest simtest hostruntest baselinetest mergetest archivetest boundarytest tabletest charttest
@@ -81,8 +81,11 @@ $(TARGET): $(OBJS) | $(BUILD_DIR)
 	$(CXX) $(OBJS) -o $@ $(LDFLAGS) $(LIBS)
 	@echo "==> 生成 $@ (静态链接,无运行时依赖)"
 
-$(BUILD_DIR)/ui.o: ui.cpp logmodel.h tablemodel.h chartmodel.h memoryutil.h version.h theme.h | $(BUILD_DIR)
+$(BUILD_DIR)/ui.o: ui.cpp win_file_io.h logmodel.h tablemodel.h chartmodel.h memoryutil.h version.h theme.h | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
+
+$(BUILD_DIR)/win_file_io.o: win_file_io.cpp win_file_io.h logmodel.h | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/logmodel.o: logmodel.cpp logmodel.h miniz.h | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
