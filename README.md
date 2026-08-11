@@ -116,7 +116,7 @@ make windows-x86         # build/x86/dialLog_v1.10.8.exe
 
 ## 自测
 
-`logmodel.*` 不含 Win32 依赖,可用本机 g++ 直接编译验证:
+`src/core/` 与 `src/presentation/` 不含 Win32 依赖,可用本机 g++ 直接编译验证:
 
 ```bash
 make check       # 九个测试程序:解析、场景、真代码、真机基线、合并、压缩、边界、虚拟表、图表
@@ -187,7 +187,7 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | 标题栏 | `dialLog v1.10.8 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
-`make clean` 只清理 `build/` 和测试程序,不会误删仓库根目录中已提交的发布 exe。
+`make clean` 只清理 `build/`；测试程序也位于 `build/tests/`，不会污染根目录或误删已提交的发布 exe。
 
 | 版本 | 内容 |
 |---|---|
@@ -213,7 +213,7 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 
 ## 界面配色
 
-配色收敛在 `theme.h`,取自经过校验的参考调色板(CVD 色盲安全 + 对比度达标),按**角色**命名,
+配色收敛在 `src/win32/theme.h`,取自经过校验的参考调色板(CVD 色盲安全 + 对比度达标),按**角色**命名,
 代码里不写裸 hex。几条硬规矩(改界面前先读):
 
 - **文字只用 ink 系**(primary/secondary/muted),**绝不用数据色** —— 浅色系列色当文字看不清;
@@ -224,19 +224,24 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 - **绝不画双 Y 轴**。两个量纲不同的量(如 CSQ 和温度)→ 两张图,不是两个 Y 轴。
 - 条形:≤24px 厚,数据端 4px 圆角、基线端方角;单序列不配图例(标题已说明画的是什么)。
 
-## 文件
+## 源码结构
 
 | 文件 | 说明 |
 |---|---|
-| `logmodel.h/.cpp` | 解析 + 分析 + 结论引擎(纯标准 C++17,无 Win32 依赖,可单独测试) |
-| `tablemodel.h/.cpp` | 虚拟时间线/指标表的数据源与单元格格式化(纯标准 C++17,可单独测试) |
-| `chartmodel.h/.cpp` | 图表时间排序、像素桶峰谷降采样与最近点二分查询(纯标准 C++17) |
-| `memoryutil.h` | 显式卸载大容器容量的共享工具(UI 与百万行回归共用) |
-| `win_file_io.h/.cpp` | Win32 文件流式读取、原子写入与压缩日志来源展开 |
-| `ui.cpp` | Win32 界面与加载流程协调(页签/列表/自绘 CSQ + LTE 质量图/拖拽/粘贴/导出) |
-| `selftest.cpp` | 解析层自测(含审计自洽校验、结论必带证据校验) |
-| `resource.rc` + `app.manifest` | 嵌入清单:comctl32 v6 现代控件外观 + DPI 感知 + 版本信息 |
+| `src/core/` | 纯 C++ 核心：类型、时间、解析、分析、筛选和压缩读取；`logmodel.h` 是兼容聚合头 |
+| `src/app/` | 文档状态/释放顺序与 Win32 应用上下文 |
+| `src/presentation/` | 虚拟表格和图表数据模型(纯标准 C++17,可单独测试) |
+| `src/win32/ui.cpp` | 主窗口创建、布局、消息循环与程序入口 |
+| `src/win32/ui_pages.*` | 页签编排、虚拟列表通知和页面按需渲染 |
+| `src/win32/overview_page.*` / `chart_page.*` | 总览/结论与信号图自绘 |
+| `src/win32/load_controller.*` | 打开、拖拽、粘贴、分析刷新与 CSV 导出流程 |
+| `src/win32/win_file_io.*` / `win_text.*` | Win32 文件、压缩来源、原子写入与 UTF-8/UTF-16 边界 |
+| `tests/unit/` / `regression/` / `performance/` | 单元、行为/真机基线与百万行性能测试 |
+| `third_party/miniz/` | 第三方压缩实现 |
+| `resources/windows/` | Windows 图标、manifest 与版本资源脚本 |
 | `version.h` | **版本号单一来源**(C++ 与 resource.rc 共用);改版本只改这里 |
 | `samples/` | 测试夹具,按来源分目录(rtms_eg25 / rtms_ag35 / rtms_ec200a / dial_ec200a / dial_eg25);见其 README |
-| `theme.h` | **界面配色单一来源**(校验过的调色板,按角色命名) |
+| `src/win32/theme.h` | **界面配色单一来源**(校验过的调色板,按角色命名) |
 | `Makefile` | 构建 |
+
+依赖方向为 `src/win32 -> src/app + src/presentation -> src/core`；核心层不依赖 Win32。

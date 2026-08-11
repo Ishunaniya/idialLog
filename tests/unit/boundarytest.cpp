@@ -8,7 +8,7 @@
 //   1970)。本测试用合成的"1970→2026 跳变"序列,只能证明**检测逻辑按设计工作**,
 //   证明不了真设备就这样跳。一旦拿到真实含跳变日志,应换成真机夹具重验。
 //
-// 构建运行:make boundarytest && ./boundarytest      (rc=0 全过)
+// 构建运行:make boundarytest && build/tests/unit/boundarytest      (rc=0 全过)
 #include "logmodel.h"
 #include <cstdio>
 #include <string>

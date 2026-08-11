@@ -30,15 +30,20 @@ make perf        # 10万/50万/100万行性能、紧凑记录尺寸、轻量视�
 `hostruntest`/`baselinetest` 依赖 `sim/hostrun*/` 已生成的日志(见下)。
 **mutate.py 是 Python 不是 shell** —— shell 版有引号转义 bug 已删,别复活。
 
-## 核心分层(`logmodel.*` 是命脉)
+## 源码分层
 
-- `logmodel.h/.cpp` —— **纯标准 C++17,零 Win32 依赖**。解析 + 分析 + 结论引擎全在这，包含批量/`StreamingLogParser` 共用的增量状态机。因为无 Win32 依赖,**本机 g++ 直接编译测试**,不必等 MinGW/wine。改逻辑改这里。
-- `tablemodel.h/.cpp` —— 时间线与指标虚拟列表的数据源/单元格格式化,同样是纯标准 C++17；`tabletest` 钉死真机行数与 3/15 列旧语义。
-- `chartmodel.h/.cpp` —— 图表时间排序、像素桶峰谷降采样、最近点二分查询；`charttest` 钉死端点/极值/同秒语义和百万点输出上限。
-- `memoryutil.h` —— 关闭/替换日志时显式释放大 `vector` 容量；UI 与百万行卸载回归共用同一实现。
-- `win_file_io.h/.cpp` —— Win32 文件流式读取、CSV 原子写入、压缩包来源展开；逐行回调不经过 `std::function`，避免百万行额外分配。
-- `ui.cpp` —— Win32 界面与加载流程协调(8 页签、自绘 CSQ 图、拖拽、粘贴、导出 CSV)；多来源直接投喂增量解析器。
-- `theme.h` —— 界面配色单一来源(校验过的 CVD 安全调色板,按角色命名,别写裸 hex;改界面前先读它顶部的硬规矩)。
+- `src/core/` —— **纯标准 C++17,零 Win32 依赖**。`log_parser` 负责解析/合并/时基，`log_analysis` 负责指标、断网和结论，`log_filter` 负责筛选，`archive_reader` 负责压缩内容，`log_time`/`log_types` 是共享基础；`logmodel.h` 只保留为兼容聚合头，新代码优先包含实际使用的细分头。
+- `src/app/` —— 应用状态与生命周期。`DocumentState` 按“先借用视图、后所有者”的顺序集中释放文档数据；`AppContext` 集中管理窗口句柄、字体和 DPI，避免跨文件散落全局变量。
+- `src/presentation/` —— 纯 C++ 展示模型。`tablemodel` 提供虚拟时间线/指标单元格，`chartmodel` 提供排序、像素桶峰谷降采样和最近点二分查询。
+- `src/win32/` —— 平台界面。`ui` 只保留窗口创建/布局/消息循环，`ui_pages` 负责页签和虚拟列表，`overview_page`/`chart_page` 负责自绘，`load_controller` 负责打开/粘贴/导出，`win_file_io`/`win_text` 封装 Win32 边界。
+- `tests/unit/`、`tests/regression/`、`tests/performance/` —— 分别放单元、行为/真机基线、百万行性能测试；可执行文件统一输出到 `build/tests/`，不写仓库根目录。
+- `third_party/miniz/` —— 第三方压缩实现，与项目源码隔离。
+- `resources/windows/` —— Windows 图标、manifest 与版本资源脚本。
+
+依赖方向保持为 `win32 -> app/presentation -> core`；`core` 不得反向包含 Win32 头。核心层可直接用本机 g++ 测试，不必等 MinGW/Wine。
+
+- `src/core/memoryutil.h` —— 关闭/替换日志时显式释放大 `vector` 容量；UI 与百万行卸载回归共用同一实现。
+- `src/win32/theme.h` —— 界面配色单一来源(校验过的 CVD 安全调色板,按角色命名,别写裸 hex;改界面前先读它顶部的硬规矩)。
 - `version.h` —— **版本号唯一来源**。改一个数字,exe 文件名(`dialLog_v1.3.0.exe`)/ 版本资源 / 标题栏三处自动同步。**exe 内容变了就必须升版本**(约定:只在升版本时提交 exe)。
 
 ## 两种日志格式(解析器的根基)

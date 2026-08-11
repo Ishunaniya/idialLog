@@ -1,6 +1,8 @@
 // win_file_io.cpp — Win32 文件读取、原子写入与压缩日志来源展开
 #include "win_file_io.h"
 
+#include "log_parser.h"
+
 #ifndef UNICODE
 #define UNICODE
 #endif

@@ -1,6 +1,6 @@
 // selftest.cpp — 解析/分析层自测:与 tools/diallog.py 的输出对拍。
 // 因为 logmodel.* 不含 Win32 依赖,本机(Linux)g++ 即可编译运行:
-//   g++ -std=c++17 -O2 -o selftest selftest.cpp logmodel.cpp && ./selftest <日志>
+//   make selftest && build/tests/unit/selftest <日志>
 #include "logmodel.h"
 #include <climits>
 #include <cstdio>

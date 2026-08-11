@@ -127,7 +127,7 @@ def main():
     print(f"分支      : {len(branches(repo))} 个(取并集)")
     print(f"唯一日志串: {len(strings)} 条 —— 逐字取自源码")
     print(f"生成       : {out}({len(lines)} 行)")
-    print(f"\n用 ./selftest {out} 验证:未识别必须为 0,否则就是真漏了。")
+    print(f"\n用 build/tests/unit/selftest {out} 验证:未识别必须为 0,否则就是真漏了。")
 
 
 if __name__ == "__main__":

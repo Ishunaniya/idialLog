@@ -1,26 +1,16 @@
 # Makefile — dialLog (Win32 原生 GUI, MinGW)
 #
-# 交叉编译(Linux 上生成 Windows exe,本仓库默认):
-#     make                         # build/x64/dialLog_vX.Y.Z.exe
-#     make windows-all             # 同时构建 build/x64 与 build/x86
-#     make release                 # 正式 x64 产物复制到仓库根目录
-# Windows 本机 MinGW 编译:
-#     mingw32-make CROSS=
-# 32 位:
-#     make windows-x86
-#
-# 产物为静态链接,不依赖任何 MinGW/MSVC 运行时 DLL,拷到 Windows 双击即用。
-# 文件名自带版本号 —— 发给别人/存档时不会搞混是哪个 build。
+#     make               # build/x64/dialLog_vX.Y.Z.exe
+#     make windows-all   # 同时构建 x64 / x86
+#     make check         # 本机完整日常回归
+#     make check-full    # 日常回归 + 变异测试
+#     make perf          # 百万行性能基准
 
-# 注意:用 := 而非 ?=。本机环境常导出 CC/CXX(RK3576/buildroot 交叉链),
-# ?= 对“已由环境定义”的变量不生效,会误用 aarch64 编译器。命令行 `make CXX=g++` 仍可覆盖。
 CROSS   ?= x86_64-w64-mingw32-
 CXX     := $(CROSS)g++
 CC      := $(CROSS)gcc
 WINDRES := $(CROSS)windres
 
-# 每种工具链使用独立目录。切换 CROSS 后不能复用上一架构的 .o 或 exe。
-# 未知交叉前缀可由调用方显式传 BUILD_FLAVOR=<名称>。
 ifeq ($(strip $(CROSS)),)
 BUILD_FLAVOR ?= native
 else ifneq ($(findstring i686,$(CROSS)),)
@@ -30,17 +20,33 @@ BUILD_FLAVOR ?= x64
 else
 BUILD_FLAVOR ?= cross
 endif
+
 BUILD_ROOT ?= build
 BUILD_DIR  ?= $(BUILD_ROOT)/$(BUILD_FLAVOR)
+HOST_BUILD_DIR := $(BUILD_ROOT)/host
+HOST_TEST_DIR := $(BUILD_ROOT)/tests
 
-# 解析层测试始终用本机编译器。单独命名,避免环境里的嵌入式 CC/CXX 污染。
+CORE_DIR := src/core
+APP_DIR := src/app
+PRESENTATION_DIR := src/presentation
+WIN32_DIR := src/win32
+THIRD_PARTY_DIR := third_party/miniz
+WINDOWS_RESOURCE_DIR := resources/windows
+TEST_UNIT_DIR := tests/unit
+TEST_REGRESSION_DIR := tests/regression
+TEST_PERF_DIR := tests/performance
+
+INCLUDE_DIRS := -I$(CORE_DIR) -I$(APP_DIR) -I$(PRESENTATION_DIR) -I$(WIN32_DIR) \
+                -I$(THIRD_PARTY_DIR) -I.
+CPPFLAGS := $(INCLUDE_DIRS)
+DEPFLAGS := -MMD -MP
+
 HOST_CXX      := g++
 HOST_CC       := gcc
+HOST_CPPFLAGS := $(INCLUDE_DIRS)
 HOST_CXXFLAGS := -std=c++17 -O2 -Wall -Wextra
 HOST_LDFLAGS  :=
 
-# 版本号从 version.h 解析,保持单一来源:改 version.h 即同时改变
-# exe 文件名、exe 版本资源(右键属性)、标题栏,三者永远一致。
 VER_MAJOR := $(shell sed -n 's/^#define[ \t]\+DL_VER_MAJOR[ \t]\+\([0-9]\+\).*/\1/p' version.h)
 VER_MINOR := $(shell sed -n 's/^#define[ \t]\+DL_VER_MINOR[ \t]\+\([0-9]\+\).*/\1/p' version.h)
 VER_PATCH := $(shell sed -n 's/^#define[ \t]\+DL_VER_PATCH[ \t]\+\([0-9]\+\).*/\1/p' version.h)
@@ -48,61 +54,67 @@ VER       := $(VER_MAJOR).$(VER_MINOR).$(VER_PATCH)
 ifeq ($(VER),..)
 $(error 无法从 version.h 解析版本号 —— 检查 DL_VER_MAJOR/MINOR/PATCH 的写法)
 endif
-EXE_NAME  := dialLog_v$(VER).exe
-TARGET    ?= $(BUILD_DIR)/$(EXE_NAME)
 
-# -municode      : 使用 wWinMain 入口
-# -mwindows      : GUI 子系统(不弹控制台)
-# 字符集三件套   : 源码 UTF-8;窄串按 UTF-8 存;宽串按 UTF-16LE 存(Windows wchar_t 为 2 字节)
+EXE_NAME := dialLog_v$(VER).exe
+TARGET   ?= $(BUILD_DIR)/$(EXE_NAME)
+
 CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -municode \
             -finput-charset=UTF-8 -fexec-charset=UTF-8 -fwide-exec-charset=UTF-16LE
-
 LDFLAGS  := -mwindows -municode -static -static-libgcc -static-libstdc++ -s
 LIBS     := -lcomctl32 -lgdi32 -lcomdlg32 -lshell32 -luser32 -lkernel32
 
-# 压缩包直读(.zip/.tar.gz)靠内嵌 miniz(MIT,纯 C 单文件,静态编入,零运行时依赖)。
-# 定义 DL_HAVE_MINIZ 后 logmodel 才编入解压实现;不定义则解压函数返回"未编入"。
-# MINIZ_NO_STDIO/NO_TIME:只用内存解压,砍掉文件 IO 与时间戳依赖,减小体积。
 MINIZ_DEF := -DDL_HAVE_MINIZ
 MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 
-OBJS := $(BUILD_DIR)/ui.o $(BUILD_DIR)/win_file_io.o $(BUILD_DIR)/logmodel.o $(BUILD_DIR)/tablemodel.o \
-        $(BUILD_DIR)/chartmodel.o \
-        $(BUILD_DIR)/miniz.o $(BUILD_DIR)/resource.o
-TEST_BINS := selftest simtest hostruntest baselinetest mergetest archivetest boundarytest tabletest charttest
-PERF_BIN := perftest
+CORE_NAMES := log_time log_parser log_analysis log_filter archive_reader
+APP_NAMES := document_state app_context
+PRESENTATION_NAMES := tablemodel chartmodel
+WIN32_NAMES := ui ui_pages overview_page chart_page load_controller win_file_io win_text
+
+CORE_OBJS := $(addprefix $(BUILD_DIR)/core/,$(addsuffix .o,$(CORE_NAMES)))
+APP_OBJS := $(addprefix $(BUILD_DIR)/app/,$(addsuffix .o,$(APP_NAMES)))
+PRESENTATION_OBJS := $(addprefix $(BUILD_DIR)/presentation/,$(addsuffix .o,$(PRESENTATION_NAMES)))
+WIN32_OBJS := $(addprefix $(BUILD_DIR)/win32/,$(addsuffix .o,$(WIN32_NAMES)))
+MINIZ_OBJ := $(BUILD_DIR)/third_party/miniz.o
+RESOURCE_OBJ := $(BUILD_DIR)/resource.o
+OBJS := $(WIN32_OBJS) $(APP_OBJS) $(CORE_OBJS) $(PRESENTATION_OBJS) $(MINIZ_OBJ) $(RESOURCE_OBJ)
+DEPS := $(filter %.d,$(OBJS:.o=.d))
 
 all: $(TARGET)
 
-$(BUILD_DIR):
+$(BUILD_DIR)/core $(BUILD_DIR)/app $(BUILD_DIR)/presentation $(BUILD_DIR)/win32 $(BUILD_DIR)/third_party:
 	mkdir -p $@
 
-$(TARGET): $(OBJS) | $(BUILD_DIR)
+$(TARGET): $(OBJS)
 	$(CXX) $(OBJS) -o $@ $(LDFLAGS) $(LIBS)
 	@echo "==> 生成 $@ (静态链接,无运行时依赖)"
 
-$(BUILD_DIR)/ui.o: ui.cpp win_file_io.h logmodel.h tablemodel.h chartmodel.h memoryutil.h version.h theme.h | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
+$(BUILD_DIR)/core/archive_reader.o: $(CORE_DIR)/archive_reader.cpp | $(BUILD_DIR)/core
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPFLAGS) $(MINIZ_DEF) -c $< -o $@
 
-$(BUILD_DIR)/win_file_io.o: win_file_io.cpp win_file_io.h logmodel.h | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+$(BUILD_DIR)/core/%.o: $(CORE_DIR)/%.cpp | $(BUILD_DIR)/core
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/logmodel.o: logmodel.cpp logmodel.h miniz.h | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(MINIZ_DEF) -c $< -o $@
+$(BUILD_DIR)/app/%.o: $(APP_DIR)/%.cpp | $(BUILD_DIR)/app
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/tablemodel.o: tablemodel.cpp tablemodel.h logmodel.h | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+$(BUILD_DIR)/presentation/%.o: $(PRESENTATION_DIR)/%.cpp | $(BUILD_DIR)/presentation
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/chartmodel.o: chartmodel.cpp chartmodel.h | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+$(BUILD_DIR)/win32/%.o: $(WIN32_DIR)/%.cpp | $(BUILD_DIR)/win32
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/miniz.o: miniz.c miniz.h | $(BUILD_DIR)
-	$(CC) $(MINIZ_CFLAGS) -c $< -o $@
+$(MINIZ_OBJ): $(THIRD_PARTY_DIR)/miniz.c $(THIRD_PARTY_DIR)/miniz.h | $(BUILD_DIR)/third_party
+	$(CC) $(MINIZ_CFLAGS) $(DEPFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/resource.o: resource.rc app.manifest version.h dialLog.ico | $(BUILD_DIR)
-	$(WINDRES) -c 65001 $< -O coff -o $@
+$(RESOURCE_OBJ): $(WINDOWS_RESOURCE_DIR)/resource.rc \
+                 $(WINDOWS_RESOURCE_DIR)/app.manifest \
+                 $(WINDOWS_RESOURCE_DIR)/dialLog.ico version.h
+	mkdir -p $(dir $@)
+	$(WINDRES) -I. -c 65001 $< -O coff -o $@
 
-# 双架构便捷入口。即使连续执行也只会复用各自目录里的正确对象。
+-include $(DEPS)
+
 windows-x64:
 	$(MAKE) CROSS=x86_64-w64-mingw32- BUILD_FLAVOR=x64 \
 		TARGET=$(BUILD_ROOT)/x64/$(EXE_NAME) all
@@ -113,91 +125,124 @@ windows-x86:
 
 windows-all: windows-x64 windows-x86
 
-# 仓库根目录只保留一个供直接取用的正式 x64 exe。日常构建不碰它。
 release: windows-x64
 	cp $(BUILD_ROOT)/x64/$(EXE_NAME) $(EXE_NAME)
 	@echo "==> 发布产物 $(EXE_NAME)"
 
-# 解析层自测:logmodel 不含 Win32 依赖。普通测试共享同一个 host 对象,
-# 避免九个测试各自重复编译 1476 行的 logmodel.cpp。
-logmodel_host.o: logmodel.cpp logmodel.h
-	$(HOST_CXX) $(HOST_CXXFLAGS) -c logmodel.cpp -o $@
+HOST_CORE_BASE_NAMES := log_time log_parser log_analysis log_filter
+HOST_CORE_BASE_OBJS := $(addprefix $(HOST_BUILD_DIR)/,$(addsuffix .o,$(HOST_CORE_BASE_NAMES)))
+HOST_ARCHIVE_STUB_OBJ := $(HOST_BUILD_DIR)/archive_reader.o
+HOST_ARCHIVE_FULL_OBJ := $(HOST_BUILD_DIR)/archive_reader_miniz.o
+HOST_CORE_OBJS := $(HOST_CORE_BASE_OBJS) $(HOST_ARCHIVE_STUB_OBJ)
+HOST_ARCHIVE_OBJS := $(HOST_CORE_BASE_OBJS) $(HOST_ARCHIVE_FULL_OBJ)
+HOST_TABLE_OBJ := $(HOST_BUILD_DIR)/tablemodel.o
+HOST_CHART_OBJ := $(HOST_BUILD_DIR)/chartmodel.o
+HOST_MINIZ_OBJ := $(HOST_BUILD_DIR)/miniz.o
+HOST_DEPS := $(HOST_CORE_OBJS:.o=.d) $(HOST_ARCHIVE_FULL_OBJ:.o=.d) \
+             $(HOST_TABLE_OBJ:.o=.d) $(HOST_CHART_OBJ:.o=.d) $(HOST_MINIZ_OBJ:.o=.d)
 
-logmodel_archive_host.o: logmodel.cpp logmodel.h miniz.h
-	$(HOST_CXX) $(HOST_CXXFLAGS) -DDL_HAVE_MINIZ -c logmodel.cpp -o $@
+UNIT_BIN_DIR := $(HOST_TEST_DIR)/unit
+REGRESSION_BIN_DIR := $(HOST_TEST_DIR)/regression
+PERF_BIN_DIR := $(HOST_TEST_DIR)/performance
 
-selftest: selftest.cpp logmodel_host.o
-	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+SELFTEST_BIN := $(UNIT_BIN_DIR)/selftest
+ARCHIVETEST_BIN := $(UNIT_BIN_DIR)/archivetest
+BOUNDARYTEST_BIN := $(UNIT_BIN_DIR)/boundarytest
+TABLETEST_BIN := $(UNIT_BIN_DIR)/tabletest
+CHARTTEST_BIN := $(UNIT_BIN_DIR)/charttest
+SIMTEST_BIN := $(REGRESSION_BIN_DIR)/simtest
+HOSTRUNTEST_BIN := $(REGRESSION_BIN_DIR)/hostruntest
+BASELINETEST_BIN := $(REGRESSION_BIN_DIR)/baselinetest
+MERGETEST_BIN := $(REGRESSION_BIN_DIR)/mergetest
+PERF_BIN := $(PERF_BIN_DIR)/perftest
+TEST_BINS := $(SELFTEST_BIN) $(SIMTEST_BIN) $(HOSTRUNTEST_BIN) $(BASELINETEST_BIN) \
+             $(MERGETEST_BIN) $(ARCHIVETEST_BIN) $(BOUNDARYTEST_BIN) \
+             $(TABLETEST_BIN) $(CHARTTEST_BIN)
+TEST_TARGETS := selftest simtest hostruntest baselinetest mergetest \
+                archivetest boundarytest tabletest charttest perftest
 
-# 场景模拟器 + 结论引擎断言测试(只验结论引擎,验不了解析器 —— 见 simtest.cpp 顶部说明)
-simtest: simtest.cpp logmodel_host.o
-	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+$(HOST_BUILD_DIR) $(UNIT_BIN_DIR) $(REGRESSION_BIN_DIR) $(PERF_BIN_DIR):
+	mkdir -p $@
 
-# 对**真代码产出**的日志(sim/hostrun*/)做结论断言 —— 证据等级比 simtest 的手写日志高一档
-hostruntest: hostruntest.cpp logmodel_host.o
-	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+$(HOST_BUILD_DIR)/archive_reader_miniz.o: $(CORE_DIR)/archive_reader.cpp | $(HOST_BUILD_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) $(MINIZ_DEF) -c $< -o $@
 
-# 真机日志基线断言:把真机上的**具体数字**钉死 —— 变异测试证明"只验结论出现"没牙齿
-baselinetest: baselinetest.cpp logmodel_host.o
-	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+$(HOST_BUILD_DIR)/%.o: $(CORE_DIR)/%.cpp | $(HOST_BUILD_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
-# 多文件合并定序断言测试:真机日志切分打乱→定序→逐行还原(最有牙齿的一层在这)
-mergetest: mergetest.cpp logmodel_host.o
-	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+$(HOST_TABLE_OBJ): $(PRESENTATION_DIR)/tablemodel.cpp | $(HOST_BUILD_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
-# 压缩包直读 + BOM 剥离断言测试:host 侧也编入 miniz(它是可移植 C,Linux 能编),
-# 因此解压逻辑完全可单元测试,不依赖 Windows。miniz_host.o 与交叉编译的 miniz.o 分开。
-miniz_host.o: miniz.c miniz.h
-	$(HOST_CC) -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME -c miniz.c -o miniz_host.o
+$(HOST_CHART_OBJ): $(PRESENTATION_DIR)/chartmodel.cpp | $(HOST_BUILD_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
-archivetest: archivetest.cpp logmodel_archive_host.o miniz_host.o
-	$(HOST_CXX) $(HOST_CXXFLAGS) -DDL_HAVE_MINIZ -o $@ $^ $(HOST_LDFLAGS)
+$(HOST_MINIZ_OBJ): $(THIRD_PARTY_DIR)/miniz.c $(THIRD_PARTY_DIR)/miniz.h | $(HOST_BUILD_DIR)
+	$(HOST_CC) -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME $(DEPFLAGS) -c $< -o $@
 
-# 跨文件续行防御 + 时钟跳变检测断言测试(问题②机制实证/问题①无真机样本,见文件头声明)
-boundarytest: boundarytest.cpp logmodel_host.o
-	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+-include $(HOST_DEPS)
 
-tablemodel_host.o: tablemodel.cpp tablemodel.h logmodel.h
-	$(HOST_CXX) $(HOST_CXXFLAGS) -c tablemodel.cpp -o $@
+$(SELFTEST_BIN): $(TEST_UNIT_DIR)/selftest.cpp $(HOST_CORE_OBJS) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
-# 虚拟时间线/指标的数据源与 3/15 列格式回归,不依赖 Win32。
-tabletest: tabletest.cpp tablemodel_host.o logmodel_host.o
-	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+$(SIMTEST_BIN): $(TEST_REGRESSION_DIR)/simtest.cpp $(HOST_CORE_OBJS) | $(REGRESSION_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
-chartmodel_host.o: chartmodel.cpp chartmodel.h
-	$(HOST_CXX) $(HOST_CXXFLAGS) -c chartmodel.cpp -o $@
+$(HOSTRUNTEST_BIN): $(TEST_REGRESSION_DIR)/hostruntest.cpp $(HOST_CORE_OBJS) | $(REGRESSION_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
-# 图表排序、像素桶峰谷降采样、百万点规模与二分悬停回归。
-charttest: charttest.cpp chartmodel_host.o
-	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+$(BASELINETEST_BIN): $(TEST_REGRESSION_DIR)/baselinetest.cpp $(HOST_CORE_OBJS) | $(REGRESSION_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
-# 大日志性能基准:默认 10万/50万/100万行,输出各阶段耗时并校验结果规模。
-perftest: perftest.cpp chartmodel_host.o tablemodel_host.o logmodel_host.o memoryutil.h
-	$(HOST_CXX) $(HOST_CXXFLAGS) -o $@ $(filter %.cpp %.o,$^) $(HOST_LDFLAGS)
+$(MERGETEST_BIN): $(TEST_REGRESSION_DIR)/mergetest.cpp $(HOST_CORE_OBJS) | $(REGRESSION_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
-perf: perftest
-	./perftest
+$(ARCHIVETEST_BIN): $(TEST_UNIT_DIR)/archivetest.cpp $(HOST_ARCHIVE_OBJS) $(HOST_MINIZ_OBJ) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(MINIZ_DEF) -o $@ $^ $(HOST_LDFLAGS)
 
-# 日常唯一回归入口。变异测试耗时较长,单独放在 check-full。
+$(BOUNDARYTEST_BIN): $(TEST_UNIT_DIR)/boundarytest.cpp $(HOST_CORE_OBJS) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+
+$(TABLETEST_BIN): $(TEST_UNIT_DIR)/tabletest.cpp $(HOST_TABLE_OBJ) $(HOST_CORE_OBJS) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+
+$(CHARTTEST_BIN): $(TEST_UNIT_DIR)/charttest.cpp $(HOST_CHART_OBJ) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+
+$(PERF_BIN): $(TEST_PERF_DIR)/perftest.cpp $(HOST_CHART_OBJ) $(HOST_TABLE_OBJ) $(HOST_CORE_OBJS) | $(PERF_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+
+selftest: $(SELFTEST_BIN)
+simtest: $(SIMTEST_BIN)
+hostruntest: $(HOSTRUNTEST_BIN)
+baselinetest: $(BASELINETEST_BIN)
+mergetest: $(MERGETEST_BIN)
+archivetest: $(ARCHIVETEST_BIN)
+boundarytest: $(BOUNDARYTEST_BIN)
+tabletest: $(TABLETEST_BIN)
+charttest: $(CHARTTEST_BIN)
+perftest: $(PERF_BIN)
+
+perf: $(PERF_BIN)
+	$(PERF_BIN)
+
 check: $(TEST_BINS)
-	./selftest samples/rtms_eg25/dial_20260630_000026.log
-	./simtest
-	./hostruntest
-	./baselinetest
-	./mergetest
-	./archivetest
-	./boundarytest
-	./tabletest
-	./charttest
+	$(SELFTEST_BIN) samples/rtms_eg25/dial_20260630_000026.log
+	$(SIMTEST_BIN)
+	$(HOSTRUNTEST_BIN)
+	$(BASELINETEST_BIN)
+	$(MERGETEST_BIN)
+	$(ARCHIVETEST_BIN)
+	$(BOUNDARYTEST_BIN)
+	$(TABLETEST_BIN)
+	$(CHARTTEST_BIN)
 
 check-full: check
 	python3 sim/mutate.py
 
 clean:
-	rm -rf build
-	rm -f logmodel_host.o logmodel_archive_host.o tablemodel_host.o chartmodel_host.o miniz_host.o $(TEST_BINS) $(PERF_BIN)
+	rm -rf $(BUILD_ROOT)
 
 version:
 	@echo $(VER)
 
-.PHONY: all clean version check check-full perf windows-x64 windows-x86 windows-all release
+.PHONY: all clean version check check-full perf windows-x64 windows-x86 windows-all release $(TEST_TARGETS)

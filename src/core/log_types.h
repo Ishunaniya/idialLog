@@ -1,0 +1,156 @@
+// log_types.h — 日志核心数据类型及所有权约束
+#pragma once
+
+#include <climits>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace dl {
+
+// 行格式
+enum Fmt : unsigned char { FMT_UNKNOWN = 0, FMT_SD, FMT_SEAS };
+
+// seas_log 级别来自固定枚举,不必让每一行都常驻一个 32B std::string。
+enum LogLevel : unsigned char {
+    LEVEL_NONE = 0, LEVEL_ALL, LEVEL_DEBUG, LEVEL_INFO, LEVEL_NOTICE,
+    LEVEL_WARNING, LEVEL_ERROR, LEVEL_FATAL, LEVEL_CRITICAL, LEVEL_OTHER
+};
+
+// 日志来源平台
+enum Platform {
+    PLAT_UNKNOWN = 0,
+    PLAT_EC200A,    // modem_mng EC200A 或 open_dial(上游,格式相同)
+    PLAT_AG35,      // modem_mng AG35(EC200A 源码路径 + [SLOT] 双卡)
+    PLAT_EG25,      // modem_mng EG25
+    PLAT_ARTERY,    // open_dial_for_artery(seas_log)
+    PLAT_IMX        // 仅占位:IMX 无 dial_log,不产此类日志(见 log_analysis.cpp 说明)
+};
+
+// 一条已解析的日志行
+struct LogLine {
+    long long   t = 0;      // epoch 秒(按字面时间解释,不做时区换算)
+    size_t lineNo = 0;      // 原始文件行号(1 基),供结论证据溯源
+    std::string ts;         // 原始时间戳 "YYYY-MM-DD HH:MM:SS"
+    std::string msg;        // 标签之后的正文(UTF-8,已剥离 ANSI 转义码)
+    // 常见标签存字典 ID；只有未知/新标签才分配字符串。不会使用进程级永久池，关闭日志
+    // 后自定义标签照常释放。func/srcfile/srcline 解析后从未被消费,不再逐行保存。
+    std::unique_ptr<std::string> customTag;
+    int  ms = -1;           // 毫秒;仅 FMT_SEAS 有,-1=无
+    std::uint16_t tagId = 0;
+    Fmt  fmt = FMT_UNKNOWN;
+    LogLevel level = LEVEL_NONE;
+
+    LogLine() = default;
+    ~LogLine() = default;
+    LogLine(const LogLine& other);
+    LogLine& operator=(const LogLine& other);
+    LogLine(LogLine&&) noexcept = default;
+    LogLine& operator=(LogLine&&) noexcept = default;
+
+    void setTag(std::string tag);
+    const std::string& tagText() const;
+    void setLevel(const std::string& text);
+    const std::string& levelText() const;
+};
+
+// 筛选后的轻量视图:只保存指向原始 LogLine 的指针,不复制时间戳/标签/正文。
+// 所有指针只在来源 vector<LogLine> 未清空、未增删、未触发重新分配时有效。
+using LogView = std::vector<const LogLine*>;
+
+// 未识别行(审计用)
+struct UnparsedLine {
+    size_t lineNo = 0;
+    std::string text;
+};
+
+// 解析审计:证明"没漏消息"的硬证据。
+// 自洽等式:rawTotal = parsed + session + blank + continuation + unparsed
+struct ParseAudit {
+    size_t rawTotal      = 0;
+    size_t parsed        = 0;   // 成功解析为 LogLine
+    size_t session       = 0;   // "=== Dial Log Opened/Program Exit ===" 会话标记
+    size_t blank         = 0;   // 空行/纯空白
+    size_t continuation  = 0;   // 多行条目的续行(无时间戳,已并入上一条;非丢弃)
+    size_t unparsed      = 0;   // 未识别 ← 审计目标
+    // 时钟跳变检测(问题①):一份日志内部时间戳大幅跳跃 —— 通常是设备开机 RTC 未授时
+    // (1970 起点)后中途联网授时,时间从 1970 跳到真实年份。此时该日志的时间轴前后
+    // 不在同一坐标系,断网时长/可用率跨越跳变点会算错。
+    // 【无真机样本】现有 33 份夹具无一含此跳变(两份 unsynced 全程 1970,设备整段未授时)。
+    // 故此处**只检测并报告,不臆测正确行为**(修复需知道正确时间,只能靠猜)——与"未识别行
+    // 审计"同路子:诚实暴露异常,由用户判断,不假装解决。
+    bool   clockJump     = false;  // 是否检测到跳变
+    long long jumpFromT  = 0;      // 跳变前一行的时间
+    long long jumpToT    = 0;      // 跳变后一行的时间
+    size_t jumpAtLine    = 0;      // 跳变发生的原始行号(1-based)
+    std::vector<UnparsedLine> samples;              // 未识别样例(上限 kMaxSamples)
+    std::map<std::string, size_t> unparsedKinds;    // 未识别行的粗分类 → 计数
+    static const size_t kMaxSamples = 200;
+    double unparsedRatio() const {                  // 占原始行比例(0..1)
+        return rawTotal ? double(unparsed) / double(rawTotal) : 0.0;
+    }
+};
+
+// 平台识别结果
+struct PlatformInfo {
+    Platform plat = PLAT_UNKNOWN;
+    std::string name;       // 展示名,如 "EG25 (modem_mng)"
+    std::string evidence;   // 判定依据(实证的日志片段)
+    size_t evidenceLine = 0;
+};
+
+// 一次断网。recovered=false 表示日志结束时仍未恢复(end/dur 无效)
+struct Outage {
+    long long start = 0;
+    long long end   = 0;
+    int  dur        = 0;
+    bool recovered  = false;
+    bool l0Recovered = false;            // true=SDK 在 L0 阶段自愈(短断网,链路抖动);
+                                         // false=走了 L1+ 恢复阶梯或普通恢复
+    size_t startLine = 0, endLine = 0;   // 证据行号
+};
+
+// 一段 RX_PKT 停滞(数据链路假死征兆)
+struct Stall {
+    long long start = 0, end = 0, dur = 0;
+    size_t startLine = 0, endLine = 0;
+};
+
+// 心跳指标行(供“指标”页)
+struct MetricRow {
+    long long t = 0;
+    long long rx = LLONG_MIN;   // LLONG_MIN=无样本；允许 0
+    long long drx = LLONG_MIN;  // LLONG_MIN=首样本/无样本；允许负增量(计数器重置)
+    size_t lineNo = 0;
+    // CH/RAT/OPER 不是可靠的固定枚举，保留原文；其余字段均改为数值，显示时按需格式化。
+    std::string ch, rat, oper;
+    int  csqRaw  = -1;      // 原始数值；99=AT+CSQ 未知，-1=缺失/非法
+    int  csqVal  = -1;      // -1=无效/99
+    int  tempMax = INT_MIN; // 多温度字段最大值；INT_MIN=无效
+    int  consecFail = INT_MIN;
+    int  rsrp    = 1;       // dBm,负值(约-70~-120,越大越好);1=无效(正数不可能是真值)
+    int  rsrq    = 1;       // dB,负值(约-3~-20);1=无效
+    int  snr10   = 100000;  // SDK 原值,单位 0.1dB;100000=无效(超出 int16_t 范围)
+    int  rssiVal = 1;       // dBm,负值;1=无效
+    int  srvVal  = -1;      // SDK 服务状态:0=NONE,1=LIMITED,2=FULL;-1=无效
+    int  denyVal = -1;      // SDK 原始拒绝码;两套 SDK 编码不同,-1=无效
+};
+
+// ---- 结论引擎(第 4 节)----
+struct Evidence {
+    size_t lineNo = 0;      // 原始行号
+    std::string ts;         // 时间戳
+    std::string text;       // 证据原文(截断)
+};
+struct Finding {
+    int severity = 0;               // 0=信息 1=告警 2=严重
+    std::string title;              // 结论
+    std::string detail;             // 依据说明
+    std::string advice;             // 处置建议
+    std::vector<Evidence> ev;       // 支撑证据(无证据不得输出)
+};
+
+} // namespace dl

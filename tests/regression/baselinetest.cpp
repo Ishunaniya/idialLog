@@ -12,7 +12,7 @@
 //   教训:**只断言"结论出现了"往往没牙齿,必须断言它的具体内容/数字。**
 //
 // 基线数字全部来自**真机日志**(证据等级最高),不是我编的期望值。
-// 用法:make baselinetest && ./baselinetest
+// 用法:make baselinetest && build/tests/regression/baselinetest
 #include "logmodel.h"
 #include <cstdio>
 #include <fstream>

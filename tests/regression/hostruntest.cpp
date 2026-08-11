@@ -16,7 +16,7 @@
 //   凡是真代码能产出的场景,就不该再用我手写的残缺版去"验证"。
 //
 // 前置:先跑 sim/hostrun*/run_scenario.sh 生成日志(本测试只读,不生成)。
-// 用法:make hostruntest && ./hostruntest
+// 用法:make hostruntest && build/tests/regression/hostruntest
 #include "logmodel.h"
 #include <cstdio>
 #include <fstream>

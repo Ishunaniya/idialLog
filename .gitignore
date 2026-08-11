@@ -1,8 +1,7 @@
-# 编译中间产物 —— make 一下就回来,不入库
-*.o
-selftest
-selftest.exe
+# 主构建与测试产物全部收敛到 build/；手工编译遗留的对象也不入库。
 build/
+*.o
+*.patch
 
 # 注意:dialLog_vX.Y.Z.exe 是**有意入库**的(方便直接取用,不必装 MinGW 重编)。
 # 代价:每次提交 exe 都会往历史里塞 ~1.2MB 且永久留存(git 删不掉历史里的二进制)。
@@ -17,30 +16,11 @@ build/
 *~
 .DS_Store
 
-# hostrun 的构建产物(driver / *.so / *.o):make 一下就回来
-sim/hostrun/*.o
+# hostrun 的构建产物(driver / *.so):make 一下就回来
 sim/hostrun/driver
 sim/hostrun/*.so
-sim/hostrun_open_dial/*.o
 sim/hostrun_open_dial/driver
-sim/hostrun_eg25/*.o
 sim/hostrun_eg25/driver
 sim/hostrun_eg25/*.so
-sim/hostrun_artery/*.o
 sim/hostrun_artery/driver
 sim/.logmodel.pristine
-
-# 编译产物与临时 patch(不入库)
-mergetest
-selftest
-simtest
-hostruntest
-baselinetest
-*.o
-*.patch
-archivetest
-miniz_host.o
-boundarytest
-tabletest
-charttest
-perftest

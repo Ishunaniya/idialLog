@@ -10,7 +10,7 @@
 // ✅ 损坏 gzip 的头边界、CRC32、ISIZE 与解压大小上限均有负向断言。
 // ⚠️ 不覆盖加密 zip / ZIP64；本工具明确拒绝无法安全展开的输入。
 //
-// 构建运行:make archivetest && ./archivetest      (rc=0 全过)
+// 构建运行:make archivetest && build/tests/unit/archivetest      (rc=0 全过)
 #include "logmodel.h"
 #include <cstdio>
 #include <fstream>

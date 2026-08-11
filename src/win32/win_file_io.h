@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "logmodel.h"
+#include "archive_reader.h"
 
 namespace dl {
 

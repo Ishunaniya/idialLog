@@ -15,13 +15,14 @@ NAME=$(basename "$REPO")
 OUT="${2:-samples/sim/${NAME}_all_prints.log}"
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 
-command -v ./selftest >/dev/null 2>&1 || make selftest >/dev/null 2>&1 || { echo "selftest 构建失败"; exit 1; }
+SELFTEST="build/tests/unit/selftest"
+test -x "$SELFTEST" || make selftest >/dev/null 2>&1 || { echo "selftest 构建失败"; exit 1; }
 
 echo "════ 全打印覆盖校验: $NAME ════"
 python3 sim/gen_all_prints.py "$REPO" "$OUT" | sed 's/^/  /'
 echo
 
-OUTPUT=$(./selftest "$OUT" 2>&1) || { echo "❌ selftest 执行失败"; exit 1; }
+OUTPUT=$("$SELFTEST" "$OUT" 2>&1) || { echo "❌ selftest 执行失败"; exit 1; }
 
 # 1) 未识别必须为 0
 UNP=$(echo "$OUTPUT" | grep -oE '未识别:[0-9]+' | head -1 | tr -dc '0-9')

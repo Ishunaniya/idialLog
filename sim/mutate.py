@@ -16,7 +16,7 @@ mutate.py — 变异测试:把已知正确的行为**故意改错**,看测试抓
 shell 的多层引号转义极易出错(踩过:'~'/'.'  在 heredoc 里转义后匹配不上,
 误报"变异点不存在")。Python 里就是普通字符串,无转义地狱。
 
-优化:变异只改临时目录里的 logmodel.cpp 副本 → 编一次 .o,多个测试共享链接。
+优化:变异只改临时目录里的对应核心源文件副本，再与其余核心模块一起链接靶向测试。
 工作树从不被改写,所以能安全验证尚未提交的正当改动,进程被杀也不会留下变异源码。
 用法: python3 sim/mutate.py
 """
@@ -29,7 +29,34 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC  = os.path.join(ROOT, "logmodel.cpp")
+CORE_SOURCES = [
+    "src/core/log_time.cpp",
+    "src/core/log_parser.cpp",
+    "src/core/log_analysis.cpp",
+    "src/core/log_filter.cpp",
+    "src/core/archive_reader.cpp",
+]
+INCLUDE_DIRS = [
+    "src/core",
+    "src/app",
+    "src/presentation",
+    "src/win32",
+    "third_party/miniz",
+    ".",
+]
+INCLUDE_FLAGS = [flag for directory in INCLUDE_DIRS
+                 for flag in ("-I", os.path.join(ROOT, directory))]
+TEST_SOURCES = {
+    "selftest": "tests/unit/selftest.cpp",
+    "archivetest": "tests/unit/archivetest.cpp",
+    "boundarytest": "tests/unit/boundarytest.cpp",
+    "tabletest": "tests/unit/tabletest.cpp",
+    "charttest": "tests/unit/charttest.cpp",
+    "simtest": "tests/regression/simtest.cpp",
+    "hostruntest": "tests/regression/hostruntest.cpp",
+    "baselinetest": "tests/regression/baselinetest.cpp",
+    "mergetest": "tests/regression/mergetest.cpp",
+}
 # 变异测试只验证行为,不做性能基准。-O0 可把 44 次重复编译从数十分钟压到可接受范围。
 CXX  = ["g++", "-std=c++17", "-O0"]
 RUN_TIMEOUT_SECONDS = 120
@@ -227,54 +254,68 @@ def _miniz_obj():
     import tempfile
     path = os.path.join(tempfile.gettempdir(), "dl_mutate_miniz.o")
     if run_cmd(["gcc", "-std=c11", "-O2", "-DMINIZ_NO_STDIO", "-DMINIZ_NO_TIME",
-                "-c", "miniz.c", "-o", path], cwd=ROOT,
+                "-c", os.path.join(ROOT, "third_party/miniz/miniz.c"), "-o", path], cwd=ROOT,
                stderr=subprocess.DEVNULL).returncode != 0:
         return None
     _MINIZ_CACHE[0] = path
     return path
 
 
-def run_tests(tmp, source, mut_name=""):
-    """编变异 logmodel 对象,只链接并运行对应靶向测试。全绿=变异存活=测试有洞。"""
+def run_tests(tmp, sources, mut_name=""):
+    """编译拆分后的核心对象并运行靶向测试。全绿=变异存活=测试有洞。"""
     test = target_test(mut_name)
     exe = os.path.join(tmp, test)
-    if test == "archivetest":
-        obj = os.path.join(tmp, "lm_mz.o")
-        mzobj = _miniz_obj()
-        if mzobj is None or run_cmd(CXX + ["-DDL_HAVE_MINIZ", "-I", ROOT,
-                                              "-c", source, "-o", obj], cwd=ROOT,
-                                       stderr=subprocess.DEVNULL).returncode != 0:
-            return False
-        cmd = CXX + ["-DDL_HAVE_MINIZ", "-o", exe, test + ".cpp", obj, mzobj]
-    else:
-        obj = os.path.join(tmp, "lm.o")
-        if run_cmd(CXX + ["-I", ROOT, "-c", source, "-o", obj], cwd=ROOT,
+    archive_enabled = test == "archivetest"
+    objects = []
+    for source in sources:
+        stem = os.path.splitext(os.path.basename(source))[0]
+        obj = os.path.join(tmp, stem + ".o")
+        flags = ["-DDL_HAVE_MINIZ"] if archive_enabled and stem == "archive_reader" else []
+        if run_cmd(CXX + flags + INCLUDE_FLAGS + ["-c", source, "-o", obj], cwd=ROOT,
                    stderr=subprocess.DEVNULL).returncode != 0:
             return False
-        cmd = CXX + ["-o", exe, test + ".cpp", obj]
+        objects.append(obj)
+
+    link_flags = ["-DDL_HAVE_MINIZ"] if archive_enabled else []
+    test_source = os.path.join(ROOT, TEST_SOURCES[test])
+    cmd = CXX + link_flags + INCLUDE_FLAGS + ["-o", exe, test_source] + objects
+    if archive_enabled:
+        mzobj = _miniz_obj()
+        if mzobj is None:
+            return False
+        cmd.append(mzobj)
     if run_cmd(cmd, cwd=ROOT, stderr=subprocess.DEVNULL).returncode != 0:
         return False
     return run_cmd([exe], cwd=ROOT, stdout=subprocess.DEVNULL,
                    stderr=subprocess.DEVNULL).returncode == 0
 
 
-def run_mutation(tmp_root, orig, idx, name, old, new, total):
+def run_mutation(tmp_root, originals, idx, name, old, new, total):
     """在独立临时目录运行一个变异；返回 (状态,耗时)。"""
     started = time.monotonic()
     print(f"  [{idx:02d}/{total:02d}] {name}", flush=True)
-    if old not in orig:
+    targets = [source for source, text in originals.items() if old in text]
+    if len(targets) != 1:
         return "bad", time.monotonic() - started
     tmp = os.path.join(tmp_root, f"m{idx:02d}")
     os.makedirs(tmp)
-    source = os.path.join(tmp, "logmodel.cpp")
-    with open(source, "w", encoding="utf-8") as f:
-        f.write(orig.replace(old, new, 1))
-    survived = run_tests(tmp, source, name)
+    target = targets[0]
+    sources = []
+    for source, text in originals.items():
+        copy = os.path.join(tmp, source)
+        os.makedirs(os.path.dirname(copy), exist_ok=True)
+        with open(copy, "w", encoding="utf-8") as f:
+            f.write(text.replace(old, new, 1) if source == target else text)
+        sources.append(copy)
+    survived = run_tests(tmp, sources, name)
     return ("survived" if survived else "caught"), time.monotonic() - started
 
 
 def main():
-    orig = open(SRC, encoding="utf-8").read()
+    originals = {}
+    for source in CORE_SOURCES:
+        with open(os.path.join(ROOT, source), encoding="utf-8") as f:
+            originals[source] = f.read()
     tmp = tempfile.mkdtemp(prefix="diallog_mutate_")
     caught = survived = bad = 0
     all_started = time.monotonic()
@@ -291,7 +332,7 @@ def main():
         with ThreadPoolExecutor(max_workers=jobs) as pool:
             futures = {}
             for idx, (name, old, new) in enumerate(MUTATIONS, 1):
-                fut = pool.submit(run_mutation, tmp, orig, idx, name, old, new, len(MUTATIONS))
+                fut = pool.submit(run_mutation, tmp, originals, idx, name, old, new, len(MUTATIONS))
                 futures[fut] = name
             for fut in as_completed(futures):
                 status, elapsed = fut.result()

@@ -15,7 +15,7 @@
 //
 // 为降低循环论证:**所有日志串逐字照抄源码**(每条都标了 file:line),不是我复述。
 //
-// 构建运行:make simtest && ./simtest        (rc=0 全过,rc=1 有断言失败)
+// 构建运行:make simtest && build/tests/regression/simtest        (rc=0 全过,rc=1 有断言失败)
 // 生成的场景日志会写到 samples/sim/,可直接拖进 GUI 看。
 #include "logmodel.h"
 #include <cstdio>

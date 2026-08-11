@@ -2,7 +2,7 @@
 // 不含 Win32 依赖,可在 Linux 主机上验证行选择与每列文本。
 #pragma once
 
-#include "logmodel.h"
+#include "log_types.h"
 
 #include <cstddef>
 #include <string>

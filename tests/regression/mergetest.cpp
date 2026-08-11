@@ -8,7 +8,7 @@
 //    同秒起头、扫描窗口越界、空输入。
 // ⚠️ 手写串只能证明"我按自己的理解实现得对",证明不了真设备只产出这些形态。
 //
-// 构建运行:make mergetest && ./mergetest        (rc=0 全过,rc=1 有断言失败)
+// 构建运行:make mergetest && build/tests/regression/mergetest        (rc=0 全过,rc=1 有断言失败)
 #include "logmodel.h"
 #include <cstdio>
 #include <fstream>

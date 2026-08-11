@@ -1,8 +1,8 @@
 # sim/hostrun — 让 **modem_mng 的真实拨号代码**在本机跑起来
 
-## 这跟 `simtest.cpp` 有什么本质区别
+## 这跟 `tests/regression/simtest.cpp` 有什么本质区别
 
-| | `simtest.cpp` | `sim/hostrun`(本目录) |
+| | `tests/regression/simtest.cpp` | `sim/hostrun`(本目录) |
 |---|---|---|
 | 日志谁产的 | **我照源码手写** | **真代码自己打的** |
 | 能抓"我读错源码"吗 | ❌ 抓不到(日志和解析器同出我手,错法一致) | ✅ **能** |

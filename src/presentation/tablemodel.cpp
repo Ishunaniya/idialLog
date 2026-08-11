@@ -1,6 +1,9 @@
 // tablemodel.cpp — 虚拟表格的行选择与单元格格式化。
 #include "tablemodel.h"
 
+#include "log_analysis.h"
+#include "log_time.h"
+
 #include <algorithm>
 #include <climits>
 #include <cstdio>

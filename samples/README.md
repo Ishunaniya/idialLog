@@ -1,6 +1,6 @@
 # samples/ — 测试夹具
 
-按**日志来源**分目录。`make selftest && ./selftest <文件>` 可逐个跑。
+按**日志来源**分目录。`make selftest && build/tests/unit/selftest <文件>` 可逐个跑。
 
 | 目录 | 来源 | 格式 | 样本 | 证据等级 |
 |---|---|---|---|---|
