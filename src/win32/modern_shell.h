@@ -9,6 +9,7 @@ constexpr UINT WM_APP_NAVIGATE = WM_APP + 41;
 constexpr UINT WM_APP_SHELL_LAYOUT = WM_APP + 42;
 
 enum class ModernButtonKind { Neutral, Primary, Danger };
+enum class ModernNoticeKind { Info, Success, Warning, Error };
 
 bool RegisterModernShellClasses(HINSTANCE instance);
 HWND CreateModernNavigation(HWND parent, int id);
@@ -20,6 +21,12 @@ bool DrawModernButton(const DRAWITEMSTRUCT& item);
 
 void SetNavigationPage(int page);
 void RefreshNavigation();
+
+void ShowModernNotice(const wchar_t* title, const wchar_t* detail,
+                      ModernNoticeKind kind = ModernNoticeKind::Info, UINT durationMs = 5000);
+void LayoutModernOverlays();
+void SetShellBusy(bool busy, const wchar_t* text = nullptr);
+bool ShellBusy();
 
 bool SystemPrefersDarkTheme();
 void ApplyModernTheme(HWND root);

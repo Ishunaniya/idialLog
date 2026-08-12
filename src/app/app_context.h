@@ -2,6 +2,7 @@
 #pragma once
 
 #include <windows.h>
+#include <commctrl.h>
 
 #include "document_state.h"
 
@@ -17,6 +18,7 @@ struct AppContext {
     HWND hSummary = nullptr, hTimeline = nullptr, hOutage = nullptr, hMetric = nullptr;
     HWND hTags = nullptr, hRaw = nullptr, hChart = nullptr, hExport = nullptr, hDash = nullptr;
     HWND hFindings = nullptr, hUnparsed = nullptr;
+    HIMAGELIST hTableRows = nullptr;
 
     HFONT hFontUI = nullptr, hFontMono = nullptr, hFontTitle = nullptr, hFontSmall = nullptr;
     HFONT hFontHero = nullptr, hFontTileVal = nullptr, hFontTileLbl = nullptr, hFontSect = nullptr;

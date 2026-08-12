@@ -231,6 +231,50 @@ int CurrentPage() {
     return g_curPage;
 }
 
+static void DrawListEmptyState(HWND list, HDC dc) {
+    const bool loaded = !App().document.lines.empty();
+    const wchar_t* title = loaded ? L"当前范围内没有数据" : L"还没有加载日志";
+    const wchar_t* detail = loaded ? L"调整筛选条件，或切换到其他页面查看。"
+                                    : L"拖入日志文件，或使用右上角“打开日志”。";
+    bool success = false;
+    if (list == App().hOutage && loaded) {
+        title = L"没有发现断网记录"; detail = L"当前筛选范围内未检测到完整的断网事件。"; success = true;
+    } else if (list == App().hMetric && loaded) {
+        title = L"没有信号指标"; detail = L"当前日志中没有可绘制的心跳或信号采样。";
+    } else if (list == App().hTimeline && loaded) {
+        title = L"没有关键事件"; detail = L"当前范围内没有状态迁移、切换或恢复事件。"; success = true;
+    } else if (list == App().hTags && loaded) {
+        title = L"没有标签统计"; detail = L"当前筛选结果为空，请尝试清空筛选条件。";
+    } else if (list == App().hUnparsed && loaded) {
+        title = L"全部日志均已识别"; detail = L"解析覆盖完整，没有需要人工复核的原始行。"; success = true;
+    }
+
+    RECT client{}; GetClientRect(list, &client);
+    if (HWND header = ListView_GetHeader(list)) {
+        RECT hr{}; GetWindowRect(header, &hr);
+        client.top += hr.bottom - hr.top;
+    }
+    const int width = std::min(S(440), std::max(S(260), static_cast<int>(client.right) - S(64)));
+    const int height = S(126);
+    const int x = (client.right - width) / 2;
+    const int y = client.top + std::max(S(24), (static_cast<int>(client.bottom - client.top) - height) / 2);
+    RECT card{x, y, x + width, y + height};
+    FillRound(dc, card, S(12), th::page, th::border);
+    const COLORREF tone = success ? th::good : th::accent;
+    RECT icon{x + S(22), y + S(31), x + S(66), y + S(75)};
+    FillRound(dc, icon, S(22), th::accentSoft, th::accentSoft);
+    HGDIOBJ oldFont = SelectObject(dc, App().hFontSect);
+    SetBkMode(dc, TRANSPARENT); SetTextColor(dc, tone);
+    DrawTextW(dc, success ? L"✓" : L"…", -1, &icon, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    RECT titleRect{x + S(82), y + S(26), card.right - S(18), y + S(53)};
+    SelectObject(dc, App().hFontSect); SetTextColor(dc, th::inkPri);
+    DrawTextW(dc, title, -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+    RECT detailRect{x + S(82), y + S(57), card.right - S(18), y + S(100)};
+    SelectObject(dc, App().hFontUI); SetTextColor(dc, th::inkSec);
+    DrawTextW(dc, detail, -1, &detailRect, DT_LEFT | DT_TOP | DT_WORDBREAK);
+    SelectObject(dc, oldFont);
+}
+
 bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
     LPNMHDR hdr = reinterpret_cast<LPNMHDR>(lparam);
     if (hdr->code == LVN_GETDISPINFOW &&
@@ -263,11 +307,17 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
     }
 
     LPNMLVCUSTOMDRAW draw = reinterpret_cast<LPNMLVCUSTOMDRAW>(lparam);
+    if (draw->nmcd.dwDrawStage == CDDS_PREPAINT) {
+        result = CDRF_NOTIFYITEMDRAW;
+        if (ListView_GetItemCount(hdr->hwndFrom) == 0) result |= CDRF_NOTIFYPOSTPAINT;
+        return true;
+    }
+    if (draw->nmcd.dwDrawStage == CDDS_POSTPAINT && ListView_GetItemCount(hdr->hwndFrom) == 0) {
+        DrawListEmptyState(hdr->hwndFrom, draw->nmcd.hdc);
+        result = CDRF_DODEFAULT;
+        return true;
+    }
     if (hdr->hwndFrom == App().hTimeline || hdr->hwndFrom == App().hOutage) {
-        if (draw->nmcd.dwDrawStage == CDDS_PREPAINT) {
-            result = CDRF_NOTIFYITEMDRAW;
-            return true;
-        }
         if (draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) {
             const size_t row = static_cast<size_t>(draw->nmcd.dwItemSpec);
             if (hdr->hwndFrom == App().hTimeline) {
@@ -283,10 +333,6 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
     }
 
     if (hdr->hwndFrom == App().hTags || hdr->hwndFrom == App().hUnparsed) {
-        if (draw->nmcd.dwDrawStage == CDDS_PREPAINT) {
-            result = CDRF_NOTIFYITEMDRAW;
-            return true;
-        }
         if (draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) {
             const size_t row = static_cast<size_t>(draw->nmcd.dwItemSpec);
             draw->clrText = th::inkPri;
@@ -296,10 +342,6 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
         return true;
     }
 
-    if (draw->nmcd.dwDrawStage == CDDS_PREPAINT) {
-        result = CDRF_NOTIFYITEMDRAW;
-        return true;
-    }
     if (draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) {
         result = CDRF_NOTIFYSUBITEMDRAW;
         return true;

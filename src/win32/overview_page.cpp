@@ -14,6 +14,7 @@
 #include "log_analysis.h"
 #include "log_time.h"
 #include "memoryutil.h"
+#include "modern_shell.h"
 #include "theme.h"
 #include "win_text.h"
 
@@ -62,24 +63,56 @@ static int TextW_(HDC hdc, const std::wstring& s, HFONT f) {
     return sz.cx;
 }
 
+static void DrawPageEmpty(HDC hdc, RECT rc, const wchar_t* title, const wchar_t* detail) {
+    const int width = std::min(S(500), std::max(S(300), static_cast<int>(rc.right) - S(72)));
+    const int height = S(150), x = (rc.right - width) / 2;
+    const int y = std::max(S(20), (static_cast<int>(rc.bottom) - height) / 2);
+    RECT card{x, y, x + width, y + height};
+    FillRound(hdc, card, S(14), th::surface, th::border);
+    RECT icon{x + S(24), y + S(42), x + S(76), y + S(94)};
+    FillRound(hdc, icon, S(26), th::accentSoft, th::accentSoft);
+    HGDIOBJ old = SelectObject(hdc, App().hFontSect);
+    SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, th::accent);
+    DrawTextW(hdc, L"dL", -1, &icon, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    RECT titleRect{x + S(94), y + S(35), card.right - S(24), y + S(65)};
+    SetTextColor(hdc, th::inkPri);
+    DrawTextW(hdc, title, -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    SelectObject(hdc, App().hFontUI); SetTextColor(hdc, th::inkSec);
+    RECT detailRect{x + S(94), y + S(70), card.right - S(24), y + S(124)};
+    DrawTextW(hdc, detail, -1, &detailRect, DT_LEFT | DT_TOP | DT_WORDBREAK);
+    SelectObject(hdc, old);
+}
+
+static void DrawPill(HDC hdc, int x, int y, const std::wstring& text,
+                     COLORREF fill, COLORREF ink, COLORREF dot = CLR_INVALID) {
+    const int width = TextW_(hdc, text, App().hFontSmall) + S(20);
+    RECT pill{x, y, x + width, y + S(24)};
+    FillRound(hdc, pill, S(12), fill, fill);
+    HGDIOBJ old = SelectObject(hdc, App().hFontSmall);
+    SetTextColor(hdc, ink); SetBkMode(hdc, TRANSPARENT);
+    if (dot != CLR_INVALID) {
+        RECT marker{x + S(10), y + S(9), x + S(16), y + S(15)};
+        FillRound(hdc, marker, S(3), dot, dot);
+        RECT textRect = pill; textRect.left += S(13);
+        DrawTextW(hdc, text.c_str(), -1, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    } else {
+        DrawTextW(hdc, text.c_str(), -1, &pill, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    }
+    SelectObject(hdc, old);
+}
+
 // 指标卡:发丝描边 + 标签(次要 ink)+ 数值(主 ink 半粗)
 static void DrawTile(HDC hdc, RECT r, const std::wstring& label, const std::wstring& val,
                      COLORREF valColor, const std::wstring& note) {
-    HBRUSH bg = CreateSolidBrush(th::surface);
-    FillRect(hdc, &r, bg);
-    DeleteObject(bg);
-    HPEN pn = CreatePen(PS_SOLID, 1, th::border);
-    HGDIOBJ op = SelectObject(hdc, pn);
-    HGDIOBJ ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
-    RoundRect(hdc, r.left, r.top, r.right, r.bottom, 6, 6);
-    SelectObject(hdc, ob); SelectObject(hdc, op);
-    DeleteObject(pn);
+    FillRound(hdc, r, S(10), th::surface, th::border);
+    RECT marker{r.left + S(13), r.top + S(12), r.left + S(17), r.top + S(28)};
+    FillRound(hdc, marker, S(2), th::accent, th::accent);
 
     // 行位从 top 顺排,不用 bottom 反推 —— 反推会让 22px 的数值和注释叠在一起
-    DrawText_(hdc, r.left + 12, r.top + 8,  label, App().hFontTileLbl, th::inkSec);
-    DrawText_(hdc, r.left + 12, r.top + 26, val,   App().hFontTileVal, valColor);
+    DrawText_(hdc, r.left + S(24), r.top + S(8), label, App().hFontTileLbl, th::inkSec);
+    DrawText_(hdc, r.left + S(14), r.top + S(29), val, App().hFontTileVal, valColor);
     if (!note.empty())
-        DrawText_(hdc, r.left + 12, r.top + 56, note, App().hFontTileLbl, th::inkMuted);
+        DrawText_(hdc, r.left + S(14), r.top + S(59), note, App().hFontTileLbl, th::inkMuted);
 }
 
 LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
@@ -99,8 +132,12 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     SetBkMode(hdc, TRANSPARENT);
 
     if (App().document.filtered.empty()) {
-        DrawText_(hdc, 20, 20, L"未加载日志 —— 拖入 dial_*.log,或复制日志文本后按 Ctrl+V",
-                  App().hFontTileLbl, th::inkMuted);
+        if (App().document.lines.empty())
+            DrawPageEmpty(hdc, rc, L"开始分析第一份日志",
+                          L"将 dial_*.log、文本或压缩包拖到窗口中，也可以使用“打开日志”或“粘贴日志”。");
+        else
+            DrawPageEmpty(hdc, rc, L"筛选后没有结果",
+                          L"当前日志已加载，但没有行满足筛选条件。展开筛选面板并清空条件即可恢复。");
         BitBlt(hw, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
         SelectObject(hdc, obm); DeleteObject(bmp); DeleteDC(hdc);
         EndPaint(hwnd, &ps);
@@ -126,22 +163,23 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     // ---- hero:可用率(每视图仅此一个大数字) ----
     // 状态色须配文字标签,不能只靠颜色表意 —— 故旁边永远写着"可用率"
-    COLORREF heroC = avail >= 99.9 ? th::good : (avail >= 99.0 ? th::warning : th::critical);
     const wchar_t* heroTag = avail >= 99.9 ? L"良好" : (avail >= 99.0 ? L"偏低" : L"差");
-    DrawText_(hdc, 20, 14, L"可用率", App().hFontTileLbl, th::inkSec);
+    const int pad = S(20);
+    DrawText_(hdc, pad, S(14), L"可用率", App().hFontTileLbl, th::inkSec);
     std::wstring hv = FmtW(L"%.3f%%", avail);
-    DrawText_(hdc, 20, 30, hv, App().hFontHero, th::inkPri);       // 大数字用主 ink,不用状态色
-    int hx = 20 + TextW_(hdc, hv, App().hFontHero) + 12;
-    DrawBar(hdc, hx, 56, 10, 10, heroC);                      // 色块承载状态,文字在旁
-    DrawText_(hdc, hx + 16, 52, heroTag, App().hFontTileLbl, th::inkSec);
-    DrawText_(hdc, 20, 86,
+    DrawText_(hdc, pad, S(30), hv, App().hFontHero, th::inkPri);
+    int hx = pad + TextW_(hdc, hv, App().hFontHero) + S(14);
+    const std::wstring state = heroTag;
+    const COLORREF heroColor = avail >= 99.9 ? th::good : (avail >= 99.0 ? th::warning : th::critical);
+    DrawPill(hdc, hx, S(48), state, th::accentSoft, th::inkSec, heroColor);
+    DrawText_(hdc, pad, S(87),
               FmtW(L"%s → %s   ·   %s   ·   %s",
                    U8ToW(fmtTime(t0, "FULL")).c_str(), U8ToW(fmtTime(t1, "HM")).c_str(),
                    U8ToW(fmtDur(t1 - t0)).c_str(), U8ToW(App().document.platform.name).c_str()),
               App().hFontTileLbl, th::inkMuted);
 
     // ---- 指标卡 ----
-    int pad = 20, gap = 10, ty = 112, th_ = 78;
+    int gap = S(10), ty = S(114), th_ = S(82);
     int tw = (rc.right - pad * 2 - gap * 3) / 4;
     if (tw > 60) {
         RECT r1{ pad, ty, pad + tw, ty + th_ };
@@ -161,18 +199,19 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
 
     // ---- 断网时长分布(横条)----
-    int by = ty + th_ + 20;
+    int by = ty + th_ + S(18);
     DrawText_(hdc, pad, by, L"断网时长分布", App().hFontSect, th::inkPri);
-    by += 22;
+    by += S(22);
     const wchar_t* bl[4] = { L"≤30s", L"31-60s", L"1-5m", L">5m" };
     int mx = std::max(1, std::max(std::max(b[0], b[1]), std::max(b[2], b[3])));
-    int labW = 56, barX = pad + labW, barMaxW = rc.right - barX - pad - 40;
+    int labW = S(56), barX = pad + labW, barMaxW = rc.right - barX - pad - S(40);
     for (int i = 0; i < 4; ++i) {
-        int y = by + i * 22;
-        DrawText_(hdc, pad, y + 1, bl[i], App().hFontTileLbl, th::inkSec);
+        int y = by + i * S(22);
+        DrawText_(hdc, pad, y + S(1), bl[i], App().hFontTileLbl, th::inkSec);
         int w = barMaxW * b[i] / mx;
-        DrawBar(hdc, barX, y, w, 14, th::s1_blue);            // 单序列 → 不需要图例
-        DrawText_(hdc, barX + std::max(w, 2) + 8, y + 1, FmtW(L"%d", b[i]), App().hFontTileLbl, th::inkSec);
+        DrawBar(hdc, barX, y, barMaxW, S(14), th::grid);
+        DrawBar(hdc, barX, y, w, S(14), th::s1_blue);
+        DrawText_(hdc, barX + std::max(w, S(2)) + S(8), y + S(1), FmtW(L"%d", b[i]), App().hFontTileLbl, th::inkSec);
     }
 
     BitBlt(hw, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
@@ -251,6 +290,19 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     FillRect(hdc, &rc, pageBg);
     DeleteObject(pageBg);
 
+    if (App().document.lines.empty()) {
+        DrawPageEmpty(hdc, rc, L"诊断结论将在这里形成",
+                      L"加载日志后，结论会按严重程度展示依据、建议和可追溯的原始证据。");
+        g_findContentH = rc.bottom;
+        SCROLLINFO emptyScroll{}; emptyScroll.cbSize = sizeof(emptyScroll);
+        emptyScroll.fMask = SIF_RANGE | SIF_PAGE | SIF_POS; emptyScroll.nMin = 0;
+        emptyScroll.nMax = rc.bottom; emptyScroll.nPage = rc.bottom; emptyScroll.nPos = 0;
+        SetScrollInfo(hwnd, SB_VERT, &emptyScroll, TRUE);
+        BitBlt(hw, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
+        SelectObject(hdc, obm); DeleteObject(bmp); DeleteDC(hdc);
+        EndPaint(hwnd, &ps); return 0;
+    }
+
     const int M = S(16);              // 页边距
     const int CARD_PAD = S(18);       // 卡内边距
     const int GAP = S(14);            // 卡间距
@@ -262,37 +314,67 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     auto drawCard = [&](int topY, int height, COLORREF band) {
         RECT cr{ M, topY, M + cardW, topY + height };
-        HBRUSH bg = CreateSolidBrush(th::surface);
-        FillRect(hdc, &cr, bg); DeleteObject(bg);
-        HPEN pn = CreatePen(PS_SOLID, 1, th::border);
-        HGDIOBJ op = SelectObject(hdc, pn), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
-        RoundRect(hdc, cr.left, cr.top, cr.right, cr.bottom, S(8), S(8));
-        SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(pn);
+        FillRound(hdc, cr, S(11), th::surface, th::border);
         if (band) {   // 左侧色带
             RECT b{ M + S(1), topY + S(2), M + S(1) + BAND, topY + height - S(2) };
             HBRUSH bb = CreateSolidBrush(band); FillRect(hdc, &b, bb); DeleteObject(bb);
         }
     };
 
+    // ── 一眼可读的诊断摘要 ──
+    {
+        int severe = 0, warning = 0, info = 0;
+        for (const auto& finding : App().document.findings) {
+            if (finding.severity == 2) ++severe;
+            else if (finding.severity == 1) ++warning;
+            else ++info;
+        }
+        const int h = S(74);
+        drawCard(y, h, 0);
+        DrawText_(hdc, textX0, y + S(14), L"诊断摘要", App().hFontSect, th::inkPri);
+        DrawText_(hdc, textX0, y + S(40),
+                  FmtW(L"共 %d 条有证据支撑的结论", (int)App().document.findings.size()),
+                  App().hFontSmall, th::inkMuted);
+        int px = M + cardW - S(18);
+        auto pillRight = [&](const std::wstring& text, COLORREF fill, COLORREF ink) {
+            int width = TextW_(hdc, text, App().hFontSmall) + S(20);
+            px -= width; DrawPill(hdc, px, y + S(25), text, fill, ink); px -= S(8);
+        };
+        if (info) pillRight(FmtW(L"信息 %d", info), th::accentSoft, th::accent);
+        if (warning) pillRight(FmtW(L"告警 %d", warning), th::cellWeak, th::rowWarn);
+        if (severe) pillRight(FmtW(L"严重 %d", severe), th::outageBand, th::rowFault);
+        y += h + GAP;
+    }
+
     // ── 头部元信息卡 ──
     {
-        // 先量高度:平台 + 覆盖 +(可能)跳变
-        int lines = 2;                        // 平台 / 覆盖
-        if (App().document.platform.evidenceLine) lines++;
+        std::wstring platform = L"来源平台:  " + U8ToW(App().document.platform.name);
+        std::wstring coverage = FmtW(L"解析覆盖:  已解析 %d 行,未识别 %d 行(%.2f%%)%s",
+            (int)App().document.audit.parsed, (int)App().document.audit.unparsed,
+            App().document.audit.unparsedRatio() * 100.0,
+            App().document.audit.unparsed == 0 ? L"  → 无遗漏" : L"  → 见“未识别行”页");
+        std::wstring evidence;
+        if (App().document.platform.evidenceLine)
+            evidence = FmtW(L"识别依据:  第 %d 行  ", (int)App().document.platform.evidenceLine) +
+                       U8ToW(App().document.platform.evidence);
+        auto measureMeta = [&](const std::wstring& text) {
+            HGDIOBJ old = SelectObject(hdc, App().hFontUI);
+            RECT measured{0, 0, textW, S(1000)};
+            DrawTextW(hdc, text.c_str(), -1, &measured,
+                      DT_LEFT | DT_TOP | DT_WORDBREAK | DT_CALCRECT);
+            SelectObject(hdc, old);
+            return std::max(S(20), static_cast<int>(measured.bottom));
+        };
         bool jump = App().document.audit.clockJump;
-        int h = CARD_PAD * 2 + lines * S(20) + (jump ? S(40) : 0);
+        int h = CARD_PAD * 2 + measureMeta(platform) + measureMeta(coverage) +
+                (evidence.empty() ? 0 : measureMeta(evidence)) + (jump ? S(40) : 0);
         drawCard(y, h, th::inkMuted);
         int ty = y + CARD_PAD;
-        DrawText_(hdc, textX0, ty, L"来源平台:  " + U8ToW(App().document.platform.name), App().hFontUI, th::inkPri); ty += S(20);
-        DrawText_(hdc, textX0, ty,
-                  FmtW(L"解析覆盖:  已解析 %d 行,未识别 %d 行(%.2f%%)%s",
-                       (int)App().document.audit.parsed, (int)App().document.audit.unparsed, App().document.audit.unparsedRatio()*100.0,
-                       App().document.audit.unparsed==0 ? L"  → 无遗漏" : L"  → 见“未识别行”页"),
-                  App().hFontUI, App().document.audit.unparsed==0 ? th::inkSec : th::rowWarn); ty += S(20);
-        if (App().document.platform.evidenceLine) {
-            DrawText_(hdc, textX0, ty, FmtW(L"识别依据:  第 %d 行  ", (int)App().document.platform.evidenceLine) + U8ToW(App().document.platform.evidence),
-                      App().hFontUI, th::inkMuted); ty += S(20);
-        }
+        ty += DrawWrapped(hdc, textX0, ty, textW, platform, App().hFontUI, th::inkPri);
+        ty += DrawWrapped(hdc, textX0, ty, textW, coverage, App().hFontUI,
+                          App().document.audit.unparsed == 0 ? th::inkSec : th::rowWarn);
+        if (!evidence.empty())
+            ty += DrawWrapped(hdc, textX0, ty, textW, evidence, App().hFontUI, th::inkMuted);
         if (jump) {
             DrawText_(hdc, textX0, ty, FmtW(L"⚠ 时钟跳变: 第 %d 行 %s → %s", (int)App().document.audit.jumpAtLine,
                       U8ToW(fmtTime(App().document.audit.jumpFromT,"FULL")).c_str(), U8ToW(fmtTime(App().document.audit.jumpToT,"FULL")).c_str()),
@@ -315,8 +397,13 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     for (const auto& f : App().document.findings) {
         COLORREF band = (f.severity == 2) ? th::rowFault : (f.severity == 1 ? th::rowWarn : th::rowState);
         const wchar_t* lv = (f.severity == 2) ? L"严重" : (f.severity == 1 ? L"告警" : L"信息");
-        std::wstring title = FmtW(L"%d. 【%s】", ++n, lv) + U8ToW(f.title);
+        ++n;
+        std::wstring title = FmtW(L"%d. ", n) + U8ToW(f.title);
         std::wstring detail = U8ToW(f.detail), advice = U8ToW(f.advice);
+        std::vector<std::wstring> evidence;
+        evidence.reserve(f.ev.size());
+        for (const auto& e : f.ev)
+            evidence.push_back(FmtW(L"· 第 %d 行  ", (int)e.lineNo) + U8ToW(e.ts) + L"  " + U8ToW(e.text));
 
         // —— 测量 pass:算这张卡多高(不画,只用 DT_CALCRECT)——
         auto measureWrap = [&](const std::wstring& s, HFONT font) {
@@ -326,30 +413,34 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             SelectObject(hdc, of);
             return (int)(r.bottom - r.top);
         };
-        int titleH = S(24), lblH = S(20), evH = S(19);
+        int titleH = S(28), lblH = S(20);
         const int SEC = S(12);
         int h = CARD_PAD;                       // 顶内边距
         h += titleH + S(8);                     // 标题
         h += lblH + measureWrap(detail, App().hFontUI) + SEC;   // 依据
         h += lblH + measureWrap(advice, App().hFontUI) + SEC;   // 建议
-        h += lblH + (int)f.ev.size() * evH;     // 证据
+        h += lblH;
+        for (const auto& line : evidence) h += measureWrap(line, App().hFontMono) + S(5);
         h += CARD_PAD;                          // 底内边距
 
         // —— 画 pass:白底卡 + 色带,再叠字 ——
         drawCard(y, h, band);
         int ty = y + CARD_PAD;
-        DrawText_(hdc, textX0, ty, title, App().hFontSect, band); ty += titleH + S(8);
+        const std::wstring badge = lv;
+        DrawPill(hdc, textX0, ty, badge,
+                 f.severity == 2 ? th::outageBand : (f.severity == 1 ? th::cellWeak : th::accentSoft),
+                 band);
+        const int badgeW = TextW_(hdc, badge, App().hFontSmall) + S(30);
+        DrawText_(hdc, textX0 + badgeW, ty + S(2), title, App().hFontSect, th::inkPri);
+        ty += titleH + S(8);
         DrawText_(hdc, textX0, ty, L"依据", App().hFontUI, th::inkMuted); ty += lblH;
         ty += DrawWrapped(hdc, textX0, ty, textW, detail, App().hFontUI, th::inkPri) + SEC;
         DrawText_(hdc, textX0, ty, L"建议", App().hFontUI, th::inkMuted); ty += lblH;
         ty += DrawWrapped(hdc, textX0, ty, textW, advice, App().hFontUI, th::inkSec) + SEC;
         DrawText_(hdc, textX0, ty, L"证据", App().hFontUI, th::inkMuted); ty += lblH;
-        for (const auto& e : f.ev) {
-            DrawText_(hdc, textX0 + S(8), ty,
-                      FmtW(L"· 第 %d 行  ", (int)e.lineNo) + U8ToW(e.ts) + L"  " + U8ToW(e.text),
-                      App().hFontMono, th::inkSec);
-            ty += evH;
-        }
+        for (const auto& line : evidence)
+            ty += DrawWrapped(hdc, textX0 + S(8), ty, textW - S(8), line,
+                              App().hFontMono, th::inkSec) + S(5);
         y += h + GAP;
     }
 
@@ -408,21 +499,27 @@ LRESULT CALLBACK SummaryProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     const int M = S(16), CARD_PAD = S(18), GAP = S(14), BAND = S(5);
     int cardW = rc.right - 2 * M;
     int textX0 = M + CARD_PAD + BAND;
+    int textW = cardW - CARD_PAD * 2 - BAND;
     int y = M - g_sumScroll;
 
     for (const auto& c : g_sumCards) {
         COLORREF band = (c.accent == 2) ? th::rowFault : (c.accent == 1 ? th::rowWarn : th::inkMuted);
         HFONT lineFont = c.mono ? App().hFontMono : App().hFontUI;
-        int titleH = S(24), lineH = c.mono ? S(18) : S(20);
-        int h = CARD_PAD + titleH + S(6) + (int)c.lines.size() * lineH + CARD_PAD;
+        int titleH = S(24);
+        auto measure = [&](const std::wstring& line) {
+            HGDIOBJ old = SelectObject(hdc, lineFont);
+            RECT measured{0, 0, textW, S(1000)};
+            DrawTextW(hdc, line.c_str(), -1, &measured,
+                      DT_LEFT | DT_TOP | DT_WORDBREAK | DT_CALCRECT);
+            SelectObject(hdc, old);
+            return std::max(S(18), static_cast<int>(measured.bottom));
+        };
+        int h = CARD_PAD + titleH + S(6) + CARD_PAD;
+        for (const auto& line : c.lines) h += measure(line) + S(4);
 
         // 画卡
         RECT cr{ M, y, M + cardW, y + h };
-        HBRUSH bg = CreateSolidBrush(th::surface); FillRect(hdc, &cr, bg); DeleteObject(bg);
-        HPEN pn = CreatePen(PS_SOLID, 1, th::border);
-        HGDIOBJ op = SelectObject(hdc, pn), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
-        RoundRect(hdc, cr.left, cr.top, cr.right, cr.bottom, S(8), S(8));
-        SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(pn);
+        FillRound(hdc, cr, S(11), th::surface, th::border);
         RECT b{ M + S(1), y + S(2), M + S(1) + BAND, y + h - S(2) };
         HBRUSH bb = CreateSolidBrush(band); FillRect(hdc, &b, bb); DeleteObject(bb);
 
@@ -431,8 +528,7 @@ LRESULT CALLBACK SummaryProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                   c.accent == 2 ? th::rowFault : (c.accent == 1 ? th::rowWarn : th::inkPri));
         ty += titleH + S(6);
         for (const auto& ln : c.lines) {
-            DrawText_(hdc, textX0, ty, ln, lineFont, th::inkPri);
-            ty += lineH;
+            ty += DrawWrapped(hdc, textX0, ty, textW, ln, lineFont, th::inkPri) + S(4);
         }
         y += h + GAP;
     }

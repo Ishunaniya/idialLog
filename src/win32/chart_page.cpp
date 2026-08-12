@@ -12,6 +12,7 @@
 #include "chartmodel.h"
 #include "log_time.h"
 #include "memoryutil.h"
+#include "modern_shell.h"
 #include "theme.h"
 #include "win_text.h"
 
@@ -29,6 +30,8 @@ static int g_chartCacheWidth = -1, g_chartCacheDetail = -1;
 static long long g_chartCacheT0 = 0, g_chartCacheT1 = 0;
 static int  g_chartDetail    = 0;                     // 0=RSRP 1=RSRQ 2=SNR,点击循环
 static int  g_chartHoverX   = -1;                     // 悬停 X(客户区),-1=未悬停
+static int  g_chartHoverY   = -1;
+static RECT g_chartModeRects[3]{};
 
 static void ResetChartSampleCache() {
     if (++g_chartDataRevision == 0) g_chartDataRevision = 1; // 无符号回绕防御
@@ -47,22 +50,28 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     };
     if (msg == WM_ERASEBKGND) return 1;
     if (msg == WM_LBUTTONDOWN) {
-        for (int step = 1; step <= 3; ++step) {
-            int next = (g_chartDetail + step) % 3;
-            if (!detailSeries(next).empty()) { g_chartDetail = next; break; }
+        POINT point{static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp))};
+        for (int mode = 0; mode < 3; ++mode) {
+            if (PtInRect(&g_chartModeRects[mode], point) && !detailSeries(mode).empty()) {
+                g_chartDetail = mode; break;
+            }
         }
         InvalidateRect(hwnd, nullptr, FALSE);
         return 0;
     }
     if (msg == WM_SETCURSOR) {
-        SetCursor(LoadCursorW(nullptr,
-            (!g_rsrp.empty() || !g_rsrq.empty() || !g_snr10.empty()) ? IDC_HAND : IDC_ARROW));
+        POINT point{}; GetCursorPos(&point); ScreenToClient(hwnd, &point);
+        bool overMode = false;
+        for (int mode = 0; mode < 3; ++mode)
+            if (!detailSeries(mode).empty() && PtInRect(&g_chartModeRects[mode], point)) overMode = true;
+        SetCursor(LoadCursorW(nullptr, overMode ? IDC_HAND : IDC_ARROW));
         return TRUE;
     }
     if (msg == WM_MOUSEMOVE) {
         int mx = (int)(short)LOWORD(lp);
-        if (mx != g_chartHoverX) {
-            g_chartHoverX = mx;
+        int my = (int)(short)HIWORD(lp);
+        if (mx != g_chartHoverX || my != g_chartHoverY) {
+            g_chartHoverX = mx; g_chartHoverY = my;
             InvalidateRect(hwnd, nullptr, FALSE);
             TRACKMOUSEEVENT tme{};
             tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = hwnd;
@@ -72,6 +81,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     if (msg == WM_MOUSELEAVE) {
         g_chartHoverX = -1;
+        g_chartHoverY = -1;
         InvalidateRect(hwnd, nullptr, FALSE);
         return 0;
     }
@@ -97,9 +107,23 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     bool haveAny = !g_csq.empty() || !detail.empty();
     if (!haveAny || rc.right < S(140) || rc.bottom < S(140)) {
-        SetTextColor(hdc, th::inkMuted);
-        const wchar_t* t = haveAny ? L"窗口过小，无法显示信号图" : L"加载含心跳的日志后显示信号趋势";
-        TextOutW(hdc, S(42), std::max(S(8), (int)(rc.bottom / 2)), t, (int)wcslen(t));
+        const wchar_t* title = haveAny ? L"窗口空间不足" : L"暂无信号趋势";
+        const wchar_t* detailText = haveAny ? L"放大窗口后即可恢复双图表视图。"
+                                             : L"加载包含心跳、CSQ、RSRP 或 SNR 的日志后自动显示。";
+        int cardW = std::min(S(460), std::max(S(260), static_cast<int>(rc.right) - S(64)));
+        int cardH = S(112), x = (rc.right - cardW) / 2, y = (rc.bottom - cardH) / 2;
+        RECT card{x, y, x + cardW, y + cardH}; FillRound(hdc, card, S(12), th::page, th::border);
+        RECT icon{x + S(22), y + S(30), x + S(66), y + S(74)};
+        FillRound(hdc, icon, S(22), th::accentSoft, th::accentSoft);
+        HGDIOBJ oldFont = SelectObject(hdc, App().hFontSect); SetTextColor(hdc, th::accent);
+        DrawTextW(hdc, L"⌁", -1, &icon, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        RECT titleRect{x + S(82), y + S(22), card.right - S(18), y + S(50)};
+        SetTextColor(hdc, th::inkPri);
+        DrawTextW(hdc, title, -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        SelectObject(hdc, App().hFontUI); SetTextColor(hdc, th::inkSec);
+        RECT detailRect{x + S(82), y + S(54), card.right - S(18), y + S(92)};
+        DrawTextW(hdc, detailText, -1, &detailRect, DT_LEFT | DT_TOP | DT_WORDBREAK);
+        SelectObject(hdc, oldFont);
         BitBlt(hdcWin, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
         SelectObject(hdc, oldBmp); DeleteObject(bmp); DeleteDC(hdc); EndPaint(hwnd, &ps);
         return 0;
@@ -123,8 +147,8 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     const double total = std::max<double>(1.0, (double)(t1 - t0));
     const int left = S(48), right = rc.right - S(12);
     const int mid = rc.bottom / 2;
-    RECT top{ left, S(24), right, mid - S(13) };
-    RECT bot{ left, mid + S(22), right, rc.bottom - S(24) };
+    RECT top{ left, S(31), right, mid - S(13) };
+    RECT bot{ left, mid + S(34), right, rc.bottom - S(24) };
     auto X = [&](long long t) {
         return left + (int)((double)(t - t0) / total * (right - left));
     };
@@ -206,14 +230,32 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
     };
 
-    SetTextColor(hdc, th::inkMuted);
-    const wchar_t* topTitle = L"CSQ (0–31)   黄线=弱信号提示阈值10   红带=断网";
+    HGDIOBJ oldFont = SelectObject(hdc, App().hFontSect);
+    SetTextColor(hdc, th::inkPri);
+    const wchar_t* topTitle = L"CSQ 信号强度";
     TextOutW(hdc, top.left, S(4), topTitle, (int)wcslen(topTitle));
-    std::wstring bottomTitle = g_chartDetail == 2
-        ? L"LTE SNR (dB，SDK原值×0.1)   黄线=0dB推断提示线   [点击切换 RSRP/RSRQ/SNR]"
-        : FmtW(L"LTE %s (%s)   [点击切换 RSRP/RSRQ/SNR]",
-               detailName, g_chartDetail == 0 ? L"dBm" : L"dB");
-    TextOutW(hdc, bot.left, mid + S(4), bottomTitle.c_str(), (int)bottomTitle.size());
+    SelectObject(hdc, App().hFontSmall); SetTextColor(hdc, th::inkMuted);
+    const wchar_t* legend = L"弱信号阈值 10  ·  红色区域为断网";
+    TextOutW(hdc, top.left + S(108), S(8), legend, (int)wcslen(legend));
+    SelectObject(hdc, App().hFontSect); SetTextColor(hdc, th::inkPri);
+    TextOutW(hdc, bot.left, mid + S(8), L"LTE 信号质量", 8);
+
+    const wchar_t* modeNames[] = {L"RSRP", L"RSRQ", L"SNR"};
+    int modeRight = bot.right;
+    for (int mode = 2; mode >= 0; --mode) {
+        int width = S(58);
+        g_chartModeRects[mode] = RECT{modeRight - width, mid + S(4), modeRight, mid + S(30)};
+        const bool selected = mode == g_chartDetail;
+        const bool enabled = !detailSeries(mode).empty();
+        FillRound(hdc, g_chartModeRects[mode], S(13), selected ? th::accentSoft : th::surface,
+                  selected ? th::accent : th::border);
+        SelectObject(hdc, App().hFontSmall);
+        SetTextColor(hdc, enabled ? (selected ? th::accent : th::inkSec) : th::inkMuted);
+        DrawTextW(hdc, modeNames[mode], -1, &g_chartModeRects[mode],
+                  DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        modeRight -= width + S(7);
+    }
+    SelectObject(hdc, oldFont);
 
     drawPlot(top, g_chartCsqDraw, 0, 31, th::s1_blue, 10, true, false);
     drawPlot(bot, g_chartDetailDraw, detailLo, detailHi, th::s7_violet, 0,
@@ -264,11 +306,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         int bx = hx + S(8);
         if (bx + sz.cx + S(10) > right) bx = hx - sz.cx - S(14);
         RECT ib{ bx - S(4), top.top + S(3), bx + sz.cx + S(6), top.top + sz.cy + S(8) };
-        HBRUSH ibg = CreateSolidBrush(th::surface); FillRect(hdc, &ib, ibg); DeleteObject(ibg);
-        HPEN ibd = CreatePen(PS_SOLID, 1, th::border);
-        HGDIOBJ op = SelectObject(hdc, ibd), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
-        Rectangle(hdc, ib.left, ib.top, ib.right, ib.bottom);
-        SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(ibd);
+        FillRound(hdc, ib, S(6), th::surface, th::border);
         SetTextColor(hdc, th::inkPri);
         TextOutW(hdc, bx, top.top + S(5), info.c_str(), (int)info.size());
     }
@@ -324,7 +362,7 @@ void ReleaseChartPageData() {
     releaseVector(g_chartDetailDraw);
 
     g_chartDetail = 0;
-    g_chartHoverX = -1;
+    g_chartHoverX = g_chartHoverY = -1;
 }
 
 } // namespace dl

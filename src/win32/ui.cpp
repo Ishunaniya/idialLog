@@ -113,6 +113,7 @@ HWND CreateList(int id, std::initializer_list<std::pair<const wchar_t*, int>> co
                                 reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
                                 GetModuleHandleW(nullptr), nullptr);
     ListView_SetExtendedListViewStyle(list, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+    if (App().hTableRows) ListView_SetImageList(list, App().hTableRows, LVSIL_SMALL);
     SendMessageW(list, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontMono), TRUE);
     int index = 0;
     for (const auto& column : columns) LvAddCol(list, index++, column.first, column.second);
@@ -133,6 +134,21 @@ void CreateFonts() {
     App().hFontTileVal = CreateAppFont(-22, FW_SEMIBOLD, L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
     App().hFontTileLbl = CreateAppFont(-13, FW_NORMAL, L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
     App().hFontSect = CreateAppFont(-16, FW_SEMIBOLD, L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
+}
+
+void CreateTableRowImageList() {
+    if (App().hTableRows) {
+        for (HWND list : {App().hTimeline, App().hOutage, App().hMetric, App().hTags, App().hUnparsed})
+            if (list) ListView_SetImageList(list, nullptr, LVSIL_SMALL);
+        ImageList_Destroy(App().hTableRows);
+    }
+    App().hTableRows = ImageList_Create(1, S(28), ILC_COLOR32 | ILC_MASK, 1, 1);
+    if (!App().hTableRows) return;
+    HBITMAP pixel = CreateBitmap(1, S(28), 1, 1, nullptr);
+    ImageList_AddMasked(App().hTableRows, pixel, RGB(0, 0, 0));
+    DeleteObject(pixel);
+    for (HWND list : {App().hTimeline, App().hOutage, App().hMetric, App().hTags, App().hUnparsed})
+        if (list) ListView_SetImageList(list, App().hTableRows, LVSIL_SMALL);
 }
 
 void ApplyFontsToControls() {
@@ -250,6 +266,7 @@ void Layout() {
     chartHeight = std::max(S(120), chartHeight);
     MoveIf(App().hChart, content.left, content.top, width, chartHeight);
     MoveIf(App().hMetric, content.left, content.top + chartHeight, width, height - chartHeight);
+    LayoutModernOverlays();
     InvalidateRect(App().hMain, nullptr, FALSE);
 }
 
@@ -297,6 +314,40 @@ void ClearFilters(bool refresh) {
     if (refresh) RefreshAll();
 }
 
+LRESULT CALLBACK RawEditSubclass(HWND window, UINT message, WPARAM wparam, LPARAM lparam,
+                                 UINT_PTR, DWORD_PTR) {
+    if (message == WM_NCDESTROY) {
+        RemoveWindowSubclass(window, RawEditSubclass, 1);
+        return DefSubclassProc(window, message, wparam, lparam);
+    }
+    LRESULT result = DefSubclassProc(window, message, wparam, lparam);
+    if (message == WM_PAINT && GetWindowTextLengthW(window) == 0) {
+        HDC dc = GetDC(window);
+        RECT client{}; GetClientRect(window, &client);
+        const int width = std::min(S(440), std::max(S(280), static_cast<int>(client.right) - S(64)));
+        const int height = S(126), x = (client.right - width) / 2;
+        const int y = std::max(S(24), (static_cast<int>(client.bottom) - height) / 2);
+        RECT card{x, y, x + width, y + height};
+        FillRound(dc, card, S(12), th::page, th::border);
+        RECT icon{x + S(22), y + S(31), x + S(66), y + S(75)};
+        FillRound(dc, icon, S(22), th::accentSoft, th::accentSoft);
+        HGDIOBJ old = SelectObject(dc, App().hFontSect);
+        SetBkMode(dc, TRANSPARENT); SetTextColor(dc, th::accent);
+        DrawTextW(dc, L">_", -1, &icon, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        RECT title{x + S(82), y + S(26), card.right - S(18), y + S(53)};
+        SetTextColor(dc, th::inkPri);
+        DrawTextW(dc, App().document.lines.empty() ? L"还没有原始日志" : L"筛选结果为空",
+                  -1, &title, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        SelectObject(dc, App().hFontUI); SetTextColor(dc, th::inkSec);
+        RECT detail{x + S(82), y + S(57), card.right - S(18), y + S(100)};
+        DrawTextW(dc, App().document.lines.empty() ? L"加载日志后，可在这里核对解析后的原文。"
+                                                   : L"清空筛选条件即可恢复全部日志。",
+                  -1, &detail, DT_LEFT | DT_TOP | DT_WORDBREAK);
+        SelectObject(dc, old); ReleaseDC(window, dc);
+    }
+    return result;
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
     switch (message) {
     case WM_CREATE: {
@@ -310,6 +361,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
             if (dpi >= 72 && dpi <= 480) App().dpi = static_cast<int>(dpi);
         }
         CreateFonts();
+        CreateTableRowImageList();
 
         App().hNav = CreateModernNavigation(hwnd, IDC_NAV);
         App().hPageTitle = CreateControl(L"STATIC", L"概览", SS_LEFT | SS_ENDELLIPSIS,
@@ -360,6 +412,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().hTags = CreateList(IDC_TAGS, {{L"标签", 150}, {L"次数", 80}, {L"占比", 600}});
         App().hRaw = CreateControl(L"EDIT", L"", WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY,
                                    IDC_RAW, App().hFontMono, false);
+        SendMessageW(App().hRaw, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(S(12), S(12)));
+        SetWindowSubclass(App().hRaw, RawEditSubclass, 1, 0);
         App().hChart = CreateWindowExW(0, L"dialChartCls", L"", WS_CHILD, 0, 0, 10, 10, hwnd,
                                        reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_CHART)),
                                        GetModuleHandleW(nullptr), nullptr);
@@ -390,7 +444,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().dpi = HIWORD(wparam);
         std::array<HFONT, 8> old{App().hFontUI, App().hFontMono, App().hFontTitle, App().hFontSmall,
                                  App().hFontHero, App().hFontTileVal, App().hFontTileLbl, App().hFontSect};
-        CreateFonts(); ApplyFontsToControls(); DeleteFonts(old);
+        CreateFonts(); ApplyFontsToControls(); CreateTableRowImageList(); DeleteFonts(old);
         RECT* suggested = reinterpret_cast<RECT*>(lparam);
         SetWindowPos(hwnd, nullptr, suggested->left, suggested->top,
                      suggested->right - suggested->left, suggested->bottom - suggested->top,
@@ -445,6 +499,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         KillTimer(hwnd, kFilterTimer);
         std::array<HFONT, 8> fonts{App().hFontUI, App().hFontMono, App().hFontTitle, App().hFontSmall,
                                    App().hFontHero, App().hFontTileVal, App().hFontTileLbl, App().hFontSect};
+        if (App().hTableRows) {
+            for (HWND list : {App().hTimeline, App().hOutage, App().hMetric, App().hTags, App().hUnparsed})
+                if (list) ListView_SetImageList(list, nullptr, LVSIL_SMALL);
+            ImageList_Destroy(App().hTableRows); App().hTableRows = nullptr;
+        }
         DeleteFonts(fonts); PostQuitMessage(0); return 0;
     }
     }

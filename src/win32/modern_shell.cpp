@@ -19,6 +19,7 @@ namespace {
 
 constexpr wchar_t kNavigationClass[] = L"dialModernNavigation";
 constexpr wchar_t kStatusClass[] = L"dialModernStatus";
+constexpr wchar_t kNoticeClass[] = L"dialModernNotice";
 constexpr wchar_t kButtonHoverProp[] = L"dialModernButtonHover";
 constexpr wchar_t kButtonKindProp[] = L"dialModernButtonKind";
 constexpr wchar_t kButtonActiveProp[] = L"dialModernButtonActive";
@@ -28,6 +29,14 @@ int g_selectedPage = 0;
 int g_hoverPage = -1;
 HBRUSH g_surfaceBrush = nullptr;
 COLORREF g_surfaceBrushColor = CLR_INVALID;
+HWND g_notice = nullptr;
+std::wstring g_noticeTitle;
+std::wstring g_noticeDetail;
+ModernNoticeKind g_noticeKind = ModernNoticeKind::Info;
+bool g_busy = false;
+bool g_noticeVisible = false;
+std::wstring g_statusBeforeBusy;
+std::wstring g_busyStatus;
 
 struct NavItem { int page; const wchar_t* text; int y; };
 
@@ -198,12 +207,52 @@ LRESULT CALLBACK StatusProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
         MoveToEx(dc, 0, 0, nullptr); LineTo(dc, client.right, 0);
         SelectObject(dc, old); DeleteObject(pen);
         RECT dot{S(14), S(12), S(20), S(18)};
-        FillRound(dc, dot, S(3), th::good, th::good);
+        COLORREF dotColor = g_busy ? th::accent : th::good;
+        FillRound(dc, dot, S(3), dotColor, dotColor);
         wchar_t text[2048]{}; GetWindowTextW(hwnd, text, 2048);
         RECT tr{S(28), 0, client.right - S(12), client.bottom};
         DrawTextAt(dc, text, tr, App().hFontSmall, th::inkSec);
         EndPaint(hwnd, &ps);
         return 0;
+    }
+    return DefWindowProcW(hwnd, message, wparam, lparam);
+}
+
+COLORREF NoticeColor() {
+    switch (g_noticeKind) {
+    case ModernNoticeKind::Success: return th::good;
+    case ModernNoticeKind::Warning: return th::warning;
+    case ModernNoticeKind::Error: return th::critical;
+    default: return th::accent;
+    }
+}
+
+LRESULT CALLBACK NoticeProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
+    switch (message) {
+    case WM_ERASEBKGND: return 1;
+    case WM_TIMER:
+        KillTimer(hwnd, 1); g_noticeVisible = false; ShowWindow(hwnd, SW_HIDE); return 0;
+    case WM_LBUTTONUP:
+        KillTimer(hwnd, 1); g_noticeVisible = false; ShowWindow(hwnd, SW_HIDE); return 0;
+    case WM_SETCURSOR:
+        SetCursor(LoadCursorW(nullptr, IDC_HAND)); return TRUE;
+    case WM_PAINT: {
+        PAINTSTRUCT ps{}; HDC dc = BeginPaint(hwnd, &ps);
+        RECT client{}; GetClientRect(hwnd, &client);
+        FillSolid(dc, client, th::surface);
+        FillRound(dc, client, S(10), th::surface, th::border);
+        RECT band{0, 0, S(5), client.bottom};
+        FillRound(dc, band, S(3), NoticeColor(), NoticeColor());
+        RECT title{S(20), S(10), client.right - S(30), S(34)};
+        DrawTextAt(dc, g_noticeTitle.c_str(), title, App().hFontSect, th::inkPri);
+        RECT detail{S(20), S(34), client.right - S(18), client.bottom - S(9)};
+        DrawTextAt(dc, g_noticeDetail.c_str(), detail, App().hFontSmall, th::inkSec,
+                   DT_LEFT | DT_TOP | DT_WORDBREAK | DT_END_ELLIPSIS);
+        RECT close{client.right - S(26), S(8), client.right - S(8), S(26)};
+        DrawTextAt(dc, L"×", close, App().hFontUI, th::inkMuted,
+                   DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        EndPaint(hwnd, &ps); return 0;
+    }
     }
     return DefWindowProcW(hwnd, message, wparam, lparam);
 }
@@ -275,7 +324,9 @@ bool RegisterModernShellClasses(HINSTANCE instance) {
     nav.hInstance = instance; nav.hCursor = LoadCursorW(nullptr, IDC_ARROW); nav.lpszClassName = kNavigationClass;
     WNDCLASSEXW status{}; status.cbSize = sizeof(status); status.lpfnWndProc = StatusProc;
     status.hInstance = instance; status.hCursor = LoadCursorW(nullptr, IDC_ARROW); status.lpszClassName = kStatusClass;
-    return RegisterClassExW(&nav) && RegisterClassExW(&status);
+    WNDCLASSEXW notice{}; notice.cbSize = sizeof(notice); notice.lpfnWndProc = NoticeProc;
+    notice.hInstance = instance; notice.hCursor = LoadCursorW(nullptr, IDC_ARROW); notice.lpszClassName = kNoticeClass;
+    return RegisterClassExW(&nav) && RegisterClassExW(&status) && RegisterClassExW(&notice);
 }
 
 HWND CreateModernNavigation(HWND parent, int id) {
@@ -344,6 +395,66 @@ void RefreshNavigation() {
     if (g_navigation) InvalidateRect(g_navigation, nullptr, FALSE);
 }
 
+void LayoutModernOverlays() {
+    if (!g_notice || !App().hMain || !g_noticeVisible) return;
+    RECT client{}; GetClientRect(App().hMain, &client);
+    const int width = std::min(S(380), std::max(S(280), static_cast<int>(client.right) - S(250)));
+    const int height = S(78);
+    POINT position{client.right - width - S(22), client.bottom - S(32) - height - S(18)};
+    ClientToScreen(App().hMain, &position);
+    HRGN region = CreateRoundRectRgn(0, 0, width + 1, height + 1, S(20), S(20));
+    if (!SetWindowRgn(g_notice, region, FALSE)) DeleteObject(region);
+    SetWindowPos(g_notice, HWND_TOP, position.x, position.y, width, height,
+                 SWP_NOACTIVATE | SWP_SHOWWINDOW);
+}
+
+void ShowModernNotice(const wchar_t* title, const wchar_t* detail,
+                      ModernNoticeKind kind, UINT durationMs) {
+    if (!App().hMain) return;
+    if (!g_notice) {
+        g_notice = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+            kNoticeClass, L"", WS_POPUP,
+            0, 0, 10, 10, App().hMain, nullptr, GetModuleHandleW(nullptr), nullptr);
+    }
+    g_noticeTitle = title ? title : L"";
+    g_noticeDetail = detail ? detail : L"";
+    g_noticeKind = kind;
+    g_noticeVisible = true;
+    KillTimer(g_notice, 1);
+    LayoutModernOverlays();
+    SetWindowPos(g_notice, HWND_TOP, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    InvalidateRect(g_notice, nullptr, TRUE);
+    if (durationMs) SetTimer(g_notice, 1, durationMs, nullptr);
+}
+
+void SetShellBusy(bool busy, const wchar_t* text) {
+    if (busy && !g_busy && App().hStatus) {
+        wchar_t previous[2048]{};
+        GetWindowTextW(App().hStatus, previous, 2048);
+        g_statusBeforeBusy = previous;
+    }
+    g_busy = busy;
+    for (HWND button : {App().hOpen, App().hPaste, App().hCloseLog, App().hExport,
+                         App().hApplyFilter, App().hClearFilter})
+        if (button) EnableWindow(button, !busy);
+    if (busy && text && App().hStatus) {
+        g_busyStatus = text;
+        SetWindowTextW(App().hStatus, text);
+    } else if (!busy && App().hStatus && !g_busyStatus.empty()) {
+        wchar_t current[2048]{};
+        GetWindowTextW(App().hStatus, current, 2048);
+        if (g_busyStatus == current) SetWindowTextW(App().hStatus, g_statusBeforeBusy.c_str());
+        g_busyStatus.clear(); g_statusBeforeBusy.clear();
+    }
+    if (App().hStatus) {
+        RedrawWindow(App().hStatus, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW);
+    }
+    SetCursor(LoadCursorW(nullptr, busy ? IDC_WAIT : IDC_ARROW));
+}
+
+bool ShellBusy() { return g_busy; }
+
 bool SystemPrefersDarkTheme() {
     HIGHCONTRASTW contrast{};
     contrast.cbSize = sizeof(contrast);
@@ -367,6 +478,7 @@ void ApplyModernTheme(HWND root) {
 
     for (HWND control = GetWindow(root, GW_CHILD); control; control = GetWindow(control, GW_HWNDNEXT))
         ApplyThemeToControl(control);
+    if (g_notice) InvalidateRect(g_notice, nullptr, TRUE);
     RefreshNavigation();
     InvalidateRect(root, nullptr, TRUE);
 }

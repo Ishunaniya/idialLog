@@ -16,12 +16,27 @@
 #include "log_filter.h"
 #include "log_parser.h"
 #include "memoryutil.h"
+#include "modern_shell.h"
 #include "tablemodel.h"
 #include "ui_pages.h"
 #include "win_file_io.h"
 #include "win_text.h"
 
 namespace dl {
+
+namespace {
+
+class BusyScope {
+public:
+    explicit BusyScope(const wchar_t* text) { SetShellBusy(true, text); }
+    ~BusyScope() { SetShellBusy(false); }
+    BusyScope(const BusyScope&) = delete;
+    BusyScope& operator=(const BusyScope&) = delete;
+};
+
+bool g_regexWasBad = false;
+
+} // namespace
 
 void RefreshAll() {
     if (App().document.lines.empty()) { SetWindowTextW(App().hStatus, L"尚未加载日志。"); return; }
@@ -49,6 +64,10 @@ void RefreshAll() {
                    (int)App().document.audit.unparsed, App().document.audit.unparsedRatio() * 100.0);
     if (bad) st += L"   ·   ⚠ 正则非法,已忽略该条件";
     SetWindowTextW(App().hStatus, st.c_str());
+    if (bad && !g_regexWasBad)
+        ShowModernNotice(L"正则表达式无效", L"已暂时忽略“消息正则”条件，其他筛选仍然生效。",
+                         ModernNoticeKind::Warning, 6000);
+    g_regexWasBad = bad;
 }
 
 // 载入的公共尾段:移动接管原始行,解析后立即释放,不让 raw 与后续分析结果长期共存。
@@ -68,6 +87,7 @@ static void LoadRawLines(std::vector<std::string> raw, const std::wstring& srcLa
 }
 
 void LoadFiles(const std::vector<std::wstring>& paths) {
+    BusyScope busy(L"正在读取并分析日志…");
     // 逐份探测 → 跨时基混合防护 → 按首时间戳定序 → 增量解析。
     // 拖入顺序(资源管理器多选)与文件对话框返回顺序都不保证按时间,而 parseLines 不排序,
     // 顺序拼接会让时间线/断网/可用率全错(v1.3.0 及之前的行为)。定序与时基判定逻辑均在
@@ -250,13 +270,14 @@ void LoadFiles(const std::vector<std::wstring>& paths) {
 // 从剪贴板粘贴日志文本分析(SSH 里 cat 日志后直接选中复制的场景,手上没有文件)
 void DoPaste() {
     if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) {
-        MessageBoxW(App().hMain, L"剪贴板里没有文本。\n\n"
-                           L"请先复制日志内容(如在 SSH 终端里选中 dial 日志文本),再点“粘贴日志”。",
-                    L"提示", MB_ICONINFORMATION);
+        ShowModernNotice(L"剪贴板里没有文本",
+                         L"请先复制日志内容，再使用“粘贴日志”或 Ctrl+V。",
+                         ModernNoticeKind::Info);
         return;
     }
     if (!OpenClipboard(App().hMain)) {
-        MessageBoxW(App().hMain, L"打不开剪贴板(可能被其它程序占用),请稍后重试。", L"错误", MB_ICONERROR);
+        ShowModernNotice(L"暂时无法读取剪贴板", L"剪贴板可能正被其他程序占用，请稍后重试。",
+                         ModernNoticeKind::Error, 6000);
         return;
     }
     std::wstring w;
@@ -274,7 +295,8 @@ void DoPaste() {
         return;
     }
     if (w.empty()) {
-        MessageBoxW(App().hMain, L"剪贴板文本为空。", L"提示", MB_ICONINFORMATION);
+        ShowModernNotice(L"剪贴板文本为空", L"复制包含时间戳的日志内容后再试。",
+                         ModernNoticeKind::Info);
         return;
     }
     // UTF-16 转 UTF-8 最坏每个码点 4 字节,在转换前即执行与文件相同的 512MiB 上限。
@@ -282,6 +304,8 @@ void DoPaste() {
         MessageBoxW(App().hMain, L"剪贴板文本超过 512 MiB 输入限制。", L"内容过大", MB_ICONWARNING);
         return;
     }
+
+    BusyScope busy(L"正在分析剪贴板日志…");
 
     // 按行切分(兼容 \r\n / \n / \r 三种换行);与文件读取共用纯 C++ 实现。
     std::vector<std::string> raw;
@@ -298,14 +322,9 @@ void DoPaste() {
 
     // 粘贴的往往是片段,若一行都没认出来,直接把原因摆出来(而不是让用户对着空界面猜)
     if (App().document.lines.empty()) {
-        MessageBoxW(App().hMain,
-            L"粘贴的内容里没有解析出任何日志行。\n\n"
-            L"本工具认两种格式:\n"
-            L"  [YYYY-MM-DD HH:MM:SS] [TAG] message      (modem_mng / open_dial)\n"
-            L"  YYYY-MM-DD HH:MM:SS.mmm [LEVEL] func (file:line) - message   (artery)\n\n"
-            L"请确认复制时带上了行首的时间戳。\n"
-            L"具体哪些行没被认出,可看“未识别行”页。",
-            L"没有可分析的日志行", MB_ICONWARNING);
+        ShowModernNotice(L"没有识别出日志行",
+                         L"请确认复制内容带有行首时间戳；可在“未识别行”页面查看原文。",
+                         ModernNoticeKind::Warning, 8000);
     }
 }
 
@@ -337,7 +356,11 @@ void DoOpen() {
 }
 
 void DoExportCsv() {
-    if (App().document.metrics.empty()) { MessageBoxW(App().hMain, L"没有可导出的指标数据。", L"提示", MB_ICONINFORMATION); return; }
+    if (App().document.metrics.empty()) {
+        ShowModernNotice(L"没有可导出的指标", L"加载包含心跳或信号采样的日志后再导出。",
+                         ModernNoticeKind::Info);
+        return;
+    }
     wchar_t file[MAX_PATH] = L"diallog_metrics.csv";
     OPENFILENAMEW ofn{};
     ofn.lStructSize = sizeof(ofn);
@@ -384,7 +407,8 @@ void DoExportCsv() {
         MessageBoxW(App().hMain, writeErr.c_str(), L"导出失败", MB_ICONERROR);
         return;
     }
-    SetWindowTextW(App().hStatus, (std::wstring(L"  已导出 ") + file).c_str());
+    SetWindowTextW(App().hStatus, (std::wstring(L"已导出 ") + file).c_str());
+    ShowModernNotice(L"CSV 导出完成", file, ModernNoticeKind::Success, 6000);
 }
 
 
