@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <climits>
 #include <cstdio>
+#include <cstdio>
 
 namespace dl {
 
@@ -37,24 +38,33 @@ std::string metricCellText(const MetricRow& m, size_t column) {
     switch (column) {
     case 0:  return fmtTime(m.t, "MD");
     case 1:  return m.ch.empty() ? "-" : m.ch;
-    case 2:  return m.csqRaw >= 0 ? std::to_string(m.csqRaw) : "-";
-    case 3:  return m.tempMax != INT_MIN ? std::to_string(m.tempMax) : "-";
-    case 4:  return m.consecFail != INT_MIN ? std::to_string(m.consecFail) : "-";
-    case 5:  return m.rx != LLONG_MIN ? std::to_string(m.rx) : "-";
-    case 6:  return m.drx != LLONG_MIN ? std::to_string(m.drx) : "-";
-    case 7:  return m.rsrp < 0 ? std::to_string(m.rsrp) : "-";
-    case 8:  return m.rsrq < 0 ? std::to_string(m.rsrq) : "-";
-    case 9: {
+    case 2:  return m.cellId.empty() ? "-" : m.cellId.str();
+    case 3:  return m.pci < 0 ? "-" : std::to_string(m.pci);
+    case 4: {
+        if (m.tac == UINT32_MAX) return "-";
+        char value[16]{};
+        const int width = std::max(1, std::min(8, static_cast<int>(m.tacDigits)));
+        std::snprintf(value, sizeof(value), "%0*X", width, m.tac);
+        return value;
+    }
+    case 5:  return m.csqRaw >= 0 ? std::to_string(m.csqRaw) : "-";
+    case 6:  return m.tempMax != INT_MIN ? std::to_string(m.tempMax) : "-";
+    case 7:  return m.consecFail != INT_MIN ? std::to_string(m.consecFail) : "-";
+    case 8:  return m.rx != LLONG_MIN ? std::to_string(m.rx) : "-";
+    case 9:  return m.drx != LLONG_MIN ? std::to_string(m.drx) : "-";
+    case 10: return m.rsrp < 0 ? std::to_string(m.rsrp) : "-";
+    case 11: return m.rsrq < 0 ? std::to_string(m.rsrq) : "-";
+    case 12: {
         if (m.snr10 == 100000) return "-";
         char buf[32];
         std::snprintf(buf, sizeof(buf), "%.1f", m.snr10 / 10.0);
         return buf;
     }
-    case 10: return m.rssiVal < 0 ? std::to_string(m.rssiVal) : "-";
-    case 11: return m.srvVal >= 0 ? std::to_string(m.srvVal) : "-";
-    case 12: return m.rat.empty() ? "-" : m.rat;
-    case 13: return m.denyVal >= 0 ? std::to_string(m.denyVal) : "-";
-    case 14: return m.oper.empty() ? "-" : m.oper;
+    case 13: return m.rssiVal < 0 ? std::to_string(m.rssiVal) : "-";
+    case 14: return m.srvVal >= 0 ? std::to_string(m.srvVal) : "-";
+    case 15: return m.rat.empty() ? "-" : m.rat;
+    case 16: return m.denyVal >= 0 ? std::to_string(m.denyVal) : "-";
+    case 17: return m.oper.empty() ? "-" : m.oper;
     default: return {};
     }
 }

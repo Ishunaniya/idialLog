@@ -164,7 +164,9 @@ int main(int argc, char** argv) {
                viewOuts[i].l0Recovered == outs[i].l0Recovered &&
                viewOuts[i].startLine == outs[i].startLine && viewOuts[i].endLine == outs[i].endLine;
     auto sameMetric = [](const MetricRow& a, const MetricRow& b) {
-        return a.t == b.t && a.ch == b.ch && a.csqRaw == b.csqRaw &&
+        return a.t == b.t && a.ch == b.ch && a.cellId == b.cellId &&
+               a.pci == b.pci && a.tac == b.tac && a.tacDigits == b.tacDigits &&
+               a.csqRaw == b.csqRaw &&
                a.tempMax == b.tempMax && a.consecFail == b.consecFail &&
                a.rx == b.rx && a.drx == b.drx && a.rat == b.rat && a.oper == b.oper &&
                a.csqVal == b.csqVal && a.rsrp == b.rsrp &&

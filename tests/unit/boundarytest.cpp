@@ -263,6 +263,7 @@ static void t10_streaming_parser_equivalence() {
                     batch[i].ts == stream[i].ts &&
                     batch[i].tagText() == stream[i].tagText() &&
                     batch[i].msg == stream[i].msg &&
+                    batch[i].sourceId == stream[i].sourceId &&
                     batch[i].fmt == stream[i].fmt &&
                     batch[i].level == stream[i].level;
     }

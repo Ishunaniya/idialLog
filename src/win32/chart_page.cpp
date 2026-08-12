@@ -21,17 +21,17 @@ namespace dl {
 static ChartSeries g_csq;   // 供图表
 static ChartSeries g_rsrp;  // LTE 详情图:RSRP dBm
 static ChartSeries g_rsrq;  // LTE 详情图:RSRQ dB
-static ChartSeries g_snr10; // LTE 详情图:SNR SDK原值(0.1dB)
+static ChartSeries g_snr10; // 独立 SNR 图:SDK 原值(0.1dB)
 // 图表绘制缓存:按当前窗口像素宽度对完整序列做峰谷降采样。鼠标每移动 1px 都会
 // 触发 WM_PAINT,缓存让这些重绘只消费数千点,不再反复扫描/绘制近十万点。
-static ChartSeries g_chartCsqDraw, g_chartDetailDraw;
+static ChartSeries g_chartCsqDraw, g_chartDetailDraw, g_chartSnrDraw;
 static unsigned long long g_chartDataRevision = 1, g_chartCacheRevision = 0;
 static int g_chartCacheWidth = -1, g_chartCacheDetail = -1;
 static long long g_chartCacheT0 = 0, g_chartCacheT1 = 0;
-static int  g_chartDetail    = 0;                     // 0=RSRP 1=RSRQ 2=SNR,点击循环
+static int  g_chartDetail    = 0;                     // 0=RSRP 1=RSRQ；SNR 固定独立显示
 static int  g_chartHoverX   = -1;                     // 悬停 X(客户区),-1=未悬停
 static int  g_chartHoverY   = -1;
-static RECT g_chartModeRects[3]{};
+static RECT g_chartModeRects[2]{};
 
 static void ResetChartSampleCache() {
     if (++g_chartDataRevision == 0) g_chartDataRevision = 1; // 无符号回绕防御
@@ -39,6 +39,7 @@ static void ResetChartSampleCache() {
     g_chartCacheWidth = g_chartCacheDetail = -1;
     g_chartCsqDraw.clear();
     g_chartDetailDraw.clear();
+    g_chartSnrDraw.clear();
 }
 
 
@@ -46,12 +47,12 @@ static void ResetChartSampleCache() {
 
 LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     auto detailSeries = [](int mode) -> const ChartSeries& {
-        return mode == 1 ? g_rsrq : (mode == 2 ? g_snr10 : g_rsrp);
+        return mode == 1 ? g_rsrq : g_rsrp;
     };
     if (msg == WM_ERASEBKGND) return 1;
     if (msg == WM_LBUTTONDOWN) {
         POINT point{static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp))};
-        for (int mode = 0; mode < 3; ++mode) {
+        for (int mode = 0; mode < 2; ++mode) {
             if (PtInRect(&g_chartModeRects[mode], point) && !detailSeries(mode).empty()) {
                 g_chartDetail = mode; break;
             }
@@ -62,7 +63,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_SETCURSOR) {
         POINT point{}; GetCursorPos(&point); ScreenToClient(hwnd, &point);
         bool overMode = false;
-        for (int mode = 0; mode < 3; ++mode)
+        for (int mode = 0; mode < 2; ++mode)
             if (!detailSeries(mode).empty() && PtInRect(&g_chartModeRects[mode], point)) overMode = true;
         SetCursor(LoadCursorW(nullptr, overMode ? IDC_HAND : IDC_ARROW));
         return TRUE;
@@ -101,14 +102,14 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     SetBkMode(hdc, TRANSPARENT);
 
     const auto& detail = detailSeries(g_chartDetail);
-    const wchar_t* detailName = g_chartDetail == 1 ? L"RSRQ" : (g_chartDetail == 2 ? L"SNR" : L"RSRP");
-    const int detailLo = g_chartDetail == 1 ? -25 : (g_chartDetail == 2 ? -200 : -120);
-    const int detailHi = g_chartDetail == 1 ?   0 : (g_chartDetail == 2 ?  300 :  -60);
+    const wchar_t* detailName = g_chartDetail == 1 ? L"RSRQ" : L"RSRP";
+    const int detailLo = g_chartDetail == 1 ? -25 : -120;
+    const int detailHi = g_chartDetail == 1 ?   0 :  -60;
 
-    bool haveAny = !g_csq.empty() || !detail.empty();
-    if (!haveAny || rc.right < S(140) || rc.bottom < S(140)) {
+    bool haveAny = !g_csq.empty() || !detail.empty() || !g_snr10.empty();
+    if (!haveAny || rc.right < S(140) || rc.bottom < S(260)) {
         const wchar_t* title = haveAny ? L"窗口空间不足" : L"暂无信号趋势";
-        const wchar_t* detailText = haveAny ? L"放大窗口后即可恢复双图表视图。"
+        const wchar_t* detailText = haveAny ? L"放大窗口后即可恢复三图表视图。"
                                              : L"加载包含心跳、CSQ、RSRP 或 SNR 的日志后自动显示。";
         int cardW = std::min(S(460), std::max(S(260), static_cast<int>(rc.right) - S(64)));
         int cardH = S(112), x = (rc.right - cardW) / 2, y = (rc.bottom - cardH) / 2;
@@ -144,11 +145,13 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     };
     takeRange(g_csq);
     takeRange(detail);
+    takeRange(g_snr10);
     const double total = std::max<double>(1.0, (double)(t1 - t0));
     const int left = S(48), right = rc.right - S(12);
-    const int mid = rc.bottom / 2;
-    RECT top{ left, S(31), right, mid - S(13) };
-    RECT bot{ left, mid + S(34), right, rc.bottom - S(24) };
+    const int section = std::max(S(42), (static_cast<int>(rc.bottom) - S(123)) / 3);
+    RECT top{ left, S(31), right, S(31) + section };
+    RECT middle{ left, top.bottom + S(34), right, top.bottom + S(34) + section };
+    RECT bottom{ left, middle.bottom + S(34), right, rc.bottom - S(24) };
     auto X = [&](long long t) {
         return left + (int)((double)(t - t0) / total * (right - left));
     };
@@ -159,6 +162,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         g_chartCacheT0 != t0 || g_chartCacheT1 != t1) {
         downsampleChartSeries(g_csq, t0, t1, (size_t)plotWidth, g_chartCsqDraw);
         downsampleChartSeries(detail, t0, t1, (size_t)plotWidth, g_chartDetailDraw);
+        downsampleChartSeries(g_snr10, t0, t1, (size_t)plotWidth, g_chartSnrDraw);
         g_chartCacheRevision = g_chartDataRevision;
         g_chartCacheWidth = plotWidth;
         g_chartCacheDetail = g_chartDetail;
@@ -238,13 +242,18 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     const wchar_t* legend = L"弱信号阈值 10  ·  红色区域为断网";
     TextOutW(hdc, top.left + S(108), S(8), legend, (int)wcslen(legend));
     SelectObject(hdc, App().hFontSect); SetTextColor(hdc, th::inkPri);
-    TextOutW(hdc, bot.left, mid + S(8), L"LTE 信号质量", 8);
+    TextOutW(hdc, middle.left, top.bottom + S(8), L"LTE 覆盖质量", 8);
+    const wchar_t* snrTitle = L"SNR 信噪比（独立）";
+    TextOutW(hdc, bottom.left, middle.bottom + S(8), snrTitle, (int)wcslen(snrTitle));
+    SelectObject(hdc, App().hFontSmall); SetTextColor(hdc, th::inkMuted);
+    const wchar_t* snrLegend = L"单位 dB  ·  0 dB 观察线  ·  与 RSRP/RSRQ 分离量纲";
+    TextOutW(hdc, bottom.left + S(148), middle.bottom + S(12), snrLegend, (int)wcslen(snrLegend));
 
-    const wchar_t* modeNames[] = {L"RSRP", L"RSRQ", L"SNR"};
-    int modeRight = bot.right;
-    for (int mode = 2; mode >= 0; --mode) {
+    const wchar_t* modeNames[] = {L"RSRP", L"RSRQ"};
+    int modeRight = middle.right;
+    for (int mode = 1; mode >= 0; --mode) {
         int width = S(58);
-        g_chartModeRects[mode] = RECT{modeRight - width, mid + S(4), modeRight, mid + S(30)};
+        g_chartModeRects[mode] = RECT{modeRight - width, top.bottom + S(4), modeRight, top.bottom + S(30)};
         const bool selected = mode == g_chartDetail;
         const bool enabled = !detailSeries(mode).empty();
         FillRound(hdc, g_chartModeRects[mode], S(13), selected ? th::accentSoft : th::surface,
@@ -258,8 +267,8 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     SelectObject(hdc, oldFont);
 
     drawPlot(top, g_chartCsqDraw, 0, 31, th::s1_blue, 10, true, false);
-    drawPlot(bot, g_chartDetailDraw, detailLo, detailHi, th::s7_violet, 0,
-             g_chartDetail == 2, g_chartDetail == 2);
+    drawPlot(middle, g_chartDetailDraw, detailLo, detailHi, th::s7_violet, 0, false, false);
+    drawPlot(bottom, g_chartSnrDraw, -200, 300, th::s5_aqua, 0, true, true);
 
     // 共享时间轴：只在下图标注，竖线同时贯穿两张图，便于对齐而不引入第二量纲。
     SetTextColor(hdc, th::inkMuted);
@@ -274,10 +283,11 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     for (long long t = firstT; t <= t1; t += stepSec) {
         int x = X(t);
         MoveToEx(hdc, x, top.top, nullptr); LineTo(hdc, x, top.bottom);
-        MoveToEx(hdc, x, bot.top, nullptr); LineTo(hdc, x, bot.bottom);
+        MoveToEx(hdc, x, middle.top, nullptr); LineTo(hdc, x, middle.bottom);
+        MoveToEx(hdc, x, bottom.top, nullptr); LineTo(hdc, x, bottom.bottom);
         std::wstring lb = U8ToW(fmtTime(t, "HM"));
         SIZE sz{}; GetTextExtentPoint32W(hdc, lb.c_str(), (int)lb.size(), &sz);
-        TextOutW(hdc, x - sz.cx / 2, bot.bottom + S(3), lb.c_str(), (int)lb.size());
+        TextOutW(hdc, x - sz.cx / 2, bottom.bottom + S(3), lb.c_str(), (int)lb.size());
     }
     SelectObject(hdc, oldPen); DeleteObject(timePen);
 
@@ -285,23 +295,22 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (g_chartHoverX >= left && g_chartHoverX <= right) {
         double frac = (double)(g_chartHoverX - left) / std::max(1, right - left);
         long long ht = t0 + (long long)(frac * (t1 - t0));
-        long long cd = LLONG_MAX, dd = LLONG_MAX;
+        long long cd = LLONG_MAX, dd = LLONG_MAX, sd = LLONG_MAX;
         const auto* cp = nearestChartPoint(g_csq, ht, &cd);
         const auto* dp = nearestChartPoint(detail, ht, &dd);
-        long long markT = cp ? cp->first : (dp ? dp->first : ht);
+        const auto* sp = nearestChartPoint(g_snr10, ht, &sd);
+        long long markT = cp ? cp->first : (dp ? dp->first : (sp ? sp->first : ht));
         int hx = X(markT);
         HPEN crossPen = CreatePen(PS_SOLID, 1, th::inkMuted);
         oldPen = SelectObject(hdc, crossPen);
-        MoveToEx(hdc, hx, top.top, nullptr); LineTo(hdc, hx, bot.bottom);
+        MoveToEx(hdc, hx, top.top, nullptr); LineTo(hdc, hx, bottom.bottom);
         SelectObject(hdc, oldPen); DeleteObject(crossPen);
 
         std::wstring info = U8ToW(fmtTime(markT, "HM"));
         if (cp && cd <= 600) info += FmtW(L"   CSQ %d", cp->second);
-        if (dp && dd <= 600) {
-            if (g_chartDetail == 2) info += FmtW(L"   SNR %.1f dB", dp->second / 10.0);
-            else info += FmtW(L"   %s %d %s", detailName, dp->second,
-                              g_chartDetail == 0 ? L"dBm" : L"dB");
-        }
+        if (dp && dd <= 600) info += FmtW(L"   %s %d %s", detailName, dp->second,
+                                           g_chartDetail == 0 ? L"dBm" : L"dB");
+        if (sp && sd <= 600) info += FmtW(L"   SNR %.1f dB", sp->second / 10.0);
         SIZE sz{}; GetTextExtentPoint32W(hdc, info.c_str(), (int)info.size(), &sz);
         int bx = hx + S(8);
         if (bx + sz.cx + S(10) > right) bx = hx - sz.cx - S(14);
@@ -340,12 +349,10 @@ void RenderMetrics() {
     ListView_SetItemCountEx(App().hMetric, (int)App().document.metrics.size(),
                             LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
     InvalidateRect(App().hMetric, nullptr, TRUE);
-    const bool detailEmpty = g_chartDetail == 0 ? g_rsrp.empty() :
-                             (g_chartDetail == 1 ? g_rsrq.empty() : g_snr10.empty());
+    const bool detailEmpty = g_chartDetail == 0 ? g_rsrp.empty() : g_rsrq.empty();
     if (detailEmpty) {
         if (!g_rsrp.empty()) g_chartDetail = 0;
         else if (!g_rsrq.empty()) g_chartDetail = 1;
-        else if (!g_snr10.empty()) g_chartDetail = 2;
     }
     InvalidateRect(App().hChart, nullptr, TRUE);
 }
@@ -360,6 +367,7 @@ void ReleaseChartPageData() {
     ResetChartSampleCache();
     releaseVector(g_chartCsqDraw);
     releaseVector(g_chartDetailDraw);
+    releaseVector(g_chartSnrDraw);
 
     g_chartDetail = 0;
     g_chartHoverX = g_chartHoverY = -1;

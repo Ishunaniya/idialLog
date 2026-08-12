@@ -288,12 +288,28 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_RBUTTONUP) {
         POINT point{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
         if (const EvidenceHit* hit = EvidenceAt(point)) {
-            if (CopyText(hit->text))
-                ShowModernNotice(L"证据已复制", L"原始行号、时间和日志正文已复制到剪贴板。",
-                                 ModernNoticeKind::Success, 3500);
-            else
-                ShowModernNotice(L"复制失败", L"剪贴板暂时不可用，请稍后重试。",
-                                 ModernNoticeKind::Error);
+            HMENU menu = CreatePopupMenu();
+            AppendMenuW(menu, MF_STRING, 1, L"定位原始行");
+            AppendMenuW(menu, MF_STRING, 2, L"复制证据");
+            AppendMenuW(menu, MF_STRING, 3, L"添加 / 移除书签\tCtrl+B");
+            POINT screen = point; ClientToScreen(hwnd, &screen);
+            const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+                                                screen.x, screen.y, 0, hwnd, nullptr);
+            DestroyMenu(menu);
+            if (command == 1) JumpToRawLine(hit->lineNo);
+            else if (command == 2) {
+                if (CopyText(hit->text))
+                    ShowModernNotice(L"证据已复制", L"原始行号、时间和日志正文已复制到剪贴板。",
+                                     ModernNoticeKind::Success, 3500);
+                else
+                    ShowModernNotice(L"复制失败", L"剪贴板暂时不可用，请稍后重试。",
+                                     ModernNoticeKind::Error);
+            } else if (command == 3) {
+                const bool added = ToggleEvidenceBookmark(hit->lineNo, hit->text);
+                ShowModernNotice(added ? L"证据书签已添加" : L"证据书签已移除",
+                                 FmtW(L"原始第 %d 行", static_cast<int>(hit->lineNo)).c_str(),
+                                 added ? ModernNoticeKind::Success : ModernNoticeKind::Info);
+            }
             return 0;
         }
     }
@@ -640,6 +656,23 @@ void RenderSummary() {
         add(L"概览", ls, acc);
     }
 
+    if (App().document.sources.size() > 1) {
+        std::vector<std::wstring> lines;
+        lines.push_back(FmtW(L"%d 份日志已按时间轴合并；下列指标按来源独立计算，可直接横向比较。",
+                             static_cast<int>(App().document.sources.size())));
+        for (const auto& source : App().document.sources) {
+            std::wstring label = source.label;
+            const size_t slash = label.find_last_of(L"\\/");
+            if (slash != std::wstring::npos) label = label.substr(slash + 1);
+            lines.push_back(FmtW(L"%-28s  行:%d  断网:%d  指标:%d  平均 RSRP:%s",
+                                 label.c_str(), static_cast<int>(source.parsedLines),
+                                 static_cast<int>(source.outages), static_cast<int>(source.metricRows),
+                                 source.hasAverageRsrp
+                                     ? FmtW(L"%d dBm", source.averageRsrp).c_str() : L"—"));
+        }
+        add(L"多日志对比", lines, 0, true);
+    }
+
     // 断网
     long long total = 0, longest = 0, longestAt = 0;
     int b0 = 0, b1 = 0, b2 = 0, b3 = 0;
@@ -669,6 +702,7 @@ void RenderSummary() {
     long long snrSum10 = 0;
     std::map<std::string, int> chans;
     std::map<std::string, int> srvs, rats, opers;
+    std::map<std::string, int> cells;
     int denyNonzero = 0, denyN = 0;
     std::vector<std::pair<long long,long long>> rxs;
     for (const auto& m : App().document.metrics) {
@@ -691,6 +725,7 @@ void RenderSummary() {
         if (!m.rat.empty()) rats[m.rat]++;
         if (m.denyVal >= 0) { denyN++; if (m.denyVal > 0) denyNonzero++; }
         if (!m.oper.empty()) opers[m.oper]++;
+        if (!m.cellId.empty()) cells[m.cellId.str()]++;
         if (m.rx != LLONG_MIN) rxs.push_back({ m.t, m.rx });
     }
     if (csqN && weak)
@@ -751,6 +786,21 @@ void RenderSummary() {
         for (auto& kv : chans) s += FmtW(L"%s:%.0f%%    ", U8ToW(kv.first).c_str(), 100.0 * kv.second / tot);
         add(L"通道占比", { s });
     }
+    if (!cells.empty()) {
+        std::vector<std::pair<std::string, int>> ranked(cells.begin(), cells.end());
+        std::sort(ranked.begin(), ranked.end(), [](const auto& left, const auto& right) {
+            return left.second != right.second ? left.second > right.second : left.first < right.first;
+        });
+        int totalSamples = 0;
+        for (const auto& cell : ranked) totalSamples += cell.second;
+        std::vector<std::wstring> ls;
+        ls.push_back(FmtW(L"识别到 %d 个小区，覆盖 %d 条指标样本", (int)ranked.size(), totalSamples));
+        for (size_t index = 0; index < ranked.size() && index < 6; ++index)
+            ls.push_back(FmtW(L"%s    %d 次（%.1f%%）", U8ToW(ranked[index].first).c_str(),
+                              ranked[index].second, 100.0 * ranked[index].second / totalSamples));
+        if (ranked.size() > 6) ls.push_back(FmtW(L"… 另有 %d 个小区", (int)ranked.size() - 6));
+        add(L"小区驻留分布", ls, ranked.size() > 12 ? 1 : 0, true);
+    }
 
     // RX 停滞
     auto stalls = detectRxStall(rxs);
@@ -776,7 +826,7 @@ void RenderSummary() {
     }
 
     // 关键事件计数
-    int sw = 0, disc = 0, states = 0, cfun = 0, slot = 0, oper = 0, cells = 0;
+    int sw = 0, disc = 0, states = 0, cfun = 0, slot = 0, oper = 0, cellChanges = 0;
     for (const LogLine* item : App().document.filtered) {
         const LogLine& l = *item;
         if (l.msg.find("switching to SIM") != std::string::npos ||
@@ -787,11 +837,11 @@ void RenderSummary() {
             l.msg.find("CFUN toggle") != std::string::npos) cfun++;
         if (l.tagText() == "SLOT") slot++;
         if (l.tagText() == "OPER") oper++;
-        if (l.tagText().compare(0, 4, "CELL") == 0) cells++;
+        if (l.tagText().compare(0, 4, "CELL") == 0) cellChanges++;
     }
     add(L"关键事件计数",
         { FmtW(L"通道切换:%d   SDK断开:%d   状态迁移:%d   CFUN:%d   切卡:%d   选网:%d   小区变更:%d",
-               sw, disc, states, cfun, slot, oper, cells),
+               sw, disc, states, cfun, slot, oper, cellChanges),
           L"",
           L"提示: “时间线”看事件流，“断网”看逐次，“指标/信号图”看 CSQ、LTE 详情与 ΔRX(=0 即数据不通)。" });
 

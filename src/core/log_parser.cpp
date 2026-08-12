@@ -44,13 +44,13 @@ static const std::string kKnownTags[] = {
 LogLine::LogLine(const LogLine& o)
     : t(o.t), lineNo(o.lineNo), ts(o.ts), msg(o.msg),
       customTag(o.customTag ? std::make_unique<std::string>(*o.customTag) : nullptr),
-      ms(o.ms), tagId(o.tagId), fmt(o.fmt), level(o.level) {}
+      ms(o.ms), tagId(o.tagId), sourceId(o.sourceId), fmt(o.fmt), level(o.level) {}
 
 LogLine& LogLine::operator=(const LogLine& o) {
     if (this == &o) return *this;
     t = o.t; lineNo = o.lineNo; ts = o.ts; msg = o.msg;
     customTag = o.customTag ? std::make_unique<std::string>(*o.customTag) : nullptr;
-    ms = o.ms; tagId = o.tagId; fmt = o.fmt; level = o.level;
+    ms = o.ms; tagId = o.tagId; sourceId = o.sourceId; fmt = o.fmt; level = o.level;
     return *this;
 }
 
@@ -205,6 +205,7 @@ struct StreamingLogParser::Impl {
     std::vector<std::string>& sessions;
     std::vector<long long> restartTs;
     ParseAudit ad;
+    std::uint16_t sourceId = 0;
     bool nextIsFileStart = false;
     bool finished = false;
 
@@ -254,6 +255,7 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
         LogLine L;
         L.lineNo = idx + 1;
         if (parseSd(line, L) || parseSeas(line, L)) {
+            L.sourceId = sourceId;
             ad.parsed++;
             // 进程重启横幅(每次启动恰一次,三家措辞各异,全是正常日志行):
             //   modem_mng: "Program started. Version:" / "EG25 modem_mng Version:"
@@ -346,7 +348,10 @@ StreamingLogParser::StreamingLogParser(StreamingLogParser&&) noexcept = default;
 StreamingLogParser& StreamingLogParser::operator=(StreamingLogParser&&) noexcept = default;
 
 void StreamingLogParser::beginFile() {
-    if (impl_ && !impl_->finished) impl_->nextIsFileStart = true;
+    if (impl_ && !impl_->finished) {
+        impl_->nextIsFileStart = true;
+        if (impl_->sourceId != UINT16_MAX) ++impl_->sourceId;
+    }
 }
 
 void StreamingLogParser::pushLine(std::string line) {
@@ -364,6 +369,8 @@ void parseLines(const std::vector<std::string>& raw,
                 const std::vector<size_t>& fileBoundaries)
 {
     StreamingLogParser parser(out, sessions, raw.size());
+    // 边界列表通常只列第二份及后续来源；首份隐含从 0 开始，也要建立来源编号。
+    if (!fileBoundaries.empty() && fileBoundaries.front() != 0) parser.beginFile();
     size_t nextBoundaryPos = 0;
     for (size_t idx = 0; idx < raw.size(); ++idx) {
         while (nextBoundaryPos < fileBoundaries.size() &&

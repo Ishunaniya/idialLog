@@ -46,21 +46,22 @@ int main() {
 
     std::puts("== T2 指标虚拟列格式 ==");
     MetricRow m;
-    m.t = 1782758400; m.ch = "SIM"; m.csqRaw = 20; m.tempMax = 60;
+    m.t = 1782758400; m.ch = "SIM"; m.cellId = "D17C148"; m.pci = 496; m.tac = 0x272D; m.tacDigits = 4;
+    m.csqRaw = 20; m.tempMax = 60;
     m.consecFail = 0; m.rx = 100; m.drx = 5; m.rsrp = -104; m.rsrq = -10;
     m.snr10 = -25; m.rssiVal = -65; m.srvVal = 2; m.rat = "LTE";
     m.denyVal = 0; m.oper = "CMCC 46000";
     const std::string expected[kMetricColumnCount] = {
-        fmtTime(m.t, "MD"), "SIM", "20", "60", "0", "100", "5",
+        fmtTime(m.t, "MD"), "SIM", "D17C148", "496", "272D", "20", "60", "0", "100", "5",
         "-104", "-10", "-2.5", "-65", "2", "LTE", "0", "CMCC 46000"
     };
     bool metricCells = true;
     for (size_t i = 0; i < kMetricColumnCount; ++i)
         metricCells = metricCells && metricCellText(m, i) == expected[i];
-    ok(metricCells, "15 列文本逐列精确一致");
+    ok(metricCells, "18 列文本逐列精确一致（含小区 ID/PCI/TAC）");
     m.rsrp = 1; m.rsrq = 1; m.snr10 = 100000; m.rssiVal = 1;
-    ok(metricCellText(m, 7) == "-" && metricCellText(m, 8) == "-" &&
-       metricCellText(m, 9) == "-" && metricCellText(m, 10) == "-",
+    ok(metricCellText(m, 10) == "-" && metricCellText(m, 11) == "-" &&
+       metricCellText(m, 12) == "-" && metricCellText(m, 13) == "-",
        "无效信号值仍显示 '-'");
 
     std::puts("== T3 边界与规模 ==");
@@ -70,6 +71,45 @@ int main() {
        metricCellText(m, kMetricColumnCount).empty(), "越界列返回空串");
     auto metrics = buildMetrics(all);
     ok(metrics.size() == 1399, "真机 EG25 指标仍为 1399 行");
+    ok(!metrics.empty() && metrics.front().cellId == "1D8DE0B",
+       "真机首条 Cell 字段进入指标模型");
+    bool carriedCell = false;
+    for (const auto& metric : metrics)
+        if (metric.lineNo == 5 && metric.cellId == "1D8DE0D") carriedCell = true;
+    ok(carriedCell, "小区变更后的 ID 可延续到后续心跳样本");
+
+    std::vector<std::string> cellRaw{
+        "2026-08-03 10:00:00.000 [INFO] main (main.c:1) - [HEARTBEAT] cellid=C5EAB21 pci=257 tac=41B rsrp=-107dBm rsrq=-20dB"
+    };
+    std::vector<LogLine> cellLines; std::vector<std::string> cellSessions;
+    parseLines(cellRaw, cellLines, cellSessions, nullptr);
+    auto cellMetrics = buildMetrics(cellLines);
+    ok(cellMetrics.size() == 1 && cellMetrics[0].cellId == "C5EAB21" &&
+       cellMetrics[0].pci == 257 && cellMetrics[0].tac == 0x41B && cellMetrics[0].tacDigits == 3,
+       "artery cellid/pci/tac 精确进入指标模型");
+
+    std::vector<std::string> invalidCellRaw{
+        "[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | Cell:1D8DE0B | CSQ:18",
+        "[2026-08-03 10:00:01] [CELL CHANGE] 1D8DE0B -> FFFFFFFF | CSQ=99",
+        "[2026-08-03 10:00:02] [HEARTBEAT] CH:SIM | CSQ:17",
+        "[2026-08-03 10:00:03] [HEARTBEAT] CH:SIM | Cell:N/A | CSQ:16"
+    };
+    std::vector<LogLine> invalidCellLines; std::vector<std::string> invalidCellSessions;
+    parseLines(invalidCellRaw, invalidCellLines, invalidCellSessions, nullptr);
+    auto invalidCellMetrics = buildMetrics(invalidCellLines);
+    ok(invalidCellMetrics.size() == 3 && invalidCellMetrics[0].cellId == "1D8DE0B" &&
+       invalidCellMetrics[1].cellId.empty() && invalidCellMetrics[2].cellId.empty(),
+       "无效小区变更/N/A 会清空旧 Cell ID，不把上一小区串到后续样本");
+
+    std::vector<std::string> mergedCells{
+        "[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | Cell:AAA001 | CSQ:18",
+        "[2026-08-03 11:00:00] [HEARTBEAT] CH:SIM | CSQ:17"
+    };
+    std::vector<LogLine> mergedCellLines; std::vector<std::string> mergedCellSessions;
+    parseLines(mergedCells, mergedCellLines, mergedCellSessions, nullptr, {0, 1});
+    auto mergedCellMetrics = buildMetrics(mergedCellLines);
+    ok(mergedCellMetrics.size() == 2 && mergedCellMetrics[0].cellId == "AAA001" &&
+       mergedCellMetrics[1].cellId.empty(), "Cell ID 驻留状态不会跨日志来源串联");
 
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;

@@ -11,6 +11,7 @@ namespace {
 
 constexpr wchar_t kSettingsKey[] = L"Software\\dialLog";
 constexpr size_t kMaxRecentFiles = 5;
+constexpr size_t kMaxSearchHistory = 8;
 AppSettings g_settings;
 
 std::wstring ReadString(HKEY key, const wchar_t* name) {
@@ -37,6 +38,32 @@ void WriteString(HKEY key, const wchar_t* name, const std::wstring& value) {
 
 void WriteDword(HKEY key, const wchar_t* name, DWORD value) {
     RegSetValueExW(key, name, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value));
+}
+
+std::vector<std::wstring> ReadMultiString(HKEY key, const wchar_t* name, size_t limit) {
+    std::vector<std::wstring> result;
+    DWORD type = 0, bytes = 0;
+    if (RegQueryValueExW(key, name, nullptr, &type, nullptr, &bytes) != ERROR_SUCCESS ||
+        type != REG_MULTI_SZ || bytes < 2 * sizeof(wchar_t)) return result;
+    std::vector<wchar_t> values(bytes / sizeof(wchar_t) + 1, L'\0');
+    if (RegQueryValueExW(key, name, nullptr, nullptr,
+                         reinterpret_cast<BYTE*>(values.data()), &bytes) != ERROR_SUCCESS) return result;
+    for (const wchar_t* item = values.data(); *item && result.size() < limit;
+         item += wcslen(item) + 1) result.emplace_back(item);
+    return result;
+}
+
+void WriteMultiString(HKEY key, const wchar_t* name, const std::vector<std::wstring>& values) {
+    size_t characters = 2;
+    for (const auto& value : values) characters += value.size() + 1;
+    std::vector<wchar_t> packed(characters, L'\0');
+    wchar_t* output = packed.data();
+    for (const auto& value : values) {
+        std::copy(value.begin(), value.end(), output);
+        output += value.size() + 1;
+    }
+    RegSetValueExW(key, name, 0, REG_MULTI_SZ, reinterpret_cast<const BYTE*>(packed.data()),
+                   static_cast<DWORD>(packed.size() * sizeof(wchar_t)));
 }
 
 bool SamePath(const std::wstring& left, const std::wstring& right) {
@@ -67,18 +94,8 @@ void LoadAppSettings() {
         g_settings.hasPlacement = true;
     }
 
-    type = 0; bytes = 0;
-    if (RegQueryValueExW(key, L"RecentFiles", nullptr, &type, nullptr, &bytes) == ERROR_SUCCESS &&
-        type == REG_MULTI_SZ && bytes >= 2 * sizeof(wchar_t)) {
-        std::vector<wchar_t> values(bytes / sizeof(wchar_t) + 1, L'\0');
-        if (RegQueryValueExW(key, L"RecentFiles", nullptr, nullptr,
-                             reinterpret_cast<BYTE*>(values.data()), &bytes) == ERROR_SUCCESS) {
-            for (const wchar_t* item = values.data(); *item && g_settings.recentFiles.size() < kMaxRecentFiles;
-                 item += wcslen(item) + 1) {
-                g_settings.recentFiles.emplace_back(item);
-            }
-        }
-    }
+    g_settings.recentFiles = ReadMultiString(key, L"RecentFiles", kMaxRecentFiles);
+    g_settings.searchHistory = ReadMultiString(key, L"SearchHistory", kMaxSearchHistory);
     RegCloseKey(key);
 }
 
@@ -97,18 +114,8 @@ void SaveAppSettings() {
                        reinterpret_cast<const BYTE*>(&g_settings.placement), sizeof(g_settings.placement));
     }
 
-    // REG_MULTI_SZ 即使为空也以两个 NUL 结束；每个条目自身的 NUL 之外再留一个终止 NUL。
-    size_t characters = 2;
-    for (const auto& path : g_settings.recentFiles) characters += path.size() + 1;
-    std::vector<wchar_t> recent(characters, L'\0');
-    wchar_t* output = recent.data();
-    for (const auto& path : g_settings.recentFiles) {
-        std::copy(path.begin(), path.end(), output);
-        output += path.size() + 1;
-    }
-    RegSetValueExW(key, L"RecentFiles", 0, REG_MULTI_SZ,
-                   reinterpret_cast<const BYTE*>(recent.data()),
-                   static_cast<DWORD>(recent.size() * sizeof(wchar_t)));
+    WriteMultiString(key, L"RecentFiles", g_settings.recentFiles);
+    WriteMultiString(key, L"SearchHistory", g_settings.searchHistory);
     RegCloseKey(key);
 }
 
@@ -138,6 +145,21 @@ void RemoveRecentFile(const std::wstring& path) {
 
 void ClearRecentFiles() {
     g_settings.recentFiles.clear();
+    SaveAppSettings();
+}
+
+void RememberSearchQuery(const std::wstring& query) {
+    if (query.empty()) return;
+    auto found = std::find(g_settings.searchHistory.begin(), g_settings.searchHistory.end(), query);
+    if (found != g_settings.searchHistory.end()) g_settings.searchHistory.erase(found);
+    g_settings.searchHistory.insert(g_settings.searchHistory.begin(), query);
+    if (g_settings.searchHistory.size() > kMaxSearchHistory)
+        g_settings.searchHistory.resize(kMaxSearchHistory);
+    SaveAppSettings();
+}
+
+void ClearSearchHistory() {
+    g_settings.searchHistory.clear();
     SaveAppSettings();
 }
 

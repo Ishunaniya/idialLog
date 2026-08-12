@@ -39,7 +39,8 @@ std::wstring Utf8ToWide(const std::string& s) {
     return w;
 }
 
-bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstring& err) {
+bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstring& err,
+                   void* observerContext, ReadObserver observer) {
     err.clear();
     HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -63,6 +64,9 @@ bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstring& err
         DWORD want = static_cast<DWORD>(std::min<std::size_t>(remain, 1024 * 1024));
         if (!ReadFile(h, &buf[total], want, &got, nullptr) || got == 0) break;
         total += got;
+        if (observer && !observer(observerContext, total, static_cast<std::size_t>(sz.QuadPart))) {
+            CloseHandle(h); buf.clear(); err = L"操作已取消"; return false;
+        }
     }
     CloseHandle(h);
     if (total != static_cast<std::size_t>(sz.QuadPart)) {
@@ -77,7 +81,8 @@ bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstring& err
 // “整文件字节串 + 全部 string 行”降为一个块和一条未完成行。
 bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
                         void* sinkContext, PlainLineSink sink,
-                        std::size_t* fileBytes, std::wstring& err) {
+                        std::size_t* fileBytes, std::wstring& err,
+                        void* observerContext, ReadObserver observer) {
     err.clear();
     HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -108,6 +113,9 @@ bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
             DWORD got = 0;
             if (!ReadFile(h, block.data(), want, &got, nullptr) || got == 0) break;
             total += got;
+            if (observer && !observer(observerContext, total, static_cast<std::size_t>(sz.QuadPart))) {
+                CloseHandle(h); err = L"操作已取消"; return false;
+            }
             carry.append(block.data(), got);
             if (first) { stripBom(carry); first = false; }
 
@@ -174,7 +182,7 @@ bool WriteFileBytesAtomic(const std::wstring& path, const std::string& data,
     std::wstring dir = slash == std::wstring::npos ? L"." : path.substr(0, slash + 1);
     wchar_t tempPath[MAX_PATH]{};
     if (dir.size() >= MAX_PATH) {
-        err = L"CSV 目标目录路径过长";
+        err = L"目标目录路径过长";
         return false;
     }
     if (!GetTempFileNameW(dir.c_str(), L"dlg", 0, tempPath)) {
@@ -187,7 +195,7 @@ bool WriteFileBytesAtomic(const std::wstring& path, const std::string& data,
     if (h == INVALID_HANDLE_VALUE) {
         DWORD code = GetLastError();
         DeleteFileW(tempPath);
-        err = FormatW(L"无法打开 CSV 临时文件 (Windows 错误 %lu)", code);
+        err = FormatW(L"无法打开临时文件 (Windows 错误 %lu)", code);
         return false;
     }
 
@@ -210,13 +218,13 @@ bool WriteFileBytesAtomic(const std::wstring& path, const std::string& data,
 
     if (!ok) {
         DeleteFileW(tempPath);
-        err = FormatW(L"CSV 写入未完成 (Windows 错误 %lu),原文件未修改", code);
+        err = FormatW(L"文件写入未完成 (Windows 错误 %lu),原文件未修改", code);
         return false;
     }
     if (!MoveFileExW(tempPath, path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
         code = GetLastError();
         DeleteFileW(tempPath);
-        err = FormatW(L"无法用完整 CSV 替换目标文件 (Windows 错误 %lu),原文件未修改", code);
+        err = FormatW(L"无法用完整内容替换目标文件 (Windows 错误 %lu),原文件未修改", code);
         return false;
     }
     return true;
@@ -226,12 +234,13 @@ bool ReadPathExpand(const std::wstring& path,
                     std::vector<std::vector<std::string>>& chunks,
                     std::vector<std::wstring>& labels,
                     std::size_t& textBytes,
-                    std::wstring& err) {
+                    std::wstring& err,
+                    void* observerContext, ReadObserver observer) {
     chunks.clear();
     labels.clear();
     textBytes = 0;
     std::string buf;
-    if (!ReadFileBytes(path, buf, err)) return false;
+    if (!ReadFileBytes(path, buf, err, observerContext, observer)) return false;
 
     const std::wstring base = FileNameOf(path);
     if (archiveKindOf(buf) != ARC_NONE) {
@@ -239,6 +248,9 @@ bool ReadPathExpand(const std::wstring& path,
         std::string archiveErr;
         if (extractArchive(buf, entries, archiveErr)) {
             for (auto& entry : entries) {
+                if (observer && !observer(observerContext, textBytes, std::max<std::size_t>(1, buf.size()))) {
+                    chunks.clear(); labels.clear(); textBytes = 0; err = L"操作已取消"; return false;
+                }
                 std::size_t entryBytes = entry.data.size();
                 std::vector<std::string> lines;
                 splitTextLines(std::move(entry.data), lines);

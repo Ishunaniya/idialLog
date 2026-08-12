@@ -10,6 +10,7 @@ namespace dl {
 
 struct AppSettings {
     std::vector<std::wstring> recentFiles;
+    std::vector<std::wstring> searchHistory;
     std::wstring tagFilter;
     std::wstring grepFilter;
     std::wstring sinceFilter;
@@ -28,5 +29,7 @@ const AppSettings& GetAppSettings();
 void RememberRecentFiles(const std::vector<std::wstring>& paths);
 void RemoveRecentFile(const std::wstring& path);
 void ClearRecentFiles();
+void RememberSearchQuery(const std::wstring& query);
+void ClearSearchHistory();
 
 } // namespace dl

@@ -276,7 +276,7 @@ struct HeartbeatFields {
     std::string_view failTitle, failLower, rxUpper, rxLower;
     std::string_view rsrpUpper, rsrpLower, rsrqUpper, rsrqLower;
     std::string_view snrUpper, snrLower, rssiUpper, rssiLower;
-    std::string_view srv, rat, deny, oper;
+    std::string_view srv, rat, deny, oper, cellTitle, cellLower, pci, tac;
 };
 
 static HeartbeatFields heartbeatFields(const std::string& msg) {
@@ -305,6 +305,10 @@ static HeartbeatFields heartbeatFields(const std::string& msg) {
         else if (k == "RAT")         f.rat = v;
         else if (k == "DENY")        f.deny = v;
         else if (k == "OPER")        f.oper = v;
+        else if (k == "Cell")        f.cellTitle = v;
+        else if (k == "cellid")      f.cellLower = v;
+        else if (k == "pci")         f.pci = v;
+        else if (k == "tac")         f.tac = v;
     });
     return f;
 }
@@ -342,14 +346,67 @@ static void assignView(std::string& out, std::string_view value) {
     if (!value.empty()) out.assign(value.data(), value.size());
 }
 
+static bool usableCell(std::string_view value) {
+    value = trimView(value);
+    auto equalsIgnoreCase = [&](std::string_view expected) {
+        if (value.size() != expected.size()) return false;
+        for (size_t index = 0; index < value.size(); ++index)
+            if (std::tolower(static_cast<unsigned char>(value[index])) !=
+                std::tolower(static_cast<unsigned char>(expected[index]))) return false;
+        return true;
+    };
+    return !value.empty() && value != "-" && !equalsIgnoreCase("N/A") &&
+           !equalsIgnoreCase("FFFFFFFF") && !equalsIgnoreCase("init");
+}
+
+static bool parseUnsignedField(std::string_view value, unsigned base, std::uint32_t& output) {
+    value = trimView(value);
+    if (value.empty()) return false;
+    if (base == 16 && value.size() > 2 && value[0] == '0' && (value[1] == 'x' || value[1] == 'X'))
+        value.remove_prefix(2);
+    if (value.empty()) return false;
+    std::uint32_t result = 0;
+    for (char character : value) {
+        unsigned digit = character >= '0' && character <= '9' ? static_cast<unsigned>(character - '0') :
+                         character >= 'a' && character <= 'f' ? static_cast<unsigned>(character - 'a' + 10) :
+                         character >= 'A' && character <= 'F' ? static_cast<unsigned>(character - 'A' + 10) : base;
+        if (digit >= base || result > (UINT32_MAX - digit) / base) return false;
+        result = result * base + digit;
+    }
+    output = result;
+    return true;
+}
+
+static bool cellAfterChange(const LogLine& line, std::string& cell) {
+    if (line.tagText() != "CELL CHANGE") return false;
+    const size_t arrow = line.msg.find("->");
+    if (arrow == std::string::npos) return false;
+    size_t first = arrow + 2;
+    while (first < line.msg.size() && static_cast<unsigned char>(line.msg[first]) <= ' ') ++first;
+    size_t last = line.msg.find('|', first);
+    if (last == std::string::npos) last = line.msg.size();
+    while (last > first && static_cast<unsigned char>(line.msg[last - 1]) <= ' ') --last;
+    const std::string_view value(line.msg.data() + first, last - first);
+    cell = usableCell(value) ? std::string(value) : std::string{};
+    return true;
+}
+
 template <typename Lines>
 static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
     std::vector<MetricRow> rows;
     bool haveLastRx = false;
     long long lastRx = 0;
+    std::string currentCell;
+    std::uint16_t currentSource = 0;
+    bool haveSource = false;
 
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
+        if (haveSource && l.sourceId != currentSource) currentCell.clear();
+        currentSource = l.sourceId;
+        haveSource = true;
+        std::string changed;
+        if (cellAfterChange(l, changed)) currentCell = std::move(changed);
         if (l.tagText().compare(0, 9, "HEARTBEAT") != 0) continue;
         HeartbeatFields f = heartbeatFields(l.msg);
         if (!f.any) continue;
@@ -366,6 +423,25 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         }
         assignView(m.rat, f.rat);
         assignView(m.oper, f.oper);
+        const std::string_view explicitCell = firstOf(f.cellTitle, f.cellLower);
+        if (!explicitCell.empty() && usableCell(explicitCell)) {
+            m.cellId.assign(explicitCell);
+            currentCell.assign(explicitCell.data(), explicitCell.size());
+        } else if (!explicitCell.empty()) {
+            // 明确上报无效小区时清空驻留状态，避免把旧 Cell ID 错带到后续样本。
+            currentCell.clear();
+        } else if (!currentCell.empty()) {
+            m.cellId.assign(currentCell);
+        }
+        std::uint32_t compact = 0;
+        if (parseUnsignedField(f.pci, 10, compact) && compact <= static_cast<std::uint32_t>(INT_MAX))
+            m.pci = static_cast<int>(compact);
+        if (parseUnsignedField(f.tac, 16, compact)) {
+            m.tac = compact;
+            std::string_view tac = trimView(f.tac);
+            if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X')) tac.remove_prefix(2);
+            m.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(tac.size(), 8));
+        }
 
         std::string_view temp = firstOf(f.tempTitle, f.tempUpper);
         if (!temp.empty()) {

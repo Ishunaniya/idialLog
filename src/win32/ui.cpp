@@ -55,10 +55,18 @@ using namespace dl;
 #define IDC_DASH       1022
 #define IDC_FILTER     1023
 #define IDC_PAGETITLE  1024
+#define IDC_SEARCH_HISTORY 1025
 #define IDC_CLOSELOG   1030
 #define IDC_OPEN_PICK  1040
 #define IDC_RECENT_CLEAR 1041
+#define IDC_BOOKMARKS  1042
+#define IDC_BOOKMARK_CLEAR 1043
+#define IDC_EXPORT_REPORT 1044
+#define IDC_EXPORT_CSV 1045
 #define IDC_RECENT_BASE  1050
+#define IDC_BOOKMARK_BASE 1080
+#define IDC_SEARCH_CLEAR 1110
+#define IDC_SEARCH_BASE 1120
 
 namespace {
 
@@ -119,6 +127,64 @@ void ShowOpenMenu() {
     }
 }
 
+void ShowSearchHistoryMenu() {
+    const auto& history = GetAppSettings().searchHistory;
+    if (history.empty()) {
+        ShowModernNotice(L"还没有搜索历史", L"输入消息正则并点击“应用”后会自动记录。",
+                         ModernNoticeKind::Info);
+        return;
+    }
+    HMENU menu = CreatePopupMenu();
+    for (size_t index = 0; index < history.size(); ++index)
+        AppendMenuW(menu, MF_STRING, IDC_SEARCH_BASE + static_cast<UINT>(index), MenuSafe(history[index]).c_str());
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, IDC_SEARCH_CLEAR, L"清除搜索历史");
+    RECT button{}; GetWindowRect(App().hSearchHistory, &button);
+    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+                                        button.left, button.bottom + S(4), 0, App().hMain, nullptr);
+    DestroyMenu(menu);
+    if (command == IDC_SEARCH_CLEAR) {
+        ClearSearchHistory();
+        ShowModernNotice(L"搜索历史已清除", L"当前筛选条件不会改变。", ModernNoticeKind::Success);
+    } else if (command >= IDC_SEARCH_BASE && command < IDC_SEARCH_BASE + history.size()) {
+        SetWindowTextW(App().hGrepBox, history[command - IDC_SEARCH_BASE].c_str());
+        KillTimer(App().hMain, kFilterTimer);
+        UpdateFilterButton();
+        if (!App().document.lines.empty()) RefreshAll();
+    }
+}
+
+void ShowBookmarksMenu() {
+    const auto& bookmarks = EvidenceBookmarks();
+    if (bookmarks.empty()) return;
+    HMENU menu = CreatePopupMenu();
+    for (size_t index = 0; index < bookmarks.size(); ++index) {
+        std::wstring label = FmtW(L"第 %d 行  ", static_cast<int>(bookmarks[index].lineNo)) + bookmarks[index].text;
+        AppendMenuW(menu, MF_STRING, IDC_BOOKMARK_BASE + static_cast<UINT>(index), MenuSafe(label).c_str());
+    }
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, IDC_BOOKMARK_CLEAR, L"清空证据书签");
+    RECT button{}; GetWindowRect(App().hBookmarks, &button);
+    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+                                        button.left, button.bottom + S(4), 0, App().hMain, nullptr);
+    DestroyMenu(menu);
+    if (command == IDC_BOOKMARK_CLEAR) ClearEvidenceBookmarks();
+    else if (command >= IDC_BOOKMARK_BASE && command < IDC_BOOKMARK_BASE + bookmarks.size())
+        JumpToRawLine(bookmarks[command - IDC_BOOKMARK_BASE].lineNo);
+}
+
+void ShowExportMenu() {
+    HMENU menu = CreatePopupMenu();
+    AppendMenuW(menu, MF_STRING, IDC_EXPORT_REPORT, L"诊断报告（Markdown）…");
+    AppendMenuW(menu, MF_STRING, IDC_EXPORT_CSV, L"信号指标（CSV）…");
+    RECT button{}; GetWindowRect(App().hExport, &button);
+    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTALIGN | TPM_TOPALIGN,
+                                        button.right, button.bottom + S(4), 0, App().hMain, nullptr);
+    DestroyMenu(menu);
+    if (command == IDC_EXPORT_REPORT) DoExportReport();
+    else if (command == IDC_EXPORT_CSV) DoExportCsv();
+}
+
 void FocusGlobalSearch() {
     if (!g_filtersExpanded) {
         g_filtersExpanded = true;
@@ -143,9 +209,9 @@ void PersistUiSettings(HWND window) {
     SaveAppSettings();
 }
 
-int NavWidth() { return S(204); }
+int NavWidth() { return S(232); }
 int StatusHeight() { return S(32); }
-int ChartHeight() { return S(300); }
+int ChartHeight() { return S(430); }
 
 bool HasText(HWND edit) { return edit && GetWindowTextLengthW(edit) > 0; }
 
@@ -163,7 +229,7 @@ void SetFilterControlsVisible(bool visible) {
     const int command = visible ? SW_SHOW : SW_HIDE;
     for (HWND control : {App().hTagLabel, App().hGrepLabel, App().hSinceLabel, App().hUntilLabel,
                          App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox,
-                         App().hApplyFilter, App().hClearFilter})
+                         App().hApplyFilter, App().hClearFilter, App().hSearchHistory})
         if (control) ShowWindow(control, command);
 }
 
@@ -275,7 +341,7 @@ void LayoutFilterPanel(int contentLeft, int contentWidth) {
     const int pad = S(14), labelH = S(17), editH = S(34), gap = S(10);
     if (!compact) {
         int available = width - pad * 2;
-        int fixed = S(135 + 120 + 120 + 82 + 74) + gap * 5;
+        int fixed = S(135 + 120 + 120 + 82 + 74 + 76) + gap * 6;
         int searchW = std::max(S(150), available - fixed);
         int cursor = x + pad;
         struct Field { HWND label; HWND edit; int width; } fields[] = {
@@ -287,7 +353,8 @@ void LayoutFilterPanel(int contentLeft, int contentWidth) {
             cursor += field.width + gap;
         }
         MoveIf(App().hApplyFilter, cursor, y + S(28), S(82), S(36)); cursor += S(82) + gap;
-        MoveIf(App().hClearFilter, cursor, y + S(28), S(74), S(36));
+        MoveIf(App().hClearFilter, cursor, y + S(28), S(74), S(36)); cursor += S(74) + gap;
+        MoveIf(App().hSearchHistory, cursor, y + S(28), S(76), S(36));
         return;
     }
 
@@ -300,14 +367,15 @@ void LayoutFilterPanel(int contentLeft, int contentWidth) {
     MoveIf(App().hGrepBox, cursor, y + S(29), inner - tagW - gap, editH);
 
     const int row2 = y + S(74);
-    const int dateW = std::max(S(108), (inner - S(82 + 74) - gap * 3) / 2);
+    const int dateW = std::max(S(96), (inner - S(82 + 74 + 76) - gap * 4) / 2);
     cursor = x + pad;
     MoveIf(App().hSinceLabel, cursor, row2, dateW, labelH);
     MoveIf(App().hSinceBox, cursor, row2 + S(20), dateW, editH); cursor += dateW + gap;
     MoveIf(App().hUntilLabel, cursor, row2, dateW, labelH);
     MoveIf(App().hUntilBox, cursor, row2 + S(20), dateW, editH); cursor += dateW + gap;
     MoveIf(App().hApplyFilter, cursor, row2 + S(19), S(82), S(36)); cursor += S(82) + gap;
-    MoveIf(App().hClearFilter, cursor, row2 + S(19), S(74), S(36));
+    MoveIf(App().hClearFilter, cursor, row2 + S(19), S(74), S(36)); cursor += S(74) + gap;
+    MoveIf(App().hSearchHistory, cursor, row2 + S(19), S(76), S(36));
 }
 
 void Layout() {
@@ -318,15 +386,18 @@ void Layout() {
     MoveIf(App().hNav, 0, 0, navW, client.bottom);
     MoveIf(App().hStatus, contentLeft, client.bottom - statusH, contentWidth, statusH);
 
+    const bool compactCommands = client.right < S(1120);
+    ShowWindow(App().hPaste, compactCommands ? SW_HIDE : SW_SHOW);
     int right = client.right - S(20);
     auto command = [&](HWND button, int width) {
         right -= S(width); MoveIf(button, right, S(20), S(width), S(36)); right -= S(8);
     };
-    command(App().hCloseLog, 82);
-    command(App().hFilterToggle, 82);
-    command(App().hPaste, 92);
-    command(App().hOpen, 122);
-    if (CurrentPage() == 4) command(App().hExport, 110);
+    command(App().hCloseLog, compactCommands ? 76 : 82);
+    command(App().hBookmarks, compactCommands ? 78 : 90);
+    command(App().hFilterToggle, compactCommands ? 72 : 82);
+    if (!compactCommands) command(App().hPaste, 92);
+    command(App().hOpen, compactCommands ? 106 : 122);
+    command(App().hExport, compactCommands ? 82 : 92);
     MoveIf(App().hPageTitle, contentLeft + S(24), S(12), std::max(S(140), right - contentLeft - S(32)), S(38));
     MoveIf(App().hFileLbl, contentLeft + S(25), S(51), std::max(S(140), right - contentLeft - S(33)), S(20));
 
@@ -343,8 +414,9 @@ void Layout() {
                       App().hRaw, App().hUnparsed})
         MoveIf(page, content.left, content.top, width, height);
 
-    int chartHeight = std::min(ChartHeight(), height / 2);
-    chartHeight = std::max(S(120), chartHeight);
+    int chartHeight = std::min(ChartHeight(), height * 2 / 3);
+    chartHeight = std::max(S(280), chartHeight);
+    chartHeight = std::min(chartHeight, std::max(S(160), height - S(130)));
     MoveIf(App().hChart, content.left, content.top, width, chartHeight);
     MoveIf(App().hMetric, content.left, content.top + chartHeight, width, height - chartHeight);
     LayoutModernOverlays();
@@ -454,7 +526,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().hPaste = CreateButton(L"粘贴日志", IDC_PASTE, ModernButtonKind::Neutral);
         App().hFilterToggle = CreateButton(L"筛选", IDC_FILTER, ModernButtonKind::Neutral);
         App().hCloseLog = CreateButton(L"关闭日志", IDC_CLOSELOG, ModernButtonKind::Danger);
-        App().hExport = CreateButton(L"导出 CSV", IDC_EXPORT, ModernButtonKind::Neutral, false);
+        App().hBookmarks = CreateButton(L"书签", IDC_BOOKMARKS, ModernButtonKind::Neutral);
+        EnableWindow(App().hBookmarks, FALSE);
+        App().hExport = CreateButton(L"导出 ▾", IDC_EXPORT, ModernButtonKind::Neutral);
 
         App().hTagLabel = CreateControl(L"STATIC", L"标签", SS_LEFT, 0, App().hFontSmall, false);
         App().hGrepLabel = CreateControl(L"STATIC", L"搜索消息（正则）", SS_LEFT, 0, App().hFontSmall, false);
@@ -472,6 +546,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         SendMessageW(App().hUntilBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"HH:MM:SS"));
         App().hApplyFilter = CreateButton(L"应用", IDC_APPLY, ModernButtonKind::Primary, false);
         App().hClearFilter = CreateButton(L"清空", IDC_CLEAR, ModernButtonKind::Neutral, false);
+        App().hSearchHistory = CreateButton(L"历史 ▾", IDC_SEARCH_HISTORY, ModernButtonKind::Neutral, false);
 
         App().hDash = CreateWindowExW(0, L"dialDashCls", L"", WS_CHILD, 0, 0, 10, 10, hwnd,
                                       reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_DASH)),
@@ -487,9 +562,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().hUnparsed = CreateList(IDC_UNPARSED, {{L"原始行号", 90}, {L"未识别的原文", 960}});
         App().hTimeline = CreateList(IDC_TIMELINE, {{L"时间", 140}, {L"标签", 90}, {L"消息", 820}}, true);
         App().hOutage = CreateList(IDC_OUTAGE, {{L"#", 44}, {L"开始", 160}, {L"恢复", 160}, {L"时长", 90}});
-        App().hMetric = CreateList(IDC_METRIC, {{L"时间", 140}, {L"CH", 90}, {L"CSQ", 60}, {L"Tmax", 60},
-            {L"ConsecFail", 90}, {L"RX_PKT", 110}, {L"ΔRX", 80}, {L"RSRP", 70}, {L"RSRQ", 70},
-            {L"SNR(dB)", 80}, {L"RSSI", 70}, {L"SRV", 55}, {L"RAT", 80}, {L"DENY", 60}, {L"OPER", 150}}, true);
+        App().hMetric = CreateList(IDC_METRIC, {{L"时间", 140}, {L"CH", 82},
+            {L"小区 ID", 105}, {L"PCI", 58}, {L"TAC", 70}, {L"CSQ", 58}, {L"Tmax", 58},
+            {L"ConsecFail", 86}, {L"RX_PKT", 105}, {L"ΔRX", 76}, {L"RSRP", 68}, {L"RSRQ", 68},
+            {L"SNR(dB)", 78}, {L"RSSI", 68}, {L"SRV", 52}, {L"RAT", 76}, {L"DENY", 58}, {L"OPER", 145}}, true);
         App().hTags = CreateList(IDC_TAGS, {{L"标签", 150}, {L"次数", 80}, {L"占比", 600}});
         App().hRaw = CreateControl(L"EDIT", L"", WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY,
                                    IDC_RAW, App().hFontMono, false);
@@ -519,6 +595,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
     case WM_SIZE: Layout(); return 0;
     case WM_APP_NAVIGATE: ShowPage(static_cast<int>(wparam)); return 0;
     case WM_APP_SHELL_LAYOUT: Layout(); return 0;
+    case WM_APP_LOAD_PROGRESS:
+    case WM_APP_LOAD_COMPLETE:
+        HandleLoadControllerMessage(message, wparam, lparam); return 0;
     case WM_DRAWITEM:
         if (DrawModernButton(*reinterpret_cast<DRAWITEMSTRUCT*>(lparam))) return TRUE;
         break;
@@ -566,15 +645,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         switch (id) {
         case IDC_OPEN: ShowOpenMenu(); return 0;
         case IDC_PASTE: DoPaste(); return 0;
+        case IDC_BOOKMARKS: ShowBookmarksMenu(); return 0;
+        case IDC_SEARCH_HISTORY: ShowSearchHistoryMenu(); return 0;
         case IDC_FILTER:
             g_filtersExpanded = !g_filtersExpanded;
             SetFilterControlsVisible(g_filtersExpanded); UpdateFilterButton(); Layout();
             if (g_filtersExpanded) SetFocus(App().hTagBox);
             return 0;
-        case IDC_APPLY: KillTimer(hwnd, kFilterTimer); RefreshAll(); return 0;
-        case IDC_EXPORT: DoExportCsv(); return 0;
+        case IDC_APPLY:
+            KillTimer(hwnd, kFilterTimer); RememberSearchQuery(GetText(App().hGrepBox)); RefreshAll(); return 0;
+        case IDC_EXPORT: ShowExportMenu(); return 0;
         case IDC_CLEAR: ClearFilters(true); return 0;
         case IDC_CLOSELOG:
+            if (ConsumeLoadActionClick()) return 0;
             ReleaseLoadedData(); ClearFilters(false); MarkAllPagesDirty(); RenderPage(CurrentPage());
             SetWindowTextW(App().hFileLbl, L"未加载日志 · 可拖入文件，或从剪贴板直接分析");
             SetWindowTextW(App().hStatus, L"尚未加载日志。"); RefreshNavigation(); return 0;
@@ -589,6 +672,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
     }
     case WM_CLOSE:
         PersistUiSettings(hwnd);
+        ShutdownLoadController();
         DestroyWindow(hwnd);
         return 0;
     case WM_DESTROY: {
@@ -676,6 +760,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
         if (message.message == WM_KEYDOWN && (GetKeyState(VK_CONTROL) & 0x8000)) {
             if (message.wParam == 'O') { DoOpen(); continue; }
             if (message.wParam == 'F') { FocusGlobalSearch(); continue; }
+            if (message.wParam == 'B') { ToggleCurrentRawBookmark(); continue; }
             if (message.wParam >= '1' && message.wParam <= '8') {
                 ShowPage(static_cast<int>(message.wParam - '1')); continue;
             }
@@ -692,7 +777,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
             HWND focus = GetFocus();
             if (focus == App().hTagBox || focus == App().hGrepBox ||
                 focus == App().hSinceBox || focus == App().hUntilBox) {
-                KillTimer(window, kFilterTimer); RefreshAll(); continue;
+                KillTimer(window, kFilterTimer);
+                RememberSearchQuery(GetText(App().hGrepBox));
+                RefreshAll(); continue;
             }
         }
         if (message.message == WM_KEYDOWN && message.wParam == VK_ESCAPE && g_filtersExpanded) {

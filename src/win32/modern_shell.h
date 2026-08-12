@@ -26,6 +26,7 @@ void ShowModernNotice(const wchar_t* title, const wchar_t* detail,
                       ModernNoticeKind kind = ModernNoticeKind::Info, UINT durationMs = 5000);
 void LayoutModernOverlays();
 void SetShellBusy(bool busy, const wchar_t* text = nullptr);
+void SetShellProgress(int percent, const wchar_t* text = nullptr);
 bool ShellBusy();
 
 bool SystemPrefersDarkTheme();

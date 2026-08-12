@@ -31,6 +31,15 @@ static bool g_pageDirty[8] = { true, true, true, true, true, true, true, true };
 static size_t g_rawTargetLine = 0;
 static LONG g_rawSelectionStart = 0;
 static LONG g_rawSelectionEnd = 0;
+static std::vector<EvidenceBookmark> g_bookmarks;
+
+static void RefreshBookmarkButton() {
+    if (!App().hBookmarks) return;
+    std::wstring label = L"书签";
+    if (!g_bookmarks.empty()) label += L" (" + std::to_wstring(g_bookmarks.size()) + L")";
+    SetWindowTextW(App().hBookmarks, label.c_str());
+    EnableWindow(App().hBookmarks, !g_bookmarks.empty());
+}
 
 void LvAddCol(HWND lv, int i, const wchar_t* text, int w) {
     LVCOLUMNW c{};
@@ -215,6 +224,7 @@ void ReleaseLoadedData() {
     if (App().hRaw)      SetWindowTextW(App().hRaw, L"");
 
     App().document.release();
+    ClearEvidenceBookmarks();
 
     releaseVector(g_ogColors);
     ReleaseOverviewPageData();
@@ -257,7 +267,7 @@ void ShowPage(int page) {
         ShowWindow(*it.h, on ? SW_SHOW : SW_HIDE);
         if (on) SetWindowPos(*it.h, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
-    ShowWindow(App().hExport, page == 4 ? SW_SHOW : SW_HIDE);
+    ShowWindow(App().hExport, SW_SHOW);
     SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
 }
 
@@ -285,6 +295,45 @@ void JumpToRawLine(size_t lineNo) {
                      FmtW(L"第 %d 行已选中；按 Ctrl+C 可直接复制。", static_cast<int>(lineNo)).c_str(),
                      ModernNoticeKind::Info, 4500);
 }
+
+bool ToggleEvidenceBookmark(size_t lineNo, const std::wstring& text) {
+    if (!lineNo) return false;
+    const auto found = std::find_if(g_bookmarks.begin(), g_bookmarks.end(),
+        [lineNo](const EvidenceBookmark& bookmark) { return bookmark.lineNo == lineNo; });
+    bool added = found == g_bookmarks.end();
+    if (added) {
+        if (g_bookmarks.size() >= 30) g_bookmarks.erase(g_bookmarks.begin());
+        g_bookmarks.push_back(EvidenceBookmark{lineNo, text});
+    } else {
+        g_bookmarks.erase(found);
+    }
+    RefreshBookmarkButton();
+    return added;
+}
+
+bool ToggleCurrentRawBookmark() {
+    if (!g_rawTargetLine) {
+        ShowModernNotice(L"没有可标记的原始行", L"先从诊断证据定位一行，再按 Ctrl+B 添加书签。",
+                         ModernNoticeKind::Info);
+        return false;
+    }
+    auto found = std::find_if(App().document.lines.begin(), App().document.lines.end(),
+        [](const LogLine& line) { return line.lineNo == g_rawTargetLine; });
+    if (found == App().document.lines.end()) return false;
+    std::wstring text = U8ToW(found->ts + " [" + found->tagText() + "] " + found->msg);
+    const bool added = ToggleEvidenceBookmark(g_rawTargetLine, text);
+    ShowModernNotice(added ? L"证据书签已添加" : L"证据书签已移除",
+                     FmtW(L"原始第 %d 行", static_cast<int>(g_rawTargetLine)).c_str(),
+                     added ? ModernNoticeKind::Success : ModernNoticeKind::Info);
+    return added;
+}
+
+void ClearEvidenceBookmarks() {
+    releaseVector(g_bookmarks);
+    RefreshBookmarkButton();
+}
+
+const std::vector<EvidenceBookmark>& EvidenceBookmarks() { return g_bookmarks; }
 
 static void DrawListEmptyState(HWND list, HDC dc) {
     const bool loaded = !App().document.lines.empty();
@@ -408,11 +457,11 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
         draw->clrTextBk = (row & 1) ? th::zebra : th::surface;
         if (row < App().document.metrics.size()) {
             const MetricRow& metric = App().document.metrics[row];
-            if (column == 6 && metric.drx == 0)
+            if (column == 9 && metric.drx == 0)
                 draw->clrTextBk = th::cellStall;
-            else if (column == 2 && metric.csqVal >= 0 && metric.csqVal < 10)
+            else if (column == 5 && metric.csqVal >= 0 && metric.csqVal < 10)
                 draw->clrTextBk = th::cellWeak;
-            else if (column == 9 && metric.snr10 != 100000 && metric.snr10 <= 0)
+            else if (column == 12 && metric.snr10 != 100000 && metric.snr10 <= 0)
                 draw->clrTextBk = th::cellSnrLow;
         }
     }

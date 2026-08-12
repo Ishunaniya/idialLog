@@ -35,6 +35,7 @@ WINDOWS_RESOURCE_DIR := resources/windows
 TEST_UNIT_DIR := tests/unit
 TEST_REGRESSION_DIR := tests/regression
 TEST_PERF_DIR := tests/performance
+TEST_UI_DIR := tests/ui
 
 INCLUDE_DIRS := -I$(CORE_DIR) -I$(APP_DIR) -I$(PRESENTATION_DIR) -I$(WIN32_DIR) \
                 -I$(THIRD_PARTY_DIR) -I.
@@ -137,9 +138,10 @@ HOST_CORE_OBJS := $(HOST_CORE_BASE_OBJS) $(HOST_ARCHIVE_STUB_OBJ)
 HOST_ARCHIVE_OBJS := $(HOST_CORE_BASE_OBJS) $(HOST_ARCHIVE_FULL_OBJ)
 HOST_TABLE_OBJ := $(HOST_BUILD_DIR)/tablemodel.o
 HOST_CHART_OBJ := $(HOST_BUILD_DIR)/chartmodel.o
+HOST_DOCUMENT_OBJ := $(HOST_BUILD_DIR)/document_state.o
 HOST_MINIZ_OBJ := $(HOST_BUILD_DIR)/miniz.o
 HOST_DEPS := $(HOST_CORE_OBJS:.o=.d) $(HOST_ARCHIVE_FULL_OBJ:.o=.d) \
-             $(HOST_TABLE_OBJ:.o=.d) $(HOST_CHART_OBJ:.o=.d) $(HOST_MINIZ_OBJ:.o=.d)
+             $(HOST_TABLE_OBJ:.o=.d) $(HOST_CHART_OBJ:.o=.d) $(HOST_DOCUMENT_OBJ:.o=.d) $(HOST_MINIZ_OBJ:.o=.d)
 
 UNIT_BIN_DIR := $(HOST_TEST_DIR)/unit
 REGRESSION_BIN_DIR := $(HOST_TEST_DIR)/regression
@@ -150,19 +152,25 @@ ARCHIVETEST_BIN := $(UNIT_BIN_DIR)/archivetest
 BOUNDARYTEST_BIN := $(UNIT_BIN_DIR)/boundarytest
 TABLETEST_BIN := $(UNIT_BIN_DIR)/tabletest
 CHARTTEST_BIN := $(UNIT_BIN_DIR)/charttest
+DOCUMENTTEST_BIN := $(UNIT_BIN_DIR)/documenttest
 SIMTEST_BIN := $(REGRESSION_BIN_DIR)/simtest
 HOSTRUNTEST_BIN := $(REGRESSION_BIN_DIR)/hostruntest
 BASELINETEST_BIN := $(REGRESSION_BIN_DIR)/baselinetest
 MERGETEST_BIN := $(REGRESSION_BIN_DIR)/mergetest
 PERF_BIN := $(PERF_BIN_DIR)/perftest
+UI_SMOKE_BIN := $(HOST_TEST_DIR)/ui/smoke.exe
 TEST_BINS := $(SELFTEST_BIN) $(SIMTEST_BIN) $(HOSTRUNTEST_BIN) $(BASELINETEST_BIN) \
              $(MERGETEST_BIN) $(ARCHIVETEST_BIN) $(BOUNDARYTEST_BIN) \
-             $(TABLETEST_BIN) $(CHARTTEST_BIN)
+             $(TABLETEST_BIN) $(CHARTTEST_BIN) $(DOCUMENTTEST_BIN)
 TEST_TARGETS := selftest simtest hostruntest baselinetest mergetest \
-                archivetest boundarytest tabletest charttest perftest
+                archivetest boundarytest tabletest charttest documenttest perftest
 
-$(HOST_BUILD_DIR) $(UNIT_BIN_DIR) $(REGRESSION_BIN_DIR) $(PERF_BIN_DIR):
+$(HOST_BUILD_DIR) $(UNIT_BIN_DIR) $(REGRESSION_BIN_DIR) $(PERF_BIN_DIR) $(HOST_TEST_DIR)/ui:
 	mkdir -p $@
+
+$(UI_SMOKE_BIN): $(TEST_UI_DIR)/smoke.cpp | $(HOST_TEST_DIR)/ui
+	x86_64-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -municode -mwindows -static \
+		-static-libgcc -static-libstdc++ -o $@ $< -lcomctl32 -lshell32 -luser32 -lkernel32
 
 $(HOST_BUILD_DIR)/archive_reader_miniz.o: $(CORE_DIR)/archive_reader.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) $(MINIZ_DEF) -c $< -o $@
@@ -174,6 +182,9 @@ $(HOST_TABLE_OBJ): $(PRESENTATION_DIR)/tablemodel.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(HOST_CHART_OBJ): $(PRESENTATION_DIR)/chartmodel.cpp | $(HOST_BUILD_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(HOST_DOCUMENT_OBJ): $(APP_DIR)/document_state.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(HOST_MINIZ_OBJ): $(THIRD_PARTY_DIR)/miniz.c $(THIRD_PARTY_DIR)/miniz.h | $(HOST_BUILD_DIR)
@@ -208,6 +219,9 @@ $(TABLETEST_BIN): $(TEST_UNIT_DIR)/tabletest.cpp $(HOST_TABLE_OBJ) $(HOST_CORE_O
 $(CHARTTEST_BIN): $(TEST_UNIT_DIR)/charttest.cpp $(HOST_CHART_OBJ) | $(UNIT_BIN_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
+$(DOCUMENTTEST_BIN): $(TEST_UNIT_DIR)/documenttest.cpp $(HOST_DOCUMENT_OBJ) $(HOST_CORE_OBJS) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+
 $(PERF_BIN): $(TEST_PERF_DIR)/perftest.cpp $(HOST_CHART_OBJ) $(HOST_TABLE_OBJ) $(HOST_CORE_OBJS) | $(PERF_BIN_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
@@ -220,6 +234,7 @@ archivetest: $(ARCHIVETEST_BIN)
 boundarytest: $(BOUNDARYTEST_BIN)
 tabletest: $(TABLETEST_BIN)
 charttest: $(CHARTTEST_BIN)
+documenttest: $(DOCUMENTTEST_BIN)
 perftest: $(PERF_BIN)
 
 perf: $(PERF_BIN)
@@ -235,9 +250,14 @@ check: $(TEST_BINS)
 	$(BOUNDARYTEST_BIN)
 	$(TABLETEST_BIN)
 	$(CHARTTEST_BIN)
+	$(DOCUMENTTEST_BIN)
 
 check-full: check
 	python3 sim/mutate.py
+
+ui-smoke: windows-x64 $(UI_SMOKE_BIN)
+	WINEPREFIX=$(abspath $(BUILD_ROOT)/wine-smoke) xvfb-run -a wine $(UI_SMOKE_BIN) \
+		$(abspath $(BUILD_ROOT)/x64/$(EXE_NAME)) $(abspath samples/rtms_eg25/dial_20260630_000026.log)
 
 clean:
 	rm -rf $(BUILD_ROOT)
@@ -245,4 +265,4 @@ clean:
 version:
 	@echo $(VER)
 
-.PHONY: all clean version check check-full perf windows-x64 windows-x86 windows-all release $(TEST_TARGETS)
+.PHONY: all clean version check check-full perf ui-smoke windows-x64 windows-x86 windows-all release $(TEST_TARGETS)

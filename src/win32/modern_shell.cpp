@@ -34,16 +34,28 @@ std::wstring g_noticeTitle;
 std::wstring g_noticeDetail;
 ModernNoticeKind g_noticeKind = ModernNoticeKind::Info;
 bool g_busy = false;
+int g_busyProgress = -1;
 bool g_noticeVisible = false;
 std::wstring g_statusBeforeBusy;
 std::wstring g_busyStatus;
 
-struct NavItem { int page; const wchar_t* text; int y; };
+struct NavItem { int page; const wchar_t* text; const wchar_t* detail; int y; };
 
 std::array<NavItem, 8> NavItems() {
-    return {{{0, L"概览", 112}, {1, L"诊断结论", 152}, {3, L"断网记录", 192},
-             {2, L"事件时间线", 272}, {4, L"信号指标", 312}, {5, L"标签统计", 352},
-             {6, L"原始日志", 392}, {7, L"未识别行", 432}}};
+    return {{{0, L"概览", L"健康度与关键摘要", 112},
+             {1, L"诊断结论", L"根因、建议与证据", 160},
+             {3, L"断网记录", L"中断、恢复与时长", 208},
+             {2, L"事件时间线", L"状态与关键动作流", 306},
+             {4, L"信号指标", L"小区、射频与数据面", 354},
+             {5, L"标签统计", L"消息来源与分布", 402},
+             {6, L"原始日志", L"逐行定位与复制", 450},
+             {7, L"未识别行", L"解析覆盖与审计", 498}}};
+}
+
+COLORREF NavIconColor(int page) {
+    const COLORREF colors[] = {th::s1_blue, th::s7_violet, th::s5_aqua, th::s8_red,
+                               th::s2_green, th::s4_yellow, th::s6_orange, th::s3_magenta};
+    return colors[page >= 0 && page < 8 ? page : 0];
 }
 
 void DrawTextAt(HDC dc, const wchar_t* text, RECT rect, HFONT font, COLORREF color,
@@ -56,7 +68,7 @@ void DrawTextAt(HDC dc, const wchar_t* text, RECT rect, HFONT font, COLORREF col
 }
 
 void DrawNavIcon(HDC dc, int page, int x, int y, COLORREF color) {
-    HPEN pen = CreatePen(PS_SOLID, std::max(1, S(1)), color);
+    HPEN pen = CreatePen(PS_SOLID, std::max(2, S(2)), color);
     HGDIOBJ oldPen = SelectObject(dc, pen);
     HGDIOBJ oldBrush = SelectObject(dc, GetStockObject(HOLLOW_BRUSH));
     const int l = x + S(3), t = y + S(3), r = x + S(17), b = y + S(17);
@@ -110,7 +122,7 @@ std::wstring BadgeForPage(int page) {
 
 int HitNavigationPage(int y) {
     for (const auto& item : NavItems())
-        if (y >= S(item.y) && y < S(item.y + 36)) return item.page;
+        if (y >= S(item.y) && y < S(item.y + 44)) return item.page;
     return -1;
 }
 
@@ -147,13 +159,13 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
         RECT sub{S(62), S(36), client.right - S(12), S(58)};
         DrawTextAt(dc, L"日志诊断工作台", sub, App().hFontSmall, th::inkMuted);
 
-        RECT group1{S(20), S(83), client.right - S(16), S(105)};
-        DrawTextAt(dc, L"工作台", group1, App().hFontSmall, th::inkMuted);
-        RECT group2{S(20), S(243), client.right - S(16), S(265)};
-        DrawTextAt(dc, L"数据", group2, App().hFontSmall, th::inkMuted);
+        RECT group1{S(20), S(78), client.right - S(16), S(101)};
+        DrawTextAt(dc, L"工作台  ·  研判与处置", group1, App().hFontSmall, th::inkSec);
+        RECT group2{S(20), S(272), client.right - S(16), S(295)};
+        DrawTextAt(dc, L"数据  ·  时序与原始证据", group2, App().hFontSmall, th::inkSec);
 
         for (const auto& item : NavItems()) {
-            RECT row{S(10), S(item.y), client.right - S(10), S(item.y + 36)};
+            RECT row{S(10), S(item.y), client.right - S(10), S(item.y + 44)};
             const bool selected = item.page == g_selectedPage;
             const bool hovered = item.page == g_hoverPage;
             if (selected || hovered)
@@ -163,13 +175,19 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
                 RECT mark{row.left, row.top + S(8), row.left + S(3), row.bottom - S(8)};
                 FillRound(dc, mark, S(2), th::accent, th::accent);
             }
-            DrawNavIcon(dc, item.page, S(20), S(item.y + 8), selected ? th::accent : th::inkSec);
-            RECT label{S(50), row.top, client.right - S(44), row.bottom};
-            DrawTextAt(dc, item.text, label, selected ? App().hFontSect : App().hFontUI,
+            RECT iconChip{S(17), row.top + S(8), S(45), row.top + S(36)};
+            FillRound(dc, iconChip, S(8), selected ? th::surface : th::accentSoft,
+                      selected ? th::accent : th::border);
+            DrawNavIcon(dc, item.page, S(21), S(item.y + 12),
+                        selected ? th::accent : NavIconColor(item.page));
+            RECT label{S(56), row.top + S(2), client.right - S(44), row.top + S(24)};
+            DrawTextAt(dc, item.text, label, App().hFontUI,
                        selected ? th::inkPri : th::inkSec);
+            RECT detail{S(56), row.top + S(21), client.right - S(18), row.bottom - S(1)};
+            DrawTextAt(dc, item.detail, detail, App().hFontSmall, th::inkMuted);
             std::wstring badge = BadgeForPage(item.page);
             if (!badge.empty()) {
-                RECT br{client.right - S(46), row.top + S(8), client.right - S(18), row.bottom - S(8)};
+                RECT br{client.right - S(46), row.top + S(7), client.right - S(18), row.top + S(25)};
                 if (badge.size() > 2) br.left -= S(8);
                 FillRound(dc, br, S(9), selected ? th::accent : th::surface,
                           selected ? th::accent : th::border);
@@ -212,6 +230,12 @@ LRESULT CALLBACK StatusProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
         wchar_t text[2048]{}; GetWindowTextW(hwnd, text, 2048);
         RECT tr{S(28), 0, client.right - S(12), client.bottom};
         DrawTextAt(dc, text, tr, App().hFontSmall, th::inkSec);
+        if (g_busy && g_busyProgress >= 0) {
+            RECT track{0, client.bottom - S(3), client.right, client.bottom};
+            FillSolid(dc, track, th::accentSoft);
+            track.right = MulDiv(client.right, std::min(100, g_busyProgress), 100);
+            FillSolid(dc, track, th::accent);
+        }
         EndPaint(hwnd, &ps);
         return 0;
     }
@@ -435,9 +459,12 @@ void SetShellBusy(bool busy, const wchar_t* text) {
         g_statusBeforeBusy = previous;
     }
     g_busy = busy;
-    for (HWND button : {App().hOpen, App().hPaste, App().hCloseLog, App().hExport,
-                         App().hApplyFilter, App().hClearFilter})
+    if (!busy) g_busyProgress = -1;
+    for (HWND button : {App().hOpen, App().hPaste, App().hExport, App().hFilterToggle,
+                         App().hApplyFilter, App().hClearFilter, App().hSearchHistory})
         if (button) EnableWindow(button, !busy);
+    for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
+        if (edit) EnableWindow(edit, !busy);
     if (busy && text && App().hStatus) {
         g_busyStatus = text;
         SetWindowTextW(App().hStatus, text);
@@ -451,6 +478,15 @@ void SetShellBusy(bool busy, const wchar_t* text) {
         RedrawWindow(App().hStatus, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW);
     }
     SetCursor(LoadCursorW(nullptr, busy ? IDC_WAIT : IDC_ARROW));
+}
+
+void SetShellProgress(int percent, const wchar_t* text) {
+    g_busyProgress = std::max(0, std::min(100, percent));
+    if (text && App().hStatus) {
+        g_busyStatus = text;
+        SetWindowTextW(App().hStatus, text);
+    }
+    if (App().hStatus) InvalidateRect(App().hStatus, nullptr, FALSE);
 }
 
 bool ShellBusy() { return g_busy; }

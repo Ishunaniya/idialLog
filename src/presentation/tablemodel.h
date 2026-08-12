@@ -10,7 +10,7 @@
 namespace dl {
 
 constexpr size_t kTimelineColumnCount = 3;
-constexpr size_t kMetricColumnCount = 15;
+constexpr size_t kMetricColumnCount = 18;
 
 // 时间线只保存指向筛选视图中事件行的指针,生命周期与 LogView 相同。
 void buildTimelineView(const LogView& lines, LogView& timeline);

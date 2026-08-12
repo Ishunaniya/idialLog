@@ -26,23 +26,26 @@ struct LoadSource {
 };
 
 using PlainLineSink = void (*)(void*, std::string&&);
+using ReadObserver = bool (*)(void*, std::size_t, std::size_t);
 
 // ReadPlainLines 的非模板实现。公开模板只负责把调用方的 lambda 转成无分配回调，
 // 避免百万行日志逐行经过 std::function。
 bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
                         void* sinkContext, PlainLineSink sink,
-                        std::size_t* fileBytes, std::wstring& err);
+                        std::size_t* fileBytes, std::wstring& err,
+                        void* observerContext = nullptr, ReadObserver observer = nullptr);
 
 template <class Sink>
 bool ReadPlainLines(const std::wstring& path, std::size_t maxLines, Sink&& sink,
-                    std::size_t* fileBytes, std::wstring& err) {
+                    std::size_t* fileBytes, std::wstring& err,
+                    void* observerContext = nullptr, ReadObserver observer = nullptr) {
     using SinkType = typename std::remove_reference<Sink>::type;
     return ReadPlainLinesImpl(
         path, maxLines, std::addressof(sink),
         [](void* context, std::string&& line) {
             (*static_cast<SinkType*>(context))(std::move(line));
         },
-        fileBytes, err);
+        fileBytes, err, observerContext, observer);
 }
 
 bool InspectFile(const std::wstring& path, ArchiveKind& kind,
@@ -55,7 +58,8 @@ bool ReadPathExpand(const std::wstring& path,
                     std::vector<std::vector<std::string>>& chunks,
                     std::vector<std::wstring>& labels,
                     std::size_t& textBytes,
-                    std::wstring& err);
+                    std::wstring& err,
+                    void* observerContext = nullptr, ReadObserver observer = nullptr);
 
 std::wstring FileNameOf(const std::wstring& path);
 

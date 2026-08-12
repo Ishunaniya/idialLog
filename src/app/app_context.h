@@ -12,9 +12,10 @@ struct AppContext {
     HWND hMain = nullptr, hNav = nullptr, hStatus = nullptr;
     HWND hPageTitle = nullptr, hFileLbl = nullptr;
     HWND hOpen = nullptr, hPaste = nullptr, hFilterToggle = nullptr, hCloseLog = nullptr;
+    HWND hBookmarks = nullptr;
     HWND hTagBox = nullptr, hGrepBox = nullptr, hSinceBox = nullptr, hUntilBox = nullptr;
     HWND hTagLabel = nullptr, hGrepLabel = nullptr, hSinceLabel = nullptr, hUntilLabel = nullptr;
-    HWND hApplyFilter = nullptr, hClearFilter = nullptr;
+    HWND hApplyFilter = nullptr, hClearFilter = nullptr, hSearchHistory = nullptr;
     HWND hSummary = nullptr, hTimeline = nullptr, hOutage = nullptr, hMetric = nullptr;
     HWND hTags = nullptr, hRaw = nullptr, hChart = nullptr, hExport = nullptr, hDash = nullptr;
     HWND hFindings = nullptr, hUnparsed = nullptr;

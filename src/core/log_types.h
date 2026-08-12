@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace dl {
@@ -41,6 +42,7 @@ struct LogLine {
     std::unique_ptr<std::string> customTag;
     int  ms = -1;           // 毫秒;仅 FMT_SEAS 有,-1=无
     std::uint16_t tagId = 0;
+    std::uint16_t sourceId = 0; // 合并来源编号；防止 Cell ID 等状态跨文件串联
     Fmt  fmt = FMT_UNKNOWN;
     LogLevel level = LEVEL_NONE;
 
@@ -119,14 +121,37 @@ struct Stall {
     size_t startLine = 0, endLine = 0;
 };
 
+// 小区 ID 是高频短字段；用定长内联文本避免每个指标样本再常驻一个 32B std::string。
+template <std::size_t Capacity>
+struct SmallText {
+    char data[Capacity]{};
+
+    void assign(std::string_view value) {
+        const std::size_t count = value.size() < Capacity - 1 ? value.size() : Capacity - 1;
+        for (std::size_t index = 0; index < count; ++index) data[index] = value[index];
+        data[count] = '\0';
+    }
+    SmallText& operator=(std::string_view value) { assign(value); return *this; }
+    SmallText& operator=(const char* value) { assign(value ? std::string_view(value) : std::string_view{}); return *this; }
+    bool empty() const { return data[0] == '\0'; }
+    std::string str() const { return data; }
+    std::string_view view() const { return data; }
+    bool operator==(std::string_view value) const { return view() == value; }
+    bool operator==(const SmallText& value) const { return view() == value.view(); }
+};
+
 // 心跳指标行(供“指标”页)
 struct MetricRow {
     long long t = 0;
     long long rx = LLONG_MIN;   // LLONG_MIN=无样本；允许 0
     long long drx = LLONG_MIN;  // LLONG_MIN=首样本/无样本；允许负增量(计数器重置)
     size_t lineNo = 0;
-    // CH/RAT/OPER 不是可靠的固定枚举，保留原文；其余字段均改为数值，显示时按需格式化。
+    // CH/RAT/OPER 不是可靠的固定枚举，保留原文；Cell ID 内联，PCI/TAC 数值化。
     std::string ch, rat, oper;
+    SmallText<12> cellId;       // LTE ECI / NR NCI，最多保留 11 个原始字符
+    int pci = -1;               // 物理小区 ID；-1=无效
+    std::uint32_t tac = UINT32_MAX; // 跟踪区码（按十六进制展示）
+    std::uint8_t tacDigits = 0; // 保留 TAC 的前导零位数
     int  csqRaw  = -1;      // 原始数值；99=AT+CSQ 未知，-1=缺失/非法
     int  csqVal  = -1;      // -1=无效/99
     int  tempMax = INT_MIN; // 多温度字段最大值；INT_MIN=无效
