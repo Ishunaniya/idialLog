@@ -18,6 +18,7 @@
 #include "log_analysis.h"
 #include "log_time.h"
 #include "memoryutil.h"
+#include "modern_shell.h"
 #include "tablemodel.h"
 #include "theme.h"
 #include "win_text.h"
@@ -154,6 +155,7 @@ static void RenderUnparsed() {
 
 void MarkAllPagesDirty() {
     std::fill(std::begin(g_pageDirty), std::end(g_pageDirty), true);
+    RefreshNavigation();
 }
 
 // OWNERDATA 控件只保存行数,数据仍属于下列 C++ 模型。模型即将重建/释放时必须先把
@@ -205,10 +207,14 @@ void ShowPage(int page) {
     // 页序:0总览 1结论 2时间线 3断网 4指标 5标签 6原始行 7未识别行
     if (page < 0 || page >= 8) return;
     g_curPage = page;
+    const wchar_t* titles[] = {L"概览", L"诊断结论", L"事件时间线", L"断网记录",
+                               L"信号指标", L"标签统计", L"原始日志", L"未识别行"};
+    if (App().hPageTitle) SetWindowTextW(App().hPageTitle, titles[page]);
+    SetNavigationPage(page);
     RenderPage(page);   // 页仍隐藏时填充,减少 ListView 大批插入时的可见闪烁
     struct { HWND* h; int page; } items[] = {
         { &App().hDash, 0 }, { &App().hSummary, 0 }, { &App().hFindings, 1 }, { &App().hTimeline, 2 }, { &App().hOutage, 3 },
-        { &App().hChart, 4 }, { &App().hMetric, 4 }, { &App().hExport, 4 },
+        { &App().hChart, 4 }, { &App().hMetric, 4 },
         { &App().hTags, 5 }, { &App().hRaw, 6 }, { &App().hUnparsed, 7 },
     };
     for (auto& it : items) {
@@ -216,6 +222,8 @@ void ShowPage(int page) {
         ShowWindow(*it.h, on ? SW_SHOW : SW_HIDE);
         if (on) SetWindowPos(*it.h, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
+    ShowWindow(App().hExport, page == 4 ? SW_SHOW : SW_HIDE);
+    SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
 }
 
 
@@ -268,7 +276,7 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
             } else if (row < g_ogColors.size()) {
                 draw->clrText = g_ogColors[row];
             }
-            draw->clrTextBk = (row & 1) ? th::zebra : GetSysColor(COLOR_WINDOW);
+            draw->clrTextBk = (row & 1) ? th::zebra : th::surface;
         }
         result = CDRF_DODEFAULT;
         return true;
@@ -281,7 +289,8 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
         }
         if (draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) {
             const size_t row = static_cast<size_t>(draw->nmcd.dwItemSpec);
-            draw->clrTextBk = (row & 1) ? th::zebra : GetSysColor(COLOR_WINDOW);
+            draw->clrText = th::inkPri;
+            draw->clrTextBk = (row & 1) ? th::zebra : th::surface;
         }
         result = CDRF_DODEFAULT;
         return true;
@@ -298,7 +307,8 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
     if (draw->nmcd.dwDrawStage == (CDDS_ITEMPREPAINT | CDDS_SUBITEM)) {
         const size_t row = static_cast<size_t>(draw->nmcd.dwItemSpec);
         const int column = draw->iSubItem;
-        draw->clrTextBk = (row & 1) ? th::zebra : GetSysColor(COLOR_WINDOW);
+        draw->clrText = th::inkPri;
+        draw->clrTextBk = (row & 1) ? th::zebra : th::surface;
         if (row < App().document.metrics.size()) {
             const MetricRow& metric = App().document.metrics[row];
             if (column == 6 && metric.drx == 0)

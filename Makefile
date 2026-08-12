@@ -61,7 +61,7 @@ TARGET   ?= $(BUILD_DIR)/$(EXE_NAME)
 CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -municode \
             -finput-charset=UTF-8 -fexec-charset=UTF-8 -fwide-exec-charset=UTF-16LE
 LDFLAGS  := -mwindows -municode -static -static-libgcc -static-libstdc++ -s
-LIBS     := -lcomctl32 -lgdi32 -lcomdlg32 -lshell32 -luser32 -lkernel32
+LIBS     := -lcomctl32 -lgdi32 -lcomdlg32 -lshell32 -ldwmapi -luxtheme -luser32 -lkernel32
 
 MINIZ_DEF := -DDL_HAVE_MINIZ
 MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
@@ -69,7 +69,7 @@ MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 CORE_NAMES := log_time log_parser log_analysis log_filter archive_reader
 APP_NAMES := document_state app_context
 PRESENTATION_NAMES := tablemodel chartmodel
-WIN32_NAMES := ui ui_pages overview_page chart_page load_controller win_file_io win_text
+WIN32_NAMES := ui modern_shell ui_pages overview_page chart_page load_controller win_file_io win_text
 
 CORE_OBJS := $(addprefix $(BUILD_DIR)/core/,$(addsuffix .o,$(CORE_NAMES)))
 APP_OBJS := $(addprefix $(BUILD_DIR)/app/,$(addsuffix .o,$(APP_NAMES)))
