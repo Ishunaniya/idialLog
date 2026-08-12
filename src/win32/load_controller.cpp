@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "app_settings.h"
 #include "app_context.h"
 #include "log_analysis.h"
 #include "log_filter.h"
@@ -93,6 +94,7 @@ void LoadFiles(const std::vector<std::wstring>& paths) {
     // 顺序拼接会让时间线/断网/可用率全错(v1.3.0 及之前的行为)。定序与时基判定逻辑均在
     // logmodel(orderByTime / detectMix),此处只做 I/O、排除、增量投喂、提示。
     std::vector<LoadSource> sources;
+    std::vector<std::wstring> openedPaths;
     size_t batchTextBytes = 0;
     for (const auto& p : paths) {
         std::wstring readErr;
@@ -151,6 +153,8 @@ void LoadFiles(const std::vector<std::wstring>& paths) {
         }
         if (!loaded) {
             MessageBoxW(App().hMain, (L"读取失败:\n" + p + L"\n\n" + readErr).c_str(), L"错误", MB_ICONERROR);
+        } else {
+            openedPaths.push_back(p);
         }
     }
     if (sources.empty()) return;
@@ -265,6 +269,7 @@ void LoadFiles(const std::vector<std::wstring>& paths) {
                 U8ToW(App().document.platform.name).c_str());
     SetWindowTextW(App().hFileLbl, lbl.c_str());
     RefreshAll();
+    RememberRecentFiles(openedPaths);
 }
 
 // 从剪贴板粘贴日志文本分析(SSH 里 cat 日志后直接选中复制的场景,手上没有文件)

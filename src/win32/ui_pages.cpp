@@ -28,6 +28,9 @@ namespace dl {
 static std::vector<COLORREF> g_ogColors;
 static int g_curPage = 0;
 static bool g_pageDirty[8] = { true, true, true, true, true, true, true, true };
+static size_t g_rawTargetLine = 0;
+static LONG g_rawSelectionStart = 0;
+static LONG g_rawSelectionEnd = 0;
 
 void LvAddCol(HWND lv, int i, const wchar_t* text, int w) {
     LVCOLUMNW c{};
@@ -123,21 +126,50 @@ static void RenderTags() {
     }
 }
 
+static void AppendRawLine(std::string& output, const LogLine& line) {
+    output += std::to_string(line.lineNo);
+    output += "  ";
+    output += line.ts;
+    const std::string& level = line.levelText();
+    const std::string& tag = line.tagText();
+    if (line.fmt == FMT_SEAS && !level.empty()) { output += " ["; output += level; output += "]"; }
+    if (!tag.empty())                             { output += " ["; output += tag; output += "]"; }
+    output += " "; output += line.msg; output += "\r\n";
+}
+
 static void RenderRaw() {
+    if (g_rawTargetLine) {
+        const auto found = std::find_if(App().document.lines.begin(), App().document.lines.end(),
+            [](const LogLine& line) { return line.lineNo == g_rawTargetLine; });
+        if (found != App().document.lines.end()) {
+            const size_t index = static_cast<size_t>(found - App().document.lines.begin());
+            const size_t first = index > 40 ? index - 40 : 0;
+            const size_t last = std::min(App().document.lines.size(), index + 41);
+            std::wstring text = FmtW(L"已定位到原始第 %d 行 · 显示前后上下文\r\n\r\n",
+                                     static_cast<int>(g_rawTargetLine));
+            g_rawSelectionStart = g_rawSelectionEnd = 0;
+            for (size_t i = first; i < last; ++i) {
+                std::string narrow;
+                AppendRawLine(narrow, App().document.lines[i]);
+                std::wstring line = U8ToW(narrow);
+                if (i == index) g_rawSelectionStart = static_cast<LONG>(text.size());
+                text += line;
+                if (i == index) g_rawSelectionEnd = static_cast<LONG>(text.size());
+            }
+            SetWindowTextW(App().hRaw, text.c_str());
+            SendMessageW(App().hRaw, EM_SETSEL, g_rawSelectionStart, g_rawSelectionEnd);
+            SendMessageW(App().hRaw, EM_SCROLLCARET, 0, 0);
+            return;
+        }
+        g_rawTargetLine = 0;
+    }
+
     const size_t CAP = 5000;
     std::string s;
     s.reserve(256 * 1024);
     size_t n = 0;
     for (const LogLine* item : App().document.filtered) {
-        const LogLine& l = *item;
-        s += l.ts;
-        // seas_log(artery)的严重度在 level 字段、且多数行没有内嵌 [TAG];
-        // 无标签时不要打出空的 "[]"
-        const std::string& level = l.levelText();
-        const std::string& tag = l.tagText();
-        if (l.fmt == FMT_SEAS && !level.empty()) { s += " ["; s += level; s += "]"; }
-        if (!tag.empty())                        { s += " ["; s += tag;   s += "]"; }
-        s += " "; s += l.msg; s += "\r\n";
+        AppendRawLine(s, *item);
         if (++n >= CAP) { s += "\r\n… 已截断,仅显示前 5000 行(用筛选缩小范围)\r\n"; break; }
     }
     SetWindowTextW(App().hRaw, U8ToW(s).c_str());
@@ -154,6 +186,7 @@ static void RenderUnparsed() {
 }
 
 void MarkAllPagesDirty() {
+    g_rawTargetLine = 0;
     std::fill(std::begin(g_pageDirty), std::end(g_pageDirty), true);
     RefreshNavigation();
 }
@@ -170,6 +203,8 @@ void ResetVirtualTables() {
 // 顺序是安全边界的一部分:OWNERDATA 行数和两个借用视图必须先失效,最后才能释放
 // App().document.lines。普通筛选仍使用 clear()/赋值复用容量,避免每次点击“应用”都重新分配。
 void ReleaseLoadedData() {
+    g_rawTargetLine = 0;
+    g_rawSelectionStart = g_rawSelectionEnd = 0;
     ResetVirtualTables();
 
     // 非 OWNERDATA 控件自己持有单元格文本；替换日志前也立即丢掉旧内容，避免隐藏页
@@ -229,6 +264,26 @@ void ShowPage(int page) {
 
 int CurrentPage() {
     return g_curPage;
+}
+
+void JumpToRawLine(size_t lineNo) {
+    if (!lineNo || App().document.lines.empty()) return;
+    const auto found = std::find_if(App().document.lines.begin(), App().document.lines.end(),
+        [lineNo](const LogLine& line) { return line.lineNo == lineNo; });
+    if (found == App().document.lines.end()) {
+        ShowModernNotice(L"无法定位该证据", L"对应原始行未被解析，可在“未识别行”页面复核。",
+                         ModernNoticeKind::Warning);
+        return;
+    }
+    g_rawTargetLine = lineNo;
+    g_pageDirty[6] = true;
+    ShowPage(6);
+    SendMessageW(App().hRaw, EM_SETSEL, g_rawSelectionStart, g_rawSelectionEnd);
+    SendMessageW(App().hRaw, EM_SCROLLCARET, 0, 0);
+    SetFocus(App().hRaw);
+    ShowModernNotice(L"已定位原始证据",
+                     FmtW(L"第 %d 行已选中；按 Ctrl+C 可直接复制。", static_cast<int>(lineNo)).c_str(),
+                     ModernNoticeKind::Info, 4500);
 }
 
 static void DrawListEmptyState(HWND list, HDC dc) {

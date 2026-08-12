@@ -20,12 +20,14 @@
 #include <utility>
 #include <vector>
 
+#include "app_settings.h"
 #include "app_context.h"
 #include "load_controller.h"
 #include "modern_shell.h"
 #include "theme.h"
 #include "ui_pages.h"
 #include "version.h"
+#include "win_text.h"
 
 using namespace dl;
 
@@ -54,6 +56,9 @@ using namespace dl;
 #define IDC_FILTER     1023
 #define IDC_PAGETITLE  1024
 #define IDC_CLOSELOG   1030
+#define IDC_OPEN_PICK  1040
+#define IDC_RECENT_CLEAR 1041
+#define IDC_RECENT_BASE  1050
 
 namespace {
 
@@ -61,6 +66,82 @@ constexpr UINT_PTR kFilterTimer = 7;
 bool g_filtersExpanded = false;
 int g_headerHeight = 88;
 RECT g_filterPanel{};
+
+void UpdateFilterButton();
+void SetFilterControlsVisible(bool visible);
+void Layout();
+
+std::wstring MenuSafe(std::wstring text) {
+    for (size_t position = 0; (position = text.find(L'&', position)) != std::wstring::npos; position += 2)
+        text.insert(position, 1, L'&');
+    if (text.size() > 86) text = text.substr(0, 38) + L"…" + text.substr(text.size() - 45);
+    return text;
+}
+
+void OpenRecent(size_t index) {
+    const auto files = GetAppSettings().recentFiles;
+    if (index >= files.size()) return;
+    const std::wstring path = files[index];
+    if (GetFileAttributesW(path.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        RemoveRecentFile(path);
+        ShowModernNotice(L"最近文件已不存在", L"已从最近列表移除，请重新选择文件。",
+                         ModernNoticeKind::Warning, 6000);
+        return;
+    }
+    LoadFiles({path});
+}
+
+void ShowOpenMenu() {
+    HMENU menu = CreatePopupMenu();
+    if (!menu) { DoOpen(); return; }
+    AppendMenuW(menu, MF_STRING, IDC_OPEN_PICK, L"选择文件…\tCtrl+O");
+    const auto& recent = GetAppSettings().recentFiles;
+    if (!recent.empty()) {
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(menu, MF_STRING | MF_DISABLED, 0, L"最近打开");
+        for (size_t index = 0; index < recent.size(); ++index) {
+            std::wstring label = std::to_wstring(index + 1) + L"  " + MenuSafe(recent[index]);
+            AppendMenuW(menu, MF_STRING, IDC_RECENT_BASE + static_cast<UINT>(index), label.c_str());
+        }
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(menu, MF_STRING, IDC_RECENT_CLEAR, L"清除最近记录");
+    }
+    RECT button{}; GetWindowRect(App().hOpen, &button);
+    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+                                        button.left, button.bottom + S(4), 0, App().hMain, nullptr);
+    DestroyMenu(menu);
+    if (command == IDC_OPEN_PICK) DoOpen();
+    else if (command == IDC_RECENT_CLEAR) {
+        ClearRecentFiles();
+        ShowModernNotice(L"最近记录已清除", L"不会删除任何日志文件。", ModernNoticeKind::Success);
+    } else if (command >= IDC_RECENT_BASE && command < IDC_RECENT_BASE + 5) {
+        OpenRecent(command - IDC_RECENT_BASE);
+    }
+}
+
+void FocusGlobalSearch() {
+    if (!g_filtersExpanded) {
+        g_filtersExpanded = true;
+        SetFilterControlsVisible(true);
+        UpdateFilterButton();
+        Layout();
+    }
+    SetFocus(App().hGrepBox);
+    SendMessageW(App().hGrepBox, EM_SETSEL, 0, -1);
+}
+
+void PersistUiSettings(HWND window) {
+    AppSettings& settings = MutableAppSettings();
+    settings.tagFilter = GetText(App().hTagBox);
+    settings.grepFilter = GetText(App().hGrepBox);
+    settings.sinceFilter = GetText(App().hSinceBox);
+    settings.untilFilter = GetText(App().hUntilBox);
+    settings.lastPage = CurrentPage();
+    settings.filtersExpanded = g_filtersExpanded;
+    settings.placement.length = sizeof(WINDOWPLACEMENT);
+    settings.hasPlacement = GetWindowPlacement(window, &settings.placement) != FALSE;
+    SaveAppSettings();
+}
 
 int NavWidth() { return S(204); }
 int StatusHeight() { return S(32); }
@@ -244,7 +325,7 @@ void Layout() {
     command(App().hCloseLog, 82);
     command(App().hFilterToggle, 82);
     command(App().hPaste, 92);
-    command(App().hOpen, 108);
+    command(App().hOpen, 122);
     if (CurrentPage() == 4) command(App().hExport, 110);
     MoveIf(App().hPageTitle, contentLeft + S(24), S(12), std::max(S(140), right - contentLeft - S(32)), S(38));
     MoveIf(App().hFileLbl, contentLeft + S(25), S(51), std::max(S(140), right - contentLeft - S(33)), S(20));
@@ -369,14 +450,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().hFileLbl = CreateControl(L"STATIC",
             L"未加载日志 · 可拖入文件，或从剪贴板直接分析",
             SS_LEFTNOWORDWRAP | SS_ENDELLIPSIS, IDC_FILELBL, App().hFontSmall);
-        App().hOpen = CreateButton(L"＋ 打开日志", IDC_OPEN, ModernButtonKind::Primary);
+        App().hOpen = CreateButton(L"＋ 打开日志 ▾", IDC_OPEN, ModernButtonKind::Primary);
         App().hPaste = CreateButton(L"粘贴日志", IDC_PASTE, ModernButtonKind::Neutral);
         App().hFilterToggle = CreateButton(L"筛选", IDC_FILTER, ModernButtonKind::Neutral);
         App().hCloseLog = CreateButton(L"关闭日志", IDC_CLOSELOG, ModernButtonKind::Danger);
         App().hExport = CreateButton(L"导出 CSV", IDC_EXPORT, ModernButtonKind::Neutral, false);
 
         App().hTagLabel = CreateControl(L"STATIC", L"标签", SS_LEFT, 0, App().hFontSmall, false);
-        App().hGrepLabel = CreateControl(L"STATIC", L"消息正则", SS_LEFT, 0, App().hFontSmall, false);
+        App().hGrepLabel = CreateControl(L"STATIC", L"搜索消息（正则）", SS_LEFT, 0, App().hFontSmall, false);
         App().hSinceLabel = CreateControl(L"STATIC", L"起始时间", SS_LEFT, 0, App().hFontSmall, false);
         App().hUntilLabel = CreateControl(L"STATIC", L"结束时间", SS_LEFT, 0, App().hFontSmall, false);
         App().hTagBox = CreateControl(L"EDIT", L"", ES_AUTOHSCROLL, IDC_TAGBOX, App().hFontUI, false);
@@ -386,7 +467,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
             SendMessageW(edit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(S(9), S(9)));
         SendMessageW(App().hTagBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"例如 MODEM"));
-        SendMessageW(App().hGrepBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"支持正则表达式"));
+        SendMessageW(App().hGrepBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"Ctrl+F · 支持正则表达式"));
         SendMessageW(App().hSinceBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"HH:MM:SS"));
         SendMessageW(App().hUntilBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"HH:MM:SS"));
         App().hApplyFilter = CreateButton(L"应用", IDC_APPLY, ModernButtonKind::Primary, false);
@@ -419,8 +500,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                                        GetModuleHandleW(nullptr), nullptr);
         App().hStatus = CreateModernStatus(hwnd, IDC_STATUS);
 
+        const AppSettings& settings = GetAppSettings();
+        SetWindowTextW(App().hTagBox, settings.tagFilter.c_str());
+        SetWindowTextW(App().hGrepBox, settings.grepFilter.c_str());
+        SetWindowTextW(App().hSinceBox, settings.sinceFilter.c_str());
+        SetWindowTextW(App().hUntilBox, settings.untilFilter.c_str());
+        g_filtersExpanded = settings.filtersExpanded;
+        SetFilterControlsVisible(g_filtersExpanded);
+
         ApplyModernTheme(hwnd);
-        ShowPage(0);
+        ShowPage(settings.lastPage);
         UpdateFilterButton();
         DragAcceptFiles(hwnd, TRUE);
         return 0;
@@ -475,7 +564,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         const int id = LOWORD(wparam), code = HIWORD(wparam);
         if (code == EN_CHANGE) ScheduleFilterRefresh(reinterpret_cast<HWND>(lparam));
         switch (id) {
-        case IDC_OPEN: DoOpen(); return 0;
+        case IDC_OPEN: ShowOpenMenu(); return 0;
         case IDC_PASTE: DoPaste(); return 0;
         case IDC_FILTER:
             g_filtersExpanded = !g_filtersExpanded;
@@ -490,11 +579,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
             SetWindowTextW(App().hFileLbl, L"未加载日志 · 可拖入文件，或从剪贴板直接分析");
             SetWindowTextW(App().hStatus, L"尚未加载日志。"); RefreshNavigation(); return 0;
         }
+        if (id >= IDC_RECENT_BASE && id < IDC_RECENT_BASE + 5) {
+            OpenRecent(static_cast<size_t>(id - IDC_RECENT_BASE)); return 0;
+        }
         return 0;
     }
     case WM_NOTIFY: {
         LRESULT result = 0; return HandlePageNotify(lparam, result) ? result : 0;
     }
+    case WM_CLOSE:
+        PersistUiSettings(hwnd);
+        DestroyWindow(hwnd);
+        return 0;
     case WM_DESTROY: {
         KillTimer(hwnd, kFilterTimer);
         std::array<HFONT, 8> fonts{App().hFontUI, App().hFontMono, App().hFontTitle, App().hFontSmall,
@@ -513,6 +609,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
 } // namespace
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show) {
+    LoadAppSettings();
     INITCOMMONCONTROLSEX common{sizeof(common), ICC_LISTVIEW_CLASSES | ICC_STANDARD_CLASSES};
     InitCommonControlsEx(&common);
     RegisterModernShellClasses(instance);
@@ -546,7 +643,17 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
     if (App().dpi != 96)
         SetWindowPos(window, nullptr, 0, 0, MulDiv(1280, App().dpi, 96), MulDiv(820, App().dpi, 96),
                      SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-    ShowWindow(window, show); UpdateWindow(window);
+    int showCommand = show;
+    AppSettings& settings = MutableAppSettings();
+    if (settings.hasPlacement &&
+        MonitorFromRect(&settings.placement.rcNormalPosition, MONITOR_DEFAULTTONULL)) {
+        if (settings.placement.showCmd != SW_SHOWMAXIMIZED &&
+            settings.placement.showCmd != SW_MAXIMIZE)
+            settings.placement.showCmd = SW_SHOWNORMAL;
+        SetWindowPlacement(window, &settings.placement);
+        showCommand = settings.placement.showCmd;
+    }
+    ShowWindow(window, showCommand); UpdateWindow(window);
 
     if (commandLine && *commandLine) {
         int argc = 0; LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
@@ -566,6 +673,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
 
     MSG message{};
     while (GetMessageW(&message, nullptr, 0, 0) > 0) {
+        if (message.message == WM_KEYDOWN && (GetKeyState(VK_CONTROL) & 0x8000)) {
+            if (message.wParam == 'O') { DoOpen(); continue; }
+            if (message.wParam == 'F') { FocusGlobalSearch(); continue; }
+            if (message.wParam >= '1' && message.wParam <= '8') {
+                ShowPage(static_cast<int>(message.wParam - '1')); continue;
+            }
+        }
         if (message.message == WM_KEYDOWN && message.wParam == 'V' &&
             (GetKeyState(VK_CONTROL) & 0x8000)) {
             HWND focus = GetFocus();

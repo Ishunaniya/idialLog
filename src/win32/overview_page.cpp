@@ -2,9 +2,11 @@
 #include "overview_page.h"
 
 #include <commctrl.h>
+#include <windowsx.h>
 
 #include <algorithm>
 #include <climits>
+#include <cstring>
 #include <map>
 #include <string>
 #include <utility>
@@ -16,6 +18,7 @@
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "theme.h"
+#include "ui_pages.h"
 #include "win_text.h"
 
 namespace dl {
@@ -227,6 +230,36 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 static int g_findScroll = 0;      // 当前滚动偏移(逻辑像素,已过 S())
 static int g_findContentH = 0;    // 内容总高(用于滚动范围)
 
+struct EvidenceHit {
+    RECT rect{};
+    size_t lineNo = 0;
+    std::wstring text;
+};
+static std::vector<EvidenceHit> g_evidenceHits;
+
+static const EvidenceHit* EvidenceAt(POINT point) {
+    for (const auto& hit : g_evidenceHits)
+        if (PtInRect(&hit.rect, point)) return &hit;
+    return nullptr;
+}
+
+static bool CopyText(const std::wstring& text) {
+    if (!OpenClipboard(App().hMain)) return false;
+    EmptyClipboard();
+    const size_t bytes = (text.size() + 1) * sizeof(wchar_t);
+    HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, bytes);
+    if (!memory) { CloseClipboard(); return false; }
+    void* output = GlobalLock(memory);
+    if (!output) { GlobalFree(memory); CloseClipboard(); return false; }
+    memcpy(output, text.c_str(), bytes);
+    GlobalUnlock(memory);
+    if (!SetClipboardData(CF_UNICODETEXT, memory)) {
+        GlobalFree(memory); CloseClipboard(); return false;
+    }
+    CloseClipboard();
+    return true;
+}
+
 // 自动换行输出一段文字,返回占用高度。用于卡片内的依据/建议(可能很长)。
 static int DrawWrapped(HDC hdc, int x, int y, int maxW, const std::wstring& s,
                        HFONT f, COLORREF c) {
@@ -243,6 +276,27 @@ static int DrawWrapped(HDC hdc, int x, int y, int maxW, const std::wstring& s,
 
 LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_ERASEBKGND) return 1;
+
+    if (msg == WM_SETCURSOR) {
+        POINT point{}; GetCursorPos(&point); ScreenToClient(hwnd, &point);
+        if (EvidenceAt(point)) { SetCursor(LoadCursorW(nullptr, IDC_HAND)); return TRUE; }
+    }
+    if (msg == WM_LBUTTONUP) {
+        POINT point{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+        if (const EvidenceHit* hit = EvidenceAt(point)) { JumpToRawLine(hit->lineNo); return 0; }
+    }
+    if (msg == WM_RBUTTONUP) {
+        POINT point{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+        if (const EvidenceHit* hit = EvidenceAt(point)) {
+            if (CopyText(hit->text))
+                ShowModernNotice(L"证据已复制", L"原始行号、时间和日志正文已复制到剪贴板。",
+                                 ModernNoticeKind::Success, 3500);
+            else
+                ShowModernNotice(L"复制失败", L"剪贴板暂时不可用，请稍后重试。",
+                                 ModernNoticeKind::Error);
+            return 0;
+        }
+    }
 
     if (msg == WM_VSCROLL) {
         RECT rc; GetClientRect(hwnd, &rc);
@@ -289,6 +343,7 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     HBRUSH pageBg = CreateSolidBrush(th::page);
     FillRect(hdc, &rc, pageBg);
     DeleteObject(pageBg);
+    g_evidenceHits.clear();
 
     if (App().document.lines.empty()) {
         DrawPageEmpty(hdc, rc, L"诊断结论将在这里形成",
@@ -373,8 +428,13 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         ty += DrawWrapped(hdc, textX0, ty, textW, platform, App().hFontUI, th::inkPri);
         ty += DrawWrapped(hdc, textX0, ty, textW, coverage, App().hFontUI,
                           App().document.audit.unparsed == 0 ? th::inkSec : th::rowWarn);
-        if (!evidence.empty())
-            ty += DrawWrapped(hdc, textX0, ty, textW, evidence, App().hFontUI, th::inkMuted);
+        if (!evidence.empty()) {
+            const int evidenceH = DrawWrapped(hdc, textX0, ty, textW, evidence,
+                                              App().hFontUI, th::accent);
+            g_evidenceHits.push_back(EvidenceHit{RECT{textX0, ty, textX0 + textW, ty + evidenceH},
+                                                 App().document.platform.evidenceLine, evidence});
+            ty += evidenceH;
+        }
         if (jump) {
             DrawText_(hdc, textX0, ty, FmtW(L"⚠ 时钟跳变: 第 %d 行 %s → %s", (int)App().document.audit.jumpAtLine,
                       U8ToW(fmtTime(App().document.audit.jumpFromT,"FULL")).c_str(), U8ToW(fmtTime(App().document.audit.jumpToT,"FULL")).c_str()),
@@ -437,10 +497,15 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         ty += DrawWrapped(hdc, textX0, ty, textW, detail, App().hFontUI, th::inkPri) + SEC;
         DrawText_(hdc, textX0, ty, L"建议", App().hFontUI, th::inkMuted); ty += lblH;
         ty += DrawWrapped(hdc, textX0, ty, textW, advice, App().hFontUI, th::inkSec) + SEC;
-        DrawText_(hdc, textX0, ty, L"证据", App().hFontUI, th::inkMuted); ty += lblH;
-        for (const auto& line : evidence)
-            ty += DrawWrapped(hdc, textX0 + S(8), ty, textW - S(8), line,
-                              App().hFontMono, th::inkSec) + S(5);
+        DrawText_(hdc, textX0, ty, L"证据 · 单击定位，右键复制", App().hFontUI, th::inkMuted); ty += lblH;
+        for (size_t evidenceIndex = 0; evidenceIndex < evidence.size(); ++evidenceIndex) {
+            const int evidenceH = DrawWrapped(hdc, textX0 + S(8), ty, textW - S(8),
+                                              evidence[evidenceIndex], App().hFontMono, th::accent);
+            g_evidenceHits.push_back(EvidenceHit{
+                RECT{textX0 + S(8), ty, textX0 + textW, ty + evidenceH},
+                f.ev[evidenceIndex].lineNo, evidence[evidenceIndex]});
+            ty += evidenceH + S(5);
+        }
         y += h + GAP;
     }
 
