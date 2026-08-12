@@ -238,16 +238,21 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     SetTextColor(hdc, th::inkPri);
     const wchar_t* topTitle = L"CSQ 信号强度";
     TextOutW(hdc, top.left, S(4), topTitle, (int)wcslen(topTitle));
+    SIZE topTitleSize{};
+    GetTextExtentPoint32W(hdc, topTitle, (int)wcslen(topTitle), &topTitleSize);
     SelectObject(hdc, App().hFontSmall); SetTextColor(hdc, th::inkMuted);
     const wchar_t* legend = L"弱信号阈值 10  ·  红色区域为断网";
-    TextOutW(hdc, top.left + S(108), S(8), legend, (int)wcslen(legend));
+    TextOutW(hdc, top.left + topTitleSize.cx + S(12), S(8), legend, (int)wcslen(legend));
     SelectObject(hdc, App().hFontSect); SetTextColor(hdc, th::inkPri);
     TextOutW(hdc, middle.left, top.bottom + S(8), L"LTE 覆盖质量", 8);
-    const wchar_t* snrTitle = L"SNR 信噪比（独立）";
+    const wchar_t* snrTitle = L"SNR 信噪比";
     TextOutW(hdc, bottom.left, middle.bottom + S(8), snrTitle, (int)wcslen(snrTitle));
+    SIZE snrTitleSize{};
+    GetTextExtentPoint32W(hdc, snrTitle, (int)wcslen(snrTitle), &snrTitleSize);
     SelectObject(hdc, App().hFontSmall); SetTextColor(hdc, th::inkMuted);
-    const wchar_t* snrLegend = L"单位 dB  ·  0 dB 观察线  ·  与 RSRP/RSRQ 分离量纲";
-    TextOutW(hdc, bottom.left + S(148), middle.bottom + S(12), snrLegend, (int)wcslen(snrLegend));
+    const wchar_t* snrLegend = L"单位 dB  ·  0 dB 观察线";
+    TextOutW(hdc, bottom.left + snrTitleSize.cx + S(12), middle.bottom + S(12),
+             snrLegend, (int)wcslen(snrLegend));
 
     const wchar_t* modeNames[] = {L"RSRP", L"RSRQ"};
     int modeRight = middle.right;

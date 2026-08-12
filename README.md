@@ -96,7 +96,7 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # x64: build/x64/dialLog_v1.10.8.exe
+make                     # x64: build/x64/dialLog_v1.10.9.exe
 make windows-all         # 同时构建 build/x64 与 build/x86
 make release             # 正式 x64 产物复制到仓库根目录
 make version             # 只打印当前版本号
@@ -113,7 +113,7 @@ mingw32-make CROSS=
 ### 32 位
 
 ```bash
-make windows-x86         # build/x86/dialLog_v1.10.8.exe
+make windows-x86         # build/x86/dialLog_v1.10.9.exe
 ```
 
 `CROSS` 同时派生 `CC/CXX/WINDRES`;每种工具链使用独立构建目录,连续切换架构
@@ -190,9 +190,9 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.10.8.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.10.9.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.10.8 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.10.9 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 只清理 `build/`；测试程序也位于 `build/tests/`，不会污染根目录或误删已提交的发布 exe。
@@ -215,6 +215,7 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | 1.10.6 | 信号图按像素桶保留峰谷并缓存绘制点;悬停改为二分查询;新增百万点图表回归 |
 | 1.10.7 | 关闭/替换日志时按借用顺序释放模型及容器容量;降低连续分析大日志的驻留与切换峰值内存;新增百万行卸载容量回归 |
 | 1.10.8 | 紧凑日志/指标记录与常见标签字典;心跳字段单遍低分配扫描;普通文件分块流式解析;多文件/压缩条目取消合并 `raw` 副本;新增增量等价与结构尺寸回归 |
+| 1.10.9 | 修复 CSV 完整时间戳在 Excel 中显示为井号和信号图标题重叠;补齐 `+QENG servingcell` 的 Cell ID/PCI/TAC 解析;诊断报告新增日志起止时间 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞 1.2MB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

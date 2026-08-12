@@ -88,6 +88,18 @@ int main() {
        cellMetrics[0].pci == 257 && cellMetrics[0].tac == 0x41B && cellMetrics[0].tacDigits == 3,
        "artery cellid/pci/tac 精确进入指标模型");
 
+    std::vector<std::string> qengRaw{
+        "[2026-08-03 10:00:00] [CELL] Init: +QENG: \"servingcell\",\"NOCONN\",\"LTE\",\"FDD\",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18",
+        "[2026-08-03 10:00:01] [HEARTBEAT] CH:SIM | CSQ:18"
+    };
+    std::vector<LogLine> qengLines; std::vector<std::string> qengSessions;
+    parseLines(qengRaw, qengLines, qengSessions, nullptr);
+    auto qengMetrics = buildMetrics(qengLines);
+    ok(qengMetrics.size() == 1 && qengMetrics[0].cellId == "D17C148" &&
+       qengMetrics[0].pci == 496 && qengMetrics[0].tac == 0x272D &&
+       qengMetrics[0].tacDigits == 4,
+       "[CELL] +QENG 的 Cell ID/PCI/TAC 会延续到后续心跳");
+
     std::vector<std::string> invalidCellRaw{
         "[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | Cell:1D8DE0B | CSQ:18",
         "[2026-08-03 10:00:01] [CELL CHANGE] 1D8DE0B -> FFFFFFFF | CSQ=99",

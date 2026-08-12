@@ -36,11 +36,13 @@
 //           降低连续分析大日志的驻留与切换峰值内存,新增百万行卸载容量回归
 //   1.10.8  压缩日志行/指标行布局,常见标签改字典 ID,心跳字段改零临时 map 扫描;
 //           普通文件分块流式解析,多文件/压缩条目不再合并复制 raw
+//   1.10.9  修复 CSV 时间戳在 Excel 中显示为井号、信号图标题重叠;
+//           补齐 +QENG servingcell 的 Cell ID/PCI/TAC 解析
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 8
+#define DL_VER_PATCH 9
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

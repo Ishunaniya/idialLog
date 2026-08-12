@@ -4,6 +4,7 @@
 #include "log_internal.h"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cctype>
 #include <cstdio>
@@ -377,6 +378,68 @@ static bool parseUnsignedField(std::string_view value, unsigned base, std::uint3
     return true;
 }
 
+struct CellState {
+    std::string id;
+    int pci = -1;
+    std::uint32_t tac = UINT32_MAX;
+    std::uint8_t tacDigits = 0;
+
+    void clear() { id.clear(); pci = -1; tac = UINT32_MAX; tacDigits = 0; }
+    void setId(std::string_view value) {
+        value = trimView(value);
+        if (id.size() != value.size() || !std::equal(id.begin(), id.end(), value.begin())) {
+            pci = -1; tac = UINT32_MAX; tacDigits = 0;
+        }
+        id.assign(value.data(), value.size());
+    }
+};
+
+static std::string_view unquote(std::string_view value) {
+    value = trimView(value);
+    if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
+        value.remove_prefix(1); value.remove_suffix(1);
+    }
+    return value;
+}
+
+// Quectel +QENG servingcell 的 LTE/WCDMA/GSM/NR5G-SA 形态都把 Cell ID 放在
+// 第 7 个 CSV 字段。LTE 的 PCI/TAC 分别位于第 8/13 个字段，NR5G-SA 的 TAC
+// 位于第 9 个字段。这里只接纳明确的 servingcell 证据，不从邻区或数字位置猜测。
+static bool qengCellState(const std::string& message, CellState& state) {
+    const size_t marker = message.find("+QENG:");
+    if (marker == std::string::npos) return false;
+    std::array<std::string_view, 24> fields{};
+    size_t count = 0, first = marker + 6;
+    bool quoted = false;
+    for (size_t index = first; index <= message.size() && count < fields.size(); ++index) {
+        const char character = index < message.size() ? message[index] : ',';
+        if (character == '"') quoted = !quoted;
+        if (character == ',' && !quoted) {
+            fields[count++] = unquote(std::string_view(message.data() + first, index - first));
+            first = index + 1;
+        }
+    }
+    if (count <= 6 || !viewContainsIgnoreCase(fields[0], "servingcell")) return false;
+    if (!usableCell(fields[6])) { state.clear(); return true; }
+
+    state.setId(fields[6]);
+    state.pci = -1; state.tac = UINT32_MAX; state.tacDigits = 0;
+    std::uint32_t parsed = 0;
+    const bool lte = fields[2] == "LTE";
+    const bool nrSa = fields[2] == "NR5G-SA";
+    if ((lte || nrSa) && count > 7 && parseUnsignedField(fields[7], 10, parsed) &&
+        parsed <= static_cast<std::uint32_t>(INT_MAX))
+        state.pci = static_cast<int>(parsed);
+    const size_t tacIndex = lte ? 12 : nrSa ? 8 : fields.size();
+    if (tacIndex < count && parseUnsignedField(fields[tacIndex], 16, parsed)) {
+        state.tac = parsed;
+        std::string_view tac = trimView(fields[tacIndex]);
+        if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X')) tac.remove_prefix(2);
+        state.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(tac.size(), 8));
+    }
+    return true;
+}
+
 static bool cellAfterChange(const LogLine& line, std::string& cell) {
     if (line.tagText() != "CELL CHANGE") return false;
     const size_t arrow = line.msg.find("->");
@@ -391,12 +454,29 @@ static bool cellAfterChange(const LogLine& line, std::string& cell) {
     return true;
 }
 
+static void updateCellState(const LogLine& line, CellState& state) {
+    std::string changed;
+    if (cellAfterChange(line, changed)) {
+        if (changed.empty()) state.clear();
+        else state.setId(changed);
+    }
+    if (qengCellState(line.msg, state)) return;
+    if (line.tagText() == "DIAG") {
+        const HeartbeatFields fields = heartbeatFields(line.msg);
+        const std::string_view cell = firstOf(fields.cellTitle, fields.cellLower);
+        if (!cell.empty()) {
+            if (usableCell(cell)) state.setId(cell);
+            else state.clear();
+        }
+    }
+}
+
 template <typename Lines>
 static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
     std::vector<MetricRow> rows;
     bool haveLastRx = false;
     long long lastRx = 0;
-    std::string currentCell;
+    CellState currentCell;
     std::uint16_t currentSource = 0;
     bool haveSource = false;
 
@@ -405,8 +485,7 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         if (haveSource && l.sourceId != currentSource) currentCell.clear();
         currentSource = l.sourceId;
         haveSource = true;
-        std::string changed;
-        if (cellAfterChange(l, changed)) currentCell = std::move(changed);
+        updateCellState(l, currentCell);
         if (l.tagText().compare(0, 9, "HEARTBEAT") != 0) continue;
         HeartbeatFields f = heartbeatFields(l.msg);
         if (!f.any) continue;
@@ -425,22 +504,31 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         assignView(m.oper, f.oper);
         const std::string_view explicitCell = firstOf(f.cellTitle, f.cellLower);
         if (!explicitCell.empty() && usableCell(explicitCell)) {
-            m.cellId.assign(explicitCell);
-            currentCell.assign(explicitCell.data(), explicitCell.size());
+            currentCell.setId(explicitCell);
         } else if (!explicitCell.empty()) {
             // 明确上报无效小区时清空驻留状态，避免把旧 Cell ID 错带到后续样本。
             currentCell.clear();
-        } else if (!currentCell.empty()) {
-            m.cellId.assign(currentCell);
         }
         std::uint32_t compact = 0;
-        if (parseUnsignedField(f.pci, 10, compact) && compact <= static_cast<std::uint32_t>(INT_MAX))
-            m.pci = static_cast<int>(compact);
-        if (parseUnsignedField(f.tac, 16, compact)) {
-            m.tac = compact;
-            std::string_view tac = trimView(f.tac);
-            if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X')) tac.remove_prefix(2);
-            m.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(tac.size(), 8));
+        if (!f.pci.empty()) {
+            currentCell.pci = parseUnsignedField(f.pci, 10, compact) &&
+                              compact <= static_cast<std::uint32_t>(INT_MAX)
+                                  ? static_cast<int>(compact) : -1;
+        }
+        if (!f.tac.empty()) {
+            currentCell.tac = UINT32_MAX; currentCell.tacDigits = 0;
+            if (parseUnsignedField(f.tac, 16, compact)) {
+                currentCell.tac = compact;
+                std::string_view tac = trimView(f.tac);
+                if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X')) tac.remove_prefix(2);
+                currentCell.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(tac.size(), 8));
+            }
+        }
+        if (!currentCell.id.empty()) m.cellId.assign(currentCell.id);
+        m.pci = currentCell.pci;
+        if (currentCell.tac != UINT32_MAX) {
+            m.tac = currentCell.tac;
+            m.tacDigits = currentCell.tacDigits;
         }
 
         std::string_view temp = firstOf(f.tempTitle, f.tempUpper);

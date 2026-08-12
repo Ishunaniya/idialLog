@@ -18,6 +18,7 @@
 #include "log_analysis.h"
 #include "log_filter.h"
 #include "log_parser.h"
+#include "log_time.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "tablemodel.h"
@@ -678,10 +679,16 @@ void DoExportCsv() {
             q += '\"';
             return q;
         };
-        out += "time,ch,cell_id,pci,tac,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper\r\n";
+        out += "timestamp,ch,cell_id,pci,tac,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper\r\n";
         for (const auto& m : App().document.metrics) {
             for (size_t column = 0; column < kMetricColumnCount; ++column) {
-                out += csv(metricCellText(m, column));
+                if (column == 0) {
+                    // CSV 无法声明列宽；Excel 会把日期数值化并在默认窄列中显示 ####。
+                    // 用由程序生成的固定文本公式保留完整年月日与时间，也避免被改成日期序号。
+                    out += csv("=\"" + fmtTime(m.t, "FULL") + "\"");
+                } else {
+                    out += csv(metricCellText(m, column));
+                }
                 out += (column + 1 == kMetricColumnCount) ? "\r\n" : ",";
             }
         }
@@ -733,6 +740,16 @@ void DoExportReport() {
         add(FmtW(L"- 日志：筛选后 %d / 解析 %d 行，%d 个进程会话",
                  static_cast<int>(App().document.filtered.size()), static_cast<int>(App().document.lines.size()),
                  static_cast<int>(App().document.sessions.size())));
+        if (!App().document.lines.empty()) {
+            long long firstTime = App().document.lines.front().t;
+            long long lastTime = firstTime;
+            for (const auto& line : App().document.lines) {
+                firstTime = std::min(firstTime, line.t);
+                lastTime = std::max(lastTime, line.t);
+            }
+            add(FmtW(L"- 日志时间：%s → %s", U8ToW(fmtTime(firstTime, "FULL")).c_str(),
+                     U8ToW(fmtTime(lastTime, "FULL")).c_str()));
+        }
         add(FmtW(L"- 断网：%d 次；解析遗漏：%d 行（%.2f%%）",
                  static_cast<int>(App().document.outages.size()), static_cast<int>(App().document.audit.unparsed),
                  App().document.audit.unparsedRatio() * 100.0));
