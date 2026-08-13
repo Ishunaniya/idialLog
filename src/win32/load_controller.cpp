@@ -703,7 +703,7 @@ void DoExportCsv() {
             q += '\"';
             return q;
         };
-        out += "timestamp,ch,cell_id,pci,tac,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper,signal_quality\r\n";
+        out += "timestamp,ch,cell_id,pci,tac,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper,lte_engineering_quality\r\n";
         for (const auto& m : App().document.metrics) {
             for (size_t column = 0; column < kMetricColumnCount; ++column) {
                 // 程序生成的时间公式保留完整年月日；CH/Cell/RAT/OPER 等日志文本列会先
@@ -789,7 +789,7 @@ void DoExportReport() {
         long long snrTotal = 0; int snrCount = 0, snrMin = 100000, snrMax = -100000;
         for (const auto& metric : App().document.metrics) {
             if (!metric.cellId.empty()) ++cells[metric.cellId.str()];
-            if (metric.snr10 != 100000) {
+            if (usesLteEngineeringReference(metric.rat) && metric.snr10 != 100000) {
                 snrTotal += metric.snr10; ++snrCount;
                 snrMin = std::min(snrMin, metric.snr10); snrMax = std::max(snrMax, metric.snr10);
             }
@@ -797,10 +797,12 @@ void DoExportReport() {
         add(); add(L"## 信号与小区"); add();
         add(FmtW(L"- 指标样本：%d；识别小区：%d",
                  static_cast<int>(App().document.metrics.size()), static_cast<int>(cells.size())));
-        add(L"- 工程建议分档：CSQ 0–9 较差 / 10–14 一般 / 15–19 良好 / 20–31 优秀（99 未知）");
+        add(L"- LTE 工程参考分档：仅适用于 RAT=LTE（RAT 缺失按兼容的 LTE 日志处理）；不是 3GPP 或运营商统一故障等级");
+        add(L"- 综合等级：取 CSQ、RSRP、RSRQ、SNR 中最弱一项，是本软件的保守提示策略");
+        add(L"- CSQ：0–9 较差 / 10–14 一般 / 15–19 良好 / 20–31 优秀（99 未知）");
         add(L"- RSRP：<-100 较差 / -100~-91 一般 / -90~-81 良好 / ≥-80 dBm 优秀");
         add(L"- RSRQ：<-20 较差 / -20~-16 一般 / -15~-11 良好 / ≥-10 dB 优秀");
-        add(L"- SNR：≤0 较差 / 0.1~12.9 一般 / 13~19.9 良好 / ≥20 dB 优秀");
+        add(L"- SNR：≤0 较差 / 0.1~12.9 一般 / 13~19.9 良好 / ≥20 dB 优秀（模组上报值，不等同于所有制式的标准化 SINR）");
         if (snrCount)
             add(FmtW(L"- SNR：最低 %.1f / 平均 %.1f / 最高 %.1f dB（%d 个样本）",
                      snrMin / 10.0, snrTotal / (10.0 * snrCount), snrMax / 10.0, snrCount));
@@ -930,6 +932,7 @@ void DoExportHtml() {
         csq.reserve(App().document.metrics.size()); rsrp.reserve(App().document.metrics.size());
         rsrq.reserve(App().document.metrics.size()); snr.reserve(App().document.metrics.size());
         for (const MetricRow& metric : App().document.metrics) {
+            if (!usesLteEngineeringReference(metric.rat)) continue;
             if (metric.csqVal >= 0) csq.push_back({metric.t, metric.csqVal});
             if (metric.rsrp < 0) rsrp.push_back({metric.t, metric.rsrp});
             if (metric.rsrq < 0) rsrq.push_back({metric.t, metric.rsrq});
@@ -985,8 +988,9 @@ void DoExportHtml() {
                       escape(fmtTime(t1, "FULL")) + "</text></svg>";
             return output;
         };
-        html += "<section class=\"card\"><h2>信号趋势与工程建议线</h2>"
-                "<p class=\"muted\">数值越大越好；分档用于现场排障参考，不是运营商或模组的绝对故障阈值。</p>"
+        html += "<section class=\"card\"><h2>LTE 信号趋势与工程参考线</h2>"
+                "<p class=\"muted\">仅适用于 RAT=LTE（RAT 缺失按兼容的 LTE 日志处理）；分档不是 3GPP 或运营商统一故障等级。"
+                "综合等级取四项中的最弱项；SNR 为模组上报值，不等同于所有制式的标准化 SINR。</p>"
                 "<div class=\"charts\">" +
                 svg("CSQ 信号强度", csq, 0, 31, "#2a78d6", false,
                     {{kCsqFair, "≥10 一般"}, {kCsqGood, "≥15 良好"},

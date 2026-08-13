@@ -293,14 +293,35 @@ int main() {
         parseLines(raw, lines, sess, &a);
         auto fs = analyze(lines, collectOutages(lines), buildMetrics(lines), detectPlatform(lines), a);
         bool weakByRsrp = false, sigDeg = false;
+        const Finding* signalFinding = nullptr;
         for (const auto& f : fs) {
             if (f.title.find("弱信号") != std::string::npos) weakByRsrp = true;
-            if (f.title.find("信号质量长期偏低") != std::string::npos) sigDeg = true;
+            if (f.title.find("信号质量长期偏低") != std::string::npos) {
+                sigDeg = true;
+                signalFinding = &f;
+            }
         }
         if (!weakByRsrp) { std::printf("   ✗ CSQ>10 但 RSRP≤-110 的断网未归弱信号\n"); g_fail++; }
         else std::printf("   ✓ RSRP≤-110 断网归类为弱信号(CSQ 未触发)\n");
         if (!sigDeg) { std::printf("   ✗ RSRP 均值≤-100 未报信号质量长期偏低\n"); g_fail++; }
         else std::printf("   ✓ RSRP 均值≤-100 报信号质量长期偏低\n");
+        ck(signalFinding && signalFinding->detail.find("LTE 工程参考较差档") != std::string::npos &&
+           signalFinding->detail.find("3GPP\"较差\"") == std::string::npos,
+           "RSRP 结论明确工程参考边界", signalFinding ? signalFinding->detail : "(无)",
+           "含 LTE 工程参考且不冒充 3GPP 分档");
+    }
+
+    // 明确标注为 NR 的同名测量字段不能套用 LTE 工程阈值。
+    {
+        std::vector<std::string> raw;
+        for (int index = 0; index < 5; ++index)
+            raw.push_back("[2026-06-13 11:0" + std::to_string(index) +
+                          ":00] [HEARTBEAT] RAT:NR5G-SA | RSRP:-120 RSRQ:-22 SNR:-10");
+        std::vector<LogLine> lines; std::vector<std::string> sess; ParseAudit audit;
+        parseLines(raw, lines, sess, &audit);
+        auto fs = analyze(lines, {}, buildMetrics(lines), detectPlatform(lines), audit);
+        ck(!has(fs, "信号质量长期偏低") && !has(fs, "LTE SNR偏低提示"),
+           "非 LTE 样本不触发 LTE 工程结论", "未触发", "未触发");
     }
 
     // ── 四份产品代码新心跳字段(2026-07/08):精确值必须全部落入指标模型 ──

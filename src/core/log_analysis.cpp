@@ -2,6 +2,7 @@
 #include "log_analysis.h"
 #include "log_time.h"
 #include "log_internal.h"
+#include "radio_access.h"
 
 #include <algorithm>
 #include <array>
@@ -730,25 +731,26 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
             summary.tac = metric.tac;
             summary.tacDigits = metric.tacDigits;
         }
-        if (metric.csqVal >= 0) {
+        const bool lteReference = usesLteEngineeringReference(metric.rat);
+        if (lteReference && metric.csqVal >= 0) {
             accumulator.csqSum += metric.csqVal;
             summary.csqSamples++;
             summary.csqMin = std::min(summary.csqMin, metric.csqVal);
             summary.csqMax = std::max(summary.csqMax, metric.csqVal);
         }
-        if (metric.rsrp < 0) {
+        if (lteReference && metric.rsrp < 0) {
             accumulator.rsrpSum += metric.rsrp;
             summary.rsrpSamples++;
             summary.rsrpMin = std::min(summary.rsrpMin, metric.rsrp);
             summary.rsrpMax = std::max(summary.rsrpMax, metric.rsrp);
         }
-        if (metric.rsrq < 0) {
+        if (lteReference && metric.rsrq < 0) {
             accumulator.rsrqSum += metric.rsrq;
             summary.rsrqSamples++;
             summary.rsrqMin = std::min(summary.rsrqMin, metric.rsrq);
             summary.rsrqMax = std::max(summary.rsrqMax, metric.rsrq);
         }
-        if (metric.snr10 != 100000) {
+        if (lteReference && metric.snr10 != 100000) {
             accumulator.snrSum10 += metric.snr10;
             summary.snrSamples++;
             summary.snrMin10 = std::min(summary.snrMin10, metric.snr10);
@@ -1073,12 +1075,13 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         for (auto it = mb; it != me; ++it) {
             const auto& m = *it;
             if (!metsTimeSorted && (m.t < lo || m.t > hi)) continue;
-            if (m.csqVal >= 0 && m.csqVal < minCsq) { minCsq = m.csqVal; mWeak = &m; }
-            if (m.rsrp < 0 && m.rsrp < minRsrp) { minRsrp = m.rsrp; mRsrp = &m; }
+            const bool lteReference = usesLteEngineeringReference(m.rat);
+            if (lteReference && m.csqVal >= 0 && m.csqVal < minCsq) { minCsq = m.csqVal; mWeak = &m; }
+            if (lteReference && m.rsrp < 0 && m.rsrp < minRsrp) { minRsrp = m.rsrp; mRsrp = &m; }
             if (m.drx == 0) { sawZeroRx = true; if (!mZero) mZero = &m; }
             if (!mDeny && m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0) mDeny = &m;
         }
-        // RSRP < -110 dBm = 3GPP 极差覆盖(基本不可用)。比 CS<10 更灵敏:
+        // RSRP ≤ -110 dBm 是本项目的 LTE 弱覆盖工程观察线。它比 CSQ<10 更灵敏:
         // CSQ 是 0-31 粗档,可能读到中间值,而 RSRP 已探底 —— 覆盖问题此时才现形。
         bool weakByRsrp = (minRsrp <= -110);
         bool weakByCsq  = (minCsq < 10 && mWeak);
@@ -1146,8 +1149,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                   std::to_string(causeCnt[c]) + " 次 / 共 " + std::to_string(outs.size()) + " 次";
         switch (c) {
         case C_WEAK:
-            f.detail = "断网窗口内心跳 CSQ 最小值 < 10(≈RSSI<-95dBm),或 RSRP ≤ -110dBm"
-                       "(3GPP 极差覆盖),信号覆盖不足。";
+            f.detail = "断网窗口内 LTE 心跳 CSQ 最小值 < 10(≈RSSI<-95dBm),或 RSRP ≤ -110dBm,"
+                       "命中本项目的弱覆盖工程观察线；该线不是 3GPP 统一故障等级。";
             f.advice = "查天线连接/馈线/安装位置;确认是否处于覆盖边缘或屏蔽环境。重拨无法解决覆盖问题。";
             break;
         case C_DATADEAD:
@@ -1271,17 +1274,20 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     {
         long long sum = 0; int n = 0, worst = 9999; const MetricRow* mWorst = nullptr;
         for (const auto& m : mets) {
-            if (m.rsrp < 0) { sum += m.rsrp; n++; if (m.rsrp < worst) { worst = m.rsrp; mWorst = &m; } }
+            if (usesLteEngineeringReference(m.rat) && m.rsrp < 0) {
+                sum += m.rsrp; n++;
+                if (m.rsrp < worst) { worst = m.rsrp; mWorst = &m; }
+            }
         }
         if (n >= 5) {                              // 需足够样本才下结论,不臆测
             int avg = (int)(sum / n);
-            if (avg <= -100 && mWorst) {           // 均值 ≤ -100(3GPP"较差"以下)判长期劣化
+            if (avg <= -100 && mWorst) {           // 均值 ≤ -100 命中 LTE 工程参考较差档
                 Finding f;
                 f.severity = 1;
                 f.title  = "信号质量长期偏低:RSRP 均值 " + std::to_string(avg) + " dBm(共 " +
                            std::to_string(n) + " 样本)";
-                f.detail = "RSRP 均值处于 3GPP\"较差\"档(≤-100dBm),最低 " + std::to_string(worst) +
-                           " dBm。设备长期处于覆盖边缘,非偶发 —— 断网/低速大概率与此相关。";
+                f.detail = "RSRP 均值命中 LTE 工程参考较差档(≤-100dBm),最低 " + std::to_string(worst) +
+                           " dBm。该分档不是 3GPP 统一故障等级；持续弱覆盖可能与断网/低速相关。";
                 f.advice = "系统性排查:天线选型/安装位置/朝向、是否室内深处或金属屏蔽;"
                            "必要时加装外置天线或选覆盖更好的运营商。";
                 Evidence e; e.lineNo = mWorst->lineNo; e.ts = fmtTime(mWorst->t, "MD");
@@ -1300,7 +1306,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         long long sum = 0; int n = 0, nonPositive = 0, worst = 100000;
         const MetricRow* mWorst = nullptr;
         for (const auto& m : mets) {
-            if (m.snr10 == 100000) continue;
+            if (!usesLteEngineeringReference(m.rat) || m.snr10 == 100000) continue;
             sum += m.snr10; n++;
             if (m.snr10 <= 0) nonPositive++;
             if (m.snr10 < worst) { worst = m.snr10; mWorst = &m; }

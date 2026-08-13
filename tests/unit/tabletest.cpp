@@ -55,16 +55,21 @@ int main() {
     const std::string expected[kMetricColumnCount] = {
         fmtTime(m.t, "MD"), "SIM", "D17C148", "496", "272D", "20", "60", "0", "100", "5",
         "-104", "-10", "-2.5", "-65", "2", "LTE", "0", "CMCC 46000",
-        "CSQ优秀 / RSRP较差 / RSRQ优秀 / SNR较差"
+        "较差 · RSRP/SNR"
     };
     bool metricCells = true;
     for (size_t i = 0; i < kMetricColumnCount; ++i)
         metricCells = metricCells && metricCellText(m, i) == expected[i];
-    ok(metricCells, "19 列文本逐列精确一致（含小区 ID 与信号评价）");
+    ok(metricCells, "19 列文本逐列精确一致（含小区 ID 与 LTE 工程参考评价）");
     m.rsrp = 1; m.rsrq = 1; m.snr10 = 100000; m.rssiVal = 1;
     ok(metricCellText(m, 10) == "-" && metricCellText(m, 11) == "-" &&
        metricCellText(m, 12) == "-" && metricCellText(m, 13) == "-",
        "无效信号值仍显示 '-'");
+    ok(metricCellText(m, 18) == "优秀 · CSQ", "工程参考评价只列出决定当前等级的指标");
+    m.rat = "NR5G-SA";
+    ok(metricOverallSignalQuality(m) == SignalQuality::Unknown && metricCellText(m, 18) == "-",
+       "明确的非 LTE 制式不套用 LTE 工程分档");
+    m.rat = "LTE";
 
     ok(csqQuality(9) == SignalQuality::Poor && csqQuality(10) == SignalQuality::Fair &&
        csqQuality(15) == SignalQuality::Good && csqQuality(20) == SignalQuality::Excellent &&

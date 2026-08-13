@@ -158,10 +158,10 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     const int detailHi = g_chartDetail == 1 ?   0 :  -40;
 
     bool haveAny = !g_csq.empty() || !detail.empty() || !g_snr10.empty();
-    if (!haveAny || rc.right < S(140) || rc.bottom < S(260)) {
+    if (!haveAny || rc.right < S(260) || rc.bottom < S(260)) {
         const wchar_t* title = haveAny ? L"窗口空间不足" : L"暂无信号趋势";
         const wchar_t* detailText = haveAny ? L"放大窗口后即可恢复三图表视图。"
-                                             : L"加载包含心跳、CSQ、RSRP 或 SNR 的日志后自动显示。";
+                                             : L"加载包含 LTE（或未标注 RAT）信号采样的日志后自动显示。";
         int cardW = std::min(S(460), std::max(S(260), static_cast<int>(rc.right) - S(64)));
         int cardH = S(112), x = (rc.right - cardW) / 2, y = (rc.bottom - cardH) / 2;
         RECT card{x, y, x + cardW, y + cardH}; FillRound(hdc, card, S(12), th::page, th::border);
@@ -198,7 +198,9 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     takeRange(detail);
     takeRange(g_snr10);
     const double total = std::max<double>(1.0, (double)(t1 - t0));
-    const int left = S(48), right = rc.right - S(12);
+    // 分界说明使用独立右栏，不再压在曲线和末端采样点上。
+    const int left = S(48), canvasRight = rc.right - S(12);
+    const int guideWidth = S(92), right = canvasRight - guideWidth;
     g_chartVisibleT0 = t0; g_chartVisibleT1 = t1;
     g_chartPlotLeft = left; g_chartPlotRight = right;
     const int section = std::max(S(42), (static_cast<int>(rc.bottom) - S(123)) / 3);
@@ -286,19 +288,23 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             SelectObject(hdc, oldPen); DeleteObject(dataPen);
         }
 
+        // 标签按“优秀→良好→一般”纵向排列；颜色线段与图内分界线一一对应。
+        // 不强行贴着实际 Y 坐标，避免 RSRP/RSRQ 相邻阈值只有十余像素时文字重叠。
         HGDIOBJ guideFont = SelectObject(hdc, App().hFontSmall);
-        for (const ChartGuide& guide : guides) {
-            SIZE size{};
-            GetTextExtentPoint32W(hdc, guide.label, static_cast<int>(wcslen(guide.label)), &size);
-            const int y = Y(guide.value);
-            RECT labelRect{pr.right - size.cx - S(9), y - size.cy - S(1),
-                           pr.right - S(3), y + S(1)};
-            HBRUSH labelBackground = CreateSolidBrush(th::surface);
-            FillRect(hdc, &labelRect, labelBackground);
-            DeleteObject(labelBackground);
-            SetTextColor(hdc, guide.color);
+        int labelIndex = 0;
+        for (auto item = guides.end(); item != guides.begin(); ++labelIndex) {
+            --item;
+            const ChartGuide& guide = *item;
+            const int labelY = pr.top + S(4) + labelIndex * S(17);
+            HPEN keyPen = CreatePen(PS_SOLID, std::max(2, S(2)), guide.color);
+            HGDIOBJ previousPen = SelectObject(hdc, keyPen);
+            MoveToEx(hdc, pr.right + S(6), labelY + S(6), nullptr);
+            LineTo(hdc, pr.right + S(15), labelY + S(6));
+            SelectObject(hdc, previousPen); DeleteObject(keyPen);
+            RECT labelRect{pr.right + S(19), labelY, canvasRight, labelY + S(15)};
+            SetTextColor(hdc, th::inkSec);
             DrawTextW(hdc, guide.label, -1, &labelRect,
-                      DT_RIGHT | DT_BOTTOM | DT_SINGLELINE | DT_NOPREFIX);
+                      DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         }
         SelectObject(hdc, guideFont);
     };
@@ -316,19 +322,19 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                static_cast<int>(g_visibleCellCount));
     SIZE cellLabelSize{};
     GetTextExtentPoint32W(hdc, cellLabel.c_str(), static_cast<int>(cellLabel.size()), &cellLabelSize);
-    RECT cellChip{right - cellLabelSize.cx - S(20), S(3), right, S(28)};
+    RECT cellChip{canvasRight - cellLabelSize.cx - S(20), S(3), canvasRight, S(28)};
     FillRound(hdc, cellChip, S(12), th::accentSoft, th::border);
     SetTextColor(hdc, g_latestCellId.empty() ? th::inkMuted : th::accent);
     DrawTextW(hdc, cellLabel.c_str(), -1, &cellChip, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
     SetTextColor(hdc, th::inkMuted);
-    const wchar_t* legend = L"有效 0–31 · 99 未知 · 越大越好";
+    const wchar_t* legend = L"LTE 工程参考 · 有效 0–31 · 99 未知";
     SIZE legendSize{};
     GetTextExtentPoint32W(hdc, legend, static_cast<int>(wcslen(legend)), &legendSize);
     const int legendX = top.left + topTitleSize.cx + S(12);
     if (legendX + legendSize.cx + S(12) < cellChip.left)
         TextOutW(hdc, legendX, S(8), legend, static_cast<int>(wcslen(legend)));
     SelectObject(hdc, App().hFontSect); SetTextColor(hdc, th::inkPri);
-    const wchar_t* middleTitle = L"LTE 覆盖质量 · 越大越好";
+    const wchar_t* middleTitle = L"LTE 覆盖质量 · 工程参考";
     TextOutW(hdc, middle.left, top.bottom + S(8), middleTitle,
              static_cast<int>(wcslen(middleTitle)));
     const wchar_t* snrTitle = L"SNR 信噪比";
@@ -336,12 +342,12 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     SIZE snrTitleSize{};
     GetTextExtentPoint32W(hdc, snrTitle, (int)wcslen(snrTitle), &snrTitleSize);
     SelectObject(hdc, App().hFontSmall); SetTextColor(hdc, th::inkMuted);
-    const wchar_t* snrLegend = L"单位 dB · 工程建议 · 越大越好";
+    const wchar_t* snrLegend = L"模组值 dB · LTE 工程参考";
     TextOutW(hdc, bottom.left + snrTitleSize.cx + S(12), middle.bottom + S(12),
              snrLegend, (int)wcslen(snrLegend));
 
     const wchar_t* modeNames[] = {L"RSRP", L"RSRQ"};
-    int modeRight = middle.right;
+    int modeRight = canvasRight;
     for (int mode = 1; mode >= 0; --mode) {
         int width = S(58);
         g_chartModeRects[mode] = RECT{modeRight - width, top.bottom + S(4), modeRight, top.bottom + S(30)};
@@ -393,16 +399,24 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     SelectObject(hdc, oldPen); DeleteObject(timePen);
 
-    if (g_chartFocusTime != LLONG_MIN && g_chartFocusTime >= t0 && g_chartFocusTime <= t1) {
+    const bool hoveringPlot = g_chartHoverX >= left && g_chartHoverX <= right;
+    auto drawCursorSegments = [&](int x, COLORREF color, int width) {
+        HPEN cursorPen = CreatePen(PS_SOLID, width, color);
+        HGDIOBJ previousPen = SelectObject(hdc, cursorPen);
+        for (const RECT& plot : {top, middle, bottom}) {
+            MoveToEx(hdc, x, plot.top, nullptr);
+            LineTo(hdc, x, plot.bottom);
+        }
+        SelectObject(hdc, previousPen); DeleteObject(cursorPen);
+    };
+    if (!hoveringPlot && g_chartFocusTime != LLONG_MIN &&
+        g_chartFocusTime >= t0 && g_chartFocusTime <= t1) {
         const int focusX = X(g_chartFocusTime);
-        HPEN focusPen = CreatePen(PS_SOLID, std::max(2, S(2)), th::accent);
-        oldPen = SelectObject(hdc, focusPen);
-        MoveToEx(hdc, focusX, top.top, nullptr); LineTo(hdc, focusX, bottom.bottom);
-        SelectObject(hdc, oldPen); DeleteObject(focusPen);
+        drawCursorSegments(focusX, th::accent, std::max(2, S(2)));
     }
 
-    // 悬停：共享一条时间准线，同时报告上图 CSQ 与当前 LTE 详情值。
-    if (g_chartHoverX >= left && g_chartHoverX <= right) {
+    // 悬停时只保留一条活动准线，并分段绘制，避免穿过三张图之间的标题区域。
+    if (hoveringPlot) {
         double frac = (double)(g_chartHoverX - left) / std::max(1, right - left);
         long long ht = t0 + (long long)(frac * (t1 - t0));
         long long cd = LLONG_MAX, dd = LLONG_MAX, sd = LLONG_MAX;
@@ -411,10 +425,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         const auto* sp = nearestChartPoint(g_snr10, ht, &sd);
         long long markT = cp ? cp->first : (dp ? dp->first : (sp ? sp->first : ht));
         int hx = X(markT);
-        HPEN crossPen = CreatePen(PS_SOLID, 1, th::inkMuted);
-        oldPen = SelectObject(hdc, crossPen);
-        MoveToEx(hdc, hx, top.top, nullptr); LineTo(hdc, hx, bottom.bottom);
-        SelectObject(hdc, oldPen); DeleteObject(crossPen);
+        drawCursorSegments(hx, th::inkMuted, 1);
 
         std::wstring info = U8ToW(fmtTime(markT, "HM"));
         if (cp && cd <= 600) info += FmtW(L"   CSQ %d(%s)", cp->second,
@@ -457,10 +468,12 @@ void RenderMetrics() {
     const MetricRow* latestCell = nullptr;
     for (const MetricRow* metric : App().document.metricView) {
         const MetricRow& m = *metric;
-        if (m.csqVal >= 0) g_csq.push_back({ m.t, m.csqVal });
-        if (m.rsrp < 0)    g_rsrp.push_back({ m.t, m.rsrp });
-        if (m.rsrq < 0)    g_rsrq.push_back({ m.t, m.rsrq });
-        if (m.snr10 != 100000) g_snr10.push_back({ m.t, m.snr10 });
+        if (usesLteEngineeringReference(m.rat)) {
+            if (m.csqVal >= 0) g_csq.push_back({ m.t, m.csqVal });
+            if (m.rsrp < 0)    g_rsrp.push_back({ m.t, m.rsrp });
+            if (m.rsrq < 0)    g_rsrq.push_back({ m.t, m.rsrq });
+            if (m.snr10 != 100000) g_snr10.push_back({ m.t, m.snr10 });
+        }
         if (!m.cellId.empty()) {
             visibleCells.insert(m.cellId.str());
             if (!latestCell || m.t > latestCell->t ||

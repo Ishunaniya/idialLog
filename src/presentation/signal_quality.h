@@ -9,6 +9,7 @@
 #include <initializer_list>
 
 #include "log_types.h"
+#include "radio_access.h"
 
 namespace dl {
 
@@ -78,6 +79,7 @@ inline const char* signalQualityName(SignalQuality quality) {
 }
 
 inline SignalQuality metricSignalQuality(const MetricRow& metric, std::size_t column) {
+    if (!usesLteEngineeringReference(metric.rat)) return SignalQuality::Unknown;
     switch (column) {
     case 5:  return csqQuality(metric.csqVal);
     case 10: return rsrpQuality(metric.rsrp);

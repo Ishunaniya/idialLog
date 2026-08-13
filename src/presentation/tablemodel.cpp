@@ -67,18 +67,19 @@ std::string metricCellText(const MetricRow& m, size_t column) {
     case 16: return m.denyVal >= 0 ? std::to_string(m.denyVal) : "-";
     case 17: return m.oper.empty() ? "-" : m.oper;
     case 18: {
-        std::string result;
+        const SignalQuality worst = metricOverallSignalQuality(m);
+        if (worst == SignalQuality::Unknown) return "-";
+        std::string metrics;
         auto add = [&](const char* name, SignalQuality quality) {
-            if (quality == SignalQuality::Unknown) return;
-            if (!result.empty()) result += " / ";
-            result += name;
-            result += signalQualityName(quality);
+            if (quality != worst) return;
+            if (!metrics.empty()) metrics += "/";
+            metrics += name;
         };
-        add("CSQ", csqQuality(m.csqVal));
-        add("RSRP", rsrpQuality(m.rsrp));
-        add("RSRQ", rsrqQuality(m.rsrq));
-        add("SNR", snrQuality10(m.snr10));
-        return result.empty() ? "-" : result;
+        add("CSQ", metricSignalQuality(m, 5));
+        add("RSRP", metricSignalQuality(m, 10));
+        add("RSRQ", metricSignalQuality(m, 11));
+        add("SNR", metricSignalQuality(m, 12));
+        return std::string(signalQualityName(worst)) + " · " + metrics;
     }
     default: return {};
     }

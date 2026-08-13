@@ -707,18 +707,20 @@ void RenderSummary() {
     int denyNonzero = 0, denyN = 0;
     std::vector<std::pair<long long,long long>> rxs;
     for (const auto& m : App().document.metrics) {
-        if (m.csqVal >= 0) {
-            csqSum += m.csqVal; csqN++;
-            csqMin = std::min(csqMin, m.csqVal);
-            csqMax = std::max(csqMax, m.csqVal);
-            if (m.csqVal < 10) { if (weak == 0) weakFirst = m.t; weak++; }
-        }
-        if (m.rsrp < 0) { rsrpSum += m.rsrp; rsrpN++; rsrpMin = std::min(rsrpMin, m.rsrp); rsrpMax = std::max(rsrpMax, m.rsrp); }
-        if (m.rsrq < 0) { rsrqSum += m.rsrq; rsrqN++; rsrqMin = std::min(rsrqMin, m.rsrq); rsrqMax = std::max(rsrqMax, m.rsrq); }
-        if (m.snr10 != 100000) {
-            snrSum10 += m.snr10; snrN++;
-            snrMin = std::min(snrMin, m.snr10); snrMax = std::max(snrMax, m.snr10);
-            if (m.snr10 <= 0) snrNonPositive++;
+        if (usesLteEngineeringReference(m.rat)) {
+            if (m.csqVal >= 0) {
+                csqSum += m.csqVal; csqN++;
+                csqMin = std::min(csqMin, m.csqVal);
+                csqMax = std::max(csqMax, m.csqVal);
+                if (m.csqVal < 10) { if (weak == 0) weakFirst = m.t; weak++; }
+            }
+            if (m.rsrp < 0) { rsrpSum += m.rsrp; rsrpN++; rsrpMin = std::min(rsrpMin, m.rsrp); rsrpMax = std::max(rsrpMax, m.rsrp); }
+            if (m.rsrq < 0) { rsrqSum += m.rsrq; rsrqN++; rsrqMin = std::min(rsrqMin, m.rsrq); rsrqMax = std::max(rsrqMax, m.rsrq); }
+            if (m.snr10 != 100000) {
+                snrSum10 += m.snr10; snrN++;
+                snrMin = std::min(snrMin, m.snr10); snrMax = std::max(snrMax, m.snr10);
+                if (m.snr10 <= 0) snrNonPositive++;
+            }
         }
         if (m.tempMax != INT_MIN) { int v = m.tempMax; tSum += v; tN++; tMax = std::max(tMax, v); if (v >= 85) hot++; }
         if (!m.ch.empty()) chans[m.ch]++;
@@ -732,6 +734,7 @@ void RenderSummary() {
     if (csqN) {
         const int average = static_cast<int>(csqSum / csqN);
         std::vector<std::wstring> lines{
+            L"仅作 LTE 工程参考；RAT 缺失按兼容的 LTE 日志处理",
             FmtW(L"最低 %d / 均 %d / 最高 %d   [均值:%s]", csqMin, average, csqMax,
                  U8ToW(signalQualityName(csqQuality(average))).c_str()),
             L"0–9 较差 / 10–14 一般 / 15–19 良好 / 20–31 优秀（99 未知，越大越好）"
@@ -739,7 +742,7 @@ void RenderSummary() {
         if (weak)
             lines.push_back(FmtW(L"弱信号(<10)  %d/%d 样本   首次 %s", weak, csqN,
                                  U8ToW(fmtTime(weakFirst, "MD")).c_str()));
-        add(L"信号 CSQ", lines, weak ? 1 : 0);
+        add(L"LTE 工程参考 · CSQ", lines, weak ? 1 : 0);
     }
     // LTE 详情。SNR 是 SDK 原值(0.1dB);阈值仅作工程观察,不冒充协议定论。
     if (rsrpN || rsrqN || snrN) {
@@ -767,10 +770,10 @@ void RenderSummary() {
                               snrMin / 10.0, avg, snrMax / 10.0,
                               U8ToW(signalQualityName(snrQuality10(avg10))).c_str(),
                               snrNonPositive, snrN));
-            ls.push_back(L"      (≤0 较差 / 0.1~12.9 一般 / 13~19.9 良好 / ≥20 优秀，工程建议，越大越好)");
+            ls.push_back(L"      (≤0 较差 / 0.1~12.9 一般 / 13~19.9 良好 / ≥20 优秀；模组上报值，不等同标准化 SINR)");
             if (snrN >= 5 && snrNonPositive * 2 >= snrN) acc = std::max(acc, 1);
         }
-        add(L"LTE 信号质量 RSRP / RSRQ / SNR", ls, acc);
+        add(L"LTE 工程参考 · RSRP / RSRQ / SNR", ls, acc);
     }
     if (!srvs.empty() || !rats.empty() || denyN || !opers.empty()) {
         auto dist = [](const std::map<std::string, int>& xs) {
