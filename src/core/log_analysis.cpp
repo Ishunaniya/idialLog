@@ -277,7 +277,7 @@ struct HeartbeatFields {
     std::string_view failTitle, failLower, rxUpper, rxLower;
     std::string_view rsrpUpper, rsrpLower, rsrqUpper, rsrqLower;
     std::string_view snrUpper, snrLower, rssiUpper, rssiLower;
-    std::string_view srv, rat, deny, oper, cellTitle, cellLower, pci, tac;
+    std::string_view srv, rat, deny, oper, cell, pci, tac;
 };
 
 static HeartbeatFields heartbeatFields(const std::string& msg) {
@@ -306,8 +306,13 @@ static HeartbeatFields heartbeatFields(const std::string& msg) {
         else if (k == "RAT")         f.rat = v;
         else if (k == "DENY")        f.deny = v;
         else if (k == "OPER")        f.oper = v;
-        else if (k == "Cell")        f.cellTitle = v;
-        else if (k == "cellid")      f.cellLower = v;
+        // 同一含义在各平台日志里的名字并不统一：EG25 使用 Cell/cellid，
+        // EC200A、AG35 真机心跳使用 CID；部分模组版本使用 CellID/ECI/NCI。
+        // 统一落入 cell，保证指标表、概览、小区分析与导出使用同一取值。
+        else if (k == "Cell" || k == "cell" || k == "cellid" || k == "CellID" ||
+                 k == "CELLID" || k == "cell_id" || k == "CELL_ID" ||
+                 k == "CID" || k == "cid" || k == "ECI" || k == "eci" ||
+                 k == "NCI" || k == "nci") f.cell = v;
         else if (k == "pci")         f.pci = v;
         else if (k == "tac")         f.tac = v;
     });
@@ -463,7 +468,7 @@ static void updateCellState(const LogLine& line, CellState& state) {
     if (qengCellState(line.msg, state)) return;
     if (line.tagText() == "DIAG") {
         const HeartbeatFields fields = heartbeatFields(line.msg);
-        const std::string_view cell = firstOf(fields.cellTitle, fields.cellLower);
+        const std::string_view cell = fields.cell;
         if (!cell.empty()) {
             if (usableCell(cell)) state.setId(cell);
             else state.clear();
@@ -502,7 +507,7 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         }
         assignView(m.rat, f.rat);
         assignView(m.oper, f.oper);
-        const std::string_view explicitCell = firstOf(f.cellTitle, f.cellLower);
+        const std::string_view explicitCell = f.cell;
         if (!explicitCell.empty() && usableCell(explicitCell)) {
             currentCell.setId(explicitCell);
         } else if (!explicitCell.empty()) {

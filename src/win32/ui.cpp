@@ -549,7 +549,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().hMetric = CreateList(IDC_METRIC, {{L"时间", 140}, {L"CH", 82},
             {L"小区 ID", 105}, {L"PCI", 58}, {L"TAC", 70}, {L"CSQ", 58}, {L"Tmax", 58},
             {L"ConsecFail", 86}, {L"RX_PKT", 105}, {L"ΔRX", 76}, {L"RSRP", 68}, {L"RSRQ", 68},
-            {L"SNR(dB)", 78}, {L"RSSI", 68}, {L"SRV", 52}, {L"RAT", 76}, {L"DENY", 58}, {L"OPER", 145}}, true);
+            {L"SNR(dB)", 78}, {L"RSSI", 68}, {L"SRV", 52}, {L"RAT", 76}, {L"DENY", 58}, {L"OPER", 145},
+            {L"信号评价", 270}}, true);
         App().hTags = CreateList(IDC_TAGS, {{L"标签", 150}, {L"次数", 80}, {L"占比", 600}});
         App().hRaw = CreateList(IDC_RAW, {{L"行号", 82}, {L"时间", 166}, {L"级别", 82},
             {L"标签", 118}, {L"原始消息", 900}}, true);

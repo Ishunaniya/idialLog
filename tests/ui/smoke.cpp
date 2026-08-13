@@ -157,7 +157,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     SendMessageW(window, WM_APP + 41, 4, 0);
     HWND metrics = GetDlgItem(window, 1014);
     HWND header = ListView_GetHeader(metrics);
-    if (!header || Header_GetItemCount(header) != 18) return finish(20);
+    if (!header || Header_GetItemCount(header) != 19) return finish(20);
     if (!IsWindowVisible(GetDlgItem(window, 1017))) return finish(22);
 
     SendMessageW(window, WM_APP + 41, 6, 0);

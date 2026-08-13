@@ -1,5 +1,6 @@
 // tabletest.cpp — 虚拟时间线/指标表格的数据源回归测试。
 #include "logmodel.h"
+#include "signal_quality.h"
 #include "tablemodel.h"
 
 #include <cstdio>
@@ -47,22 +48,37 @@ int main() {
     std::puts("== T2 指标虚拟列格式 ==");
     MetricRow m;
     m.t = 1782758400; m.ch = "SIM"; m.cellId = "D17C148"; m.pci = 496; m.tac = 0x272D; m.tacDigits = 4;
-    m.csqRaw = 20; m.tempMax = 60;
+    m.csqRaw = 20; m.csqVal = 20; m.tempMax = 60;
     m.consecFail = 0; m.rx = 100; m.drx = 5; m.rsrp = -104; m.rsrq = -10;
     m.snr10 = -25; m.rssiVal = -65; m.srvVal = 2; m.rat = "LTE";
     m.denyVal = 0; m.oper = "CMCC 46000";
     const std::string expected[kMetricColumnCount] = {
         fmtTime(m.t, "MD"), "SIM", "D17C148", "496", "272D", "20", "60", "0", "100", "5",
-        "-104", "-10", "-2.5", "-65", "2", "LTE", "0", "CMCC 46000"
+        "-104", "-10", "-2.5", "-65", "2", "LTE", "0", "CMCC 46000",
+        "CSQ优秀 / RSRP较差 / RSRQ优秀 / SNR较差"
     };
     bool metricCells = true;
     for (size_t i = 0; i < kMetricColumnCount; ++i)
         metricCells = metricCells && metricCellText(m, i) == expected[i];
-    ok(metricCells, "18 列文本逐列精确一致（含小区 ID/PCI/TAC）");
+    ok(metricCells, "19 列文本逐列精确一致（含小区 ID 与信号评价）");
     m.rsrp = 1; m.rsrq = 1; m.snr10 = 100000; m.rssiVal = 1;
     ok(metricCellText(m, 10) == "-" && metricCellText(m, 11) == "-" &&
        metricCellText(m, 12) == "-" && metricCellText(m, 13) == "-",
        "无效信号值仍显示 '-'");
+
+    ok(csqQuality(9) == SignalQuality::Poor && csqQuality(10) == SignalQuality::Fair &&
+       csqQuality(15) == SignalQuality::Good && csqQuality(20) == SignalQuality::Excellent &&
+       csqQuality(99) == SignalQuality::Unknown, "CSQ 四档边界与 99 未知值正确");
+    ok(rsrpQuality(-101) == SignalQuality::Poor && rsrpQuality(-100) == SignalQuality::Fair &&
+       rsrpQuality(-90) == SignalQuality::Good && rsrpQuality(-80) == SignalQuality::Excellent,
+       "RSRP 四档边界正确");
+    ok(rsrqQuality(-21) == SignalQuality::Poor && rsrqQuality(-20) == SignalQuality::Fair &&
+       rsrqQuality(-15) == SignalQuality::Good && rsrqQuality(-10) == SignalQuality::Excellent,
+       "RSRQ 四档边界正确");
+    ok(snrQuality10(-1) == SignalQuality::Poor && snrQuality10(0) == SignalQuality::Poor &&
+       snrQuality10(1) == SignalQuality::Fair &&
+       snrQuality10(130) == SignalQuality::Good && snrQuality10(200) == SignalQuality::Excellent,
+       "SNR 四档边界正确");
 
     std::puts("== T2b CSV 公式注入防护 ==");
     m.ch = "=cmd|' /C calc'!A0"; m.cellId = "+SUM(A1:A2)"; m.rat = " @evil";

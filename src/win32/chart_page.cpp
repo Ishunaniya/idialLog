@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <initializer_list>
 #include <limits>
+#include <set>
 #include <string>
 
 #include "app_context.h"
@@ -13,6 +15,7 @@
 #include "log_time.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
+#include "signal_quality.h"
 #include "theme.h"
 #include "win_text.h"
 
@@ -35,6 +38,14 @@ static RECT g_chartModeRects[2]{};
 static long long g_chartFocusTime = LLONG_MIN;
 static long long g_chartVisibleT0 = 0, g_chartVisibleT1 = 0;
 static int g_chartPlotLeft = 0, g_chartPlotRight = 0;
+static std::string g_latestCellId;
+static std::size_t g_visibleCellCount = 0;
+
+struct ChartGuide {
+    int value;
+    const wchar_t* label;
+    COLORREF color;
+};
 
 static void ResetChartSampleCache() {
     if (++g_chartDataRevision == 0) g_chartDataRevision = 1; // 无符号回绕防御
@@ -143,8 +154,8 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     const auto& detail = detailSeries(g_chartDetail);
     const wchar_t* detailName = g_chartDetail == 1 ? L"RSRQ" : L"RSRP";
-    const int detailLo = g_chartDetail == 1 ? -25 : -120;
-    const int detailHi = g_chartDetail == 1 ?   0 :  -60;
+    const int detailLo = g_chartDetail == 1 ? -25 : -140;
+    const int detailHi = g_chartDetail == 1 ?   0 :  -40;
 
     bool haveAny = !g_csq.empty() || !detail.empty() || !g_snr10.empty();
     if (!haveAny || rc.right < S(140) || rc.bottom < S(260)) {
@@ -227,8 +238,8 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     };
 
     auto drawPlot = [&](const RECT& pr, const ChartSeries& series,
-                        int lo, int hi, COLORREF color, int threshold, bool showThreshold,
-                        bool scaled10) {
+                        int lo, int hi, COLORREF color,
+                        std::initializer_list<ChartGuide> guides, bool scaled10) {
         auto Y = [&](int v) {
             int c = std::max(lo, std::min(hi, v));
             return pr.bottom - (int)((double)(c - lo) / (hi - lo) * (pr.bottom - pr.top));
@@ -253,11 +264,11 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         Rectangle(hdc, pr.left, pr.top, pr.right, pr.bottom);
         SelectObject(hdc, oldBr); SelectObject(hdc, oldPen); DeleteObject(axisPen);
 
-        if (showThreshold) {
-            HPEN thresholdPen = CreatePen(PS_SOLID, 1, th::warning);
+        for (const ChartGuide& guide : guides) {
+            HPEN thresholdPen = CreatePen(PS_SOLID, 1, guide.color);
             oldPen = SelectObject(hdc, thresholdPen);
-            MoveToEx(hdc, pr.left, Y(threshold), nullptr);
-            LineTo(hdc, pr.right, Y(threshold));
+            MoveToEx(hdc, pr.left, Y(guide.value), nullptr);
+            LineTo(hdc, pr.right, Y(guide.value));
             SelectObject(hdc, oldPen); DeleteObject(thresholdPen);
         }
 
@@ -274,6 +285,22 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 LineTo(hdc, X(series[0].first) + 1, Y(series[0].second));
             SelectObject(hdc, oldPen); DeleteObject(dataPen);
         }
+
+        HGDIOBJ guideFont = SelectObject(hdc, App().hFontSmall);
+        for (const ChartGuide& guide : guides) {
+            SIZE size{};
+            GetTextExtentPoint32W(hdc, guide.label, static_cast<int>(wcslen(guide.label)), &size);
+            const int y = Y(guide.value);
+            RECT labelRect{pr.right - size.cx - S(9), y - size.cy - S(1),
+                           pr.right - S(3), y + S(1)};
+            HBRUSH labelBackground = CreateSolidBrush(th::surface);
+            FillRect(hdc, &labelRect, labelBackground);
+            DeleteObject(labelBackground);
+            SetTextColor(hdc, guide.color);
+            DrawTextW(hdc, guide.label, -1, &labelRect,
+                      DT_RIGHT | DT_BOTTOM | DT_SINGLELINE | DT_NOPREFIX);
+        }
+        SelectObject(hdc, guideFont);
     };
 
     HGDIOBJ oldFont = SelectObject(hdc, App().hFontSect);
@@ -283,16 +310,33 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     SIZE topTitleSize{};
     GetTextExtentPoint32W(hdc, topTitle, (int)wcslen(topTitle), &topTitleSize);
     SelectObject(hdc, App().hFontSmall); SetTextColor(hdc, th::inkMuted);
-    const wchar_t* legend = L"弱信号阈值 10  ·  红色区域为断网";
-    TextOutW(hdc, top.left + topTitleSize.cx + S(12), S(8), legend, (int)wcslen(legend));
+    const std::wstring cellLabel = g_latestCellId.empty()
+        ? L"小区 ID  日志未提供"
+        : FmtW(L"最近小区 ID  %s  ·  %d 个", U8ToW(g_latestCellId).c_str(),
+               static_cast<int>(g_visibleCellCount));
+    SIZE cellLabelSize{};
+    GetTextExtentPoint32W(hdc, cellLabel.c_str(), static_cast<int>(cellLabel.size()), &cellLabelSize);
+    RECT cellChip{right - cellLabelSize.cx - S(20), S(3), right, S(28)};
+    FillRound(hdc, cellChip, S(12), th::accentSoft, th::border);
+    SetTextColor(hdc, g_latestCellId.empty() ? th::inkMuted : th::accent);
+    DrawTextW(hdc, cellLabel.c_str(), -1, &cellChip, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    SetTextColor(hdc, th::inkMuted);
+    const wchar_t* legend = L"有效 0–31 · 99 未知 · 越大越好";
+    SIZE legendSize{};
+    GetTextExtentPoint32W(hdc, legend, static_cast<int>(wcslen(legend)), &legendSize);
+    const int legendX = top.left + topTitleSize.cx + S(12);
+    if (legendX + legendSize.cx + S(12) < cellChip.left)
+        TextOutW(hdc, legendX, S(8), legend, static_cast<int>(wcslen(legend)));
     SelectObject(hdc, App().hFontSect); SetTextColor(hdc, th::inkPri);
-    TextOutW(hdc, middle.left, top.bottom + S(8), L"LTE 覆盖质量", 8);
+    const wchar_t* middleTitle = L"LTE 覆盖质量 · 越大越好";
+    TextOutW(hdc, middle.left, top.bottom + S(8), middleTitle,
+             static_cast<int>(wcslen(middleTitle)));
     const wchar_t* snrTitle = L"SNR 信噪比";
     TextOutW(hdc, bottom.left, middle.bottom + S(8), snrTitle, (int)wcslen(snrTitle));
     SIZE snrTitleSize{};
     GetTextExtentPoint32W(hdc, snrTitle, (int)wcslen(snrTitle), &snrTitleSize);
     SelectObject(hdc, App().hFontSmall); SetTextColor(hdc, th::inkMuted);
-    const wchar_t* snrLegend = L"单位 dB  ·  0 dB 观察线";
+    const wchar_t* snrLegend = L"单位 dB · 工程建议 · 越大越好";
     TextOutW(hdc, bottom.left + snrTitleSize.cx + S(12), middle.bottom + S(12),
              snrLegend, (int)wcslen(snrLegend));
 
@@ -313,9 +357,20 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     SelectObject(hdc, oldFont);
 
-    drawPlot(top, g_chartCsqDraw, 0, 31, th::s1_blue, 10, true, false);
-    drawPlot(middle, g_chartDetailDraw, detailLo, detailHi, th::s7_violet, 0, false, false);
-    drawPlot(bottom, g_chartSnrDraw, -200, 300, th::s5_aqua, 0, true, true);
+    drawPlot(top, g_chartCsqDraw, 0, 31, th::s1_blue,
+             {{kCsqFair, L"≥10 一般", th::warning}, {kCsqGood, L"≥15 良好", th::accent},
+              {kCsqExcellent, L"≥20 优秀", th::good}}, false);
+    if (g_chartDetail == 0)
+        drawPlot(middle, g_chartDetailDraw, detailLo, detailHi, th::s7_violet,
+                 {{kRsrpFair, L"≥-100 一般", th::warning}, {kRsrpGood, L"≥-90 良好", th::accent},
+                  {kRsrpExcellent, L"≥-80 优秀", th::good}}, false);
+    else
+        drawPlot(middle, g_chartDetailDraw, detailLo, detailHi, th::s7_violet,
+                 {{kRsrqFair, L"≥-20 一般", th::warning}, {kRsrqGood, L"≥-15 良好", th::accent},
+                  {kRsrqExcellent, L"≥-10 优秀", th::good}}, false);
+    drawPlot(bottom, g_chartSnrDraw, -200, 300, th::s5_aqua,
+             {{kSnrFair10, L">0 一般", th::warning}, {kSnrGood10, L"≥13 良好", th::accent},
+              {kSnrExcellent10, L"≥20 优秀", th::good}}, true);
 
     // 共享时间轴：只在下图标注，竖线同时贯穿两张图，便于对齐而不引入第二量纲。
     SetTextColor(hdc, th::inkMuted);
@@ -362,10 +417,14 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         SelectObject(hdc, oldPen); DeleteObject(crossPen);
 
         std::wstring info = U8ToW(fmtTime(markT, "HM"));
-        if (cp && cd <= 600) info += FmtW(L"   CSQ %d", cp->second);
-        if (dp && dd <= 600) info += FmtW(L"   %s %d %s", detailName, dp->second,
-                                           g_chartDetail == 0 ? L"dBm" : L"dB");
-        if (sp && sd <= 600) info += FmtW(L"   SNR %.1f dB", sp->second / 10.0);
+        if (cp && cd <= 600) info += FmtW(L"   CSQ %d(%s)", cp->second,
+            U8ToW(signalQualityName(csqQuality(cp->second))).c_str());
+        if (dp && dd <= 600) info += FmtW(L"   %s %d %s(%s)", detailName, dp->second,
+            g_chartDetail == 0 ? L"dBm" : L"dB",
+            U8ToW(signalQualityName(g_chartDetail == 0 ? rsrpQuality(dp->second)
+                                                        : rsrqQuality(dp->second))).c_str());
+        if (sp && sd <= 600) info += FmtW(L"   SNR %.1f dB(%s)", sp->second / 10.0,
+            U8ToW(signalQualityName(snrQuality10(sp->second))).c_str());
         SIZE sz{}; GetTextExtentPoint32W(hdc, info.c_str(), (int)info.size(), &sz);
         int bx = hx + S(8);
         if (bx + sz.cx + S(10) > right) bx = hx - sz.cx - S(14);
@@ -392,13 +451,24 @@ void RenderMetrics() {
     g_rsrp.clear();
     g_rsrq.clear();
     g_snr10.clear();
+    g_latestCellId.clear();
+    g_visibleCellCount = 0;
+    std::set<std::string> visibleCells;
+    const MetricRow* latestCell = nullptr;
     for (const MetricRow* metric : App().document.metricView) {
         const MetricRow& m = *metric;
         if (m.csqVal >= 0) g_csq.push_back({ m.t, m.csqVal });
         if (m.rsrp < 0)    g_rsrp.push_back({ m.t, m.rsrp });
         if (m.rsrq < 0)    g_rsrq.push_back({ m.t, m.rsrq });
         if (m.snr10 != 100000) g_snr10.push_back({ m.t, m.snr10 });
+        if (!m.cellId.empty()) {
+            visibleCells.insert(m.cellId.str());
+            if (!latestCell || m.t > latestCell->t ||
+                (m.t == latestCell->t && m.lineNo > latestCell->lineNo)) latestCell = &m;
+        }
     }
+    if (latestCell) g_latestCellId = latestCell->cellId.str();
+    g_visibleCellCount = visibleCells.size();
     // 合并日志理论上已按时间定序；若单文件内部确有乱序,只排序图表副本，表格与
     // 结论仍保持原始证据顺序。排序一次后悬停即可稳定使用 O(log n) 二分查询。
     sortChartSeriesByTime(g_csq);
@@ -423,6 +493,8 @@ void ReleaseChartPageData() {
     releaseVector(g_rsrp);
     releaseVector(g_rsrq);
     releaseVector(g_snr10);
+    g_latestCellId.clear();
+    g_visibleCellCount = 0;
     g_chartFocusTime = LLONG_MIN;
 
     ResetChartSampleCache();

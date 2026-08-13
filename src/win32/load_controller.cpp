@@ -5,6 +5,7 @@
 #include <commdlg.h>
 
 #include <algorithm>
+#include <initializer_list>
 #include <limits>
 #include <map>
 #include <memory>
@@ -22,6 +23,7 @@
 #include "log_time.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
+#include "signal_quality.h"
 #include "tablemodel.h"
 #include "ui_pages.h"
 #include "win_file_io.h"
@@ -71,6 +73,16 @@ static void PresentAnalysis(bool bad) {
                            (int)App().document.filtered.size(), (int)App().document.lines.size(),
                            (int)App().document.outages.size(), (int)App().document.sessions.size());
     st += L"   ·   平台: " + U8ToW(App().document.platform.name);
+    const MetricRow* latestCell = nullptr;
+    for (const MetricRow& metric : App().document.metrics)
+        if (!metric.cellId.empty() && (!latestCell || metric.t > latestCell->t ||
+            (metric.t == latestCell->t && metric.lineNo > latestCell->lineNo))) latestCell = &metric;
+    if (latestCell)
+        st += FmtW(L"   ·   最近小区 ID: %s（共 %d 个）",
+                   U8ToW(latestCell->cellId.str()).c_str(),
+                   static_cast<int>(App().document.cellAnalysis.cells.size()));
+    else
+        st += L"   ·   小区 ID: 日志未提供";
     if (App().document.audit.unparsed == 0)
         st += L"   ·   未识别 0 行(无遗漏)";
     else
@@ -691,7 +703,7 @@ void DoExportCsv() {
             q += '\"';
             return q;
         };
-        out += "timestamp,ch,cell_id,pci,tac,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper\r\n";
+        out += "timestamp,ch,cell_id,pci,tac,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper,signal_quality\r\n";
         for (const auto& m : App().document.metrics) {
             for (size_t column = 0; column < kMetricColumnCount; ++column) {
                 // 程序生成的时间公式保留完整年月日；CH/Cell/RAT/OPER 等日志文本列会先
@@ -785,6 +797,10 @@ void DoExportReport() {
         add(); add(L"## 信号与小区"); add();
         add(FmtW(L"- 指标样本：%d；识别小区：%d",
                  static_cast<int>(App().document.metrics.size()), static_cast<int>(cells.size())));
+        add(L"- 工程建议分档：CSQ 0–9 较差 / 10–14 一般 / 15–19 良好 / 20–31 优秀（99 未知）");
+        add(L"- RSRP：<-100 较差 / -100~-91 一般 / -90~-81 良好 / ≥-80 dBm 优秀");
+        add(L"- RSRQ：<-20 较差 / -20~-16 一般 / -15~-11 良好 / ≥-10 dB 优秀");
+        add(L"- SNR：≤0 较差 / 0.1~12.9 一般 / 13~19.9 良好 / ≥20 dB 优秀");
         if (snrCount)
             add(FmtW(L"- SNR：最低 %.1f / 平均 %.1f / 最高 %.1f dB（%d 个样本）",
                      snrMin / 10.0, snrTotal / (10.0 * snrCount), snrMax / 10.0, snrCount));
@@ -910,17 +926,20 @@ void DoExportHtml() {
         html += "</div><p class=\"muted\">日志时间：" + escape(fmtTime(firstTime, "FULL")) + " → " +
                 escape(fmtTime(lastTime, "FULL")) + "</p></section>";
 
-        ChartSeries csq, rsrp, snr;
+        ChartSeries csq, rsrp, rsrq, snr;
         csq.reserve(App().document.metrics.size()); rsrp.reserve(App().document.metrics.size());
-        snr.reserve(App().document.metrics.size());
+        rsrq.reserve(App().document.metrics.size()); snr.reserve(App().document.metrics.size());
         for (const MetricRow& metric : App().document.metrics) {
             if (metric.csqVal >= 0) csq.push_back({metric.t, metric.csqVal});
             if (metric.rsrp < 0) rsrp.push_back({metric.t, metric.rsrp});
+            if (metric.rsrq < 0) rsrq.push_back({metric.t, metric.rsrq});
             if (metric.snr10 != 100000) snr.push_back({metric.t, metric.snr10});
         }
-        sortChartSeriesByTime(csq); sortChartSeriesByTime(rsrp); sortChartSeriesByTime(snr);
+        sortChartSeriesByTime(csq); sortChartSeriesByTime(rsrp);
+        sortChartSeriesByTime(rsrq); sortChartSeriesByTime(snr);
         auto svg = [&](const char* title, const ChartSeries& input, int low, int high,
-                       const char* color, bool scaled10) {
+                       const char* color, bool scaled10,
+                       std::initializer_list<std::pair<int, const char*>> guides) {
             if (input.empty()) return std::string("<p class=\"muted\">暂无 ") + title + " 样本。</p>";
             const long long t0 = input.front().first, t1 = input.back().first;
             ChartSeries points; downsampleChartSeries(input, t0, t1, 920, points);
@@ -948,6 +967,15 @@ void DoExportHtml() {
                           std::to_string(std::max(2, right - left)) +
                           "\" height=\"170\" fill=\"#c93c43\" opacity=\".12\"/>";
             }
+            for (const auto& guide : guides) {
+                const int guideY = y(guide.first);
+                output += "<line x1=\"55\" y1=\"" + std::to_string(guideY) +
+                          "\" x2=\"975\" y2=\"" + std::to_string(guideY) +
+                          "\" stroke=\"currentColor\" opacity=\".38\"/>"
+                          "<text x=\"970\" y=\"" + std::to_string(guideY - 4) +
+                          "\" text-anchor=\"end\" fill=\"currentColor\" opacity=\".8\" font-size=\"11\">" +
+                          escape(guide.second) + "</text>";
+            }
             output += "<polyline fill=\"none\" stroke=\"" + std::string(color) +
                       "\" stroke-width=\"2\" points=\"";
             for (const ChartPoint& point : points)
@@ -957,10 +985,22 @@ void DoExportHtml() {
                       escape(fmtTime(t1, "FULL")) + "</text></svg>";
             return output;
         };
-        html += "<section class=\"card\"><h2>信号趋势</h2><div class=\"charts\">" +
-                svg("CSQ 信号强度", csq, 0, 31, "#2a78d6", false) +
-                svg("RSRP 覆盖质量 (dBm)", rsrp, -130, -60, "#6656c9", false) +
-                svg("SNR 信噪比 (dB)", snr, -200, 300, "#1baf7a", true) + "</div></section>";
+        html += "<section class=\"card\"><h2>信号趋势与工程建议线</h2>"
+                "<p class=\"muted\">数值越大越好；分档用于现场排障参考，不是运营商或模组的绝对故障阈值。</p>"
+                "<div class=\"charts\">" +
+                svg("CSQ 信号强度", csq, 0, 31, "#2a78d6", false,
+                    {{kCsqFair, "≥10 一般"}, {kCsqGood, "≥15 良好"},
+                     {kCsqExcellent, "≥20 优秀"}}) +
+                svg("RSRP 覆盖质量 (dBm)", rsrp, -140, -40, "#6656c9", false,
+                    {{kRsrpFair, "≥-100 一般"}, {kRsrpGood, "≥-90 良好"},
+                     {kRsrpExcellent, "≥-80 优秀"}}) +
+                svg("RSRQ 覆盖质量 (dB)", rsrq, -25, 0, "#eb6834", false,
+                    {{kRsrqFair, "≥-20 一般"}, {kRsrqGood, "≥-15 良好"},
+                     {kRsrqExcellent, "≥-10 优秀"}}) +
+                svg("SNR 信噪比 (dB)", snr, -200, 300, "#1baf7a", true,
+                    {{kSnrFair10, ">0 一般"}, {kSnrGood10, "≥13 良好"},
+                     {kSnrExcellent10, "≥20 优秀"}}) +
+                "</div></section>";
 
         html += "<section class=\"card\"><h2>小区质量画像</h2><table><thead><tr>"
                 "<th>Cell ID</th><th>PCI</th><th>TAC</th><th>样本</th><th>占比%</th><th>观测驻留</th>"

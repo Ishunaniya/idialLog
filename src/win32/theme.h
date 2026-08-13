@@ -65,7 +65,10 @@ inline COLORREF outageBand = HEX2RGB(0xf8e5e5);
 // ---- 指标表状态底色(必须与单元格文字/列名共同表达,不可只靠颜色) ----
 inline COLORREF cellStall  = HEX2RGB(0xffe1f4);  // ΔRX=0
 inline COLORREF cellWeak   = HEX2RGB(0xffeec8);  // CSQ<10
-inline COLORREF cellSnrLow = HEX2RGB(0xf8e5e5);  // 【推断】SNR≤0dB
+inline COLORREF qualityExcellent = HEX2RGB(0xe2f4e8);
+inline COLORREF qualityGood      = HEX2RGB(0xe4eefb);
+inline COLORREF qualityFair      = HEX2RGB(0xfff3d6);
+inline COLORREF qualityPoor      = HEX2RGB(0xf9e3e3);
 
 // ---- 时间线行着色(小字号,需 WCAG≥4.5,与图表/仪表盘的大元素色解耦)----
 // 序列色(good/s1_blue/s5_aqua)是为大色块/大字设计的,直接做小字对比度不足
@@ -91,7 +94,8 @@ inline void ApplyPalette(bool useDark, bool useHighContrast = false) {
         good = warning = serious = critical = GetSysColor(COLOR_WINDOWTEXT);
         s1_blue = s2_green = s3_magenta = s4_yellow = s5_aqua = s6_orange =
             s7_violet = s8_red = GetSysColor(COLOR_WINDOWTEXT);
-        outageBand = cellStall = cellWeak = cellSnrLow = GetSysColor(COLOR_WINDOW);
+        outageBand = cellStall = cellWeak = qualityExcellent = qualityGood =
+            qualityFair = qualityPoor = GetSysColor(COLOR_WINDOW);
         rowRecovered = rowFault = rowRoamlink = rowState = rowSdk = rowWarn = rowErr =
             GetSysColor(COLOR_WINDOWTEXT);
         return;
@@ -107,7 +111,9 @@ inline void ApplyPalette(bool useDark, bool useHighContrast = false) {
         s3_magenta = HEX2RGB(0xe87ba4); s4_yellow = HEX2RGB(0xeda100); s5_aqua = HEX2RGB(0x1baf7a);
         s6_orange = HEX2RGB(0xeb6834); s7_violet = HEX2RGB(0x6656c9); s8_red = HEX2RGB(0xe34948);
         outageBand = HEX2RGB(0xf8e5e5); cellStall = HEX2RGB(0xffe1f4);
-        cellWeak = HEX2RGB(0xffeec8); cellSnrLow = HEX2RGB(0xf8e5e5);
+        cellWeak = HEX2RGB(0xffeec8);
+        qualityExcellent = HEX2RGB(0xe2f4e8); qualityGood = HEX2RGB(0xe4eefb);
+        qualityFair = HEX2RGB(0xfff3d6); qualityPoor = HEX2RGB(0xf9e3e3);
         rowRecovered = HEX2RGB(0x0a7a32); rowFault = critical; rowRoamlink = HEX2RGB(0x147c5b);
         rowState = HEX2RGB(0x2369bd); rowSdk = HEX2RGB(0x5b49b7); rowWarn = HEX2RGB(0x836000);
         rowErr = critical;
@@ -123,7 +129,9 @@ inline void ApplyPalette(bool useDark, bool useHighContrast = false) {
     s3_magenta = HEX2RGB(0xf090b5); s4_yellow = HEX2RGB(0xefb94e); s5_aqua = HEX2RGB(0x4dc79b);
     s6_orange = HEX2RGB(0xf28a60); s7_violet = HEX2RGB(0x9b8cf2); s8_red = HEX2RGB(0xf07174);
     outageBand = HEX2RGB(0x40252a); cellStall = HEX2RGB(0x4b2941);
-    cellWeak = HEX2RGB(0x4a3c20); cellSnrLow = HEX2RGB(0x40252a);
+    cellWeak = HEX2RGB(0x4a3c20);
+    qualityExcellent = HEX2RGB(0x1c3b29); qualityGood = HEX2RGB(0x1d344e);
+    qualityFair = HEX2RGB(0x463a20); qualityPoor = HEX2RGB(0x44282b);
     rowRecovered = HEX2RGB(0x67ce88); rowFault = critical; rowRoamlink = HEX2RGB(0x59c89d);
     rowState = HEX2RGB(0x75b5ff); rowSdk = HEX2RGB(0xad9eff); rowWarn = HEX2RGB(0xf0bd58);
     rowErr = critical;

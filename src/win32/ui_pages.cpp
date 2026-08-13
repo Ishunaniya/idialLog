@@ -22,6 +22,7 @@
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "tablemodel.h"
+#include "signal_quality.h"
 #include "theme.h"
 #include "win_text.h"
 
@@ -807,12 +808,24 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
         draw->clrTextBk = (row & 1) ? th::zebra : th::surface;
         if (row < App().document.metricView.size()) {
             const MetricRow& metric = *App().document.metricView[row];
+            auto qualityBackground = [](SignalQuality quality) {
+                switch (quality) {
+                case SignalQuality::Excellent: return th::qualityExcellent;
+                case SignalQuality::Good:      return th::qualityGood;
+                case SignalQuality::Fair:      return th::qualityFair;
+                case SignalQuality::Poor:      return th::qualityPoor;
+                default:                       return th::surface;
+                }
+            };
             if (column == 9 && metric.drx == 0)
                 draw->clrTextBk = th::cellStall;
-            else if (column == 5 && metric.csqVal >= 0 && metric.csqVal < 10)
-                draw->clrTextBk = th::cellWeak;
-            else if (column == 12 && metric.snr10 != 100000 && metric.snr10 <= 0)
-                draw->clrTextBk = th::cellSnrLow;
+            else if (column == 18)
+                draw->clrTextBk = qualityBackground(metricOverallSignalQuality(metric));
+            else {
+                const SignalQuality quality = metricSignalQuality(metric, static_cast<std::size_t>(column));
+                if (quality != SignalQuality::Unknown)
+                    draw->clrTextBk = qualityBackground(quality);
+            }
         }
     }
     result = CDRF_DODEFAULT;

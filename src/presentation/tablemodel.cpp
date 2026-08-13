@@ -3,6 +3,7 @@
 
 #include "log_analysis.h"
 #include "log_time.h"
+#include "signal_quality.h"
 
 #include <algorithm>
 #include <climits>
@@ -65,6 +66,20 @@ std::string metricCellText(const MetricRow& m, size_t column) {
     case 15: return m.rat.empty() ? "-" : m.rat;
     case 16: return m.denyVal >= 0 ? std::to_string(m.denyVal) : "-";
     case 17: return m.oper.empty() ? "-" : m.oper;
+    case 18: {
+        std::string result;
+        auto add = [&](const char* name, SignalQuality quality) {
+            if (quality == SignalQuality::Unknown) return;
+            if (!result.empty()) result += " / ";
+            result += name;
+            result += signalQualityName(quality);
+        };
+        add("CSQ", csqQuality(m.csqVal));
+        add("RSRP", rsrpQuality(m.rsrp));
+        add("RSRQ", rsrqQuality(m.rsrq));
+        add("SNR", snrQuality10(m.snr10));
+        return result.empty() ? "-" : result;
+    }
     default: return {};
     }
 }
@@ -131,7 +146,7 @@ static std::string csvSafeText(std::string value) {
 std::string metricCsvCellText(const MetricRow& metric, size_t column) {
     if (column == 0) return "=\"" + fmtTime(metric.t, "FULL") + "\"";
     std::string value = metricCellText(metric, column);
-    if (column == 1 || column == 2 || column == 15 || column == 17)
+    if (column == 1 || column == 2 || column == 15 || column == 17 || column == 18)
         value = csvSafeText(std::move(value));
     return value;
 }

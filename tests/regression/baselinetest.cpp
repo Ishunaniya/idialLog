@@ -115,6 +115,14 @@ int main() {
             long slot = 0;
             for (const auto& l : L.lines) if (l.tagText() == "SLOT") slot++;
             cki(slot, 10, "[SLOT] 标签数");
+            long cellSamples = 0; bool cellValue = true;
+            for (const auto& metric : L.mets) if (!metric.cellId.empty()) {
+                ++cellSamples; cellValue = cellValue && metric.cellId == "0d17c148";
+            }
+            // 第 132 行首次上报 CID，后续普通心跳沿用当前服务小区，直到来源切换或明确失效。
+            cki(cellSamples, 13, "CID 及后续驻留指标样本数");
+            ck(cellValue && cellSamples == 13, "AG35 CID 进入小区 ID",
+               cellValue ? "0d17c148" : "(值不符)", "0d17c148");
         }
     }
 
@@ -186,6 +194,13 @@ int main() {
             ck(!has(L.fs, "CP dump"), "不报 CP dump(假阳性守卫)",
                has(L.fs,"CP dump")?"误报了":"未误报", "未误报");
             cki((long)L.fs.size(), 0, "结论数(正常设备应为 0)");
+            long cellSamples = 0; bool cellValue = true;
+            for (const auto& metric : L.mets) if (!metric.cellId.empty()) {
+                ++cellSamples; cellValue = cellValue && metric.cellId == "0d17c148";
+            }
+            cki(cellSamples, 2, "CID 及后续驻留指标样本数");
+            ck(cellValue && cellSamples == 2, "EC200A CID 进入小区 ID",
+               cellValue ? "0d17c148" : "(值不符)", "0d17c148");
         }
     }
 
@@ -254,6 +269,9 @@ int main() {
             cki((long)ms[1].rsrp, -94,  "RSRP 竖线分隔(RSRP:-94 | RSRQ:-18)");
             cki((long)ms[1].rsrq, -18,  "RSRQ 竖线分隔");
             cki((long)ms[2].rsrp, 1,    "无 RSRP 行保持无效标记(不误报)");
+            ck(ms[0].cellId == "X" && ms[1].cellId == "Y" && ms[2].cellId == "Z",
+               "Cell 与 CID 均进入小区 ID", ms[0].cellId.str() + "/" +
+               ms[1].cellId.str() + "/" + ms[2].cellId.str(), "X/Y/Z");
         }
     }
 

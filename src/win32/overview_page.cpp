@@ -17,6 +17,7 @@
 #include "log_time.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
+#include "signal_quality.h"
 #include "theme.h"
 #include "ui_pages.h"
 #include "win_text.h"
@@ -728,33 +729,45 @@ void RenderSummary() {
         if (!m.cellId.empty()) cells[m.cellId.str()]++;
         if (m.rx != LLONG_MIN) rxs.push_back({ m.t, m.rx });
     }
-    if (csqN && weak)
-        add(L"信号 CSQ", { FmtW(L"弱信号(<10)  %d 次 / 共 %d 样本   首次 %s", weak, csqN, U8ToW(fmtTime(weakFirst, "MD")).c_str()) }, 1);
+    if (csqN) {
+        const int average = static_cast<int>(csqSum / csqN);
+        std::vector<std::wstring> lines{
+            FmtW(L"最低 %d / 均 %d / 最高 %d   [均值:%s]", csqMin, average, csqMax,
+                 U8ToW(signalQualityName(csqQuality(average))).c_str()),
+            L"0–9 较差 / 10–14 一般 / 15–19 良好 / 20–31 优秀（99 未知，越大越好）"
+        };
+        if (weak)
+            lines.push_back(FmtW(L"弱信号(<10)  %d/%d 样本   首次 %s", weak, csqN,
+                                 U8ToW(fmtTime(weakFirst, "MD")).c_str()));
+        add(L"信号 CSQ", lines, weak ? 1 : 0);
+    }
     // LTE 详情。SNR 是 SDK 原值(0.1dB);阈值仅作工程观察,不冒充协议定论。
     if (rsrpN || rsrqN || snrN) {
-        // 质量分档:RSRP ≥-90 良 / -90~-100 中 / <-100 差;RSRQ ≥-15 良 / -15~-20 中 / <-20 差
-        auto rateP = [](int v) { return v >= -90 ? L"良" : (v >= -100 ? L"中" : L"差"); };
-        auto rateQ = [](int v) { return v >= -15 ? L"良" : (v >= -20 ? L"中" : L"差"); };
         std::vector<std::wstring> ls; int acc = 0;
         if (rsrpN) {
             int avg = (int)(rsrpSum / rsrpN);
             ls.push_back(FmtW(L"RSRP  最低 %d / 均 %d / 最高 %d dBm   [均值:%s]",
-                              rsrpMin, avg, rsrpMax, rateP(avg)));
-            ls.push_back(L"      (≥-90 良 / -90~-100 中 / <-100 差,越大越好)");
+                              rsrpMin, avg, rsrpMax,
+                              U8ToW(signalQualityName(rsrpQuality(avg))).c_str()));
+            ls.push_back(L"      (<-100 较差 / -100~-91 一般 / -90~-81 良好 / ≥-80 优秀，越大越好)");
             if (avg < -100 || rsrpMin < -110) acc = std::max(acc, 1);
         }
         if (rsrqN) {
             int avg = (int)(rsrqSum / rsrqN);
             ls.push_back(FmtW(L"RSRQ  最低 %d / 均 %d / 最高 %d dB   [均值:%s]",
-                              rsrqMin, avg, rsrqMax, rateQ(avg)));
-            ls.push_back(L"      (≥-15 良 / -15~-20 中 / <-20 差)");
+                              rsrqMin, avg, rsrqMax,
+                              U8ToW(signalQualityName(rsrqQuality(avg))).c_str()));
+            ls.push_back(L"      (<-20 较差 / -20~-16 一般 / -15~-11 良好 / ≥-10 优秀，越大越好)");
             if (avg < -20) acc = std::max(acc, 1);
         }
         if (snrN) {
             double avg = (double)snrSum10 / (10.0 * snrN);
-            ls.push_back(FmtW(L"SNR   最低 %.1f / 均 %.1f / 最高 %.1f dB   非正值 %d/%d",
-                              snrMin / 10.0, avg, snrMax / 10.0, snrNonPositive, snrN));
-            ls.push_back(L"      【源码直证】日志原值单位 0.1dB；【推断】≤0 dB 仅作低质量观察阈值。");
+            const int avg10 = static_cast<int>(snrSum10 / snrN);
+            ls.push_back(FmtW(L"SNR   最低 %.1f / 均 %.1f / 最高 %.1f dB   [均值:%s]   非正值 %d/%d",
+                              snrMin / 10.0, avg, snrMax / 10.0,
+                              U8ToW(signalQualityName(snrQuality10(avg10))).c_str(),
+                              snrNonPositive, snrN));
+            ls.push_back(L"      (≤0 较差 / 0.1~12.9 一般 / 13~19.9 良好 / ≥20 优秀，工程建议，越大越好)");
             if (snrN >= 5 && snrNonPositive * 2 >= snrN) acc = std::max(acc, 1);
         }
         add(L"LTE 信号质量 RSRP / RSRQ / SNR", ls, acc);
