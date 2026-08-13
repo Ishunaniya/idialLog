@@ -628,6 +628,261 @@ static std::string fmtSnr10(int raw) {
     return b;
 }
 
+namespace {
+
+struct CellAccumulator {
+    CellSummary summary;
+    long long csqSum = 0;
+    long long rsrpSum = 0;
+    long long rsrqSum = 0;
+    long long snrSum10 = 0;
+};
+
+template <typename Lines>
+static std::vector<std::uint16_t> metricSourceIds(const Lines& lines,
+                                                   const std::vector<MetricRow>& metrics) {
+    std::vector<std::uint16_t> result(metrics.size(), 0);
+    std::size_t lineIndex = 0;
+    for (std::size_t metricIndex = 0; metricIndex < metrics.size(); ++metricIndex) {
+        while (lineIndex < lines.size() &&
+               lineRef(lines[lineIndex]).lineNo < metrics[metricIndex].lineNo) ++lineIndex;
+        if (lineIndex < lines.size() &&
+            lineRef(lines[lineIndex]).lineNo == metrics[metricIndex].lineNo)
+            result[metricIndex] = lineRef(lines[lineIndex]).sourceId;
+    }
+    return result;
+}
+
+template <typename Lines>
+static std::uint16_t sourceIdAtLine(const Lines& lines, std::size_t lineNo) {
+    auto it = std::lower_bound(lines.begin(), lines.end(), lineNo,
+        [](const auto& item, std::size_t number) { return lineRef(item).lineNo < number; });
+    return it != lines.end() && lineRef(*it).lineNo == lineNo ? lineRef(*it).sourceId : 0;
+}
+
+template <typename Lines>
+static CellAnalysis analyzeCellsImpl(const Lines& lines,
+                                     const std::vector<MetricRow>& metrics,
+                                     const std::vector<Outage>& outages) {
+    CellAnalysis result;
+    result.totalSamples = metrics.size();
+    if (metrics.empty()) return result;
+
+    const auto sourceIds = metricSourceIds(lines, metrics);
+    std::vector<CellAccumulator> accumulators;
+    std::map<std::string, std::size_t> cellIndexes;
+    std::map<std::pair<std::string, std::string>, std::size_t> transitionIndexes;
+
+    auto cellIndex = [&](std::string_view id) -> std::size_t {
+        const std::string key(id);
+        auto found = cellIndexes.find(key);
+        if (found != cellIndexes.end()) return found->second;
+        const std::size_t index = accumulators.size();
+        CellAccumulator accumulator;
+        accumulator.summary.cellId = key;
+        accumulators.push_back(std::move(accumulator));
+        cellIndexes.emplace(key, index);
+        return index;
+    };
+
+    auto transitionIndex = [&](const std::string& from, const std::string& to) -> std::size_t {
+        const auto key = std::make_pair(from, to);
+        auto found = transitionIndexes.find(key);
+        if (found != transitionIndexes.end()) return found->second;
+        const std::size_t index = result.transitions.size();
+        CellTransition transition;
+        transition.fromCell = from;
+        transition.toCell = to;
+        result.transitions.push_back(std::move(transition));
+        transitionIndexes.emplace(key, index);
+        return index;
+    };
+
+    std::string previousCell, cellBeforePrevious;
+    std::uint16_t previousSource = 0;
+    long long previousTime = 0, previousSwitchTime = 0;
+    for (std::size_t index = 0; index < metrics.size(); ++index) {
+        const MetricRow& metric = metrics[index];
+        if (metric.cellId.empty()) continue;
+        const std::string id = metric.cellId.str();
+        CellAccumulator& accumulator = accumulators[cellIndex(id)];
+        CellSummary& summary = accumulator.summary;
+        if (summary.samples == 0) {
+            summary.first = metric.t;
+            summary.firstEvidenceLine = metric.lineNo;
+            summary.pci = metric.pci;
+            summary.tac = metric.tac;
+            summary.tacDigits = metric.tacDigits;
+        }
+        summary.last = metric.t;
+        summary.samples++;
+        result.samplesWithCell++;
+        if (result.first == 0 || metric.t < result.first) result.first = metric.t;
+        if (metric.t > result.last) result.last = metric.t;
+
+        if (metric.pci >= 0) summary.pci = metric.pci;
+        if (metric.tac != UINT32_MAX) {
+            summary.tac = metric.tac;
+            summary.tacDigits = metric.tacDigits;
+        }
+        if (metric.csqVal >= 0) {
+            accumulator.csqSum += metric.csqVal;
+            summary.csqSamples++;
+            summary.csqMin = std::min(summary.csqMin, metric.csqVal);
+            summary.csqMax = std::max(summary.csqMax, metric.csqVal);
+        }
+        if (metric.rsrp < 0) {
+            accumulator.rsrpSum += metric.rsrp;
+            summary.rsrpSamples++;
+            summary.rsrpMin = std::min(summary.rsrpMin, metric.rsrp);
+            summary.rsrpMax = std::max(summary.rsrpMax, metric.rsrp);
+        }
+        if (metric.rsrq < 0) {
+            accumulator.rsrqSum += metric.rsrq;
+            summary.rsrqSamples++;
+            summary.rsrqMin = std::min(summary.rsrqMin, metric.rsrq);
+            summary.rsrqMax = std::max(summary.rsrqMax, metric.rsrq);
+        }
+        if (metric.snr10 != 100000) {
+            accumulator.snrSum10 += metric.snr10;
+            summary.snrSamples++;
+            summary.snrMin10 = std::min(summary.snrMin10, metric.snr10);
+            summary.snrMax10 = std::max(summary.snrMax10, metric.snr10);
+        }
+
+        const bool sameSource = previousCell.empty() || sourceIds[index] == previousSource;
+        if (!sameSource) {
+            previousCell.clear();
+            cellBeforePrevious.clear();
+            previousSwitchTime = 0;
+        }
+        if (!previousCell.empty() && id == previousCell) {
+            // 相邻同小区样本才累加观测驻留；超过 10 分钟的采样空洞不冒充连续驻留。
+            const long long delta = metric.t - previousTime;
+            if (delta >= 0 && delta <= 600)
+                accumulators[cellIndex(previousCell)].summary.observedDwellSec += delta;
+        } else if (!previousCell.empty()) {
+            CellSummary& from = accumulators[cellIndex(previousCell)].summary;
+            from.switchesOut++;
+            summary.switchesIn++;
+            result.switchCount++;
+            CellTransition& transition = result.transitions[transitionIndex(previousCell, id)];
+            if (transition.count == 0) {
+                transition.first = metric.t;
+                transition.firstEvidenceLine = metric.lineNo;
+            }
+            transition.last = metric.t;
+            transition.count++;
+
+            // A→B 后 5 分钟内又 B→A 记为一次乒乓；这是工程观察规则，不等同网络根因。
+            if (!cellBeforePrevious.empty() && id == cellBeforePrevious &&
+                previousSwitchTime > 0 && metric.t >= previousSwitchTime &&
+                metric.t - previousSwitchTime <= 300) {
+                transition.pingPongCount++;
+                transition.pingPongEvidenceLine = metric.lineNo;
+                transition.pingPongEvidenceTime = metric.t;
+                result.pingPongCount++;
+            }
+            cellBeforePrevious = previousCell;
+            previousSwitchTime = metric.t;
+        }
+        previousCell = id;
+        previousSource = sourceIds[index];
+        previousTime = metric.t;
+    }
+
+    // 将每次断网关联到同来源、断网前 10 分钟内最近一次有小区 ID 的指标。
+    // 按证据行归并推进，避免“每次断网倒扫全部指标”的 O(断网×指标) 开销。
+    std::vector<const Outage*> orderedOutages;
+    orderedOutages.reserve(outages.size());
+    for (const Outage& outage : outages) orderedOutages.push_back(&outage);
+    std::stable_sort(orderedOutages.begin(), orderedOutages.end(),
+        [](const Outage* a, const Outage* b) { return a->startLine < b->startLine; });
+    std::map<std::uint16_t, std::size_t> latestMetric;
+    std::size_t metricCursor = 0;
+    for (const Outage* outagePtr : orderedOutages) {
+        const Outage& outage = *outagePtr;
+        while (metricCursor < metrics.size() && metrics[metricCursor].lineNo <= outage.startLine) {
+            if (!metrics[metricCursor].cellId.empty()) latestMetric[sourceIds[metricCursor]] = metricCursor;
+            ++metricCursor;
+        }
+        const std::uint16_t sourceId = sourceIdAtLine(lines, outage.startLine);
+        auto latest = latestMetric.find(sourceId);
+        if (latest != latestMetric.end()) {
+            const std::size_t index = latest->second;
+            const MetricRow& metric = metrics[index];
+            const long long age = outage.start - metric.t;
+            // 行号在前但时钟略晚时，退回同来源更早样本，不能让未来样本遮住有效关联。
+            std::size_t fallback = index;
+            while (age < 0 && fallback > 0) {
+                --fallback;
+                if (sourceIds[fallback] != sourceId || metrics[fallback].cellId.empty()) continue;
+                const long long fallbackAge = outage.start - metrics[fallback].t;
+                if (fallbackAge >= 0) {
+                    const MetricRow& candidate = metrics[fallback];
+                    if (fallbackAge <= 600) {
+                        CellSummary& summary = accumulators[cellIndex(candidate.cellId.view())].summary;
+                        summary.outageStarts++;
+                        if (summary.firstOutageLine == 0) {
+                            summary.firstOutageLine = outage.startLine;
+                            summary.firstOutageTime = outage.start;
+                        }
+                    }
+                    break;
+                }
+            }
+            if (age >= 0 && age <= 600) {
+                CellSummary& summary = accumulators[cellIndex(metric.cellId.view())].summary;
+                summary.outageStarts++;
+                if (summary.firstOutageLine == 0) {
+                    summary.firstOutageLine = outage.startLine;
+                    summary.firstOutageTime = outage.start;
+                }
+            }
+        }
+    }
+
+    result.cells.reserve(accumulators.size());
+    for (CellAccumulator& accumulator : accumulators) {
+        CellSummary& summary = accumulator.summary;
+        if (summary.csqSamples) summary.csqAvg10 = int(accumulator.csqSum * 10 /
+            static_cast<long long>(summary.csqSamples));
+        if (summary.rsrpSamples) summary.rsrpAvg10 = int(accumulator.rsrpSum * 10 /
+            static_cast<long long>(summary.rsrpSamples));
+        if (summary.rsrqSamples) summary.rsrqAvg10 = int(accumulator.rsrqSum * 10 /
+            static_cast<long long>(summary.rsrqSamples));
+        if (summary.snrSamples) summary.snrAvg10 = int(accumulator.snrSum10 /
+            static_cast<long long>(summary.snrSamples));
+        if (result.samplesWithCell)
+            summary.sampleSharePermille = int(summary.samples * 1000 / result.samplesWithCell);
+        result.cells.push_back(std::move(summary));
+    }
+    std::stable_sort(result.cells.begin(), result.cells.end(), [](const CellSummary& a, const CellSummary& b) {
+        if (a.outageStarts != b.outageStarts) return a.outageStarts > b.outageStarts;
+        return a.samples > b.samples;
+    });
+    std::stable_sort(result.transitions.begin(), result.transitions.end(),
+        [](const CellTransition& a, const CellTransition& b) {
+            if (a.pingPongCount != b.pingPongCount) return a.pingPongCount > b.pingPongCount;
+            return a.count > b.count;
+        });
+    return result;
+}
+
+} // namespace
+
+CellAnalysis analyzeCells(const std::vector<LogLine>& lines,
+                          const std::vector<MetricRow>& metrics,
+                          const std::vector<Outage>& outages) {
+    return analyzeCellsImpl(lines, metrics, outages);
+}
+
+CellAnalysis analyzeCells(const LogView& lines,
+                          const std::vector<MetricRow>& metrics,
+                          const std::vector<Outage>& outages) {
+    return analyzeCellsImpl(lines, metrics, outages);
+}
+
 // 断网根因分类(取值即 Finding 的分组键)
 enum Cause { C_WEAK, C_DATADEAD, C_SWITCHING, C_DENIED, C_NOTREADY, C_SDK_L0, C_UNKNOWN, C_N };
 static const char* kCauseName[C_N] = {
@@ -660,7 +915,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                         const std::vector<Outage>& outs,
                                         const std::vector<MetricRow>& mets,
                                         const PlatformInfo& pi,
-                                        const ParseAudit& audit)
+                                        const ParseAudit& audit,
+                                        const CellAnalysis* precomputedCells)
 {
     std::vector<Finding> fs;
     if (lines.empty()) return fs;
@@ -1062,6 +1318,85 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         }
     }
 
+    // ---- 6d. 小区质量、频繁切换及乒乓观察 ----
+    // 这些规则用于把“现象”和原始证据连起来，不把无线侧相关性冒充确定根因。
+    {
+        CellAnalysis computedCells;
+        if (!precomputedCells) computedCells = analyzeCellsImpl(lines, mets, outs);
+        const CellAnalysis& cells = precomputedCells ? *precomputedCells : computedCells;
+        const long long span = cells.last > cells.first ? cells.last - cells.first : 0;
+        const long long switchRate10 = span > 0
+            ? static_cast<long long>(cells.switchCount) * 36000 / span : 0;
+        if (cells.switchCount >= 6 && switchRate10 >= 60 && !cells.transitions.empty()) {
+            const CellTransition& top = cells.transitions.front();
+            Finding f;
+            f.severity = 1;
+            f.title = "频繁小区切换:" + std::to_string(cells.switchCount) + " 次,约 " +
+                      fmtSnr10(static_cast<int>(switchRate10)) + " 次/小时";
+            f.detail = "【工程观察】已排除跨日志来源的伪切换；短时高频切换可能放大链路抖动，"
+                       "但不能单凭该统计认定为断网根因。最常见方向 " + top.fromCell + " → " +
+                       top.toCell + " 共 " + std::to_string(top.count) + " 次。";
+            f.advice = "结合小区分析页的 RSRP/RSRQ/SNR、断网关联数和切换方向，复核覆盖边缘、"
+                       "天线位置及运营商邻区配置。";
+            Evidence e;
+            e.lineNo = top.firstEvidenceLine;
+            e.ts = fmtTime(top.first, "MD");
+            e.text = "观察到小区切换 " + top.fromCell + " → " + top.toCell;
+            f.ev.push_back(std::move(e));
+            fs.push_back(std::move(f));
+        }
+        if (cells.pingPongCount >= 2) {
+            const CellTransition* top = nullptr;
+            for (const CellTransition& transition : cells.transitions)
+                if (transition.pingPongCount && (!top || transition.pingPongCount > top->pingPongCount))
+                    top = &transition;
+            if (top) {
+                Finding f;
+                f.severity = 1;
+                f.title = "疑似小区乒乓:" + std::to_string(cells.pingPongCount) + " 次";
+                f.detail = "【工程观察】A→B 后 5 分钟内又 B→A 记为一次乒乓。高频往返通常值得"
+                           "检查覆盖重叠区，但该时间门槛不是模组 SDK 的故障常量。";
+                f.advice = "对照断网时间与两侧小区信号质量；若集中发生在固定位置，优先复核"
+                           "天线、遮挡和邻区切换参数。";
+                Evidence e;
+                e.lineNo = top->pingPongEvidenceLine;
+                e.ts = fmtTime(top->pingPongEvidenceTime, "MD");
+                e.text = "5 分钟内往返 " + top->fromCell + " → " + top->toCell +
+                         ",该方向累计 " + std::to_string(top->pingPongCount) + " 次";
+                f.ev.push_back(std::move(e));
+                fs.push_back(std::move(f));
+            }
+        }
+
+        std::vector<const CellSummary*> weakCells;
+        for (const CellSummary& cell : cells.cells) {
+            const bool weakRsrp = cell.rsrpSamples >= 5 && cell.rsrpAvg10 <= -1100;
+            const bool poorSnr = cell.snrSamples >= 5 && cell.snrAvg10 <= 0;
+            if (cell.samples >= 5 && cell.outageStarts > 0 && (weakRsrp || poorSnr))
+                weakCells.push_back(&cell);
+        }
+        if (!weakCells.empty()) {
+            Finding f;
+            f.severity = 1;
+            f.title = "疑似弱覆盖小区:" + std::to_string(weakCells.size()) + " 个与断网起点相关";
+            f.detail = "【相关性提示】这些小区同时满足：至少 5 个样本、RSRP均值≤-110dBm或"
+                       "SNR均值≤0dB，并在断网前 10 分钟内被观测到。关联不等同因果。";
+            f.advice = "在小区分析页按断网关联数排序，优先复核对应 Cell ID 的安装位置、天线"
+                       "及覆盖；再结合原始证据确认。";
+            for (std::size_t i = 0; i < weakCells.size() && i < 3; ++i) {
+                const CellSummary& cell = *weakCells[i];
+                Evidence e;
+                e.lineNo = cell.firstOutageLine ? cell.firstOutageLine : cell.firstEvidenceLine;
+                e.ts = fmtTime(cell.firstOutageTime ? cell.firstOutageTime : cell.first, "MD");
+                e.text = "Cell " + cell.cellId + ":断网关联 " + std::to_string(cell.outageStarts) +
+                         " 次,RSRP均值 " + (cell.rsrpSamples ? fmtSnr10(cell.rsrpAvg10) : "-") +
+                         "dBm,SNR均值 " + (cell.snrSamples ? fmtSnr10(cell.snrAvg10) : "-") + "dB";
+                f.ev.push_back(std::move(e));
+            }
+            fs.push_back(std::move(f));
+        }
+    }
+
     // ---- 7. 解析覆盖率(未识别行占比过高 → 结论本身可能不完整)----
     if (audit.unparsed > 0 && audit.unparsedRatio() > 0.01 && !audit.samples.empty()) {
         Finding f;
@@ -1088,16 +1423,18 @@ std::vector<Finding> analyze(const std::vector<LogLine>& lines,
                              const std::vector<Outage>& outs,
                              const std::vector<MetricRow>& mets,
                              const PlatformInfo& pi,
-                             const ParseAudit& audit) {
-    return analyzeImpl(lines, outs, mets, pi, audit);
+                             const ParseAudit& audit,
+                             const CellAnalysis* precomputedCells) {
+    return analyzeImpl(lines, outs, mets, pi, audit, precomputedCells);
 }
 
 std::vector<Finding> analyze(const LogView& lines,
                              const std::vector<Outage>& outs,
                              const std::vector<MetricRow>& mets,
                              const PlatformInfo& pi,
-                             const ParseAudit& audit) {
-    return analyzeImpl(lines, outs, mets, pi, audit);
+                             const ParseAudit& audit,
+                             const CellAnalysis* precomputedCells) {
+    return analyzeImpl(lines, outs, mets, pi, audit, precomputedCells);
 }
 
 

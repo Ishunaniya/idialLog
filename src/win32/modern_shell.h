@@ -30,6 +30,7 @@ void SetShellProgress(int percent, const wchar_t* text = nullptr);
 bool ShellBusy();
 
 bool SystemPrefersDarkTheme();
+bool SystemHighContrastEnabled();
 void ApplyModernTheme(HWND root);
 HBRUSH ModernControlBrush(UINT message, HDC dc, HWND control);
 

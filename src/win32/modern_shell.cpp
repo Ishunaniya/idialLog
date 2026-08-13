@@ -41,21 +41,23 @@ std::wstring g_busyStatus;
 
 struct NavItem { int page; const wchar_t* text; const wchar_t* detail; int y; };
 
-std::array<NavItem, 8> NavItems() {
+std::array<NavItem, 9> NavItems() {
     return {{{0, L"概览", L"健康度与关键摘要", 112},
              {1, L"诊断结论", L"根因、建议与证据", 160},
              {3, L"断网记录", L"中断、恢复与时长", 208},
-             {2, L"事件时间线", L"状态与关键动作流", 306},
-             {4, L"信号指标", L"小区、射频与数据面", 354},
-             {5, L"标签统计", L"消息来源与分布", 402},
-             {6, L"原始日志", L"逐行定位与复制", 450},
-             {7, L"未识别行", L"解析覆盖与审计", 498}}};
+             {8, L"小区分析", L"质量、切换与断网关联", 256},
+             {2, L"事件时间线", L"状态与关键动作流", 354},
+             {4, L"信号指标", L"小区、射频与数据面", 402},
+             {5, L"标签统计", L"消息来源与分布", 450},
+             {6, L"原始日志", L"逐行定位与复制", 498},
+             {7, L"未识别行", L"解析覆盖与审计", 546}}};
 }
 
 COLORREF NavIconColor(int page) {
     const COLORREF colors[] = {th::s1_blue, th::s7_violet, th::s5_aqua, th::s8_red,
-                               th::s2_green, th::s4_yellow, th::s6_orange, th::s3_magenta};
-    return colors[page >= 0 && page < 8 ? page : 0];
+                               th::s2_green, th::s4_yellow, th::s6_orange, th::s3_magenta,
+                               th::s5_aqua};
+    return colors[page >= 0 && page < 9 ? page : 0];
 }
 
 void DrawTextAt(HDC dc, const wchar_t* text, RECT rect, HFONT font, COLORREF color,
@@ -100,11 +102,15 @@ void DrawNavIcon(HDC dc, int page, int x, int y, COLORREF color) {
         Rectangle(dc, x + S(5), t, x + S(16), b);
         MoveToEx(dc, x + S(8), y + S(8), nullptr); LineTo(dc, x + S(14), y + S(8));
         MoveToEx(dc, x + S(8), y + S(12), nullptr); LineTo(dc, x + S(14), y + S(12)); break;
-    default:
+    case 7:
         Ellipse(dc, l, t, r, b); MoveToEx(dc, x + S(8), y + S(8), nullptr);
         LineTo(dc, x + S(10), y + S(6)); LineTo(dc, x + S(13), y + S(8));
         LineTo(dc, x + S(10), y + S(11)); LineTo(dc, x + S(10), y + S(13));
         Ellipse(dc, x + S(9), y + S(15), x + S(11), y + S(17)); break;
+    default:
+        Ellipse(dc, x + S(8), y + S(8), x + S(12), y + S(12));
+        Arc(dc, x + S(4), y + S(4), x + S(16), y + S(16), x + S(5), y + S(10), x + S(10), y + S(5));
+        Arc(dc, l, t, r, b, l, y + S(10), x + S(10), t); break;
     }
     SelectObject(dc, oldBrush);
     SelectObject(dc, oldPen);
@@ -116,6 +122,7 @@ std::wstring BadgeForPage(int page) {
     if (page == 1) count = App().document.findings.size();
     else if (page == 3) count = App().document.outages.size();
     else if (page == 7) count = App().document.audit.unparsed;
+    else if (page == 8) count = App().document.cellAnalysis.cells.size();
     if (!count) return {};
     return count > 999 ? L"999+" : std::to_wstring(count);
 }
@@ -128,6 +135,22 @@ int HitNavigationPage(int y) {
 
 LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
     switch (message) {
+    case WM_GETDLGCODE: return DLGC_WANTARROWS | DLGC_WANTCHARS;
+    case WM_SETFOCUS: case WM_KILLFOCUS:
+        InvalidateRect(hwnd, nullptr, FALSE); return 0;
+    case WM_KEYDOWN: {
+        const auto items = NavItems();
+        int index = 0;
+        for (std::size_t i = 0; i < items.size(); ++i) if (items[i].page == g_selectedPage) index = static_cast<int>(i);
+        if (wparam == VK_UP) index = std::max(0, index - 1);
+        else if (wparam == VK_DOWN) index = std::min(static_cast<int>(items.size()) - 1, index + 1);
+        else if (wparam == VK_HOME) index = 0;
+        else if (wparam == VK_END) index = static_cast<int>(items.size()) - 1;
+        else if (wparam == VK_RETURN || wparam == VK_SPACE) {
+            SendMessageW(GetParent(hwnd), WM_APP_NAVIGATE, g_selectedPage, 0); return 0;
+        } else break;
+        SendMessageW(GetParent(hwnd), WM_APP_NAVIGATE, items[index].page, 0); return 0;
+    }
     case WM_ERASEBKGND: return 1;
     case WM_MOUSEMOVE: {
         const int page = HitNavigationPage(GET_Y_LPARAM(lparam));
@@ -139,6 +162,7 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
     case WM_MOUSELEAVE:
         g_hoverPage = -1; InvalidateRect(hwnd, nullptr, FALSE); return 0;
     case WM_LBUTTONUP: {
+        SetFocus(hwnd);
         const int page = HitNavigationPage(GET_Y_LPARAM(lparam));
         if (page >= 0) SendMessageW(GetParent(hwnd), WM_APP_NAVIGATE, page, 0);
         return 0;
@@ -160,9 +184,9 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
         DrawTextAt(dc, L"日志诊断工作台", sub, App().hFontSmall, th::inkMuted);
 
         RECT group1{S(20), S(78), client.right - S(16), S(101)};
-        DrawTextAt(dc, L"工作台  ·  研判与处置", group1, App().hFontSmall, th::inkSec);
-        RECT group2{S(20), S(272), client.right - S(16), S(295)};
-        DrawTextAt(dc, L"数据  ·  时序与原始证据", group2, App().hFontSmall, th::inkSec);
+        DrawTextAt(dc, L"工作台  ·  研判与处置", group1, App().hFontUI, th::inkPri);
+        RECT group2{S(20), S(320), client.right - S(16), S(343)};
+        DrawTextAt(dc, L"数据  ·  时序与原始证据", group2, App().hFontUI, th::inkPri);
 
         for (const auto& item : NavItems()) {
             RECT row{S(10), S(item.y), client.right - S(10), S(item.y + 44)};
@@ -182,9 +206,10 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
                         selected ? th::accent : NavIconColor(item.page));
             RECT label{S(56), row.top + S(2), client.right - S(44), row.top + S(24)};
             DrawTextAt(dc, item.text, label, App().hFontUI,
-                       selected ? th::inkPri : th::inkSec);
+                       selected && th::highContrast ? th::onAccent : (selected ? th::inkPri : th::inkSec));
             RECT detail{S(56), row.top + S(21), client.right - S(18), row.bottom - S(1)};
-            DrawTextAt(dc, item.detail, detail, App().hFontSmall, th::inkMuted);
+            DrawTextAt(dc, item.detail, detail, App().hFontSmall,
+                       selected && th::highContrast ? th::onAccent : th::inkMuted);
             std::wstring badge = BadgeForPage(item.page);
             if (!badge.empty()) {
                 RECT br{client.right - S(46), row.top + S(7), client.right - S(18), row.top + S(25)};
@@ -194,10 +219,16 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
                 DrawTextAt(dc, badge.c_str(), br, App().hFontSmall,
                            selected ? th::onAccent : th::inkSec, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             }
+            if (selected && GetFocus() == hwnd) {
+                RECT focus = row; InflateRect(&focus, -S(4), -S(3)); DrawFocusRect(dc, &focus);
+            }
         }
 
-        RECT version{S(20), client.bottom - S(42), client.right - S(12), client.bottom - S(16)};
-        DrawTextAt(dc, L"v" DL_VER_WSTR L"  ·  本地离线分析", version, App().hFontSmall, th::inkMuted);
+        // 最小高度下优先保证第九个导航项完整可见，不让版本脚注与其重叠。
+        if (client.bottom >= S(650)) {
+            RECT version{S(20), client.bottom - S(42), client.right - S(12), client.bottom - S(16)};
+            DrawTextAt(dc, L"v" DL_VER_WSTR L"  ·  本地离线分析", version, App().hFontSmall, th::inkMuted);
+        }
         HPEN sep = CreatePen(PS_SOLID, 1, th::border);
         HGDIOBJ old = SelectObject(dc, sep);
         MoveToEx(dc, client.right - 1, 0, nullptr); LineTo(dc, client.right - 1, client.bottom);
@@ -314,16 +345,16 @@ void ApplyThemeToControl(HWND control) {
     if (!control) return;
     wchar_t cls[64]{}; GetClassNameW(control, cls, 64);
     if (lstrcmpiW(cls, WC_LISTVIEWW) == 0) {
-        SetWindowTheme(control, th::dark ? L"DarkMode_Explorer" : L"Explorer", nullptr);
+        SetWindowTheme(control, th::highContrast ? L"" : (th::dark ? L"DarkMode_Explorer" : L"Explorer"), nullptr);
         ListView_SetBkColor(control, th::surface);
         ListView_SetTextBkColor(control, th::surface);
         ListView_SetTextColor(control, th::inkPri);
         if (HWND header = ListView_GetHeader(control)) {
-            SetWindowTheme(header, th::dark ? L"DarkMode_ItemsView" : L"Explorer", nullptr);
+            SetWindowTheme(header, th::highContrast ? L"" : (th::dark ? L"DarkMode_ItemsView" : L"Explorer"), nullptr);
             SendMessageW(header, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontUI), TRUE);
         }
     } else if (lstrcmpiW(cls, L"Edit") == 0) {
-        SetWindowTheme(control, th::dark ? L"DarkMode_CFD" : L"Explorer", nullptr);
+        SetWindowTheme(control, th::highContrast ? L"" : (th::dark ? L"DarkMode_CFD" : L"Explorer"), nullptr);
     }
     InvalidateRect(control, nullptr, TRUE);
 }
@@ -354,7 +385,7 @@ bool RegisterModernShellClasses(HINSTANCE instance) {
 }
 
 HWND CreateModernNavigation(HWND parent, int id) {
-    g_navigation = CreateWindowExW(0, kNavigationClass, L"", WS_CHILD | WS_VISIBLE,
+    g_navigation = CreateWindowExW(0, kNavigationClass, L"主导航", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
                                    0, 0, 10, 10, parent, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
                                    GetModuleHandleW(nullptr), nullptr);
     return g_navigation;
@@ -399,6 +430,12 @@ bool DrawModernButton(const DRAWITEMSTRUCT& item) {
         if (active) text = th::accent;
     }
     if (disabled) text = th::inkMuted;
+    if (th::highContrast) {
+        fill = th::surface; border = th::inkPri; text = disabled ? GetSysColor(COLOR_GRAYTEXT) : th::inkPri;
+        if (!disabled && (kind == ModernButtonKind::Primary || pressed || hovered || active)) {
+            fill = th::accent; border = th::accent; text = th::onAccent;
+        }
+    }
     RECT r = item.rcItem; InflateRect(&r, -1, -1);
     FillRound(item.hDC, r, S(7), fill, border);
     wchar_t label[128]{}; GetWindowTextW(item.hwndItem, label, 128);
@@ -461,7 +498,8 @@ void SetShellBusy(bool busy, const wchar_t* text) {
     g_busy = busy;
     if (!busy) g_busyProgress = -1;
     for (HWND button : {App().hOpen, App().hPaste, App().hExport, App().hFilterToggle,
-                         App().hApplyFilter, App().hClearFilter, App().hSearchHistory})
+                         App().hApplyFilter, App().hClearFilter, App().hSearchHistory,
+                         App().hMetricFilter})
         if (button) EnableWindow(button, !busy);
     for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
         if (edit) EnableWindow(edit, !busy);
@@ -492,10 +530,7 @@ void SetShellProgress(int percent, const wchar_t* text) {
 bool ShellBusy() { return g_busy; }
 
 bool SystemPrefersDarkTheme() {
-    HIGHCONTRASTW contrast{};
-    contrast.cbSize = sizeof(contrast);
-    if (SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(contrast), &contrast, 0) &&
-        (contrast.dwFlags & HCF_HIGHCONTRASTON)) return false;
+    if (SystemHighContrastEnabled()) return false;
     DWORD useLight = 1, size = sizeof(useLight);
     if (RegGetValueW(HKEY_CURRENT_USER,
                      L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
@@ -504,8 +539,15 @@ bool SystemPrefersDarkTheme() {
     return useLight == 0;
 }
 
+bool SystemHighContrastEnabled() {
+    HIGHCONTRASTW contrast{}; contrast.cbSize = sizeof(contrast);
+    return SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(contrast), &contrast, 0) &&
+           (contrast.dwFlags & HCF_HIGHCONTRASTON);
+}
+
 void ApplyModernTheme(HWND root) {
-    th::ApplyPalette(SystemPrefersDarkTheme());
+    const bool highContrast = SystemHighContrastEnabled();
+    th::ApplyPalette(SystemPrefersDarkTheme(), highContrast);
     RefreshSurfaceBrush();
     BOOL darkTitle = th::dark ? TRUE : FALSE;
     DwmSetWindowAttribute(root, 20, &darkTitle, sizeof(darkTitle));

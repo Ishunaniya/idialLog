@@ -164,6 +164,61 @@ struct MetricRow {
     int  denyVal = -1;      // SDK 原始拒绝码;两套 SDK 编码不同,-1=无效
 };
 
+// 指标的轻量借用视图。用于 UI 快捷筛选/排序，不复制高频指标字符串。
+// 指针只在来源 vector<MetricRow> 未清空、未增删、未触发重新分配时有效。
+using MetricView = std::vector<const MetricRow*>;
+
+// 单个小区的观测质量画像。平均值统一保存为原单位的 10 倍，避免核心层引入浮点误差。
+struct CellSummary {
+    std::string cellId;
+    int pci = -1;
+    std::uint32_t tac = UINT32_MAX;
+    std::uint8_t tacDigits = 0;
+    std::size_t samples = 0;
+    std::size_t switchesIn = 0;
+    std::size_t switchesOut = 0;
+    std::size_t outageStarts = 0;
+    long long first = 0;
+    long long last = 0;
+    long long observedDwellSec = 0;
+    int sampleSharePermille = 0;
+
+    std::size_t csqSamples = 0;
+    int csqMin = INT_MAX, csqMax = INT_MIN, csqAvg10 = 0;
+    std::size_t rsrpSamples = 0;
+    int rsrpMin = INT_MAX, rsrpMax = INT_MIN, rsrpAvg10 = 0;
+    std::size_t rsrqSamples = 0;
+    int rsrqMin = INT_MAX, rsrqMax = INT_MIN, rsrqAvg10 = 0;
+    std::size_t snrSamples = 0;
+    int snrMin10 = INT_MAX, snrMax10 = INT_MIN, snrAvg10 = 0;
+    size_t firstEvidenceLine = 0;
+    size_t firstOutageLine = 0;
+    long long firstOutageTime = 0;
+};
+
+struct CellTransition {
+    std::string fromCell;
+    std::string toCell;
+    std::size_t count = 0;
+    std::size_t pingPongCount = 0;
+    long long first = 0;
+    long long last = 0;
+    size_t firstEvidenceLine = 0;
+    size_t pingPongEvidenceLine = 0;
+    long long pingPongEvidenceTime = 0;
+};
+
+struct CellAnalysis {
+    std::vector<CellSummary> cells;
+    std::vector<CellTransition> transitions;
+    std::size_t totalSamples = 0;
+    std::size_t samplesWithCell = 0;
+    std::size_t switchCount = 0;
+    std::size_t pingPongCount = 0;
+    long long first = 0;
+    long long last = 0;
+};
+
 // ---- 结论引擎(第 4 节)----
 struct Evidence {
     size_t lineNo = 0;      // 原始行号

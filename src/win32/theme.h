@@ -19,6 +19,7 @@
 namespace th {
 
 inline bool dark = false;
+inline bool highContrast = false;
 
 // ---- 表面 ----
 inline COLORREF surface  = HEX2RGB(0xffffff);  // 卡片/输入/内容表面
@@ -78,8 +79,23 @@ inline COLORREF rowSdk       = HEX2RGB(0x5b49b7);
 inline COLORREF rowWarn      = HEX2RGB(0x836000);
 inline COLORREF rowErr       = critical;
 
-inline void ApplyPalette(bool useDark) {
+inline void ApplyPalette(bool useDark, bool useHighContrast = false) {
+    highContrast = useHighContrast;
     dark = useDark;
+    if (highContrast) {
+        surface = page = nav = zebra = GetSysColor(COLOR_WINDOW);
+        border = grid = axis = GetSysColor(COLOR_WINDOWTEXT);
+        hover = accentSoft = accent = accentHover = GetSysColor(COLOR_HIGHLIGHT);
+        inkPri = inkSec = inkMuted = GetSysColor(COLOR_WINDOWTEXT);
+        onAccent = GetSysColor(COLOR_HIGHLIGHTTEXT);
+        good = warning = serious = critical = GetSysColor(COLOR_WINDOWTEXT);
+        s1_blue = s2_green = s3_magenta = s4_yellow = s5_aqua = s6_orange =
+            s7_violet = s8_red = GetSysColor(COLOR_WINDOWTEXT);
+        outageBand = cellStall = cellWeak = cellSnrLow = GetSysColor(COLOR_WINDOW);
+        rowRecovered = rowFault = rowRoamlink = rowState = rowSdk = rowWarn = rowErr =
+            GetSysColor(COLOR_WINDOWTEXT);
+        return;
+    }
     if (!dark) {
         surface = HEX2RGB(0xffffff); page = HEX2RGB(0xf5f7fa); nav = HEX2RGB(0xf0f3f8);
         zebra = HEX2RGB(0xf7f9fb); border = HEX2RGB(0xe1e6ed); hover = HEX2RGB(0xe8edf5);

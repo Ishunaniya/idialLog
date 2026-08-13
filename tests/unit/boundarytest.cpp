@@ -302,6 +302,87 @@ static void t11_compact_record_boundaries() {
        "未知标签保留原文且 LogLine 深拷贝不悬空");
 }
 
+static void t12_cell_quality_and_correlation() {
+    std::printf("== T12 小区质量、乒乓与断网关联 ==\n");
+    std::vector<LogLine> lines;
+    std::vector<MetricRow> metrics;
+    const long long base = 1785556800;
+    const char* cells[] = {"A", "A", "A", "A", "A", "B", "A", "B", "A", "B", "A", "B"};
+    for (std::size_t i = 0; i < sizeof(cells) / sizeof(cells[0]); ++i) {
+        LogLine line;
+        line.t = base + static_cast<long long>(i) * 10;
+        line.lineNo = i + 1;
+        line.sourceId = 1;
+        line.ts = fmtTime(line.t, "FULL");
+        line.setTag("HEARTBEAT");
+        line.msg = std::string("Cell:") + cells[i];
+        lines.push_back(std::move(line));
+
+        MetricRow metric;
+        metric.t = base + static_cast<long long>(i) * 10;
+        metric.lineNo = i + 1;
+        metric.cellId = cells[i];
+        metric.csqVal = cells[i][0] == 'A' ? 5 : 20;
+        metric.rsrp = cells[i][0] == 'A' ? -115 : -85;
+        metric.rsrq = cells[i][0] == 'A' ? -18 : -8;
+        metric.snr10 = cells[i][0] == 'A' ? -10 : 100;
+        metrics.push_back(std::move(metric));
+    }
+    LogLine outageLine;
+    outageLine.t = base + 105;
+    outageLine.lineNo = 13;
+    outageLine.sourceId = 1;
+    outageLine.ts = fmtTime(outageLine.t, "FULL");
+    outageLine.msg = "Ping failed, fault timer started";
+    lines.push_back(std::move(outageLine));
+
+    LogLine nextSource;
+    nextSource.t = base + 120;
+    nextSource.lineNo = 14;
+    nextSource.sourceId = 2;
+    nextSource.ts = fmtTime(nextSource.t, "FULL");
+    nextSource.msg = "Cell:C";
+    lines.push_back(std::move(nextSource));
+    MetricRow sourceTwoMetric;
+    sourceTwoMetric.t = base + 120;
+    sourceTwoMetric.lineNo = 14;
+    sourceTwoMetric.cellId = "C";
+    metrics.push_back(std::move(sourceTwoMetric));
+
+    Outage outage;
+    outage.start = base + 105;
+    outage.startLine = 13;
+    const CellAnalysis analysis = analyzeCells(lines, metrics, {outage});
+    const CellSummary* cellA = nullptr;
+    for (const CellSummary& cell : analysis.cells)
+        if (cell.cellId == "A") cellA = &cell;
+    ok(analysis.switchCount == 7, "跨来源不造伪切换，来源内切换共 7 次");
+    ok(analysis.pingPongCount == 6, "5 分钟内 A/B 往返识别为 6 次乒乓");
+    ok(cellA && cellA->samples == 8 && cellA->observedDwellSec == 40,
+       "小区样本与连续观测驻留时间正确");
+    ok(cellA && cellA->rsrpAvg10 == -1150 && cellA->snrAvg10 == -10,
+       "RSRP 与 SNR 平均值单位正确");
+    ok(cellA && cellA->outageStarts == 1 && cellA->firstOutageLine == 13,
+       "断网关联到同来源、10 分钟内最近小区");
+
+    ParseAudit audit;
+    auto findings = analyze(lines, {outage}, metrics, PlatformInfo{}, audit, &analysis);
+    auto hasTitle = [&](const char* title) {
+        for (const Finding& finding : findings)
+            if (finding.title.find(title) != std::string::npos && !finding.ev.empty()) return true;
+        return false;
+    };
+    ok(hasTitle("频繁小区切换"), "频繁切换结论带原始行证据");
+    ok(hasTitle("疑似小区乒乓"), "乒乓结论带原始行证据");
+    ok(hasTitle("疑似弱覆盖小区"), "弱覆盖与断网相关性结论带证据");
+
+    std::vector<LogLine> oddLines(lines.begin(), lines.begin() + 3);
+    std::vector<MetricRow> oddMetrics(metrics.begin(), metrics.begin() + 3);
+    const CellAnalysis odd = analyzeCells(oddLines, oddMetrics, {});
+    ok(odd.cells.size() == 1 && odd.cells[0].rsrpAvg10 == -1150 && odd.cells[0].snrAvg10 == -10,
+       "非 2 次幂样本的负值平均不发生有符号/无符号提升错误");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -314,6 +395,7 @@ int main() {
     t9_unsorted_analysis_fallback();
     t10_streaming_parser_equivalence();
     t11_compact_record_boundaries();
+    t12_cell_quality_and_correlation();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

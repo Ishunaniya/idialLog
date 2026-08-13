@@ -32,6 +32,9 @@ static int  g_chartDetail    = 0;                     // 0=RSRP 1=RSRQ；SNR 固
 static int  g_chartHoverX   = -1;                     // 悬停 X(客户区),-1=未悬停
 static int  g_chartHoverY   = -1;
 static RECT g_chartModeRects[2]{};
+static long long g_chartFocusTime = LLONG_MIN;
+static long long g_chartVisibleT0 = 0, g_chartVisibleT1 = 0;
+static int g_chartPlotLeft = 0, g_chartPlotRight = 0;
 
 static void ResetChartSampleCache() {
     if (++g_chartDataRevision == 0) g_chartDataRevision = 1; // 无符号回绕防御
@@ -50,11 +53,48 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return mode == 1 ? g_rsrq : g_rsrp;
     };
     if (msg == WM_ERASEBKGND) return 1;
+    if (msg == WM_GETDLGCODE) return DLGC_WANTARROWS | DLGC_WANTCHARS;
+    if (msg == WM_SETFOCUS || msg == WM_KILLFOCUS) {
+        InvalidateRect(hwnd, nullptr, FALSE); return 0;
+    }
+    if (msg == WM_KEYDOWN && (wp == VK_LEFT || wp == VK_RIGHT) && !App().document.metricView.empty()) {
+        int row = ListView_GetNextItem(App().hMetric, -1, LVNI_SELECTED);
+        if (row < 0) row = wp == VK_RIGHT ? 0 : static_cast<int>(App().document.metricView.size()) - 1;
+        else row = std::max(0, std::min(static_cast<int>(App().document.metricView.size()) - 1,
+                                       row + (wp == VK_RIGHT ? 1 : -1)));
+        ListView_SetItemState(App().hMetric, -1, 0, LVIS_SELECTED | LVIS_FOCUSED);
+        ListView_SetItemState(App().hMetric, row, LVIS_SELECTED | LVIS_FOCUSED,
+                              LVIS_SELECTED | LVIS_FOCUSED);
+        ListView_EnsureVisible(App().hMetric, row, FALSE);
+        SetChartFocusTime(App().document.metricView[row]->t);
+        return 0;
+    }
     if (msg == WM_LBUTTONDOWN) {
+        SetFocus(hwnd);
         POINT point{static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp))};
+        bool changedMode = false;
         for (int mode = 0; mode < 2; ++mode) {
             if (PtInRect(&g_chartModeRects[mode], point) && !detailSeries(mode).empty()) {
-                g_chartDetail = mode; break;
+                g_chartDetail = mode; changedMode = true; break;
+            }
+        }
+        if (!changedMode && point.x >= g_chartPlotLeft && point.x <= g_chartPlotRight &&
+            g_chartVisibleT1 >= g_chartVisibleT0) {
+            const double fraction = double(point.x - g_chartPlotLeft) /
+                                    std::max(1, g_chartPlotRight - g_chartPlotLeft);
+            const long long target = g_chartVisibleT0 +
+                static_cast<long long>(fraction * (g_chartVisibleT1 - g_chartVisibleT0));
+            auto found = std::min_element(App().document.metricView.begin(), App().document.metricView.end(),
+                [target](const MetricRow* a, const MetricRow* b) {
+                    return std::llabs(a->t - target) < std::llabs(b->t - target);
+                });
+            if (found != App().document.metricView.end()) {
+                const int row = static_cast<int>(found - App().document.metricView.begin());
+                ListView_SetItemState(App().hMetric, -1, 0, LVIS_SELECTED | LVIS_FOCUSED);
+                ListView_SetItemState(App().hMetric, row, LVIS_SELECTED | LVIS_FOCUSED,
+                                      LVIS_SELECTED | LVIS_FOCUSED);
+                ListView_EnsureVisible(App().hMetric, row, FALSE);
+                SetChartFocusTime((*found)->t);
             }
         }
         InvalidateRect(hwnd, nullptr, FALSE);
@@ -148,6 +188,8 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     takeRange(g_snr10);
     const double total = std::max<double>(1.0, (double)(t1 - t0));
     const int left = S(48), right = rc.right - S(12);
+    g_chartVisibleT0 = t0; g_chartVisibleT1 = t1;
+    g_chartPlotLeft = left; g_chartPlotRight = right;
     const int section = std::max(S(42), (static_cast<int>(rc.bottom) - S(123)) / 3);
     RECT top{ left, S(31), right, S(31) + section };
     RECT middle{ left, top.bottom + S(34), right, top.bottom + S(34) + section };
@@ -296,6 +338,14 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     SelectObject(hdc, oldPen); DeleteObject(timePen);
 
+    if (g_chartFocusTime != LLONG_MIN && g_chartFocusTime >= t0 && g_chartFocusTime <= t1) {
+        const int focusX = X(g_chartFocusTime);
+        HPEN focusPen = CreatePen(PS_SOLID, std::max(2, S(2)), th::accent);
+        oldPen = SelectObject(hdc, focusPen);
+        MoveToEx(hdc, focusX, top.top, nullptr); LineTo(hdc, focusX, bottom.bottom);
+        SelectObject(hdc, oldPen); DeleteObject(focusPen);
+    }
+
     // 悬停：共享一条时间准线，同时报告上图 CSQ 与当前 LTE 详情值。
     if (g_chartHoverX >= left && g_chartHoverX <= right) {
         double frac = (double)(g_chartHoverX - left) / std::max(1, right - left);
@@ -325,6 +375,10 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         TextOutW(hdc, bx, top.top + S(5), info.c_str(), (int)info.size());
     }
 
+    if (GetFocus() == hwnd) {
+        RECT focus = rc; InflateRect(&focus, -S(3), -S(3)); DrawFocusRect(hdc, &focus);
+    }
+
     BitBlt(hdcWin, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
     SelectObject(hdc, oldBmp); DeleteObject(bmp); DeleteDC(hdc);
     EndPaint(hwnd, &ps);
@@ -338,7 +392,8 @@ void RenderMetrics() {
     g_rsrp.clear();
     g_rsrq.clear();
     g_snr10.clear();
-    for (const auto& m : App().document.metrics) {
+    for (const MetricRow* metric : App().document.metricView) {
+        const MetricRow& m = *metric;
         if (m.csqVal >= 0) g_csq.push_back({ m.t, m.csqVal });
         if (m.rsrp < 0)    g_rsrp.push_back({ m.t, m.rsrp });
         if (m.rsrq < 0)    g_rsrq.push_back({ m.t, m.rsrq });
@@ -351,7 +406,7 @@ void RenderMetrics() {
     sortChartSeriesByTime(g_rsrq);
     sortChartSeriesByTime(g_snr10);
     ResetChartSampleCache();
-    ListView_SetItemCountEx(App().hMetric, (int)App().document.metrics.size(),
+    ListView_SetItemCountEx(App().hMetric, (int)App().document.metricView.size(),
                             LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
     InvalidateRect(App().hMetric, nullptr, TRUE);
     const bool detailEmpty = g_chartDetail == 0 ? g_rsrp.empty() : g_rsrq.empty();
@@ -368,6 +423,7 @@ void ReleaseChartPageData() {
     releaseVector(g_rsrp);
     releaseVector(g_rsrq);
     releaseVector(g_snr10);
+    g_chartFocusTime = LLONG_MIN;
 
     ResetChartSampleCache();
     releaseVector(g_chartCsqDraw);
@@ -376,6 +432,11 @@ void ReleaseChartPageData() {
 
     g_chartDetail = 0;
     g_chartHoverX = g_chartHoverY = -1;
+}
+
+void SetChartFocusTime(long long time) {
+    g_chartFocusTime = time;
+    if (App().hChart) InvalidateRect(App().hChart, nullptr, FALSE);
 }
 
 } // namespace dl

@@ -23,6 +23,8 @@ public:
     std::vector<std::string> sessions;
     std::vector<Outage> outages;
     std::vector<MetricRow> metrics;
+    MetricView metricView;              // 借用 metrics；UI 快捷筛选/排序结果
+    CellAnalysis cellAnalysis;
     LogView timelineRows;             // 借用 lines
     ParseAudit audit;
     PlatformInfo platform;

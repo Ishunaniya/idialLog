@@ -29,6 +29,10 @@ bool ToggleEvidenceBookmark(size_t lineNo, const std::wstring& text);
 bool ToggleCurrentRawBookmark();
 void ClearEvidenceBookmarks();
 const std::vector<EvidenceBookmark>& EvidenceBookmarks();
+void ShowMetricQuickFilterMenu(HWND anchor);
+void ClearMetricQuickFilters(bool refresh = true);
+void RebuildMetricQuickFilterView();
+bool CopySelectedPageRows();
 
 // 处理虚拟列表取数与页面表格自绘；返回 true 表示通知已消费。
 bool HandlePageNotify(LPARAM lparam, LRESULT& result);

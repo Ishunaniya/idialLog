@@ -15,6 +15,7 @@
 
 #include "app_settings.h"
 #include "app_context.h"
+#include "chartmodel.h"
 #include "log_analysis.h"
 #include "log_filter.h"
 #include "log_parser.h"
@@ -91,9 +92,14 @@ void RefreshAll() {
                              WToU8(GetText(App().hSinceBox)), WToU8(GetText(App().hUntilBox)), &bad);
     App().document.outages = collectOutages(App().document.filtered);
     App().document.metrics = buildMetrics(App().document.filtered);
+    RebuildMetricQuickFilterView();
+    App().document.cellAnalysis = analyzeCells(App().document.filtered, App().document.metrics,
+                                               App().document.outages);
 
     // 结论基于**筛选后**的视图,与各页展示保持一致
-    App().document.findings = analyze(App().document.filtered, App().document.outages, App().document.metrics, App().document.platform, App().document.audit);
+    App().document.findings = analyze(App().document.filtered, App().document.outages,
+                                      App().document.metrics, App().document.platform,
+                                      App().document.audit, &App().document.cellAnalysis);
 
     PresentAnalysis(bad);
 }
@@ -372,9 +378,14 @@ static DWORD WINAPI LoadWorker(void* parameter) {
                                                  request->since, request->until, &result->badRegex);
     result->document.outages = collectOutages(result->document.filtered);
     result->document.metrics = buildMetrics(result->document.filtered);
+    result->document.metricView.reserve(result->document.metrics.size());
+    for (const MetricRow& metric : result->document.metrics)
+        result->document.metricView.push_back(&metric);
+    result->document.cellAnalysis = analyzeCells(result->document.filtered, result->document.metrics,
+                                                 result->document.outages);
     result->document.findings = analyze(result->document.filtered, result->document.outages,
                                         result->document.metrics, result->document.platform,
-                                        result->document.audit);
+                                        result->document.audit, &result->document.cellAnalysis);
 
     if (LoadCancelled()) {
         result->cancelled = true;
@@ -531,6 +542,7 @@ bool HandleLoadControllerMessage(UINT message, WPARAM wparam, LPARAM lparam) {
     ResetVirtualTables();
     ReleaseLoadedData();
     App().document.swap(result->document);
+    RebuildMetricQuickFilterView();
     SetWindowTextW(App().hFileLbl, result->label.c_str());
     PresentAnalysis(result->badRegex);
     RememberRecentFiles(result->openedPaths);
@@ -682,13 +694,9 @@ void DoExportCsv() {
         out += "timestamp,ch,cell_id,pci,tac,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper\r\n";
         for (const auto& m : App().document.metrics) {
             for (size_t column = 0; column < kMetricColumnCount; ++column) {
-                if (column == 0) {
-                    // CSV 无法声明列宽；Excel 会把日期数值化并在默认窄列中显示 ####。
-                    // 用由程序生成的固定文本公式保留完整年月日与时间，也避免被改成日期序号。
-                    out += csv("=\"" + fmtTime(m.t, "FULL") + "\"");
-                } else {
-                    out += csv(metricCellText(m, column));
-                }
+                // 程序生成的时间公式保留完整年月日；CH/Cell/RAT/OPER 等日志文本列会先
+                // 中和 =,+,-,@ 前缀，避免导入电子表格后被当作公式执行。
+                out += csv(metricCsvCellText(m, column));
                 out += (column + 1 == kMetricColumnCount) ? "\r\n" : ",";
             }
         }
@@ -822,6 +830,190 @@ void DoExportReport() {
     }
     SetWindowTextW(App().hStatus, (std::wstring(L"已导出诊断报告 ") + file).c_str());
     ShowModernNotice(L"诊断报告导出完成", file, ModernNoticeKind::Success, 6000);
+}
+
+void DoExportHtml() {
+    if (App().document.lines.empty()) {
+        ShowModernNotice(L"没有可导出的报告", L"请先加载并分析日志。", ModernNoticeKind::Info);
+        return;
+    }
+    wchar_t file[MAX_PATH] = L"diallog_visual_report.html";
+    OPENFILENAMEW ofn{};
+    ofn.lStructSize = sizeof(ofn); ofn.hwndOwner = App().hMain;
+    ofn.lpstrFilter = L"HTML (*.html)\0*.html\0\0"; ofn.lpstrFile = file;
+    ofn.nMaxFile = MAX_PATH; ofn.lpstrDefExt = L"html";
+    ofn.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT;
+    if (!GetSaveFileNameW(&ofn)) return;
+
+    BusyScope busy(L"正在生成单文件可视化报告…");
+    auto escape = [](const std::string& value) {
+        std::string output; output.reserve(value.size() + value.size() / 8);
+        for (char ch : value) {
+            switch (ch) {
+            case '&': output += "&amp;"; break;
+            case '<': output += "&lt;"; break;
+            case '>': output += "&gt;"; break;
+            case '"': output += "&quot;"; break;
+            case '\'': output += "&#39;"; break;
+            default: output += ch; break;
+            }
+        }
+        return output;
+    };
+    auto oneDecimal = [](int value) {
+        char text[32]{}; std::snprintf(text, sizeof(text), "%.1f", value / 10.0); return std::string(text);
+    };
+
+    std::string html;
+    try {
+        long long firstTime = App().document.lines.front().t, lastTime = firstTime;
+        for (const LogLine& line : App().document.lines) {
+            firstTime = std::min(firstTime, line.t); lastTime = std::max(lastTime, line.t);
+        }
+        SYSTEMTIME now{}; GetLocalTime(&now);
+        char generated[64]{};
+        std::snprintf(generated, sizeof(generated), "%04u-%02u-%02u %02u:%02u:%02u",
+                      now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond);
+
+        html = "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\">"
+               "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+               "<title>dialLog 可视化诊断报告</title><style>"
+               ":root{color-scheme:light dark;--bg:#f5f7fa;--card:#fff;--ink:#161a21;--muted:#596579;"
+               "--line:#dce2ea;--accent:#1769d2;--bad:#c93c43;--warn:#9a6700;--soft:#eaf2ff}"
+               "*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "
+               "system-ui,-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}.wrap{max-width:1240px;margin:auto;padding:32px}"
+               "header,.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:18px}"
+               "h1{margin:0 0 6px;font-size:30px}h2{font-size:20px;margin:0 0 16px}.muted{color:var(--muted)}"
+               ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.kpi{padding:16px;background:var(--soft);border-radius:12px}"
+               ".kpi b{display:block;font-size:24px}.charts{display:grid;gap:16px}svg{width:100%;height:auto;background:var(--card);border-radius:10px}"
+               "table{border-collapse:collapse;width:100%;display:block;overflow:auto}th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;white-space:nowrap}"
+               "th{position:sticky;top:0;background:var(--card)}.severity2{border-left:5px solid var(--bad)}.severity1{border-left:5px solid var(--warn)}"
+               ".finding{padding:14px 16px;margin:10px 0;background:var(--soft);border-radius:10px}.finding h3{margin:0 0 8px}.evidence{font-family:ui-monospace,Consolas,monospace;white-space:normal}"
+               "@media(prefers-color-scheme:dark){:root{--bg:#111419;--card:#1c2026;--ink:#f3f5f8;--muted:#aeb8c7;--line:#38414d;--accent:#65a7f3;--bad:#f06c73;--warn:#f0b945;--soft:#19324f}}"
+               "@media(forced-colors:active){*{forced-color-adjust:auto}.kpi,.finding{border:1px solid CanvasText}}"
+               "@media(max-width:700px){.wrap{padding:14px}header,.card{padding:16px;border-radius:10px}h1{font-size:24px}}"
+               "@media print{body{background:white}.wrap{max-width:none;padding:0}.card,header{break-inside:avoid;box-shadow:none}}"
+               "</style></head><body><main class=\"wrap\"><header><h1>dialLog 可视化诊断报告</h1><div class=\"muted\">生成于 " +
+               std::string(generated) + " · 本地离线分析 · 单文件可归档</div></header>";
+
+        html += "<section class=\"card\"><h2>分析摘要</h2><div class=\"grid\">";
+        auto kpi = [&](const char* label, const std::string& value) {
+            html += "<div class=\"kpi\"><span class=\"muted\">" + std::string(label) +
+                    "</span><b>" + escape(value) + "</b></div>";
+        };
+        kpi("平台", App().document.platform.name);
+        kpi("解析行", std::to_string(App().document.lines.size()));
+        kpi("筛选后", std::to_string(App().document.filtered.size()));
+        kpi("断网", std::to_string(App().document.outages.size()) + " 次");
+        kpi("小区", std::to_string(App().document.cellAnalysis.cells.size()) + " 个");
+        kpi("未识别", std::to_string(App().document.audit.unparsed) + " 行");
+        html += "</div><p class=\"muted\">日志时间：" + escape(fmtTime(firstTime, "FULL")) + " → " +
+                escape(fmtTime(lastTime, "FULL")) + "</p></section>";
+
+        ChartSeries csq, rsrp, snr;
+        csq.reserve(App().document.metrics.size()); rsrp.reserve(App().document.metrics.size());
+        snr.reserve(App().document.metrics.size());
+        for (const MetricRow& metric : App().document.metrics) {
+            if (metric.csqVal >= 0) csq.push_back({metric.t, metric.csqVal});
+            if (metric.rsrp < 0) rsrp.push_back({metric.t, metric.rsrp});
+            if (metric.snr10 != 100000) snr.push_back({metric.t, metric.snr10});
+        }
+        sortChartSeriesByTime(csq); sortChartSeriesByTime(rsrp); sortChartSeriesByTime(snr);
+        auto svg = [&](const char* title, const ChartSeries& input, int low, int high,
+                       const char* color, bool scaled10) {
+            if (input.empty()) return std::string("<p class=\"muted\">暂无 ") + title + " 样本。</p>";
+            const long long t0 = input.front().first, t1 = input.back().first;
+            ChartSeries points; downsampleChartSeries(input, t0, t1, 920, points);
+            auto x = [&](long long time) { return 55 + int(double(time - t0) / std::max(1LL, t1 - t0) * 920); };
+            auto y = [&](int value) {
+                value = std::max(low, std::min(high, value));
+                return 215 - int(double(value - low) / std::max(1, high - low) * 170);
+            };
+            std::string output = "<svg viewBox=\"0 0 1000 250\" role=\"img\" aria-label=\"" +
+                escape(title) + " 趋势图\"><text x=\"55\" y=\"24\" fill=\"currentColor\" font-size=\"17\" font-weight=\"600\">" +
+                escape(title) + "</text>";
+            for (int grid = 0; grid < 4; ++grid) {
+                const int value = high - (high - low) * grid / 3, gy = y(value);
+                output += "<line x1=\"55\" y1=\"" + std::to_string(gy) + "\" x2=\"975\" y2=\"" +
+                          std::to_string(gy) + "\" stroke=\"#9aa6b2\" opacity=\".3\"/><text x=\"5\" y=\"" +
+                          std::to_string(gy + 4) + "\" fill=\"currentColor\" opacity=\".7\" font-size=\"12\">" +
+                          (scaled10 ? oneDecimal(value) : std::to_string(value)) + "</text>";
+            }
+            for (const Outage& outage : App().document.outages) {
+                const long long end = outage.recovered ? outage.end : t1;
+                if (end < t0 || outage.start > t1) continue;
+                const int left = x(std::max(t0, outage.start));
+                const int right = x(std::min(t1, end));
+                output += "<rect x=\"" + std::to_string(left) + "\" y=\"45\" width=\"" +
+                          std::to_string(std::max(2, right - left)) +
+                          "\" height=\"170\" fill=\"#c93c43\" opacity=\".12\"/>";
+            }
+            output += "<polyline fill=\"none\" stroke=\"" + std::string(color) +
+                      "\" stroke-width=\"2\" points=\"";
+            for (const ChartPoint& point : points)
+                output += std::to_string(x(point.first)) + "," + std::to_string(y(point.second)) + " ";
+            output += "\"/><text x=\"55\" y=\"238\" fill=\"currentColor\" opacity=\".7\" font-size=\"12\">" +
+                      escape(fmtTime(t0, "FULL")) + "</text><text x=\"975\" y=\"238\" text-anchor=\"end\" fill=\"currentColor\" opacity=\".7\" font-size=\"12\">" +
+                      escape(fmtTime(t1, "FULL")) + "</text></svg>";
+            return output;
+        };
+        html += "<section class=\"card\"><h2>信号趋势</h2><div class=\"charts\">" +
+                svg("CSQ 信号强度", csq, 0, 31, "#2a78d6", false) +
+                svg("RSRP 覆盖质量 (dBm)", rsrp, -130, -60, "#6656c9", false) +
+                svg("SNR 信噪比 (dB)", snr, -200, 300, "#1baf7a", true) + "</div></section>";
+
+        html += "<section class=\"card\"><h2>小区质量画像</h2><table><thead><tr>"
+                "<th>Cell ID</th><th>PCI</th><th>TAC</th><th>样本</th><th>占比%</th><th>观测驻留</th>"
+                "<th>平均RSRP</th><th>最低RSRP</th><th>平均RSRQ</th><th>平均SNR</th><th>平均CSQ</th>"
+                "<th>切入/切出</th><th>断网关联</th><th>判断</th></tr></thead><tbody>";
+        for (const CellSummary& cell : App().document.cellAnalysis.cells) {
+            html += "<tr>";
+            for (std::size_t column = 0; column <= 10; ++column)
+                html += "<td>" + escape(cellSummaryCellText(cell, column)) + "</td>";
+            html += "<td>" + std::to_string(cell.switchesIn) + "/" + std::to_string(cell.switchesOut) +
+                    "</td><td>" + std::to_string(cell.outageStarts) + "</td><td>" +
+                    escape(cellSummaryCellText(cell, 14)) + "</td></tr>";
+        }
+        html += "</tbody></table><p class=\"muted\">断网关联：同一日志来源中，断网前 10 分钟内最近的小区样本；相关不等同因果。"
+                "观测驻留只累计相邻且间隔不超过 10 分钟的同小区样本。</p></section>";
+
+        html += "<section class=\"card\"><h2>断网记录</h2><table><thead><tr><th>#</th><th>开始</th><th>恢复</th><th>时长</th><th>证据行</th></tr></thead><tbody>";
+        for (std::size_t i = 0; i < App().document.outages.size(); ++i) {
+            const Outage& outage = App().document.outages[i];
+            html += "<tr><td>" + std::to_string(i + 1) + "</td><td>" + escape(fmtTime(outage.start, "FULL")) +
+                    "</td><td>" + (outage.recovered ? escape(fmtTime(outage.end, "FULL")) : "未恢复") +
+                    "</td><td>" + (outage.recovered ? escape(fmtDur(outage.dur)) : "-") +
+                    "</td><td>" + std::to_string(outage.startLine) + " → " +
+                    (outage.endLine ? std::to_string(outage.endLine) : "-") + "</td></tr>";
+        }
+        html += "</tbody></table></section><section class=\"card\"><h2>诊断结论与证据</h2>";
+        if (App().document.findings.empty()) html += "<p class=\"muted\">未形成有证据支撑的结论。</p>";
+        for (const Finding& finding : App().document.findings) {
+            html += "<article class=\"finding severity" + std::to_string(finding.severity) + "\"><h3>" +
+                    escape(finding.title) + "</h3><p><b>依据：</b>" + escape(finding.detail) +
+                    "</p><p><b>建议：</b>" + escape(finding.advice) + "</p>";
+            for (const Evidence& evidence : finding.ev)
+                html += "<p class=\"evidence\">第 " + std::to_string(evidence.lineNo) + " 行 · " +
+                        escape(evidence.ts) + " · " + escape(evidence.text) + "</p>";
+            html += "</article>";
+        }
+        if (!EvidenceBookmarks().empty()) {
+            html += "<h2>人工证据书签</h2><ul>";
+            for (const EvidenceBookmark& bookmark : EvidenceBookmarks())
+                html += "<li class=\"evidence\">第 " + std::to_string(bookmark.lineNo) + " 行 · " +
+                        escape(WToU8(bookmark.text)) + "</li>";
+            html += "</ul>";
+        }
+        html += "</section><footer class=\"muted\">由 dialLog 本地离线生成；报告不加载外部字体、脚本或网络资源。</footer></main></body></html>";
+    } catch (const std::bad_alloc&) {
+        MessageBoxW(App().hMain, L"内存不足，无法生成 HTML 报告。", L"错误", MB_ICONERROR); return;
+    }
+    std::wstring writeError;
+    if (!WriteFileBytesAtomic(file, html, writeError)) {
+        MessageBoxW(App().hMain, writeError.c_str(), L"导出失败", MB_ICONERROR); return;
+    }
+    SetWindowTextW(App().hStatus, (std::wstring(L"已导出可视化报告 ") + file).c_str());
+    ShowModernNotice(L"HTML 可视化报告导出完成", file, ModernNoticeKind::Success, 6000);
 }
 
 

@@ -19,18 +19,26 @@ std::vector<Stall>  detectRxStall(const std::vector<std::pair<long long,long lon
                                   long long minStallSec = 120);
 std::vector<MetricRow> buildMetrics(const std::vector<LogLine>& lines);
 std::vector<MetricRow> buildMetrics(const LogView& lines);
+CellAnalysis analyzeCells(const std::vector<LogLine>& lines,
+                          const std::vector<MetricRow>& metrics,
+                          const std::vector<Outage>& outages);
+CellAnalysis analyzeCells(const LogView& lines,
+                          const std::vector<MetricRow>& metrics,
+                          const std::vector<Outage>& outages);
 
 // 结论引擎:每条结论必须带证据(ev 非空),否则不输出
 std::vector<Finding> analyze(const std::vector<LogLine>& lines,
                              const std::vector<Outage>& outs,
                              const std::vector<MetricRow>& mets,
                              const PlatformInfo& pi,
-                             const ParseAudit& audit);
+                             const ParseAudit& audit,
+                             const CellAnalysis* precomputedCells = nullptr);
 std::vector<Finding> analyze(const LogView& lines,
                              const std::vector<Outage>& outs,
                              const std::vector<MetricRow>& mets,
                              const PlatformInfo& pi,
-                             const ParseAudit& audit);
+                             const ParseAudit& audit,
+                             const CellAnalysis* precomputedCells = nullptr);
 
 // ---- 判定/工具 ----
 bool isFaultStart(const std::string& msg);          // "Ping failed ... fault timer started"

@@ -82,7 +82,7 @@ void LoadAppSettings() {
     g_settings.sinceFilter = ReadString(key, L"SinceFilter");
     g_settings.untilFilter = ReadString(key, L"UntilFilter");
     g_settings.lastPage = static_cast<int>(ReadDword(key, L"LastPage", 0));
-    if (g_settings.lastPage < 0 || g_settings.lastPage >= 8) g_settings.lastPage = 0;
+    if (g_settings.lastPage < 0 || g_settings.lastPage >= 9) g_settings.lastPage = 0;
     g_settings.filtersExpanded = ReadDword(key, L"FiltersExpanded", 0) != 0;
 
     DWORD type = 0, bytes = sizeof(g_settings.placement);

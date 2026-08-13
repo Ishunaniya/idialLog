@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <climits>
 #include <cstdio>
-#include <cstdio>
+#include <cctype>
 
 namespace dl {
 
@@ -67,6 +67,73 @@ std::string metricCellText(const MetricRow& m, size_t column) {
     case 17: return m.oper.empty() ? "-" : m.oper;
     default: return {};
     }
+}
+
+std::string rawCellText(const LogLine& line, size_t column) {
+    switch (column) {
+    case 0: return std::to_string(line.lineNo);
+    case 1: return line.ts.empty() ? fmtTime(line.t, "FULL") : line.ts;
+    case 2: return line.levelText();
+    case 3: return line.tagText();
+    case 4: return line.msg;
+    default: return {};
+    }
+}
+
+static std::string tenth(int value) {
+    char text[32]{};
+    std::snprintf(text, sizeof(text), "%.1f", value / 10.0);
+    return text;
+}
+
+std::string cellSummaryCellText(const CellSummary& cell, size_t column) {
+    switch (column) {
+    case 0: return cell.cellId;
+    case 1: return cell.pci < 0 ? "-" : std::to_string(cell.pci);
+    case 2: {
+        if (cell.tac == UINT32_MAX) return "-";
+        char value[16]{};
+        const int width = std::max(1, std::min(8, static_cast<int>(cell.tacDigits)));
+        std::snprintf(value, sizeof(value), "%0*X", width, cell.tac);
+        return value;
+    }
+    case 3: return std::to_string(cell.samples);
+    case 4: return tenth(cell.sampleSharePermille);
+    case 5: return fmtDur(cell.observedDwellSec);
+    case 6: return cell.rsrpSamples ? tenth(cell.rsrpAvg10) : "-";
+    case 7: return cell.rsrpSamples ? std::to_string(cell.rsrpMin) : "-";
+    case 8: return cell.rsrqSamples ? tenth(cell.rsrqAvg10) : "-";
+    case 9: return cell.snrSamples ? tenth(cell.snrAvg10) : "-";
+    case 10: return cell.csqSamples ? tenth(cell.csqAvg10) : "-";
+    case 11: return std::to_string(cell.switchesIn);
+    case 12: return std::to_string(cell.switchesOut);
+    case 13: return std::to_string(cell.outageStarts);
+    case 14:
+        if (cell.outageStarts && ((cell.rsrpSamples >= 5 && cell.rsrpAvg10 <= -1100) ||
+                                  (cell.snrSamples >= 5 && cell.snrAvg10 <= 0))) return "疑似弱覆盖";
+        if ((cell.rsrpSamples >= 5 && cell.rsrpAvg10 <= -1000) ||
+            (cell.snrSamples >= 5 && cell.snrAvg10 <= 0)) return "需关注";
+        return "正常";
+    default: return {};
+    }
+}
+
+static std::string csvSafeText(std::string value) {
+    std::size_t first = 0;
+    while (first < value.size() && std::isspace(static_cast<unsigned char>(value[first])))
+        ++first;
+    if (first < value.size() && (value[first] == '=' || value[first] == '+' ||
+                                 value[first] == '-' || value[first] == '@'))
+        value.insert(value.begin(), '\'');
+    return value;
+}
+
+std::string metricCsvCellText(const MetricRow& metric, size_t column) {
+    if (column == 0) return "=\"" + fmtTime(metric.t, "FULL") + "\"";
+    std::string value = metricCellText(metric, column);
+    if (column == 1 || column == 2 || column == 15 || column == 17)
+        value = csvSafeText(std::move(value));
+    return value;
 }
 
 } // namespace dl

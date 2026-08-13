@@ -12,6 +12,8 @@ void DocumentState::swap(DocumentState& other) noexcept {
     sessions.swap(other.sessions);
     outages.swap(other.outages);
     metrics.swap(other.metrics);
+    metricView.swap(other.metricView);
+    swap(cellAnalysis, other.cellAnalysis);
     timelineRows.swap(other.timelineRows);
     swap(audit, other.audit);
     swap(platform, other.platform);
@@ -22,9 +24,13 @@ void DocumentState::swap(DocumentState& other) noexcept {
 void DocumentState::release() {
     releaseVector(timelineRows);
     releaseVector(filtered);
+    releaseVector(metricView);
 
     releaseVector(outages);
     releaseVector(metrics);
+    releaseVector(cellAnalysis.cells);
+    releaseVector(cellAnalysis.transitions);
+    cellAnalysis = CellAnalysis{};
     releaseVector(findings);
     releaseVector(sources);
 

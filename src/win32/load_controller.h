@@ -17,6 +17,7 @@ void DoPaste();
 void DoOpen();
 void DoExportCsv();
 void DoExportReport();
+void DoExportHtml();
 bool HandleLoadControllerMessage(UINT message, WPARAM wparam, LPARAM lparam);
 bool LoadInProgress();
 void CancelLoad();

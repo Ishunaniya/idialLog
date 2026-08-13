@@ -64,6 +64,26 @@ int main() {
        metricCellText(m, 12) == "-" && metricCellText(m, 13) == "-",
        "无效信号值仍显示 '-'");
 
+    std::puts("== T2b CSV 公式注入防护 ==");
+    m.ch = "=cmd|' /C calc'!A0"; m.cellId = "+SUM(A1:A2)"; m.rat = " @evil";
+    m.oper = "-2+3"; m.rsrp = -104;
+    ok(metricCsvCellText(m, 1).front() == '\'' && metricCsvCellText(m, 2).front() == '\'' &&
+       metricCsvCellText(m, 15).front() == '\'' && metricCsvCellText(m, 17).front() == '\'',
+       "日志文本的 =,+,-,@ 前缀统一中和");
+    ok(metricCsvCellText(m, 10) == "-104", "负数指标保持数值，不误加文本前缀");
+    ok(metricCsvCellText(m, 0).compare(0, 2, "=\"") == 0,
+       "时间列只使用程序生成的固定文本公式");
+
+    LogLine rawCell; rawCell.lineNo = 42; rawCell.ts = "2026-08-03 10:00:00";
+    rawCell.setLevel("WARNING"); rawCell.setTag("SDK"); rawCell.msg = "Network Down";
+    ok(rawCellText(rawCell, 0) == "42" && rawCellText(rawCell, 3) == "SDK" &&
+       rawCellText(rawCell, 4) == "Network Down", "原始日志虚拟表按需格式化五列");
+    CellSummary cell; cell.cellId = "ABC"; cell.samples = 8; cell.sampleSharePermille = 625;
+    cell.observedDwellSec = 120; cell.rsrpSamples = 8; cell.rsrpAvg10 = -1150;
+    cell.rsrpMin = -120; cell.snrSamples = 8; cell.snrAvg10 = -10; cell.outageStarts = 2;
+    ok(cellSummaryCellText(cell, 4) == "62.5" && cellSummaryCellText(cell, 5) == "2m00s" &&
+       cellSummaryCellText(cell, 14) == "疑似弱覆盖", "小区画像虚拟表包含占比、驻留和质量判断");
+
     std::puts("== T3 边界与规模 ==");
     LogLine longLine; longLine.t = 0; longLine.msg.assign(250, 'x');
     ok(timelineCellText(longLine, 2).size() == 200, "时间线消息仍截断到 200 字节");

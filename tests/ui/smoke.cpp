@@ -147,8 +147,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (Contains(GetDlgItem(window, 1010), L"未加载")) return finish(3);
 
     const wchar_t* titles[] = {L"概览", L"诊断结论", L"事件时间线", L"断网记录",
-                               L"信号指标", L"标签统计", L"原始日志", L"未识别行"};
-    for (int page = 0; page < 8; ++page) {
+                               L"信号指标", L"标签统计", L"原始日志", L"未识别行", L"小区分析"};
+    for (int page = 0; page < 9; ++page) {
         SendMessageW(window, WM_APP + 41, page, 0);
         UpdateWindow(window);
         if (TextOf(GetDlgItem(window, 1024)) != titles[page]) return finish(10 + page);
@@ -159,6 +159,22 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     HWND header = ListView_GetHeader(metrics);
     if (!header || Header_GetItemCount(header) != 18) return finish(20);
     if (!IsWindowVisible(GetDlgItem(window, 1017))) return finish(22);
+
+    SendMessageW(window, WM_APP + 41, 6, 0);
+    HWND raw = GetDlgItem(window, 1016);
+    if (!raw || !ListView_GetHeader(raw) || ListView_GetItemCount(raw) < 1 ||
+        !(GetWindowLongPtrW(raw, GWL_STYLE) & LVS_OWNERDATA)) return finish(30);
+    SendMessageW(window, WM_APP + 41, 8, 0);
+    HWND cells = GetDlgItem(window, 1026);
+    if (!cells || Header_GetItemCount(ListView_GetHeader(cells)) != 15 ||
+        ListView_GetItemCount(cells) < 1) return finish(31);
+    SetWindowPos(window, nullptr, 0, 0, 860, 640, SWP_NOMOVE | SWP_NOZORDER);
+    UpdateWindow(window);
+    RECT pageTitle{}, exportButton{};
+    GetWindowRect(GetDlgItem(window, 1024), &pageTitle);
+    GetWindowRect(GetDlgItem(window, 1005), &exportButton);
+    if (pageTitle.right > exportButton.left) return finish(32);
+    SendMessageW(window, WM_APP + 41, 4, 0);
 
     // 大日志后台任务应能立即取消，且不能覆盖已经成功加载的旧文档。
     const std::wstring oldLabel = TextOf(GetDlgItem(window, 1010));
