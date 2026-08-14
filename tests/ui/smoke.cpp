@@ -120,6 +120,16 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     int argc = 0;
     LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (!argv || argc != 3) return 90;
+    // 冒烟测试复用 Wine 前缀时，不应继承人工测试留下的筛选条件，否则样本可能被筛成 0 行。
+    HKEY settings = nullptr;
+    if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\dialLog", 0, nullptr, 0,
+                        KEY_SET_VALUE, nullptr, &settings, nullptr) == ERROR_SUCCESS) {
+        const wchar_t empty[] = L"";
+        for (const wchar_t* name : {L"TagFilter", L"GrepFilter", L"SinceFilter", L"UntilFilter"})
+            RegSetValueExW(settings, name, 0, REG_SZ,
+                           reinterpret_cast<const BYTE*>(empty), sizeof(empty));
+        RegCloseKey(settings);
+    }
     std::wstring command = L"\"" + std::wstring(argv[1]) + L"\" \"" + argv[2] + L"\"";
     LocalFree(argv);
     std::vector<wchar_t> mutableCommand(command.begin(), command.end());
@@ -156,14 +166,49 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
 
     SendMessageW(window, WM_APP + 41, 4, 0);
     HWND metrics = GetDlgItem(window, 1014);
+    HWND chart = GetDlgItem(window, 1017);
     HWND header = ListView_GetHeader(metrics);
     if (!header || Header_GetItemCount(header) != 19) return finish(20);
-    if (!IsWindowVisible(GetDlgItem(window, 1017))) return finish(22);
+    if (!IsWindowVisible(chart)) return finish(22);
+    HWND chartMode = GetDlgItem(window, 1047), splitMode = GetDlgItem(window, 1048);
+    HWND tableMode = GetDlgItem(window, 1049);
+    if (!chartMode || !splitMode || !tableMode || !IsWindowVisible(splitMode)) return finish(33);
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1049, BN_CLICKED),
+                 reinterpret_cast<LPARAM>(tableMode));
+    if (!IsWindowVisible(metrics) || IsWindowVisible(chart)) return finish(34);
+    RECT metricPage{}, metricClient{};
+    GetWindowRect(metrics, &metricPage);
+    MapWindowPoints(nullptr, window, reinterpret_cast<POINT*>(&metricPage), 2);
+    GetClientRect(window, &metricClient);
+    if (metricPage.right < metricClient.right - 30 || metricPage.bottom < metricClient.bottom - 70)
+        return finish(35);
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1048, BN_CLICKED),
+                 reinterpret_cast<LPARAM>(splitMode));
+    if (!IsWindowVisible(metrics) || !IsWindowVisible(chart)) return finish(36);
 
     SendMessageW(window, WM_APP + 41, 6, 0);
     HWND raw = GetDlgItem(window, 1016);
-    if (!raw || !ListView_GetHeader(raw) || ListView_GetItemCount(raw) < 1 ||
-        !(GetWindowLongPtrW(raw, GWL_STYLE) & LVS_OWNERDATA)) return finish(30);
+    if (!raw) return finish(30);
+    if (!ListView_GetHeader(raw)) return finish(39);
+    if (ListView_GetItemCount(raw) < 1) return finish(40);
+    if (!(GetWindowLongPtrW(raw, GWL_STYLE) & LVS_OWNERDATA)) return finish(41);
+    // 跨进程直接发送 LVM_SETITEMSTATE 在部分 Wine 版本不会封送 LVITEM；模拟用户点击
+    // 首行既覆盖真实交互，也避免测试依赖该兼容性细节。
+    RECT rawHeader{};
+    POINT rawOrigin{};
+    GetWindowRect(ListView_GetHeader(raw), &rawHeader);
+    ClientToScreen(raw, &rawOrigin);
+    const LONG measuredRowY = rawHeader.bottom - rawOrigin.y + 10L;
+    const int firstRowY = static_cast<int>(measuredRowY > 1 ? measuredRowY : 1);
+    SendMessageW(raw, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(24, firstRowY));
+    SendMessageW(raw, WM_LBUTTONUP, 0, MAKELPARAM(24, firstRowY));
+    if (ListView_GetSelectedCount(raw) < 1) return finish(42);
+    SendMessageW(raw, WM_KEYDOWN, VK_RETURN, 0);
+    HWND detail = GetDlgItem(window, 1112);
+    if (!detail || !IsWindowVisible(detail) || GetWindowTextLengthW(detail) < 20) return finish(37);
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1111, BN_CLICKED),
+                 reinterpret_cast<LPARAM>(GetDlgItem(window, 1111)));
+    if (IsWindowVisible(detail)) return finish(38);
     SendMessageW(window, WM_APP + 41, 8, 0);
     HWND cells = GetDlgItem(window, 1026);
     if (!cells || Header_GetItemCount(ListView_GetHeader(cells)) != 15 ||

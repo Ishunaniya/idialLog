@@ -20,6 +20,9 @@ struct AppContext {
     HWND hSummary = nullptr, hTimeline = nullptr, hOutage = nullptr, hMetric = nullptr;
     HWND hTags = nullptr, hRaw = nullptr, hChart = nullptr, hExport = nullptr, hDash = nullptr;
     HWND hFindings = nullptr, hUnparsed = nullptr, hCells = nullptr;
+    HWND hMetricToolbar = nullptr, hMetricViewChart = nullptr, hMetricViewSplit = nullptr;
+    HWND hMetricViewTable = nullptr, hMetricSplitter = nullptr;
+    HWND hDetailSplitter = nullptr, hDetailLabel = nullptr, hDetailText = nullptr, hDetailClose = nullptr;
     HIMAGELIST hTableRows = nullptr;
 
     HFONT hFontUI = nullptr, hFontMono = nullptr, hFontTitle = nullptr, hFontSmall = nullptr;

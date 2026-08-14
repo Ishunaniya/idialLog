@@ -33,6 +33,11 @@ void ShowMetricQuickFilterMenu(HWND anchor);
 void ClearMetricQuickFilters(bool refresh = true);
 void RebuildMetricQuickFilterView();
 bool CopySelectedPageRows();
+void ConfigurePageList(HWND list);
+void FitPrimaryTableColumns(int contentWidth);
+bool PageDetailVisible();
+HWND PageDetailOwner();
+void ClosePageDetail();
 
 // 处理虚拟列表取数与页面表格自绘；返回 true 表示通知已消费。
 bool HandlePageNotify(LPARAM lparam, LRESULT& result);

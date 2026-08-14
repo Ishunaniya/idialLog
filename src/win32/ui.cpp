@@ -13,6 +13,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
+#include <windowsx.h>
 
 #include <algorithm>
 #include <array>
@@ -66,6 +67,11 @@ using namespace dl;
 #define IDC_EXPORT_REPORT 1044
 #define IDC_EXPORT_CSV 1045
 #define IDC_EXPORT_HTML 1046
+#define IDC_METRIC_VIEW_CHART 1047
+#define IDC_METRIC_VIEW_SPLIT 1048
+#define IDC_METRIC_VIEW_TABLE 1049
+#define IDC_DETAIL_CLOSE 1111
+#define IDC_DETAIL_TEXT  1112
 #define IDC_RECENT_BASE  1050
 #define IDC_BOOKMARK_BASE 1080
 #define IDC_SEARCH_CLEAR 1110
@@ -77,6 +83,12 @@ constexpr UINT_PTR kFilterTimer = 7;
 bool g_filtersExpanded = false;
 int g_headerHeight = 88;
 RECT g_filterPanel{};
+enum class MetricViewMode { Chart, Split, Table };
+MetricViewMode g_metricViewMode = MetricViewMode::Split;
+int g_metricSplitY = 0;
+int g_detailHeight = 0;
+bool g_dragMetricSplitter = false, g_dragDetailSplitter = false;
+RECT g_lastContent{};
 
 void UpdateFilterButton();
 void SetFilterControlsVisible(bool visible);
@@ -216,9 +228,53 @@ void PersistUiSettings(HWND window) {
 
 int NavWidth() { return S(232); }
 int StatusHeight() { return S(32); }
-int ChartHeight() { return S(430); }
-
 bool HasText(HWND edit) { return edit && GetWindowTextLengthW(edit) > 0; }
+
+void UpdateMetricViewButtons() {
+    SetModernButtonActive(App().hMetricViewChart, g_metricViewMode == MetricViewMode::Chart);
+    SetModernButtonActive(App().hMetricViewSplit, g_metricViewMode == MetricViewMode::Split);
+    SetModernButtonActive(App().hMetricViewTable, g_metricViewMode == MetricViewMode::Table);
+}
+
+void SetMetricView(MetricViewMode mode) {
+    g_metricViewMode = mode;
+    UpdateMetricViewButtons();
+    Layout();
+}
+
+LRESULT CALLBACK SplitterSubclass(HWND splitter, UINT message, WPARAM wparam, LPARAM lparam,
+                                   UINT_PTR, DWORD_PTR role) {
+    switch (message) {
+    case WM_SETCURSOR:
+        SetCursor(LoadCursorW(nullptr, IDC_SIZENS)); return TRUE;
+    case WM_LBUTTONDOWN:
+        SetCapture(splitter);
+        if (role == 1) g_dragMetricSplitter = true;
+        else g_dragDetailSplitter = true;
+        return 0;
+    case WM_MOUSEMOVE:
+        if (GetCapture() == splitter && (g_dragMetricSplitter || g_dragDetailSplitter)) {
+            POINT point{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+            MapWindowPoints(splitter, App().hMain, &point, 1);
+            if (g_dragMetricSplitter)
+                g_metricSplitY = point.y - g_lastContent.top - S(38);
+            else
+                g_detailHeight = g_lastContent.bottom - point.y - S(7);
+            Layout();
+        }
+        return 0;
+    case WM_LBUTTONUP:
+        if (GetCapture() == splitter) ReleaseCapture();
+        g_dragMetricSplitter = g_dragDetailSplitter = false;
+        return 0;
+    case WM_CAPTURECHANGED:
+        g_dragMetricSplitter = g_dragDetailSplitter = false;
+        return 0;
+    case WM_NCDESTROY:
+        RemoveWindowSubclass(splitter, SplitterSubclass, 1); break;
+    }
+    return DefSubclassProc(splitter, message, wparam, lparam);
+}
 
 void UpdateFilterButton() {
     int count = 0;
@@ -310,13 +366,15 @@ void ApplyFontsToControls() {
     for (HWND child = GetWindow(App().hMain, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT))
         SendMessageW(child, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontUI), TRUE);
     for (HWND control : {App().hTimeline, App().hOutage, App().hMetric, App().hTags,
-                         App().hUnparsed, App().hRaw, App().hCells})
+                         App().hUnparsed, App().hRaw, App().hCells, App().hDetailText})
         if (control) SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontMono), TRUE);
     if (App().hPageTitle)
         SendMessageW(App().hPageTitle, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontTitle), TRUE);
     if (App().hFileLbl)
         SendMessageW(App().hFileLbl, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontSmall), TRUE);
     for (HWND label : {App().hTagLabel, App().hGrepLabel, App().hSinceLabel, App().hUntilLabel})
+        if (label) SendMessageW(label, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontSmall), TRUE);
+    for (HWND label : {App().hMetricToolbar, App().hDetailLabel})
         if (label) SendMessageW(label, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontSmall), TRUE);
 }
 
@@ -419,22 +477,79 @@ void Layout() {
 
     LayoutFilterPanel(contentLeft, contentWidth);
     RECT content = ContentRect(client);
+    g_lastContent = content;
     const int width = static_cast<int>(content.right - content.left);
     const int height = std::max(S(40), static_cast<int>(content.bottom - content.top));
 
-    int dashHeight = std::min(S(336), height - S(90));
+    int pageHeight = height;
+    const bool detailPage = CurrentPage() == 2 || CurrentPage() == 4 || CurrentPage() == 6;
+    if (PageDetailVisible() && detailPage) {
+        const int minimumDetail = std::min(S(120), std::max(S(60), height / 3));
+        const int desiredTop = CurrentPage() == 4 ? S(245) : S(150);
+        const int minimumTop = std::min(desiredTop,
+            std::max(S(80), height - minimumDetail - S(7)));
+        const int maximumDetail = std::max(1, height - minimumTop - S(7));
+        const int effectiveMinimum = std::min(minimumDetail, maximumDetail);
+        if (g_detailHeight <= 0) g_detailHeight = std::min(S(220), height * 35 / 100);
+        g_detailHeight = std::max(effectiveMinimum,
+                                  std::min(g_detailHeight, maximumDetail));
+        pageHeight = height - g_detailHeight - S(7);
+        MoveIf(App().hDetailSplitter, content.left, content.top + pageHeight, width, S(7));
+        MoveIf(App().hDetailLabel, content.left + S(14), content.top + pageHeight + S(13),
+               width - S(66), S(24));
+        MoveIf(App().hDetailClose, content.right - S(42), content.top + pageHeight + S(9),
+               S(34), S(30));
+        MoveIf(App().hDetailText, content.left, content.top + pageHeight + S(43),
+               width, g_detailHeight - S(36));
+    }
+
+    int dashHeight = std::min(S(336), pageHeight - S(90));
     dashHeight = std::max(S(130), dashHeight);
     MoveIf(App().hDash, content.left, content.top, width, dashHeight);
-    MoveIf(App().hSummary, content.left, content.top + dashHeight, width, height - dashHeight);
+    MoveIf(App().hSummary, content.left, content.top + dashHeight, width, pageHeight - dashHeight);
     for (HWND page : {App().hFindings, App().hTimeline, App().hOutage, App().hTags,
                       App().hRaw, App().hUnparsed, App().hCells})
-        MoveIf(page, content.left, content.top, width, height);
+        MoveIf(page, content.left, content.top, width, pageHeight);
 
-    int chartHeight = std::min(ChartHeight(), height * 2 / 3);
-    chartHeight = std::max(S(280), chartHeight);
-    chartHeight = std::min(chartHeight, std::max(S(160), height - S(130)));
-    MoveIf(App().hChart, content.left, content.top, width, chartHeight);
-    MoveIf(App().hMetric, content.left, content.top + chartHeight, width, height - chartHeight);
+    const int toolbarHeight = S(38), splitterHeight = S(7);
+    MoveIf(App().hMetricToolbar, content.left, content.top, width, toolbarHeight);
+    int buttonRight = content.right - S(8);
+    auto viewButton = [&](HWND button, int logicalWidth) {
+        buttonRight -= S(logicalWidth);
+        MoveIf(button, buttonRight, content.top + S(3), S(logicalWidth), S(32));
+        buttonRight -= S(6);
+    };
+    viewButton(App().hMetricViewTable, 74);
+    viewButton(App().hMetricViewSplit, 62);
+    viewButton(App().hMetricViewChart, 62);
+    const int metricTop = content.top + toolbarHeight;
+    const int metricAreaHeight = std::max(S(80), pageHeight - toolbarHeight);
+    if (g_metricViewMode == MetricViewMode::Chart) {
+        ShowWindow(App().hChart, CurrentPage() == 4 ? SW_SHOW : SW_HIDE);
+        ShowWindow(App().hMetric, SW_HIDE);
+        ShowWindow(App().hMetricSplitter, SW_HIDE);
+        MoveIf(App().hChart, content.left, metricTop, width, metricAreaHeight);
+    } else if (g_metricViewMode == MetricViewMode::Table) {
+        ShowWindow(App().hChart, SW_HIDE);
+        ShowWindow(App().hMetric, CurrentPage() == 4 ? SW_SHOW : SW_HIDE);
+        ShowWindow(App().hMetricSplitter, SW_HIDE);
+        MoveIf(App().hMetric, content.left, metricTop, width, metricAreaHeight);
+    } else {
+        ShowWindow(App().hChart, CurrentPage() == 4 ? SW_SHOW : SW_HIDE);
+        ShowWindow(App().hMetric, CurrentPage() == 4 ? SW_SHOW : SW_HIDE);
+        ShowWindow(App().hMetricSplitter, CurrentPage() == 4 ? SW_SHOW : SW_HIDE);
+        const int usableHeight = std::max(2, metricAreaHeight - splitterHeight);
+        const int minimumChart = std::min(S(180), std::max(1, usableHeight / 2));
+        const int minimumTable = std::min(S(110), std::max(1, usableHeight / 3));
+        if (g_metricSplitY <= 0) g_metricSplitY = usableHeight * 62 / 100;
+        g_metricSplitY = std::max(minimumChart,
+            std::min(g_metricSplitY, usableHeight - minimumTable));
+        MoveIf(App().hChart, content.left, metricTop, width, g_metricSplitY);
+        MoveIf(App().hMetricSplitter, content.left, metricTop + g_metricSplitY, width, splitterHeight);
+        MoveIf(App().hMetric, content.left, metricTop + g_metricSplitY + splitterHeight,
+               width, metricAreaHeight - g_metricSplitY - splitterHeight);
+    }
+    FitPrimaryTableColumns(width);
     LayoutModernOverlays();
     InvalidateRect(App().hMain, nullptr, FALSE);
 }
@@ -561,6 +676,33 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().hChart = CreateWindowExW(0, L"dialChartCls", L"", WS_CHILD | WS_TABSTOP, 0, 0, 10, 10, hwnd,
                                        reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_CHART)),
                                        GetModuleHandleW(nullptr), nullptr);
+        for (HWND list : {App().hTimeline, App().hOutage, App().hMetric, App().hTags,
+                          App().hUnparsed, App().hRaw, App().hCells})
+            ConfigurePageList(list);
+
+        App().hMetricToolbar = CreateControl(L"STATIC", L"显示方式  ·  拖动分隔条调整图表与表格",
+            SS_LEFT | SS_CENTERIMAGE, 0, App().hFontSmall, false);
+        App().hMetricViewChart = CreateButton(L"图表", IDC_METRIC_VIEW_CHART,
+                                               ModernButtonKind::Neutral, false);
+        App().hMetricViewSplit = CreateButton(L"分屏", IDC_METRIC_VIEW_SPLIT,
+                                               ModernButtonKind::Neutral, false);
+        App().hMetricViewTable = CreateButton(L"表格全页", IDC_METRIC_VIEW_TABLE,
+                                               ModernButtonKind::Neutral, false);
+        App().hMetricSplitter = CreateControl(L"STATIC", L"", SS_NOTIFY | SS_ETCHEDHORZ,
+                                               0, App().hFontUI, false);
+        App().hDetailSplitter = CreateControl(L"STATIC", L"", SS_NOTIFY | SS_ETCHEDHORZ,
+                                               0, App().hFontUI, false);
+        SetWindowSubclass(App().hMetricSplitter, SplitterSubclass, 1, 1);
+        SetWindowSubclass(App().hDetailSplitter, SplitterSubclass, 1, 2);
+        App().hDetailLabel = CreateControl(L"STATIC", L"完整内容", SS_LEFT | SS_CENTERIMAGE,
+                                            0, App().hFontSmall, false);
+        App().hDetailClose = CreateButton(L"×", IDC_DETAIL_CLOSE, ModernButtonKind::Neutral, false);
+        App().hDetailText = CreateControl(L"EDIT", L"",
+            ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | WS_VSCROLL | WS_HSCROLL,
+            IDC_DETAIL_TEXT, App().hFontMono, false);
+        SendMessageW(App().hDetailText, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN,
+                     MAKELPARAM(S(10), S(10)));
+        UpdateMetricViewButtons();
         App().hStatus = CreateModernStatus(hwnd, IDC_STATUS);
 
         const AppSettings& settings = GetAppSettings();
@@ -635,6 +777,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         case IDC_BOOKMARKS: ShowBookmarksMenu(); return 0;
         case IDC_SEARCH_HISTORY: ShowSearchHistoryMenu(); return 0;
         case IDC_METRIC_FILTER: ShowMetricQuickFilterMenu(App().hMetricFilter); return 0;
+        case IDC_METRIC_VIEW_CHART: SetMetricView(MetricViewMode::Chart); return 0;
+        case IDC_METRIC_VIEW_SPLIT: SetMetricView(MetricViewMode::Split); return 0;
+        case IDC_METRIC_VIEW_TABLE: SetMetricView(MetricViewMode::Table); return 0;
+        case IDC_DETAIL_CLOSE: ClosePageDetail(); return 0;
         case IDC_FILTER:
             g_filtersExpanded = !g_filtersExpanded;
             SetFilterControlsVisible(g_filtersExpanded); UpdateFilterButton(); Layout();
@@ -772,8 +918,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
                 RefreshAll(); continue;
             }
         }
-        if (message.message == WM_KEYDOWN && message.wParam == VK_ESCAPE && g_filtersExpanded) {
-            g_filtersExpanded = false; SetFilterControlsVisible(false); UpdateFilterButton(); Layout(); continue;
+        if (message.message == WM_KEYDOWN && message.wParam == VK_ESCAPE) {
+            if (PageDetailVisible()) { ClosePageDetail(); continue; }
+            if (g_filtersExpanded) {
+                g_filtersExpanded = false; SetFilterControlsVisible(false); UpdateFilterButton(); Layout(); continue;
+            }
         }
         if (IsDialogMessageW(window, &message)) continue;
         TranslateMessage(&message); DispatchMessageW(&message);

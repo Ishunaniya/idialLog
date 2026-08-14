@@ -2,6 +2,7 @@
 #include "ui_pages.h"
 
 #include <commctrl.h>
+#include <windowsx.h>
 
 #include <algorithm>
 #include <climits>
@@ -40,6 +41,14 @@ static std::vector<EvidenceBookmark> g_bookmarks;
 static int g_metricSortColumn = -1, g_outageSortColumn = -1, g_tagSortColumn = 1, g_cellSortColumn = -1;
 static bool g_metricSortAscending = true, g_outageSortAscending = true;
 static bool g_tagSortAscending = false, g_cellSortAscending = true;
+static HWND g_detailOwner = nullptr;
+static int g_detailRow = -1;
+
+constexpr UINT kCopyCellCommand = 41001;
+constexpr UINT kCopyRowsCommand = 41002;
+constexpr UINT kShowDetailCommand = 41003;
+constexpr UINT kJumpRawCommand = 41004;
+constexpr UINT kBookmarkCommand = 41005;
 
 struct MetricQuickFilter {
     std::string cell, rat, ch;
@@ -429,6 +438,7 @@ void ResetVirtualTables() {
 // App().document.lines。普通筛选仍使用 clear()/赋值复用容量,避免每次点击“应用”都重新分配。
 void ReleaseLoadedData() {
     g_rawTargetLine = 0;
+    if (PageDetailVisible()) ClosePageDetail();
     ResetVirtualTables();
 
     // 非 OWNERDATA 控件自己持有单元格文本；替换日志前也立即丢掉旧内容，避免隐藏页
@@ -468,6 +478,9 @@ void RenderPage(int page) {
 void ShowPage(int page) {
     // 页序:0总览 1结论 2时间线 3断网 4指标 5标签 6原始行 7未识别行 8小区分析
     if (page < 0 || page >= 9) return;
+    HWND detailOwner = page == 2 ? App().hTimeline : page == 4 ? App().hMetric :
+                       page == 6 ? App().hRaw : nullptr;
+    if (PageDetailVisible() && PageDetailOwner() != detailOwner) ClosePageDetail();
     g_curPage = page;
     const wchar_t* titles[] = {L"概览", L"诊断结论", L"事件时间线", L"断网记录",
                                L"信号指标", L"标签统计", L"原始日志", L"未识别行", L"小区分析"};
@@ -485,6 +498,17 @@ void ShowPage(int page) {
         ShowWindow(*it.h, on ? SW_SHOW : SW_HIDE);
         if (on) SetWindowPos(*it.h, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
+    if (PageDetailVisible()) {
+        for (HWND control : {App().hDetailSplitter, App().hDetailLabel,
+                             App().hDetailText, App().hDetailClose}) {
+            ShowWindow(control, SW_SHOW);
+            SetWindowPos(control, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        }
+    }
+    const bool metrics = page == 4;
+    for (HWND control : {App().hMetricToolbar, App().hMetricViewChart,
+                         App().hMetricViewSplit, App().hMetricViewTable})
+        if (control) ShowWindow(control, metrics ? SW_SHOW : SW_HIDE);
     ShowWindow(App().hExport, SW_SHOW);
     SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
 }
@@ -556,6 +580,97 @@ void ClearEvidenceBookmarks() {
 
 const std::vector<EvidenceBookmark>& EvidenceBookmarks() { return g_bookmarks; }
 
+static bool IsPageList(HWND list) {
+    return list == App().hMetric || list == App().hOutage || list == App().hTags ||
+           list == App().hRaw || list == App().hCells || list == App().hTimeline ||
+           list == App().hUnparsed;
+}
+
+static bool SupportsFullDetail(HWND list) {
+    return list == App().hRaw || list == App().hTimeline || list == App().hMetric;
+}
+
+static std::string PageCellText(HWND list, int row, int column) {
+    if (row < 0 || column < 0) return {};
+    const std::size_t index = static_cast<std::size_t>(row);
+    if (list == App().hMetric && index < App().document.metricView.size())
+        return metricCellText(*App().document.metricView[index], static_cast<std::size_t>(column));
+    if (list == App().hRaw && index < RawRows().size())
+        return rawCellText(*RawRows()[index], static_cast<std::size_t>(column));
+    if (list == App().hCells && index < g_cellRows.size())
+        return cellSummaryCellText(*g_cellRows[index], static_cast<std::size_t>(column));
+    if (list == App().hTimeline && index < App().document.timelineRows.size())
+        return timelineCellText(*App().document.timelineRows[index], static_cast<std::size_t>(column));
+    std::vector<wchar_t> value(8192, L'\0');
+    ListView_GetItemText(list, row, column, value.data(), static_cast<int>(value.size()));
+    return WToU8(value.data());
+}
+
+static std::wstring ColumnTitle(HWND list, int column) {
+    HWND header = ListView_GetHeader(list);
+    wchar_t text[128]{};
+    HDITEMW item{};
+    item.mask = HDI_TEXT; item.pszText = text; item.cchTextMax = 128;
+    return header && Header_GetItem(header, column, &item) ? text : L"字段";
+}
+
+static std::wstring DetailText(HWND list, int row) {
+    const int columns = Header_GetItemCount(ListView_GetHeader(list));
+    std::wstring output;
+    if (list == App().hMetric) {
+        for (int column = 0; column < columns; ++column) {
+            output += ColumnTitle(list, column);
+            output += L"：\t";
+            output += U8ToW(PageCellText(list, row, column));
+            output += L"\r\n";
+        }
+        return output;
+    }
+    const int messageColumn = list == App().hRaw ? 4 : 2;
+    for (int column = 0; column < std::min(columns, messageColumn); ++column) {
+        if (column) output += L"    ";
+        output += ColumnTitle(list, column) + L"：" + U8ToW(PageCellText(list, row, column));
+    }
+    output += L"\r\n\r\n";
+    output += U8ToW(PageCellText(list, row, messageColumn));
+    return output;
+}
+
+static void ShowPageDetail(HWND list, int row, bool focus = true) {
+    if (!SupportsFullDetail(list) || row < 0 || !App().hDetailText) return;
+    g_detailOwner = list;
+    g_detailRow = row;
+    const wchar_t* page = list == App().hRaw ? L"原始日志" :
+                          list == App().hTimeline ? L"事件时间线" : L"信号指标";
+    std::wstring label = std::wstring(page) + L" · 第 " + std::to_wstring(row + 1) +
+                         L" 行完整内容（可选中文字复制）";
+    SetWindowTextW(App().hDetailLabel, label.c_str());
+    const std::wstring text = DetailText(list, row);
+    SetWindowTextW(App().hDetailText, text.c_str());
+    SendMessageW(App().hDetailText, EM_SETSEL, 0, 0);
+    for (HWND control : {App().hDetailSplitter, App().hDetailLabel,
+                         App().hDetailText, App().hDetailClose}) {
+        if (!control) continue;
+        ShowWindow(control, SW_SHOW);
+        SetWindowPos(control, HWND_TOP, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+    SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
+    if (focus) SetFocus(App().hDetailText);
+}
+
+bool PageDetailVisible() { return g_detailOwner != nullptr; }
+HWND PageDetailOwner() { return g_detailOwner; }
+
+void ClosePageDetail() {
+    g_detailOwner = nullptr;
+    g_detailRow = -1;
+    for (HWND control : {App().hDetailSplitter, App().hDetailLabel,
+                         App().hDetailText, App().hDetailClose})
+        if (control) ShowWindow(control, SW_HIDE);
+    if (App().hMain) SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
+}
+
 static bool CopyTextToClipboard(const std::wstring& text) {
     if (!OpenClipboard(App().hMain)) return false;
     EmptyClipboard();
@@ -573,31 +688,14 @@ static bool CopyTextToClipboard(const std::wstring& text) {
     return true;
 }
 
-bool CopySelectedPageRows() {
-    HWND list = GetFocus();
-    const bool supported = list == App().hMetric || list == App().hOutage || list == App().hTags ||
-                           list == App().hRaw || list == App().hCells || list == App().hTimeline ||
-                           list == App().hUnparsed;
-    if (!supported) return false;
+static bool CopySelectedRows(HWND list) {
+    if (!IsPageList(list)) return false;
     const int columns = Header_GetItemCount(ListView_GetHeader(list));
     std::wstring output;
     int row = -1, copied = 0;
     while ((row = ListView_GetNextItem(list, row, LVNI_SELECTED)) >= 0) {
         for (int column = 0; column < columns; ++column) {
-            std::string text;
-            if (list == App().hMetric && static_cast<std::size_t>(row) < App().document.metricView.size())
-                text = metricCellText(*App().document.metricView[row], column);
-            else if (list == App().hRaw && static_cast<std::size_t>(row) < RawRows().size())
-                text = rawCellText(*RawRows()[row], column);
-            else if (list == App().hCells && static_cast<std::size_t>(row) < g_cellRows.size())
-                text = cellSummaryCellText(*g_cellRows[row], column);
-            else if (list == App().hTimeline && static_cast<std::size_t>(row) < App().document.timelineRows.size())
-                text = timelineCellText(*App().document.timelineRows[row], column);
-            else {
-                wchar_t value[2048]{};
-                ListView_GetItemText(list, row, column, value, 2048);
-                text = WToU8(value);
-            }
+            std::string text = PageCellText(list, row, column);
             for (char& ch : text) if (ch == '\r' || ch == '\n' || ch == '\t') ch = ' ';
             if (column) output += L'\t';
             output += U8ToW(text);
@@ -611,6 +709,117 @@ bool CopySelectedPageRows() {
         ShowModernNotice(L"已复制所选行", FmtW(L"共 %d 行，使用制表符分列。", copied).c_str(),
                          ModernNoticeKind::Success, 3000);
     return success;
+}
+
+bool CopySelectedPageRows() { return CopySelectedRows(GetFocus()); }
+
+static size_t RowSourceLine(HWND list, int row) {
+    const std::size_t index = static_cast<std::size_t>(std::max(0, row));
+    if (list == App().hRaw && index < RawRows().size()) return RawRows()[index]->lineNo;
+    if (list == App().hTimeline && index < App().document.timelineRows.size())
+        return App().document.timelineRows[index]->lineNo;
+    if (list == App().hMetric && index < App().document.metricView.size())
+        return App().document.metricView[index]->lineNo;
+    return 0;
+}
+
+static void ShowPageContextMenu(HWND list, POINT screenPoint) {
+    if (!IsPageList(list)) return;
+    SetFocus(list);
+    POINT clientPoint = screenPoint;
+    int row = ListView_GetNextItem(list, -1, LVNI_SELECTED), column = 0;
+    if (screenPoint.x != -1 || screenPoint.y != -1) {
+        ScreenToClient(list, &clientPoint);
+        LVHITTESTINFO hit{}; hit.pt = clientPoint;
+        row = ListView_SubItemHitTest(list, &hit);
+        column = std::max(0, hit.iSubItem);
+        if (row >= 0 && !(ListView_GetItemState(list, row, LVIS_SELECTED) & LVIS_SELECTED)) {
+            ListView_SetItemState(list, -1, 0, LVIS_SELECTED | LVIS_FOCUSED);
+            ListView_SetItemState(list, row, LVIS_SELECTED | LVIS_FOCUSED,
+                                  LVIS_SELECTED | LVIS_FOCUSED);
+        }
+    } else if (row >= 0) {
+        RECT item{}; ListView_GetItemRect(list, row, &item, LVIR_BOUNDS);
+        clientPoint = POINT{item.left + S(18), item.bottom};
+        ClientToScreen(list, &clientPoint);
+        screenPoint = clientPoint;
+    }
+    if (row < 0) return;
+
+    HMENU menu = CreatePopupMenu();
+    const bool messageCell = (list == App().hRaw && column == 4) ||
+                             (list == App().hTimeline && column == 2);
+    AppendMenuW(menu, MF_STRING, kCopyCellCommand,
+                messageCell ? L"复制完整消息" : L"复制单元格");
+    const int selected = ListView_GetSelectedCount(list);
+    AppendMenuW(menu, MF_STRING, kCopyRowsCommand,
+                selected > 1 ? L"复制所选行（TSV）" : L"复制整行（TSV）");
+    if (SupportsFullDetail(list)) {
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(menu, MF_STRING, kShowDetailCommand, L"查看完整内容\tEnter");
+    }
+    if (list == App().hMetric || list == App().hTimeline)
+        AppendMenuW(menu, MF_STRING, kJumpRawCommand, L"定位到原始日志");
+    if (list == App().hRaw)
+        AppendMenuW(menu, MF_STRING, kBookmarkCommand, L"添加/移除证据书签\tCtrl+B");
+    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+                                        screenPoint.x, screenPoint.y, 0, App().hMain, nullptr);
+    DestroyMenu(menu);
+    if (command == kCopyCellCommand) {
+        if (CopyTextToClipboard(U8ToW(PageCellText(list, row, column))))
+            ShowModernNotice(L"已复制完整内容", ColumnTitle(list, column).c_str(),
+                             ModernNoticeKind::Success, 2500);
+    } else if (command == kCopyRowsCommand) {
+        CopySelectedRows(list);
+    } else if (command == kShowDetailCommand) {
+        ShowPageDetail(list, row);
+    } else if (command == kJumpRawCommand) {
+        JumpToRawLine(RowSourceLine(list, row));
+    } else if (command == kBookmarkCommand) {
+        ToggleCurrentRawBookmark();
+    }
+}
+
+static LRESULT CALLBACK PageListSubclass(HWND list, UINT message, WPARAM wparam, LPARAM lparam,
+                                         UINT_PTR, DWORD_PTR) {
+    if (message == WM_COPY) {
+        CopySelectedRows(list);
+        return 0;
+    }
+    if (message == WM_CONTEXTMENU) {
+        ShowPageContextMenu(list, POINT{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)});
+        return 0;
+    }
+    if (message == WM_MOUSEWHEEL && (GET_KEYSTATE_WPARAM(wparam) & MK_SHIFT)) {
+        int steps = std::max(1, std::abs(GET_WHEEL_DELTA_WPARAM(wparam)) / WHEEL_DELTA) * 3;
+        const WPARAM command = GET_WHEEL_DELTA_WPARAM(wparam) > 0 ? SB_LINELEFT : SB_LINERIGHT;
+        while (steps--) SendMessageW(list, WM_HSCROLL, command, 0);
+        return 0;
+    }
+    if (message == WM_KEYDOWN && wparam == VK_RETURN && SupportsFullDetail(list)) {
+        const int row = ListView_GetNextItem(list, -1, LVNI_SELECTED);
+        if (row >= 0) { ShowPageDetail(list, row); return 0; }
+    }
+    if (message == WM_NCDESTROY) RemoveWindowSubclass(list, PageListSubclass, 1);
+    return DefSubclassProc(list, message, wparam, lparam);
+}
+
+void ConfigurePageList(HWND list) {
+    if (list) SetWindowSubclass(list, PageListSubclass, 1, 0);
+}
+
+void FitPrimaryTableColumns(int contentWidth) {
+    auto fitLast = [contentWidth](HWND list, int lastColumn, int minimum) {
+        if (!list) return;
+        int fixed = 0;
+        for (int column = 0; column < lastColumn; ++column)
+            fixed += ListView_GetColumnWidth(list, column);
+        const int scrollbar = GetSystemMetrics(SM_CXVSCROLL) + S(4);
+        ListView_SetColumnWidth(list, lastColumn,
+                                std::max(S(minimum), contentWidth - fixed - scrollbar));
+    };
+    fitLast(App().hTimeline, 2, 760);
+    fitLast(App().hRaw, 4, 820);
 }
 
 static void DrawListEmptyState(HWND list, HDC dc) {
@@ -685,11 +894,15 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
         } else return false;
         result = 0; return true;
     }
-    if (hdr->code == LVN_ITEMCHANGED && hdr->hwndFrom == App().hMetric) {
+    if (hdr->code == LVN_ITEMCHANGED && SupportsFullDetail(hdr->hwndFrom)) {
         const NMLISTVIEW* change = reinterpret_cast<NMLISTVIEW*>(lparam);
         if ((change->uNewState & LVIS_SELECTED) && change->iItem >= 0 &&
+            hdr->hwndFrom == App().hMetric &&
             static_cast<std::size_t>(change->iItem) < App().document.metricView.size())
             SetChartFocusTime(App().document.metricView[change->iItem]->t);
+        if ((change->uNewState & LVIS_SELECTED) && change->iItem >= 0 &&
+            PageDetailOwner() == hdr->hwndFrom)
+            ShowPageDetail(hdr->hwndFrom, change->iItem, false);
         return false;
     }
     if (hdr->code == NM_CLICK && hdr->hwndFrom == App().hOutage) {
@@ -702,16 +915,18 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
         const int row = reinterpret_cast<NMITEMACTIVATE*>(lparam)->iItem;
         if (row < 0) return false;
         if (hdr->hwndFrom == App().hMetric && static_cast<std::size_t>(row) < App().document.metricView.size())
-            JumpToRawLine(App().document.metricView[row]->lineNo);
+            ShowPageDetail(App().hMetric, row);
         else if (hdr->hwndFrom == App().hOutage && static_cast<std::size_t>(row) < g_outageOrder.size())
             JumpToRawLine(App().document.outages[g_outageOrder[row]].startLine);
         else if (hdr->hwndFrom == App().hCells && static_cast<std::size_t>(row) < g_cellRows.size()) {
             g_metricFilter.cell = g_cellRows[row]->cellId;
             RebuildMetricQuickFilterView(); g_pageDirty[4] = true; ShowPage(4);
-        } else if (hdr->hwndFrom == App().hRaw && static_cast<std::size_t>(row) < RawRows().size()) {
-            g_rawTargetLine = RawRows()[row]->lineNo;
-            ToggleCurrentRawBookmark();
-        } else return false;
+        } else if (hdr->hwndFrom == App().hRaw && static_cast<std::size_t>(row) < RawRows().size())
+            ShowPageDetail(App().hRaw, row);
+        else if (hdr->hwndFrom == App().hTimeline &&
+                 static_cast<std::size_t>(row) < App().document.timelineRows.size())
+            ShowPageDetail(App().hTimeline, row);
+        else return false;
         result = 0; return true;
     }
     if (hdr->code == LVN_GETDISPINFOW &&

@@ -499,7 +499,8 @@ void SetShellBusy(bool busy, const wchar_t* text) {
     if (!busy) g_busyProgress = -1;
     for (HWND button : {App().hOpen, App().hPaste, App().hExport, App().hFilterToggle,
                          App().hApplyFilter, App().hClearFilter, App().hSearchHistory,
-                         App().hMetricFilter})
+                         App().hMetricFilter, App().hMetricViewChart,
+                         App().hMetricViewSplit, App().hMetricViewTable})
         if (button) EnableWindow(button, !busy);
     for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
         if (edit) EnableWindow(edit, !busy);

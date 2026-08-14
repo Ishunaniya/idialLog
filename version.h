@@ -38,11 +38,13 @@
 //           普通文件分块流式解析,多文件/压缩条目不再合并复制 raw
 //   1.10.9  修复 CSV 时间戳在 Excel 中显示为井号、信号图标题重叠;
 //           补齐 +QENG servingcell 的 Cell ID/PCI/TAC 解析
+//   1.10.10 完善小区 ID 展示并统一 LTE 工程参考分档与阈值线;
+//           日志/时间线/指标页新增全页、可拖动分屏、完整详情与复制交互
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 9
+#define DL_VER_PATCH 10
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

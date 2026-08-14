@@ -30,7 +30,9 @@ std::string timelineCellText(const LogLine& line, size_t column) {
     switch (column) {
     case 0: return fmtTime(line.t, "MD");
     case 1: return line.tagText();
-    case 2: return line.msg.substr(0, 200);
+    // ListView 只会请求可见行，无需在模型层截断。保留完整消息才能让横向滚动、
+    // 详情面板与复制操作拿到同一份原文，而不是复制界面上的省略版本。
+    case 2: return line.msg;
     default: return {};
     }
 }

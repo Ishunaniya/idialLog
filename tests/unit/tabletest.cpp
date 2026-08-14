@@ -40,7 +40,7 @@ int main() {
         borrowed = borrowed && it != byLine.end() && it->second == l;
         cells = cells && timelineCellText(*l, 0) == fmtTime(l->t, "MD") &&
                 timelineCellText(*l, 1) == l->tagText() &&
-                timelineCellText(*l, 2) == l->msg.substr(0, 200);
+                timelineCellText(*l, 2) == l->msg;
     }
     ok(borrowed, "时间线行全部借用筛选视图,不复制 LogLine");
     ok(cells, "三列文本与旧 RenderTimeline 语义一致");
@@ -107,7 +107,7 @@ int main() {
 
     std::puts("== T3 边界与规模 ==");
     LogLine longLine; longLine.t = 0; longLine.msg.assign(250, 'x');
-    ok(timelineCellText(longLine, 2).size() == 200, "时间线消息仍截断到 200 字节");
+    ok(timelineCellText(longLine, 2).size() == 250, "时间线保留完整消息供滚动、详情与复制");
     ok(timelineCellText(longLine, kTimelineColumnCount).empty() &&
        metricCellText(m, kMetricColumnCount).empty(), "越界列返回空串");
     auto metrics = buildMetrics(all);
