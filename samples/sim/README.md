@@ -52,9 +52,9 @@ sim/check_coverage.sh /home/tronlong/lyp/code/open_dial_for_artery
 
 | 仓库 | 分支 | 唯一日志串 | 标签 | 结果 |
 |---|---|---|---|---|
-| `open_dial` | 7 | **108** | 23 | ✅ 未识别 0,标签全认出 |
-| `modem_mng` | 25 | **346** | 38 | ✅ 未识别 0,标签全认出 |
-| `open_dial_for_artery` | 5 | **241** | 4 | ✅ 未识别 0,标签全认出 |
+| `open_dial` | 7 | **130** | 23 | ✅ 未识别 0,标签全认出 |
+| `modem_mng` | 28 | **368** | 40 | ✅ 未识别 0,标签全认出 |
+| `open_dial_for_artery` | 5 | **259** | 7 | ✅ 未识别 0,标签全认出 |
 
 分支间确有差异(实证):`open_dial` 的 `fix_cp_dump` 用 `[WARN] Status updated`,
 另两个分支用 `[INFO] Status updated`;`Registration Denied` 的 code 一处是 `%d`、

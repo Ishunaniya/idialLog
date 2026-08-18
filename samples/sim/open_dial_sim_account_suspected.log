@@ -1,0 +1,3 @@
+=== Dial Log Opened [2026-08-18 11:00:00] daykey=2026-08-18 ===
+[2026-08-18 11:00:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:20 | TEMP:35 | DownTime:0s
+[2026-08-18 11:02:01] [INIT][SIM-ACCOUNT] SIM=SIM1 SUSPECTED subscription issue: SIM READY with good signal but REG=0 for >=120s. Possible suspended/inactive SIM or subscription restriction; AT evidence is not definitive, confirm with carrier. Evidence: CPIN:READY | +CEREG: 2,0 | +COPS: 0 | +CGATT: 0 | +CEER: No report

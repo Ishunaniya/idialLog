@@ -40,11 +40,13 @@
 //           补齐 +QENG servingcell 的 Cell ID/PCI/TAC 解析
 //   1.10.10 完善小区 ID 展示并统一 LTE 工程参考分档与阈值线;
 //           日志/时间线/指标页新增全页、可拖动分屏、完整详情与复制交互
+//   1.10.11 跟进四产品首次初始化 SIM 注册/账户诊断，区分明确拒绝、受限服务、
+//           疑似订阅异常与 CEREG 查询失败，并纳入断网根因证据
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 10
+#define DL_VER_PATCH 11
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

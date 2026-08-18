@@ -61,8 +61,9 @@
   未识别行/CSQ 与 LTE 信号质量)+ 断网时长分布横条;下半是仪表盘装不下的明细(温度、通道占比、
   **RX_PKT 停滞**、报错/告警、关键事件计数)。上下不重复。
 - **结论 ★**(核心):自动根因 + 处置建议 + **每条结论的日志证据(行号/时间戳)**。
-  覆盖:断网根因分类(弱信号 / 数据假死 / 切卡选网期间 / 注册被拒)、SDK `DENY`
-  注册异常与 SNR 持续偏低提示、
+  覆盖:断网根因分类(弱信号 / 数据假死 / 切卡选网期间 / 注册与账户异常)、SDK `DENY`
+  注册异常与 SNR 持续偏低提示；识别四产品首次初始化诊断中的明确网络拒绝、受限服务、
+  疑似订阅异常和 CEREG 查询/解析失败，严格区分【源码直证】与【推断】，
   恢复阶梯 L1/L2/L3 是否触发及**被什么门控挡住**、CP dump、温度、解析覆盖率。
   **无证据支撑的结论一律不输出**(宁可少说,不臆测)。
   证据可单击定位原始行、右键复制或加入书签；顶部“书签”菜单可快速回跳，`Ctrl+B` 可切换
@@ -116,7 +117,7 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # x64: build/x64/dialLog_v1.10.10.exe
+make                     # x64: build/x64/dialLog_v1.10.11.exe
 make windows-all         # 同时构建 build/x64 与 build/x86
 make release             # 正式 x64 产物复制到仓库根目录
 make version             # 只打印当前版本号
@@ -133,7 +134,7 @@ mingw32-make CROSS=
 ### 32 位
 
 ```bash
-make windows-x86         # build/x86/dialLog_v1.10.10.exe
+make windows-x86         # build/x86/dialLog_v1.10.11.exe
 ```
 
 `CROSS` 同时派生 `CC/CXX/WINDRES`;每种工具链使用独立构建目录,连续切换架构
@@ -147,7 +148,7 @@ make windows-x86         # build/x86/dialLog_v1.10.10.exe
 
 ```bash
 make check       # 十个测试程序:解析、场景、真代码、真机基线、合并、压缩、边界、虚拟表、图表、文档接管
-make check-full  # check + 44 个变异；靶向路由、默认并发2、带逐项进度与超时
+make check-full  # check + 48 个变异；靶向路由、默认并发2、带逐项进度与超时
 make perf        # 10万/50万/100万行:分阶段计时 + 轻量视图/虚拟表/图表规模断言
 make ui-smoke    # wine+xvfb 启动真实 exe，验证后台加载、9 页导航、虚拟原始行、小区页与窄窗布局
 ```
@@ -187,21 +188,28 @@ gzip 会校验头部边界、ISIZE 与 CRC32；损坏包会明确报错,不会�
 
 ### ⚠️ 仅源码实证 + 合成夹具,**未经真机日志验证**
 - **四份产品新增心跳字段**:`SRV/RAT/DENY`、`RSRP/RSRQ/SNR/RSSI` 与 `OPER` 已由产品源码、
-  SDK 头文件和四套 host-run 真代码输出共同验证;但现有真机日志来自旧版本,尚未包含这些字段。
+  SDK 头文件和四套 host-run 真代码输出共同验证；AG35 1.32.0 SD 真机日志还逐字段验证了
+  `SRV=2 RAT=LTE DENY=0`、LTE 信号值和 `OPER/CID/IP`。其余产品真机样本尚未覆盖全部新字段。
   SDK 头文件直证 `SNR` 原始单位为 0.1 dB;“至少 5 个样本且半数 `SNR <= 0 dB`”仅为
   **【推断】提示**,不会单独归因断网。不同 SDK 的 `DENY` 枚举表不同,工具保留原始码而不跨产品套名称。
+- **四份产品首次初始化 SIM 诊断**:`NETWORK REJECTED`、`LIMITED SERVICE`、
+  `SUSPECTED subscription issue` 与 `CEREG query/parse failed` 已由 2026-08-18 产品源码和
+  四条逐字场景覆盖；其中 `SUSPECTED` 已在 EC200A/AG35、EG25、artery 三套 host-run 真代码
+  场景中实际输出。open_dial 的现有桩无法满足该诊断前置条件，仍由源码覆盖审计和逐字场景兜底。
+  新增的 AG35 1.32.0 真机样本是正常 REG=5 场景且并非最新版本，未触发上述异常；目前仍无
+  真实设备日志命中这些新消息。
 - **EC200A / AG35 分支**:格式取自源码,夹具见 `samples/`(按来源分目录,见 `samples/README.md`)
-  (`ec200a_synthetic.log` / `ag35_synthetic.log`)。本机无 EC200A/AG35 真机日志。
-- **artery(seas_log)分支**:全机**无 artery 真机日志**;仅
-  `open_dial_for_artery/md/analyse/open_dial_roamlink_analysis_v2.md` 中有 1 行文档示例
-  (`2024-01-15 10:25:03.899 [INFO] dial_task (dial.c:245) - CSQ: 20`,且该示例已被文档
-  剥掉 ESC 码)。夹具 `artery_seas_synthetic.log` 按 `seas_log.c` 逐段拼接,含真实 ESC 字节。
+  (`ec200a_synthetic.log` / `ag35_synthetic.log`)。已有 AG35 控制台真机日志和 open_dial EC200A
+  真机日志，但仍无 modem_mng EC200A 独立真机日志。
+- **artery(seas_log)分支**:已有 1.29.13/1.29.14 两份真机日志；1.29.16 新增的 SIM 诊断
+  尚无真机样本。合成夹具 `artery_seas_synthetic.log` 含真实 ESC 字节。
 - 切通道时 `roamlink_rx_packets` 清零(`eg25/dial/dial.c:1857/1875`)对停滞检测的影响:
   仅源码推断,未在真实日志上观察到。
 
 ### 覆盖率的说法只信审计,不信断言
-本工具**不声称**“覆盖了全部标签”。三仓库 `dial_log` 首参标签已穷举(modem_mng 357 处 /
-open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不出现新格式。
+本工具**不声称**“覆盖了全部真机日志形态”。截至 2026-08-18，全分支源码并集已穷举：
+modem_mng 368 条唯一日志串/40 个标签，open_dial 130/23，artery 259/7，均未识别 0。
+但占位符由脚本填充，穷举证明不了运行时参数不会出现新形态。
 真实覆盖率以**“未识别行”页 + 状态栏占比**为准——那是实测,不是断言。
 
 ## 版本
@@ -210,9 +218,9 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.10.10.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.10.11.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.10.10 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.10.11 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 只清理 `build/`；测试程序也位于 `build/tests/`，不会污染根目录或误删已提交的发布 exe。
@@ -237,6 +245,7 @@ open_dial 107 处 / artery 4 处内嵌标签),但穷举证明不了运行时不�
 | 1.10.8 | 紧凑日志/指标记录与常见标签字典;心跳字段单遍低分配扫描;普通文件分块流式解析;多文件/压缩条目取消合并 `raw` 副本;新增增量等价与结构尺寸回归 |
 | 1.10.9 | 修复 CSV 完整时间戳在 Excel 中显示为井号和信号图标题重叠;补齐 `+QENG servingcell` 的 Cell ID/PCI/TAC 解析;诊断报告新增日志起止时间 |
 | 1.10.10 | 完善小区 ID 展示;统一 CSQ/RSRP/RSRQ/SNR 的 LTE 工程参考分档与阈值线;原始日志、事件时间线和信号指标新增全页/分屏浏览、可拖动详情及完整复制交互 |
+| 1.10.11 | 跟进四产品首次初始化 SIM 诊断;区分明确网络拒绝、受限服务、疑似订阅异常与 CEREG 查询失败，并纳入断网根因证据 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞 1.2MB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

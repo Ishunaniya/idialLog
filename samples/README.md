@@ -2,12 +2,17 @@
 
 按**日志来源**分目录。`make selftest && build/tests/unit/selftest <文件>` 可逐个跑。
 
+> 尚无真机日志包含 `NETWORK REJECTED`、`LIMITED SERVICE`、`SUSPECTED subscription issue`
+> 或 `CEREG query/parse failed`。AG35 1.32.0 的 2026-08-18 正常日志已覆盖新版心跳字段，
+> 但该版本并非最新且全程 REG=5，不能验证异常诊断。新诊断当前有产品源码、四条逐字场景
+> 实证；其中 `SUSPECTED` 另有三套 host-run 真代码执行实证，但仍不等同于真实设备日志。
+
 | 目录 | 来源 | 格式 | 样本 | 证据等级 |
 |---|---|---|---|---|
 | `rtms_eg25/` | `rtms_sdk/apps/modem_mng` EG25 | `FMT_SD` | ✅ `dial_20260630_000026.log`(2861 行,ROAMLINK 通道)<br>✅ `real_eg25_1.31.15_unsynced.log`(133 行,SIM 通道 + 完整 L1/L2 恢复阶梯) | **真机实证** |
 | `dial_ec200a/` | `/home/tronlong/lyp/code/open_dial`(老框架 EC200A) | `FMT_SD` | ✅ `real_ec200a_1.28.4_unsynced.log`(36 行) | **真机实证**(2026-07-17 补入) |
 | `dial_eg25/` | `/home/tronlong/lyp/code/open_dial_for_artery`(老框架 EG25) | `FMT_SEAS` | ✅ `real_artery_1.29.13.log`(71 行,**含真实 ESC 字节**)<br>⚠️ `artery_seas_synthetic.log` | **真机实证**(2026-07-17 补入) |
-| `rtms_ag35/` | `rtms_sdk/apps/modem_mng` AG35(双卡) | `FMT_SD` | ✅ `real_ag35_1.32.16_console.log`(144 行,**控制台捕获**:SD 未挂载,dial_log 与裸 printf 交织)<br>⚠️ `ag35_synthetic.log` | **真机实证**(2026-07-17 补入) |
+| `rtms_ag35/` | `rtms_sdk/apps/modem_mng` AG35(双卡) | `FMT_SD` | ✅ `real_ag35_1.32.16_console.log`(144 行,**控制台捕获**:SD 未挂载,dial_log 与裸 printf 交织)<br>✅ `real_ag35_1.32.0_sd.log`(333 行,2h03m 正常 eSIM 漫游,新版心跳字段)<br>⚠️ `ag35_synthetic.log` | **真机实证** |
 | `rtms_ec200a/` | `rtms_sdk/apps/modem_mng` EC200A | `FMT_SD` | ⚠️ 仅合成 | 行格式与心跳字段和 `dial_ec200a` **逐字段相同**(`open_dial/dial.c:518` vs `ec200a/dial/dial.cpp:1077`),后者已有真机实证 |
 
 ## 真机日志抓出了合成夹具抓不到的两个 bug(2026-07-17)
@@ -55,8 +60,7 @@
 
 - ❌ 真机日志确实长这样(源码理解可能有偏差、运行期可能有未预料的格式)
 
-所以 `rtms_ag35` / `rtms_ec200a` / `dial_eg25` 三个分支的结论,证据等级都只是 **【源码实证】**,
-不是【样本实证】。**拿到任何一份真机日志,请立刻丢进对应目录跑一遍** —— 那才是把这三个分支
-从"推断"升级为"实证"的唯一途径。
+因此只能把**合成夹具新增覆盖的具体行为**标为【源码实证】，不能借同目录中旧版真机日志
+把新字段或新诊断升级为【样本实证】。拿到新版真机日志后，应按产品目录补入并钉死具体数字。
 
 真实覆盖率不看这里的断言,看工具的**「未识别行」页 + 状态栏占比**——那是实测。

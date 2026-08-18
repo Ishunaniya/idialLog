@@ -1,0 +1,3 @@
+=== Dial Log Opened [2026-08-18 10:00:00] daykey=2026-08-18 ===
+[2026-08-18 10:00:00] [HEARTBEAT] CH:SIM | SIM:1 | REG:6 | CSQ:18 | Temp:35 | DownTime:0s | ConsecFail:0
+[2026-08-18 10:00:01] [INIT][SIM-REG] SIM=SIM1 LIMITED SERVICE: SIM READY, REG=6, CSQ=18. Normal packet data may be unavailable; possible subscription or network restriction, confirm with carrier. Evidence: +CPIN: READY | +CEREG: 2,6 | +COPS: 0 | +CGATT: 0 | +CEER: Limited service

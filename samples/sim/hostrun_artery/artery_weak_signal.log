@@ -9,7 +9,7 @@
 /media/sdcard not exists 
 /media/sdcard not exists 
  /media/sdcard does not exist or free space < 1GB
-2026-08-04 23:07:49.042 [INFO] [0martery_product_main (main.c:180) - DIAL Version: 1.29.15
+2026-08-18 22:30:21.443 [INFO] [0martery_product_main (main.c:189) - DIAL Version: 1.29.16
 
 >> Read response urc, len = 6, content : 
 OK
@@ -22,22 +22,22 @@ EG25GGBR07A08M2G_OCPU_30.200.30.200
 
 OK
 
-2026-08-04 23:07:49.044 [INFO] [0mroamlink_read_policy (roamlink.c:312) - roamlink: /usrdata/network.ini not found, use default policy 4
-2026-08-04 23:07:49.046 [INFO] [0mroamlink_is_master_running (roamlink.c:391) - roamlink: RBMaster process not found in /proc
-2026-08-04 23:07:49.046 [ERROR] [0mroamlink_probe (roamlink.c:68) - roamlink: RBMaster not found at /usrdata/roamlink/RBMaster -> NO_PACKAGE
-2026-08-04 23:07:49.046 [INFO] [0mprint_init_info (main.c:133) - [INIT] policy=4
+2026-08-18 22:30:21.449 [INFO] [0mroamlink_read_policy (roamlink.c:312) - roamlink: /usrdata/network.ini not found, use default policy 4
+2026-08-18 22:30:21.466 [INFO] [0mroamlink_is_master_running (roamlink.c:391) - roamlink: RBMaster process not found in /proc
+2026-08-18 22:30:21.466 [ERROR] [0mroamlink_probe (roamlink.c:68) - roamlink: RBMaster not found at /usrdata/roamlink/RBMaster -> NO_PACKAGE
+2026-08-18 22:30:21.470 [INFO] [0mprint_init_info (main.c:142) - [INIT] policy=4
 >> Read response urc, len = 25, content : 
 867929069681908
 
 OK
 
-2026-08-04 23:07:49.047 [INFO] [0mprint_init_info (main.c:140) - [INIT] IMEI: 867929069681908
+2026-08-18 22:30:21.471 [INFO] [0mprint_init_info (main.c:149) - [INIT] IMEI: 867929069681908
 >> Read response urc, len = 45, content : 
 EG25GGBR07A08M2G_OCPU_30.200.30.200
 
 OK
 
-2026-08-04 23:07:49.048 [INFO] [0mprint_init_info (main.c:144) - [INIT] FW: EG25GGBR07A08M2G_OCPU_30.200.30.200
+2026-08-18 22:30:21.475 [INFO] [0mprint_init_info (main.c:153) - [INIT] FW: EG25GGBR07A08M2G_OCPU_30.200.30.200
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
@@ -48,54 +48,44 @@ OK
 
 OK
 
-2026-08-04 23:07:49.049 [INFO] [0mprint_init_info (main.c:162) - [INIT] COPS: +COPS: 0,2,"46000",7 (mode=0 auto) | CEREG: +CEREG: 0,1
+2026-08-18 22:30:21.481 [INFO] [0mprint_init_info (main.c:171) - [INIT] COPS: +COPS: 0,2,"46000",7 (mode=0 auto) | CEREG: +CEREG: 0,1
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:07:49.053 [INFO] [0mdial_task (dial.c:918) - state: (start) -> none
-2026-08-04 23:07:49.053 [INFO] [0mdial_task (dial.c:981) - dial: policy=4, initial channel: physical SIM
-2026-08-04 23:07:49.063 [INFO] [0mdial_task (dial.c:918) - state: none -> init
-2026-08-04 23:07:49.074 [INFO] [0mdial_task (dial.c:918) - state: init -> sim_init
-2026-08-04 23:07:49.084 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
-2026-08-04 23:07:49.094 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
-2026-08-04 23:07:49.094 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
-2026-08-04 23:07:49.094 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
+2026-08-18 22:30:21.530 [INFO] [0mdial_task (dial.c:918) - state: (start) -> none
+2026-08-18 22:30:21.530 [INFO] [0mdial_task (dial.c:981) - dial: policy=4, initial channel: physical SIM
+2026-08-18 22:30:21.541 [INFO] [0mdial_task (dial.c:918) - state: none -> init
+2026-08-18 22:30:21.551 [INFO] [0mdial_task (dial.c:918) - state: init -> sim_init
+2026-08-18 22:30:21.566 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
+2026-08-18 22:30:21.578 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
+2026-08-18 22:30:21.578 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
+2026-08-18 22:30:21.578 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:07:49.105 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
-2026-08-04 23:07:49.115 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+2026-08-18 22:30:21.594 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
+2026-08-18 22:30:21.605 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
 >> Read response urc, len = 21, content : 
 +CEREG: 0,1
 
 OK
 
-2026-08-04 23:07:49.126 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
-2026-08-04 23:07:49.137 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:07:49.137 [ERROR] [0mapn_scan_from_json (apn.c:117) - fp is NULL
-2026-08-04 23:07:49.137 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:07:49.137 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-18 22:30:21.618 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:30:21.628 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:30:21.628 [ERROR] [0mapn_scan_from_json (apn.c:117) - fp is NULL
+2026-08-18 22:30:21.628 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:30:21.628 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:07:49.158 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:07:49.168 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
+2026-08-18 22:30:21.649 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:30:21.660 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -116,8 +106,13 @@ OK
 
 OK
 
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+>> Read response urc, len = 22, content : 
++CPIN: READY
 
 OK
 
@@ -136,7 +131,6 @@ OK
 
 OK
 
-2026-08-04 23:07:49.665 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -147,46 +141,52 @@ OK
 
 OK
 
-2026-08-04 23:07:49.772 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+2026-08-18 22:32:01.101 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:32:01.268 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:07:49.772 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
+2026-08-18 22:32:01.272 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:07:49.772 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
-2026-08-04 23:07:49.783 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
-2026-08-04 23:07:49.793 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+2026-08-18 22:32:01.272 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-18 22:32:01.282 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-18 22:32:01.300 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
 >> Read response urc, len = 21, content : 
 +CEREG: 0,1
 
 OK
 
-2026-08-04 23:07:49.805 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
-2026-08-04 23:07:49.815 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:07:49.815 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:07:49.815 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:07:49.839 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:07:49.863 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
+2026-08-18 22:32:01.311 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:32:01.322 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:32:01.323 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:32:01.323 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-18 22:32:01.344 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:32:01.354 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -222,7 +222,12 @@ OK
 
 OK
 
-2026-08-04 23:09:29.298 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:32:01.738 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -233,56 +238,51 @@ OK
 
 OK
 
-2026-08-04 23:09:29.450 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:32:01.968 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:09:29.451 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
+2026-08-18 22:32:01.969 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:09:29.451 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
-2026-08-04 23:09:29.461 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
-2026-08-04 23:09:29.472 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+2026-08-18 22:32:01.969 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-18 22:32:01.980 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-18 22:32:01.990 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
 >> Read response urc, len = 21, content : 
 +CEREG: 0,1
 
 OK
 
-2026-08-04 23:09:29.483 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
-2026-08-04 23:09:29.494 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:09:29.494 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:09:29.494 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:09:29.515 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:09:29.525 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+2026-08-18 22:33:41.002 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:33:41.014 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:33:41.014 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:33:41.014 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
+2026-08-18 22:33:41.058 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:33:41.069 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -308,7 +308,12 @@ OK
 
 OK
 
-2026-08-04 23:09:29.909 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:33:41.369 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -329,46 +334,46 @@ OK
 
 OK
 
-2026-08-04 23:11:09.129 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:33:41.660 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:11:09.130 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
+2026-08-18 22:33:41.663 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:11:09.130 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
-2026-08-04 23:11:09.140 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
-2026-08-04 23:11:09.151 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+2026-08-18 22:33:41.663 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-18 22:33:41.674 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:33:41.684 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
 >> Read response urc, len = 21, content : 
 +CEREG: 0,1
 
 OK
 
-2026-08-04 23:11:09.161 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:33:41.699 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:33:41.710 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:33:41.710 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:33:41.710 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:11:09.175 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:11:09.175 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:11:09.175 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
-2026-08-04 23:11:09.196 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:11:09.206 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
+2026-08-18 22:33:41.734 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:33:41.745 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -394,7 +399,7 @@ OK
 
 OK
 
-2026-08-04 23:11:09.521 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+2026-08-18 22:33:41.998 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -420,41 +425,442 @@ OK
 
 OK
 
-2026-08-04 23:11:09.810 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:35:21.352 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:11:09.812 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
+2026-08-18 22:35:21.352 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:11:09.812 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
-2026-08-04 23:11:09.822 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-18 22:35:21.352 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:11:09.833 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+2026-08-18 22:35:21.365 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-18 22:35:21.376 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
 >> Read response urc, len = 21, content : 
 +CEREG: 0,1
 
 OK
 
-2026-08-04 23:11:09.844 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
-2026-08-04 23:11:09.855 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:11:09.855 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:11:09.855 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
-2026-08-04 23:11:09.876 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:35:21.387 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:35:21.398 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:35:21.399 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:35:21.399 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:11:09.886 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+2026-08-18 22:35:21.429 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:35:21.439 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+>> Read response urc, len = 104, content : 
++QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
+
+OK
+
+2026-08-18 22:35:21.536 [INFO] [0martery_product_main (main.c:398) - [HEARTBEAT] OPER:SIMNET 46000 cereg=1 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:35:21.640 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:37:01.048 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-18 22:37:01.050 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-18 22:37:01.050 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:37:01.061 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-18 22:37:01.071 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-18 22:37:01.084 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:37:01.097 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:37:01.097 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:37:01.097 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:37:01.118 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:37:01.128 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:37:01.267 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:37:01.737 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-18 22:37:01.738 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-18 22:37:01.738 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-18 22:37:01.748 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-18 22:37:01.759 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-18 22:37:01.773 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:37:01.783 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:37:01.783 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:37:01.783 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-18 22:37:01.820 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:37:01.831 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:37:01.883 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:38:41.436 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-18 22:38:41.440 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-18 22:38:41.440 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-18 22:38:41.450 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:38:41.461 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-18 22:38:41.476 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:38:41.486 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:38:41.487 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:38:41.487 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-18 22:38:41.508 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:38:41.513 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+2026-08-18 22:38:41.518 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:40:21.129 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-18 22:40:21.137 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
++COPS: 0,2,"46000",7
+
+OK
+
+2026-08-18 22:40:21.137 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:40:21.147 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+2026-08-18 22:40:21.148 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-18 22:40:21.161 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+>> Read response urc, len = 21, content : 
++CEREG: 0,1
+
+OK
+
+2026-08-18 22:40:21.174 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:40:21.185 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:40:21.185 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:40:21.185 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:40:21.205 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:40:21.216 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -485,13 +891,7 @@ OK
 
 OK
 
-2026-08-04 23:12:49.082 [INFO] [0martery_product_main (main.c:258) - [HEARTBEAT] OPER:SIMNET 46000 cereg=1 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:12:49.133 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+2026-08-18 22:40:21.567 [INFO] [0martery_product_main (main.c:398) - [HEARTBEAT] OPER:SIMNET 46000 cereg=1 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -512,72 +912,42 @@ OK
 
 OK
 
+2026-08-18 22:40:21.778 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:12:49.490 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+2026-08-18 22:40:21.832 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:12:49.491 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
+2026-08-18 22:40:21.837 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:12:49.491 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:12:49.502 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
-2026-08-04 23:12:49.512 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+2026-08-18 22:40:21.837 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-18 22:40:21.847 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-18 22:40:21.860 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
 >> Read response urc, len = 21, content : 
 +CEREG: 0,1
 
 OK
 
-2026-08-04 23:12:49.524 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
-2026-08-04 23:12:49.534 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:12:49.534 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:12:49.534 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-18 22:40:21.879 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:12:49.555 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:12:49.566 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:12:49.752 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+2026-08-18 22:40:21.890 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:40:21.890 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:40:21.890 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-18 22:40:21.912 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:40:21.923 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -618,52 +988,62 @@ OK
 
 OK
 
-2026-08-04 23:14:29.173 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:42:01.408 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:42:01.545 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:14:29.173 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
+2026-08-18 22:42:01.548 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:14:29.173 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
-2026-08-04 23:14:29.184 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
-2026-08-04 23:14:29.194 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+2026-08-18 22:42:01.548 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-18 22:42:01.566 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:42:01.576 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
 >> Read response urc, len = 21, content : 
 +CEREG: 0,1
 
 OK
 
-2026-08-04 23:14:29.205 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:42:01.614 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:14:29.216 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:14:29.216 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:14:29.216 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
-2026-08-04 23:14:29.237 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:14:29.247 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:14:29.366 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+2026-08-18 22:42:01.630 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:42:01.630 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:42:01.630 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-18 22:42:01.658 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:42:01.668 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -704,52 +1084,57 @@ OK
 
 OK
 
+2026-08-18 22:43:41.048 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:14:29.852 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:43:41.272 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:14:29.853 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
+2026-08-18 22:43:41.274 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:14:29.853 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
-2026-08-04 23:14:29.863 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
-2026-08-04 23:14:29.874 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+2026-08-18 22:43:41.274 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-18 22:43:41.285 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-18 22:43:41.296 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
 >> Read response urc, len = 21, content : 
 +CEREG: 0,1
 
 OK
 
+2026-08-18 22:43:41.308 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
 OK
 
-2026-08-04 23:14:29.885 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
-2026-08-04 23:14:29.899 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:14:29.899 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:14:29.899 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
-2026-08-04 23:14:29.920 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:14:29.930 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:14:29.978 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
+2026-08-18 22:43:41.320 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:43:41.320 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:43:41.320 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-18 22:43:41.343 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+2026-08-18 22:43:41.355 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -785,6 +1170,7 @@ OK
 
 OK
 
+2026-08-18 22:43:41.684 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -800,219 +1186,30 @@ OK
 
 OK
 
-2026-08-04 23:16:09.532 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:43:41.962 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:16:09.533 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
+2026-08-18 22:43:41.963 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:16:09.533 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:16:09.544 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
-2026-08-04 23:16:09.554 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
->> Read response urc, len = 21, content : 
-+CEREG: 0,1
-
-OK
-
-2026-08-04 23:16:09.565 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
-2026-08-04 23:16:09.576 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:16:09.576 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:16:09.576 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:16:09.615 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:16:09.615 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
-2026-08-04 23:16:09.625 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 21, content : 
-+CEREG: 0,1
-
-OK
-
->> Read response urc, len = 104, content : 
-+QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
-
-OK
-
-2026-08-04 23:17:49.128 [INFO] [0martery_product_main (main.c:258) - [HEARTBEAT] OPER:SIMNET 46000 cereg=1 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:17:49.230 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
-2026-08-04 23:17:49.231 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
->> Read response urc, len = 30, content : 
-+COPS: 0,2,"46000",7
-
-OK
-
-2026-08-04 23:17:49.231 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
-+COPS: 0,2,"46000",7
-
-OK
-
-2026-08-04 23:17:49.231 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
-2026-08-04 23:17:49.242 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
-2026-08-04 23:17:49.252 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
->> Read response urc, len = 21, content : 
-+CEREG: 0,1
-
-OK
-
-2026-08-04 23:17:49.264 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
-2026-08-04 23:17:49.274 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:17:49.274 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:17:49.274 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:17:49.295 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:17:49.305 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:17:49.840 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:17:49.914 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
->> Read response urc, len = 30, content : 
-+COPS: 0,2,"46000",7
-
-OK
-
-2026-08-04 23:17:49.915 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
-+COPS: 0,2,"46000",7
-
-OK
-
-2026-08-04 23:17:49.915 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
-2026-08-04 23:17:49.925 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
-2026-08-04 23:17:49.936 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
+2026-08-18 22:43:41.966 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
+2026-08-18 22:43:41.976 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
+2026-08-18 22:43:41.987 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
 >> Read response urc, len = 21, content : 
 +CEREG: 0,1
 
@@ -1023,12 +1220,17 @@ OK
 
 OK
 
-2026-08-04 23:17:49.947 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
-2026-08-04 23:17:49.957 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:17:49.957 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:17:49.957 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
-2026-08-04 23:17:49.978 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:17:49.989 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
+2026-08-18 22:43:41.998 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
+2026-08-18 22:45:21.008 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
+2026-08-18 22:45:21.008 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
+2026-08-18 22:45:21.008 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
+2026-08-18 22:45:21.029 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
+>> Read response urc, len = 20, content : 
++CSQ: 3,99
+
+OK
+
+2026-08-18 22:45:21.049 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
 >> Read response urc, len = 20, content : 
 +CSQ: 3,99
 
@@ -1054,226 +1256,4 @@ OK
 
 OK
 
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:19:29.450 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:19:29.592 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
->> Read response urc, len = 30, content : 
-+COPS: 0,2,"46000",7
-
-OK
-
-2026-08-04 23:19:29.593 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
-+COPS: 0,2,"46000",7
-
-OK
-
-2026-08-04 23:19:29.593 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
-2026-08-04 23:19:29.604 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:19:29.614 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
->> Read response urc, len = 21, content : 
-+CEREG: 0,1
-
-OK
-
-2026-08-04 23:19:29.628 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
-2026-08-04 23:19:29.639 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:19:29.639 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:19:29.639 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:19:29.660 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:19:29.670 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:21:09.063 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:21:09.274 [INFO] [0mdail_stop_data_call (dial.c:364) - the profile index 1 stop data call success
->> Read response urc, len = 30, content : 
-+COPS: 0,2,"46000",7
-
-OK
-
-2026-08-04 23:21:09.275 [INFO] [0mdial_task (dial.c:1290) - [OPER] !is_oper_select dial timeout: AT+COPS=0 (back to auto), Ret:
-+COPS: 0,2,"46000",7
-
-OK
-
-2026-08-04 23:21:09.275 [ERROR] [0mdial_task (dial.c:1295) - dial time out, redial from :reg check
-2026-08-04 23:21:09.285 [INFO] [0mdial_task (dial.c:918) - state: wait_for_connect -> reg_check
-2026-08-04 23:21:09.296 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> cereg_check
->> Read response urc, len = 21, content : 
-+CEREG: 0,1
-
-OK
-
-2026-08-04 23:21:09.307 [INFO] [0mdial_task (dial.c:918) - state: cereg_check -> precondition_check
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:21:09.318 [INFO] [0mdial_task (dial.c:918) - state: precondition_check -> pre_start_call
-2026-08-04 23:21:09.318 [INFO] [0mapn_set (apn.c:246) - apn set with profile_idx: 1, apn_name: , username: , password: 
-2026-08-04 23:21:09.318 [INFO] [0mdial_task (dial.c:1126) - [APN] selected: apn="(empty=网络默认)" profile=1 is_oper_select=0 (iccid-match="(none/default)")
-2026-08-04 23:21:09.339 [INFO] [0mdial_task (dial.c:918) - state: pre_start_call -> start_call
-2026-08-04 23:21:09.349 [INFO] [0mdial_task (dial.c:918) - state: start_call -> wait_for_connect
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
-2026-08-04 23:21:09.674 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
->> Read response urc, len = 20, content : 
-+CSQ: 3,99
-
-OK
-
+2026-08-18 22:45:21.321 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=wait_for_connect csq=3 SRV:2 RAT:LTE DENY:0 RSRP:-115 RSRQ:-19 SNR:-20 RSSI:-100 tcp_fail=0 rl_fail=0

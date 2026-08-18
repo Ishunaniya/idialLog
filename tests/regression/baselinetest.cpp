@@ -126,6 +126,30 @@ int main() {
         }
     }
 
+    // ── 真机 AG35 1.32.0 SD 日志(正常 eSIM 漫游,连续 2h03m)──
+    {
+        auto L = load("samples/rtms_ag35/real_ag35_1.32.0_sd.log");
+        std::printf("── 真机 AG35 1.32.0 SD 正常日志(333 行)\n");
+        if (!L.ok) { std::printf("   ✗ 打不开\n"); g_fail++; }
+        else {
+            cki((long)L.audit.rawTotal, 333, "原始行数");
+            cki((long)L.audit.unparsed, 0, "未识别行(SD 卡日志应为 0)");
+            cki((long)L.sessions.size(), 1, "会话数");
+            ck(L.pi.plat == PLAT_AG35, "平台=AG35", L.pi.name, "AG35");
+            cki((long)L.outs.size(), 0, "断网次数(连续正常运行)");
+            cki((long)L.mets.size(), 273, "指标行数");
+
+            long full = 0;
+            for (const auto& m : L.mets)
+                if (m.srvVal == 2 && m.rat == "LTE" && m.denyVal == 0) full++;
+            cki(full, 248, "SRV=2/RAT=LTE/DENY=0 心跳数");
+            ck(!L.mets.empty() && L.mets.front().snr10 == 350,
+               "SNR 原值 350(=35.0dB)",
+               L.mets.empty() ? "(无指标)" : std::to_string(L.mets.front().snr10), "350");
+            cki((long)L.fs.size(), 0, "结论数(正常设备应为 0)");
+        }
+    }
+
     // ── 真机 EG25 1.31.15(SIM 通道 + 完整 L1/L2 阶梯 + 多行 AT 应答)──
     {
         auto L = load("samples/rtms_eg25/real_eg25_1.31.15_unsynced.log");

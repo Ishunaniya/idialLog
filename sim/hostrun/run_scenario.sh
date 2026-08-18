@@ -27,7 +27,7 @@ mkdir -p "$OUT"
 run() {
     local name=$1 secs=$2; shift 2
     printf "  %-28s " "$name"
-    rm -f /tmp/.sim_ping_t0.* /tmp/cfun_count.txt /tmp/cfun_last_call.txt
+    rm -f /tmp/.sim_ping_t0.* /tmp/.sim_ping_calls.* /tmp/cfun_count.txt /tmp/cfun_last_call.txt
     if [ "${RETRY_MODE:-persist}" = "persist" ]; then echo 9 > /tmp/dial_retry_count
     else rm -f /tmp/dial_retry_count; fi
     ( export PATH="$HERE/fakebin:$PATH" LD_PRELOAD="$HERE/fastclock.so"
@@ -39,11 +39,11 @@ run() {
 echo "════ 用真实 dial_loop 跑场景(日志全部由真代码产出)════"
 
 # 1) 从没连通过 → 真代码应自己走 has_connected_once 门控
-run never_connected 1500 SIM_TIME_SCALE=150 SIM_PING_OK=0 SIM_CEREG=1 SIM_CSQ=18 SIM_TEMP=35
+run never_connected 3000 SIM_TIME_SCALE=100 SIM_PING_OK=0 SIM_CEREG=1 SIM_CSQ=18 SIM_TEMP=35
 
 # 2) 连通过再断网 → 真代码应自己升 L1 → L2 → L3
-#    SIM_PING_OK_AFTER 让 ping 先通(置 has_connected_once)后断
-run recovery_ladder 3300 SIM_TIME_SCALE=150 SIM_RUN_ID=ladder SIM_PING_FAIL_AFTER=4 \
+#    第一次 ping 通(置 has_connected_once),第二次起失败；按调用次数可避免加速时钟调度抖动
+run recovery_ladder 4200 SIM_TIME_SCALE=150 SIM_RUN_ID=ladder SIM_PING_FAIL_AFTER_CALLS=1 \
     SIM_CEREG=1 SIM_CSQ=18
 
 # 3) 弱信号断网
@@ -62,7 +62,7 @@ run thermal 600 SIM_TIME_SCALE=100 SIM_PING_OK=1 SIM_CEREG=1 SIM_CSQ=20 SIM_TEMP
 run datacall_init_fail 600 SIM_TIME_SCALE=100 SIM_DATACALL_INIT_RET=-1067 SIM_PING_OK=0 SIM_CSQ=18
 
 # 8) 一切正常(对照组 —— 假阳性守卫:正常设备不该报任何严重结论)
-run all_normal 300 SIM_TIME_SCALE=60 SIM_PING_OK=1 SIM_CEREG=1 SIM_CSQ=22 SIM_TEMP=35
+run all_normal 900 SIM_TIME_SCALE=60 SIM_PING_OK=1 SIM_CEREG=1 SIM_CSQ=22 SIM_TEMP=35
 
 # ---- AG35 双卡(需 AG35=1 重新编译:slot_mgr.c 整文件 #ifdef QL_MODULE_PLATFORM_AG35,
 #      不加宏编出来是 0 个函数的空 TU,[SLOT] 一条都不会有)----

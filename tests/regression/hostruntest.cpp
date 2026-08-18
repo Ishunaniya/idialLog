@@ -46,7 +46,7 @@ static std::vector<Case> cases() {
         { "samples/sim/hostrun/all_normal.log",
           {}, { "CP dump", "从未成功联网", "L3 已触发" }, PLAT_EC200A },   // 正常设备:零严重结论
         { "samples/sim/hostrun/reg_down.log",
-          { "SDK DENY" }, { "CP dump" }, PLAT_EC200A },
+          { "SDK DENY", "疑似 SIM 账户/订阅异常" }, { "CP dump" }, PLAT_EC200A },
 
         // ── AG35 双卡(须 AG35=1 重编 driver,否则 slot_mgr 是空 TU、[SLOT] 一条都没有)──
         { "samples/sim/hostrun/ag35_cold_select.log", {}, { "CP dump" }, PLAT_AG35 },
@@ -66,13 +66,14 @@ static std::vector<Case> cases() {
         { "samples/sim/hostrun_eg25/eg25_weak_signal.log",
           { "SNR偏低" }, { "CP dump" }, PLAT_EG25 },
         { "samples/sim/hostrun_eg25/eg25_reg_down.log",
-          { "SDK DENY" }, { "CP dump" }, PLAT_EG25 },
+          { "SDK DENY", "疑似 SIM 账户/订阅异常" }, { "CP dump" }, PLAT_EG25 },
         { "samples/sim/hostrun_eg25/eg25_all_normal.log",
           {}, { "CP dump", "SDK DENY" }, PLAT_EG25 },
 
-        // ── artery(sim/hostrun_artery,真代码 src/dial/dial.c 产出,seas_log 格式)──
+        // ── artery(sim/hostrun_artery,真代码 main.c + src/dial/dial.c 产出,seas_log 格式)──
         { "samples/sim/hostrun_artery/artery_all_normal.log", {}, { "CP dump" }, PLAT_ARTERY },
-        { "samples/sim/hostrun_artery/artery_reg_down.log",   { "SDK DENY" }, { "CP dump" }, PLAT_ARTERY },
+        { "samples/sim/hostrun_artery/artery_reg_down.log",
+          { "SDK DENY", "疑似 SIM 账户/订阅异常" }, { "CP dump" }, PLAT_ARTERY },
     };
 }
 

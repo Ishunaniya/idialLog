@@ -894,7 +894,7 @@ CellAnalysis analyzeCells(const LogView& lines,
 enum Cause { C_WEAK, C_DATADEAD, C_SWITCHING, C_DENIED, C_NOTREADY, C_SDK_L0, C_UNKNOWN, C_N };
 static const char* kCauseName[C_N] = {
     "弱信号", "数据假死(RX_PKT 停滞)", "切卡/选网/CFUN 期间",
-    "注册被拒(SIM 或账户问题)", "数据服务未就绪",
+    "注册被拒/受限/疑似账户问题", "数据服务未就绪",
     "SDK 短断网(链路抖动,非设备故障)", "未能归类"
 };
 
@@ -930,7 +930,9 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
 
     // ---- 预扫:各类特征行(全部留证据指针)----
     std::vector<const LogLine*> evNeverConn, evPolicy, evRecL1, evRecL2, evRecL3,
-                                evDenied, evCpdump, evSlot, evOper, evCfun, evNotReady;
+                                evDenied, evLimited, evSuspectedAccount, evRegQueryFail,
+                                evRegistrationIssue, evCpdump, evSlot, evOper, evCfun,
+                                evNotReady;
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
         // EC200A 门控日志(ec200a/dial/dial.cpp:1615/1622)。EG25 无对应日志:
@@ -950,8 +952,33 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         if (l.tagText().compare(0, 11, "RECOVERY L1") == 0) pushEvent(evRecL1);
         if (l.tagText().compare(0, 11, "RECOVERY L2") == 0) pushEvent(evRecL2);
         if (l.tagText().compare(0, 11, "RECOVERY L3") == 0) pushEvent(evRecL3);
-        // ec200a/dial/dial.cpp:1082 "[WARNING] Registration Denied! Code %d."
-        if (icontains(l.msg, "Registration Denied"))        evDenied.push_back(&l);
+        // 2026-08-18 四份产品代码新增首次初始化 SIM 诊断。嵌套标记留在正文中:
+        // FMT_SD 的外层标签是 INIT，FMT_SEAS 同样会先剥掉第一个 [INIT]。
+        // 必须同时校验嵌套标记和固定措辞，不能见到普通的 "limited service" 就下结论。
+        const bool newNetworkRejected =
+            icontains(l.msg, "[SIM-ACCOUNT]") && icontains(l.msg, "NETWORK REJECTED");
+        const bool limitedService =
+            icontains(l.msg, "[SIM-REG]") && icontains(l.msg, "LIMITED SERVICE");
+        const bool suspectedAccount =
+            icontains(l.msg, "[SIM-ACCOUNT]") && icontains(l.msg, "SUSPECTED subscription");
+        const bool regQueryFailed =
+            icontains(l.msg, "[SIM-REG]") && icontains(l.msg, "CEREG query/parse failed");
+
+        // 旧版 EC200A/open_dial 直出 Registration Denied；新版四产品改为带完整 AT
+        // 证据的 NETWORK REJECTED。二者都只在明确 REG=3 时产生，属于同一类直证。
+        if (icontains(l.msg, "Registration Denied") || newNetworkRejected) {
+            evDenied.push_back(&l);
+            evRegistrationIssue.push_back(&l);
+        }
+        if (limitedService) {
+            evLimited.push_back(&l);
+            evRegistrationIssue.push_back(&l);
+        }
+        if (suspectedAccount) {
+            evSuspectedAccount.push_back(&l);
+            evRegistrationIssue.push_back(&l);
+        }
+        if (regQueryFailed) evRegQueryFail.push_back(&l);
         /* 数据服务未就绪:AP 侧数据服务(ql_netd)没起来 → ql_data_call_init 失败。
          * 【源码穷举】真代码实际打的就这两句(rtms_sdk HEAD, apps/modem_mng):
          *   "[INIT] data_call_init failed, ret=%d"
@@ -985,7 +1012,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     const bool slotTimeSorted = linePtrTimesSorted(evSlot);
     const bool operTimeSorted = linePtrTimesSorted(evOper);
     const bool cfunTimeSorted = linePtrTimesSorted(evCfun);
-    const bool deniedTimeSorted = linePtrTimesSorted(evDenied);
+    const bool registrationIssueTimeSorted = linePtrTimesSorted(evRegistrationIssue);
     const bool notReadyTimeSorted = linePtrTimesSorted(evNotReady);
 
     // ---- 1. 从未联网(SIM/账户问题):恢复阶梯被 has_connected_once 门控 ----
@@ -1002,14 +1029,14 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         fs.push_back(std::move(f));
     }
 
-    // ---- 2. 注册被拒 ----
+    // ---- 2. 注册与账户诊断 ----
     if (!evDenied.empty() || !evSdkDeny.empty()) {
         Finding f;
         f.severity = 2;
-        f.title  = "网络注册被拒绝(Registration Denied / SDK DENY)";
-        f.detail = "【源码直证】日志出现 REG=3 的 Registration Denied,或 SDK 摘要同时满足"
-                   "SRV!=2(FULL) 且 DENY>0。DENY 是平台 SDK 原始码；EC200A 与 EG25 编码表不同,"
-                   "工具不跨平台套用名称。";
+        f.title  = "网络注册被明确拒绝(REG=3 / SDK DENY)";
+        f.detail = "【源码直证】产品首次初始化诊断输出 NETWORK REJECTED/旧版 Registration "
+                   "Denied，或 SDK 摘要同时满足 SRV!=2(FULL) 且 DENY>0。DENY 是平台 SDK "
+                   "原始码；EC200A 与 EG25 编码表不同，工具不跨平台套用名称。";
         f.advice = "核对卡状态(欠费/停机/未开通漫游或数据)、IMSI 与运营商签约是否一致;"
                    "海外场景确认是否需要选网(COPS)。";
         for (size_t i = 0; i < evDenied.size() && i < 3; ++i) f.ev.push_back(mkEv(*evDenied[i]));
@@ -1020,6 +1047,43 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                      " DENY=" + std::to_string(evSdkDeny[i]->denyVal);
             f.ev.push_back(std::move(e));
         }
+        fs.push_back(std::move(f));
+    }
+
+    if (!evLimited.empty()) {
+        Finding f;
+        f.severity = 1;
+        f.title = "SIM 注册处于受限服务(LIMITED SERVICE)";
+        f.detail = "【源码直证】产品读取到 CEREG 受限状态(REG=6..13)并输出 LIMITED SERVICE。"
+                   "这表示普通分组数据可能不可用，但不能仅凭该行断言欠费或停机。";
+        f.advice = "核对证据中的 CEREG/COPS/CGATT/CEER 原始响应，并向运营商确认业务开通、"
+                   "漫游和网络限制状态。";
+        for (size_t i = 0; i < evLimited.size() && i < 3; ++i) f.ev.push_back(mkEv(*evLimited[i]));
+        fs.push_back(std::move(f));
+    }
+
+    if (!evSuspectedAccount.empty()) {
+        Finding f;
+        f.severity = 1;
+        f.title = "疑似 SIM 账户/订阅异常(SUSPECTED)";
+        f.detail = "【推断】产品仅在 SIM READY、信号良好且 REG=0 连续至少 120 秒时输出该诊断。"
+                   "标准 AT 无运营商后台停机字段，因此这不是欠费/停机的确定证据。";
+        f.advice = "保留行内 CPIN/CEREG/COPS/CGATT/CEER 证据，向运营商核验账户、数据业务和"
+                   "漫游权限；同时排除覆盖与选网问题。";
+        for (size_t i = 0; i < evSuspectedAccount.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evSuspectedAccount[i]));
+        fs.push_back(std::move(f));
+    }
+
+    if (!evRegQueryFail.empty()) {
+        Finding f;
+        f.severity = 1;
+        f.title = "CEREG 查询/解析失败，注册状态未知";
+        f.detail = "【源码直证】产品明确记录 CEREG query/parse failed；此时注册状态未知，"
+                   "不得据此推断 SIM 或账户异常。";
+        f.advice = "检查行内 Raw 响应、AT 端口和模组应答完整性；修复查询后再判断注册原因。";
+        for (size_t i = 0; i < evRegQueryFail.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evRegQueryFail[i]));
         fs.push_back(std::move(f));
     }
 
@@ -1056,7 +1120,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     //   弱信号     :窗口内心跳 CSQ 有效样本的最小值 < 10(CSQ<10 ≈ RSSI<-95dBm)
     //   数据假死   :窗口内出现 ΔRX==0(RX_PKT 不增长)
     //   切卡/选网  :窗口内出现 [SLOT]/[OPER]/[CFUN]
-    //   注册被拒   :窗口内出现 Registration Denied
+    //   注册/账户异常:窗口内出现 Registration Denied、NETWORK REJECTED、LIMITED SERVICE
+    //                 或产品有边界的 SUSPECTED subscription issue；查询失败不作为根因。
     size_t causeCnt[C_N] = {0};
     std::vector<Evidence> causeEv[C_N];
     for (const auto& o : outs) {
@@ -1094,7 +1159,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 firstLineInWindow(*switchEvents[i], lo, hi, switchSorted[i]);
             if (candidate) sw = candidate;
         }
-        const LogLine* dn = firstLineInWindow(evDenied, lo, hi, deniedTimeSorted);
+        const LogLine* dn = firstLineInWindow(evRegistrationIssue, lo, hi,
+                                              registrationIssueTimeSorted);
         const LogLine* nr = firstLineInWindow(evNotReady, lo, hi, notReadyTimeSorted);
 
         Cause c = C_UNKNOWN;
@@ -1165,8 +1231,9 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.advice = "若次数不多可视为正常;频繁发生则查切卡触发条件是否过于敏感。";
             break;
         case C_DENIED:
-            f.detail = "断网窗口内出现 Registration Denied,或 SDK 摘要为 SRV!=2 且 DENY>0。";
-            f.advice = "按 SIM/账户问题处理,见上方结论。";
+            f.detail = "断网窗口内出现注册明确拒绝、受限服务、产品有边界的疑似账户诊断，"
+                       "或 SDK 摘要为 SRV!=2 且 DENY>0。证据等级以上方对应独立结论为准。";
+            f.advice = "按注册/SIM/账户方向处理，并保留原始 AT 证据；SUSPECTED 不能当成停机实锤。";
             break;
         case C_NOTREADY:
             f.detail = "断网窗口内出现 data_call_init 失败/重试 —— **AP 侧数据服务(ql_netd)没起来**,"

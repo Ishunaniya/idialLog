@@ -1,271 +1,91 @@
-[2026-08-04 22:57:45] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
-[2026-08-04 22:57:45] [INIT] Starting dial initialization...
-[2026-08-04 22:57:45] [INIT] Waiting for ql_data_call_init...
-[2026-08-04 22:57:45] [INIT] data_call_init OK.
-[2026-08-04 22:57:45] [INIT] NW service init OK.
+[2026-08-18 22:56:29] [INIT] Fast Retry Limit Reached. Entering persistent loop mode.
+[2026-08-18 22:56:29] [INIT] Starting dial initialization...
+[2026-08-18 22:56:29] [INIT] Waiting for ql_data_call_init...
+[2026-08-18 22:56:29] [INIT] data_call_init OK.
+[2026-08-18 22:56:29] [INIT] NW service init OK.
 ql_sim_init ok
-[2026-08-04 22:57:45] [SIM] sim_init OK
-[2026-08-04 22:57:45] [INIT] ICCID: (empty)
-[2026-08-04 22:57:45] [WARN] ql_sim_get_card_info failed, ST_SIM will fall back to AT+CPIN?
-[2026-08-04 22:57:45] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
-[2026-08-04 22:57:45] [INIT] APN set success
-[2026-08-04 22:57:45] [INIT] set_reconnect_mode(NORMAL): OK
-[2026-08-04 22:57:45] [INIT] ql_data_call_config: OK
-[2026-08-04 22:57:45] [INIT] Starting Data Call...
-[2026-08-04 22:57:45] [INIT] IMEI:    865965086914080
-[2026-08-04 22:57:45] [INIT] FW:      (unknown)
-[2026-08-04 22:57:45] [INIT] SUB:     (unknown)
-[2026-08-04 22:57:45] [INIT] AP_FW:   (unknown)
-[2026-08-04 22:57:45] [INIT] CP_FW:   (unknown)
-[2026-08-04 22:57:45] [INIT] IMSI:    460089087110299
-[2026-08-04 22:57:45] [INIT] Operator:+COPS: 0,2,"46000",7
-[2026-08-04 22:57:45] [INIT] CFUN:    +CFUN: 1
-[2026-08-04 22:57:45] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
+[2026-08-18 22:56:29] [SIM] sim_init OK
+[2026-08-18 22:56:29] [INIT] ICCID: (empty)
+[2026-08-18 22:56:29] [WARN] ql_sim_get_card_info failed, ST_SIM will fall back to AT+CPIN?
+[2026-08-18 22:56:29] [APN] load from apn.json (path=/usr/dial/apn.json, count=0)
+[2026-08-18 22:56:29] [INIT] APN set success
+[2026-08-18 22:56:29] [INIT] set_reconnect_mode(NORMAL): OK
+[2026-08-18 22:56:29] [INIT] ql_data_call_config: OK
+[2026-08-18 22:56:29] [INIT] Starting Data Call...
+[2026-08-18 22:56:29] [INIT] IMEI:    865965086914080
+[2026-08-18 22:56:29] [INIT] FW:      (unknown)
+[2026-08-18 22:56:29] [INIT] SUB:     (unknown)
+[2026-08-18 22:56:29] [INIT] AP_FW:   (unknown)
+[2026-08-18 22:56:29] [INIT] CP_FW:   (unknown)
+[2026-08-18 22:58:09] [INIT] IMSI:    460089087110299
+[2026-08-18 22:58:09] [INIT] Operator:+COPS: 0,2,"46000",7
+[2026-08-18 22:58:09] [INIT] CEREG:  +CEREG: 0,1 (REG=1)
+[2026-08-18 22:58:09] [INIT] CFUN:    +CFUN: 1
+[2026-08-18 22:58:09] [INIT] PDP cfg: +CGDCONT: 1,"IP","internet","0.0.0.0",0,0,0,0
 ##### PRO type 
-[2026-08-04 22:57:45] [LED] startup, send blink
-[2026-08-04 22:57:45] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:0s
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:27s
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:57:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:58s
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:88s
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:118s
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:149s
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 22:59:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:179s
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:209s
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:239s
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:01:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:270s
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:300s
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:330s
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:02:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:360s
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:390s
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:420s
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:04:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:452s
-[2026-08-04 23:04:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:482s
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:512s
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:543s
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:06:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:573s
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:603s
-[2026-08-04 23:07:45] [INFO] never-connected, policy recovery (L1/L2/L3) gated. Downtime 603s, REG=1, data service OK but no data -- suspected SIM/account issue (e.g. suspended / no data plan).
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:634s
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:07:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:664s
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:694s
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:725s
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:09:25] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:755s
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:785s
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:815s
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:846s
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:11:05] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:12:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:12:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:12:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:12:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:12:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:12:45] [WARNING] Parse CSQ failed or no signal (RSSI=99)
-[2026-08-04 23:12:45] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:876s
-[2026-08-04 23:12:45] [EVENT] Exit requested. Turning LED off and leaving dial_loop.
+[2026-08-18 22:58:09] [LED] startup, send blink
+[2026-08-18 22:58:09] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:0s
+[2026-08-18 22:58:09] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:6s
+[2026-08-18 22:58:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 22:59:49] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:44s
+[2026-08-18 22:59:49] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:75s
+[2026-08-18 22:59:49] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 22:59:49] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:01:29] [DIAG] IP:10.1.2.3 | CEER:0,-1 | PDP:+CGACT: 1,1
+[2026-08-18 23:01:29] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:149s
+[2026-08-18 23:01:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:01:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:01:29] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:182s
+[2026-08-18 23:01:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:01:29] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:218s
+[2026-08-18 23:01:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:03:09] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:269s
+[2026-08-18 23:03:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:03:09] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:300s
+[2026-08-18 23:03:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:03:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:03:09] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:332s
+[2026-08-18 23:03:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:04:49] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:04:49] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:368s
+[2026-08-18 23:04:49] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:04:49] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:400s
+[2026-08-18 23:04:49] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:04:49] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:04:49] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:431s
+[2026-08-18 23:04:49] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:462s
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:492s
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:524s
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:06:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:08:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:08:09] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:561s
+[2026-08-18 23:08:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:08:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:08:09] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:591s
+[2026-08-18 23:08:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:08:09] [INFO] never-connected, policy recovery (L1/L2/L3) gated. Downtime 610s, REG=1, data service OK but no data -- suspected SIM/account issue (e.g. suspended / no data plan).
+[2026-08-18 23:08:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:08:09] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:624s
+[2026-08-18 23:08:09] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:09:49] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:09:49] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:654s
+[2026-08-18 23:09:49] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:09:49] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:687s
+[2026-08-18 23:11:29] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:737s
+[2026-08-18 23:11:29] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:774s
+[2026-08-18 23:11:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:11:29] [HEARTBEAT] SIM_AT:UNKNOWN | SIM_CB:CB_UNINIT | REG:1 | SRV:0 RAT:LTE DENY:6 | CSQ:99 | RSRP:N/A RSRQ:N/A SNR:N/A RSSI:N/A | TEMP:-1 | DownTime:807s
+[2026-08-18 23:11:29] [WARNING] Parse CSQ failed or no signal (RSSI=99)
+[2026-08-18 23:11:29] [EVENT] Exit requested. Turning LED off and leaving dial_loop.

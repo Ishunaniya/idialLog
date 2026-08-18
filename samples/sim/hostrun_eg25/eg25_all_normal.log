@@ -1,32 +1,10 @@
-[2026-08-04 23:06:13] [ROAMLINK] /usrdata/network.ini not found, use default policy 4
-[2026-08-04 23:06:13] [ROAMLINK] RBMaster not found at /usrdata/roamlink/RBMaster → NO_PACKAGE
-[2026-08-04 23:06:13] [ROAMLINK] probe NO_PACKAGE: RBMaster missing, force SIM
-[2026-08-04 23:06:13] [ROAMLINK] RBMaster process not found in /proc
+[2026-08-18 22:27:56] [ROAMLINK] /usrdata/network.ini not found, use default policy 4
+[2026-08-18 22:27:56] [ROAMLINK] RBMaster not found at /usrdata/roamlink/RBMaster → NO_PACKAGE
+[2026-08-18 22:27:56] [ROAMLINK] probe NO_PACKAGE: RBMaster missing, force SIM
+[2026-08-18 22:27:56] [ROAMLINK] RBMaster process not found in /proc
 ##### PRO type 
-[2026-08-04 23:06:13] [LED] state -1 -> 1, send
-[2026-08-04 23:06:13] [LED] state 1 -> 2, send
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
-network has connected 
+[2026-08-18 22:27:56] [LED] state -1 -> 1, send
+[2026-08-18 22:27:56] [LED] state 1 -> 2, send
 network has connected 
 network has connected 
 network has connected 

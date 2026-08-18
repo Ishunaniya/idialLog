@@ -10,7 +10,7 @@
 - `rtms_sdk/apps/modem_mng` 的 `ec200a/dial/dial.cpp`(EC200A **和** AG35 共用,靠 `#ifdef QL_MODULE_PLATFORM_AG35` 分)
 - `rtms_sdk/apps/modem_mng` 的 `eg25/dial/dial.c`(EG25)
 - `/home/tronlong/lyp/code/open_dial` 的 `dial.c`(老框架 EC200A)
-- `/home/tronlong/lyp/code/open_dial_for_artery` 的 `src/dial/dial.c`(老框架 EG25,**seas_log 格式**)
+- `/home/tronlong/lyp/code/open_dial_for_artery` 的 `main.c` + `src/dial/dial.c`(老框架 EG25,**seas_log 格式**)
 
 ## 铁律(用户反复强调,违反即失败)
 
@@ -22,8 +22,8 @@
 ## 完整测试(改任何东西后全跑一遍)
 
 ```bash
-make check       # 九个测试程序:解析/场景/真代码/真机基线/合并/压缩/边界/虚拟表/图表
-make check-full  # check + 44 个变异；须 0 存活、0 片段失配
+make check       # 十个测试程序:解析/场景/真代码/真机基线/合并/压缩/边界/虚拟表/图表/文档接管
+make check-full  # check + 48 个变异；须 0 存活、0 片段失配
 make perf        # 10万/50万/100万行性能、紧凑记录尺寸、轻量视图/虚拟表/图表降采样基准
 ```
 

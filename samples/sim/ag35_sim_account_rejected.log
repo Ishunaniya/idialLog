@@ -1,0 +1,6 @@
+=== Dial Log Opened [2026-08-18 09:00:00] daykey=2026-08-18 ===
+[2026-08-18 09:00:00] Program started. Version: 1.32.0
+[2026-08-18 09:00:01] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:3 | CSQ:18 | TEMP:35 | DownTime:0s | SLOT:SIM2
+[2026-08-18 09:00:02] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started
+[2026-08-18 09:00:03] [INIT][SIM-ACCOUNT] SIM=SIM2 NETWORK REJECTED registration: SIM READY, REG=3, CSQ=18. Possible suspended/inactive SIM, roaming or operator restriction; confirm with carrier. Evidence: CPIN:READY | +CEREG: 2,3 | +COPS: 0 | +CGATT: 0 | +CEER: EPS services not allowed
+[2026-08-18 09:00:20] [HEARTBEAT] Network recovered after 18s

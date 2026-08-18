@@ -1,0 +1,2 @@
+2026-08-18 12:00:00.123 [INFO] [0mmain (main.c:281) - [INIT][SIM-REG] SIM=SIM1 CEREG query/parse failed; registration state is unknown. Raw: +CEREG: malformed
+2026-08-18 12:00:01.124 [INFO] [0mmain (main.c:282) - carrier text said NETWORK REJECTED but this is not a structured SIM diagnostic

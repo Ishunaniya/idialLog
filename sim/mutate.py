@@ -57,7 +57,7 @@ TEST_SOURCES = {
     "baselinetest": "tests/regression/baselinetest.cpp",
     "mergetest": "tests/regression/mergetest.cpp",
 }
-# 变异测试只验证行为,不做性能基准。-O0 可把 44 次重复编译从数十分钟压到可接受范围。
+# 变异测试只验证行为,不做性能基准。-O0 可把 48 次重复编译从数十分钟压到可接受范围。
 CXX  = ["g++", "-std=c++17", "-O0"]
 RUN_TIMEOUT_SECONDS = 120
 
@@ -93,6 +93,18 @@ MUTATIONS = [
     ("'数据服务未就绪'退回死分支",
      'icontains(l.msg, "data_call_init failed") ||\n            icontains(l.msg, "data_call_init retrying"))',
      'false)'),
+    ("新版 NETWORK REJECTED 明确拒绝被漏掉",
+     'icontains(l.msg, "[SIM-ACCOUNT]") && icontains(l.msg, "NETWORK REJECTED")',
+     'icontains(l.msg, "[SIM-ACCOUNT]") && icontains(l.msg, "NETWORK REJECTEDZZ")'),
+    ("新版 LIMITED SERVICE 受限状态被漏掉",
+     'icontains(l.msg, "[SIM-REG]") && icontains(l.msg, "LIMITED SERVICE")',
+     'icontains(l.msg, "[SIM-REG]") && icontains(l.msg, "LIMITED SERVICEZZ")'),
+    ("新版 SUSPECTED subscription 疑似账户诊断被漏掉",
+     'icontains(l.msg, "[SIM-ACCOUNT]") && icontains(l.msg, "SUSPECTED subscription")',
+     'icontains(l.msg, "[SIM-ACCOUNT]") && icontains(l.msg, "SUSPECTED subscriptionZZ")'),
+    ("新版 CEREG query/parse failed 被漏掉",
+     'icontains(l.msg, "[SIM-REG]") && icontains(l.msg, "CEREG query/parse failed")',
+     'icontains(l.msg, "[SIM-REG]") && icontains(l.msg, "CEREG query/parse failedZZ")'),
     ("审计不计未识别行(自洽等式该崩)",
      "ad.unparsed++;",
      "ad.unparsed += 0;"),
@@ -241,6 +253,9 @@ def target_test(mut_name):
         return "mergetest"
     if "never-connected" in mut_name:
         return "hostruntest"
+    if any(k in mut_name for k in ("NETWORK REJECTED", "LIMITED SERVICE",
+                                   "SUSPECTED subscription", "CEREG query/parse failed")):
+        return "simtest"
     return "baselinetest"
 
 

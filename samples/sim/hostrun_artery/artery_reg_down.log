@@ -9,7 +9,7 @@
 /media/sdcard not exists 
 /media/sdcard not exists 
  /media/sdcard does not exist or free space < 1GB
-2026-08-04 23:07:38.000 [INFO] [0martery_product_main (main.c:180) - DIAL Version: 1.29.15
+2026-08-18 22:30:11.331 [INFO] [0martery_product_main (main.c:189) - DIAL Version: 1.29.16
 
 >> Read response urc, len = 6, content : 
 OK
@@ -22,22 +22,22 @@ EG25GGBR07A08M2G_OCPU_30.200.30.200
 
 OK
 
-2026-08-04 23:10:08.002 [INFO] [0mroamlink_read_policy (roamlink.c:312) - roamlink: /usrdata/network.ini not found, use default policy 4
-2026-08-04 23:10:08.006 [INFO] [0mroamlink_is_master_running (roamlink.c:391) - roamlink: RBMaster process not found in /proc
-2026-08-04 23:10:08.006 [ERROR] [0mroamlink_probe (roamlink.c:68) - roamlink: RBMaster not found at /usrdata/roamlink/RBMaster -> NO_PACKAGE
-2026-08-04 23:10:08.007 [INFO] [0mprint_init_info (main.c:133) - [INIT] policy=4
+2026-08-18 22:30:11.366 [INFO] [0mroamlink_read_policy (roamlink.c:312) - roamlink: /usrdata/network.ini not found, use default policy 4
+2026-08-18 22:30:11.387 [INFO] [0mroamlink_is_master_running (roamlink.c:391) - roamlink: RBMaster process not found in /proc
+2026-08-18 22:30:11.387 [ERROR] [0mroamlink_probe (roamlink.c:68) - roamlink: RBMaster not found at /usrdata/roamlink/RBMaster -> NO_PACKAGE
+2026-08-18 22:30:11.398 [INFO] [0mprint_init_info (main.c:142) - [INIT] policy=4
 >> Read response urc, len = 25, content : 
 867929069681908
 
 OK
 
-2026-08-04 23:10:08.007 [INFO] [0mprint_init_info (main.c:140) - [INIT] IMEI: 867929069681908
+2026-08-18 22:30:11.398 [INFO] [0mprint_init_info (main.c:149) - [INIT] IMEI: 867929069681908
 >> Read response urc, len = 45, content : 
 EG25GGBR07A08M2G_OCPU_30.200.30.200
 
 OK
 
-2026-08-04 23:10:08.008 [INFO] [0mprint_init_info (main.c:144) - [INIT] FW: EG25GGBR07A08M2G_OCPU_30.200.30.200
+2026-08-18 22:30:11.400 [INFO] [0mprint_init_info (main.c:153) - [INIT] FW: EG25GGBR07A08M2G_OCPU_30.200.30.200
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
@@ -48,397 +48,51 @@ OK
 
 OK
 
-2026-08-04 23:10:08.009 [INFO] [0mprint_init_info (main.c:162) - [INIT] COPS: +COPS: 0,2,"46000",7 (mode=0 auto) | CEREG: +CEREG: 0,0
+2026-08-18 22:30:11.401 [INFO] [0mprint_init_info (main.c:171) - [INIT] COPS: +COPS: 0,2,"46000",7 (mode=0 auto) | CEREG: +CEREG: 0,0
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:10:08.014 [INFO] [0mdial_task (dial.c:918) - state: (start) -> none
-2026-08-04 23:10:08.014 [INFO] [0mdial_task (dial.c:981) - dial: policy=4, initial channel: physical SIM
-2026-08-04 23:10:08.021 [INFO] [0mdial_task (dial.c:918) - state: none -> init
-2026-08-04 23:10:08.028 [INFO] [0mdial_task (dial.c:918) - state: init -> sim_init
-2026-08-04 23:10:08.035 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
-2026-08-04 23:10:08.042 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
-2026-08-04 23:10:08.042 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
-2026-08-04 23:10:08.042 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
+2026-08-18 22:30:11.445 [INFO] [0mdial_task (dial.c:918) - state: (start) -> none
+2026-08-18 22:30:11.447 [INFO] [0mdial_task (dial.c:981) - dial: policy=4, initial channel: physical SIM
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:10:08.049 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
-2026-08-04 23:10:08.049 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.070 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.455 [INFO] [0mdial_task (dial.c:918) - state: none -> init
+2026-08-18 22:30:11.463 [INFO] [0mdial_task (dial.c:918) - state: init -> sim_init
+2026-08-18 22:30:11.472 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
+2026-08-18 22:30:11.479 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
+2026-08-18 22:30:11.480 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
+2026-08-18 22:30:11.480 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:10:08.091 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.112 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.487 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
+2026-08-18 22:30:11.503 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:10:08.133 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.524 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.547 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:10:08.154 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.175 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.574 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:10:08.196 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.222 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.243 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.264 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.284 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.305 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.326 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.347 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.368 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.389 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.410 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.426 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:10:08.433 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.454 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.475 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.496 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.517 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.538 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.559 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.580 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.600 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.621 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.645 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.666 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.687 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.707 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.728 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.749 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.770 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.791 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.812 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.832 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.842 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:10:08.857 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.878 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.898 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.919 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:10:08.940 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.961 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:10:08.981 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.002 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.023 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.044 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.070 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.090 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.111 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.132 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.153 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.174 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.194 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.215 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.236 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.255 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:12:38.257 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.280 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.302 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.322 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.343 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.363 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.384 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.405 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.426 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.447 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.468 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.492 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.513 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.534 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.555 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.576 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.597 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.617 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.638 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.658 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.667 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:12:38.679 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.702 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.723 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.744 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.765 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.785 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.806 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.827 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.848 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.898 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.924 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.946 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:12:38.967 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:12:38.987 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:15:08.008 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.598 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
@@ -449,29 +103,413 @@ OK
 
 OK
 
-2026-08-04 23:15:08.024 [INFO] [0mnw_at_get_cereg_stat (nw.c:251) - cereg_n: 0, stat_cereg:0
+>> Read response urc, len = 22, content : 
++CPIN: READY
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:30:11.687 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:30:11.708 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.731 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:30:11.758 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:30:11.780 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.801 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:30:11.810 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CEREG: 0,0
+
+OK
+
+>> Read response urc, len = 22, content : 
++CPIN: READY
+
+OK
+
+2026-08-18 22:30:11.848 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.874 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:30:11.897 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.918 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:30:11.944 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:30:11.967 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:30:11.992 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.040 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.068 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CEREG: 0,0
+
+OK
+
+>> Read response urc, len = 22, content : 
++CPIN: READY
+
+OK
+
+2026-08-18 22:32:41.091 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.113 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:32:41.136 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.161 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.193 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:32:41.219 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.226 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.294 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CEREG: 0,0
+
+OK
+
+>> Read response urc, len = 22, content : 
++CPIN: READY
+
+OK
+
+2026-08-18 22:32:41.323 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.345 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:32:41.366 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.391 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.414 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:32:41.435 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.479 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.500 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CEREG: 0,0
+
+OK
+
+>> Read response urc, len = 22, content : 
++CPIN: READY
+
+OK
+
+>> Read response urc, len = 30, content : 
++COPS: 0,2,"46000",7
+
+OK
+
+>> Read response urc, len = 6, content : 
+OK
+
+>> Read response urc, len = 21, content : 
++CEER: 0,-1
+
+OK
+
+2026-08-18 22:32:41.518 [INFO] [0martery_product_main (main.c:343) - [INIT][SIM-ACCOUNT] SIM=SIM1 SUSPECTED subscription issue: SIM READY, CSQ>=10 and REG=0 continuously for >=120s; confirm with carrier. Evidence: +CPIN: READY | +CEREG: 0,0 | +COPS: 0,2,"46000",7 (mode=0 auto) | CGATT:N/A | +CEER: 0,-1
+2026-08-18 22:32:41.524 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:32:41.545 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.566 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.587 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:32:41.608 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.631 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:32:41.652 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.660 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.706 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.730 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:32:41.751 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.771 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:32:41.797 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.820 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.840 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.871 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.921 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.942 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:32:41.998 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.025 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.046 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.067 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.068 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:35:11.088 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.126 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.149 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.171 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.194 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.218 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.241 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.264 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.285 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.308 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.351 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.380 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.400 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CEREG: 0,0
+
+OK
+
 >> Read response urc, len = 104, content : 
 +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
 
 OK
 
-2026-08-04 23:15:08.024 [INFO] [0martery_product_main (main.c:258) - [HEARTBEAT] OPER:SIMNET 46000 cereg=0 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
-2026-08-04 23:15:08.029 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.050 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.050 [ERROR] [0mdial_task (dial.c:1061) - reg_check timeout (300s), policy=4
-2026-08-04 23:15:08.050 [ERROR] [0mdial_task (dial.c:2087) - reg timeout: policy=4, cfun reset and retry
+2026-08-18 22:35:11.409 [INFO] [0martery_product_main (main.c:398) - [HEARTBEAT] OPER:SIMNET 46000 cereg=0 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
+2026-08-18 22:35:11.421 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.443 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.466 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.481 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:35:11.491 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.491 [ERROR] [0mdial_task (dial.c:1061) - reg_check timeout (300s), policy=4
+2026-08-18 22:35:11.492 [ERROR] [0mdial_task (dial.c:2087) - reg timeout: policy=4, cfun reset and retry
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:15:08.051 [INFO] [0mdial_task (dial.c:2112) - reg timeout: AT+COPS=0 unlock OK, back to auto operator
-2026-08-04 23:15:08.058 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> stop_cfun
-2026-08-04 23:15:08.058 [INFO] [0mdial_task (dial.c:1640) - dial_stat_stop_cfun
+2026-08-18 22:35:11.495 [INFO] [0mdial_task (dial.c:2112) - reg timeout: AT+COPS=0 unlock OK, back to auto operator
+2026-08-18 22:35:11.506 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> stop_cfun
+2026-08-18 22:35:11.506 [INFO] [0mdial_task (dial.c:1640) - dial_stat_stop_cfun
 >> Read response urc, len = 6, content : 
 OK
 
-2026-08-04 23:15:08.093 [INFO] [0mdial_task (dial.c:1658) - cfun stop response: 
+2026-08-18 22:35:11.542 [INFO] [0mdial_task (dial.c:1658) - cfun stop response: 
 OK
 
 >> Read response urc, len = 21, content : 
@@ -479,13 +517,17 @@ OK
 
 OK
 
-2026-08-04 23:15:08.094 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=start_cfun csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:15:08.100 [INFO] [0mdial_task (dial.c:918) - state: stop_cfun -> start_cfun
-2026-08-04 23:15:08.100 [ERROR] [0mdial_task (dial.c:1663) - dial_stat_start_cfun
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:35:11.585 [INFO] [0mdial_task (dial.c:918) - state: stop_cfun -> start_cfun
+2026-08-18 22:35:11.585 [ERROR] [0mdial_task (dial.c:1663) - dial_stat_start_cfun
 >> Read response urc, len = 6, content : 
 OK
 
-2026-08-04 23:15:08.134 [INFO] [0mdial_task (dial.c:1684) - cfun start response: 
+2026-08-18 22:35:11.622 [INFO] [0mdial_task (dial.c:1684) - cfun start response: 
 OK
 
 >> Read response urc, len = 21, content : 
@@ -493,375 +535,319 @@ OK
 
 OK
 
-2026-08-04 23:15:08.143 [INFO] [0mdial_task (dial.c:918) - state: start_cfun -> sim_init
-2026-08-04 23:15:08.150 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
-2026-08-04 23:15:08.157 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
-2026-08-04 23:15:08.157 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
-2026-08-04 23:15:08.157 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
-2026-08-04 23:15:08.164 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
-2026-08-04 23:15:08.164 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.631 [INFO] [0mdial_task (dial.c:918) - state: start_cfun -> sim_init
+2026-08-18 22:35:11.639 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
+2026-08-18 22:35:11.649 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
+2026-08-18 22:35:11.649 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
+2026-08-18 22:35:11.649 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
+2026-08-18 22:35:11.657 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.185 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.658 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.684 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.206 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.227 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.706 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.727 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.248 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.269 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.749 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.289 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.310 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.331 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.834 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.355 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.376 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.860 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.397 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.880 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:35:11.881 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.902 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.417 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.438 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.930 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.459 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:35:11.962 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.480 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.500 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.018 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.515 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:15:08.521 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.542 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.039 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.566 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.074 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.098 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.587 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.608 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.123 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.145 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.629 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.650 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.172 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.670 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.221 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.692 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.712 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.242 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.264 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.733 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.754 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.292 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.778 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.300 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:37:41.314 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.799 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.820 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.336 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.357 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.841 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.381 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.862 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.883 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.430 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.904 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.925 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.455 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.476 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.929 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:15:08.946 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.497 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:15:08.968 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:15:08.991 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.518 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.540 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.012 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.576 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.033 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.053 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.597 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.074 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.095 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.632 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.116 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.665 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.686 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.136 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.157 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.709 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.179 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.202 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.727 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:37:41.730 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.751 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.223 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.776 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.244 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.265 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.798 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.285 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.306 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.875 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.327 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.897 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.921 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.342 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:17:38.348 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.368 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.942 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.389 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.963 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:37:41.985 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.414 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.435 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.005 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.026 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.456 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.477 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.498 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.089 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.518 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.539 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.113 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.134 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.560 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.581 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.148 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:40:11.174 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.601 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.206 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.626 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.647 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.228 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.668 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.273 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.688 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.709 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.297 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.322 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.730 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.751 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.344 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.755 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:17:38.772 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.365 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.389 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:17:38.793 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.814 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:17:38.838 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:17:38.859 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.880 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:17:38.902 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.923 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:17:38.944 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:17:38.965 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:17:38.986 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:20:08.006 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.027 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.418 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
@@ -872,49 +858,72 @@ OK
 
 OK
 
-2026-08-04 23:20:08.035 [INFO] [0mnw_at_get_cereg_stat (nw.c:251) - cereg_n: 0, stat_cereg:0
 >> Read response urc, len = 104, content : 
 +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
 
 OK
 
-2026-08-04 23:20:08.036 [INFO] [0martery_product_main (main.c:258) - [HEARTBEAT] OPER:SIMNET 46000 cereg=0 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
-2026-08-04 23:20:08.052 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.434 [INFO] [0martery_product_main (main.c:398) - [HEARTBEAT] OPER:SIMNET 46000 cereg=0 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
+2026-08-18 22:40:11.464 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.073 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.108 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.485 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.131 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.152 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.173 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.173 [ERROR] [0mdial_task (dial.c:1061) - reg_check timeout (300s), policy=4
-2026-08-04 23:20:08.173 [ERROR] [0mdial_task (dial.c:2087) - reg timeout: policy=4, cfun reset and retry
+2026-08-18 22:40:11.507 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.529 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:40:11.559 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:40:11.587 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.587 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:40:11.607 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:40:11.628 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.649 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:40:11.708 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.708 [ERROR] [0mdial_task (dial.c:1061) - reg_check timeout (300s), policy=4
+2026-08-18 22:40:11.709 [ERROR] [0mdial_task (dial.c:2087) - reg timeout: policy=4, cfun reset and retry
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:20:08.174 [INFO] [0mdial_task (dial.c:2112) - reg timeout: AT+COPS=0 unlock OK, back to auto operator
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:20:08.180 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=stop_cfun csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:20:08.180 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> stop_cfun
-2026-08-04 23:20:08.180 [INFO] [0mdial_task (dial.c:1640) - dial_stat_stop_cfun
+2026-08-18 22:40:11.714 [INFO] [0mdial_task (dial.c:2112) - reg timeout: AT+COPS=0 unlock OK, back to auto operator
+2026-08-18 22:40:11.721 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> stop_cfun
+2026-08-18 22:40:11.721 [INFO] [0mdial_task (dial.c:1640) - dial_stat_stop_cfun
 >> Read response urc, len = 6, content : 
 OK
 
-2026-08-04 23:20:08.215 [INFO] [0mdial_task (dial.c:1658) - cfun stop response: 
+2026-08-18 22:40:11.758 [INFO] [0mdial_task (dial.c:1658) - cfun stop response: 
 OK
 
 >> Read response urc, len = 21, content : 
@@ -922,12 +931,12 @@ OK
 
 OK
 
-2026-08-04 23:20:08.222 [INFO] [0mdial_task (dial.c:918) - state: stop_cfun -> start_cfun
-2026-08-04 23:20:08.222 [ERROR] [0mdial_task (dial.c:1663) - dial_stat_start_cfun
+2026-08-18 22:40:11.770 [INFO] [0mdial_task (dial.c:918) - state: stop_cfun -> start_cfun
+2026-08-18 22:40:11.771 [ERROR] [0mdial_task (dial.c:1663) - dial_stat_start_cfun
 >> Read response urc, len = 6, content : 
 OK
 
-2026-08-04 23:20:08.256 [INFO] [0mdial_task (dial.c:1684) - cfun start response: 
+2026-08-18 22:40:11.807 [INFO] [0mdial_task (dial.c:1684) - cfun start response: 
 OK
 
 >> Read response urc, len = 21, content : 
@@ -935,355 +944,297 @@ OK
 
 OK
 
-2026-08-04 23:20:08.266 [INFO] [0mdial_task (dial.c:918) - state: start_cfun -> sim_init
-2026-08-04 23:20:08.273 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
-2026-08-04 23:20:08.280 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
-2026-08-04 23:20:08.280 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
-2026-08-04 23:20:08.280 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
-2026-08-04 23:20:08.287 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
-2026-08-04 23:20:08.287 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.815 [INFO] [0mdial_task (dial.c:918) - state: start_cfun -> sim_init
+2026-08-18 22:40:11.824 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
+2026-08-18 22:40:11.831 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
+2026-08-18 22:40:11.831 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
+2026-08-18 22:40:11.831 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
+2026-08-18 22:40:11.838 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
+2026-08-18 22:40:11.839 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.308 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.861 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.329 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.350 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.371 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.391 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.916 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.937 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.412 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.961 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.433 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.453 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.983 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:40:11.007 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.477 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.017 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:42:41.030 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.051 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.498 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.519 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.074 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.540 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.561 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.581 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.140 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.601 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:20:08.602 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.623 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.163 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.189 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.644 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.665 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.213 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.688 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.237 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.258 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.708 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.729 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.280 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.750 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.771 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.330 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.792 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.354 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.813 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.834 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.382 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.405 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.855 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.426 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.876 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.899 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.446 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:42:41.447 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.477 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.919 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:20:08.940 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.498 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.961 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.531 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.560 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:20:08.982 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.003 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.585 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.013 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:22:38.024 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.045 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.607 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.065 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.639 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.662 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.086 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.110 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.686 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.131 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.707 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.151 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.173 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.744 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.765 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.193 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.213 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.788 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.234 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.810 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.833 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.255 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.276 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.854 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.297 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.321 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.877 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:42:41.885 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.906 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.341 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.927 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.362 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.383 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.404 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.424 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:42:41.996 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.426 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:22:38.445 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.024 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.045 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.465 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.487 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.066 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.088 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.507 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.112 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.530 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.551 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.143 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.571 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.592 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.613 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.633 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.654 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.235 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.260 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.675 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.695 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.282 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.716 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.303 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:45:11.305 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.338 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.740 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.761 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.360 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.782 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.802 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:22:38.823 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:22:38.839 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:22:38.844 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.865 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:22:38.886 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.907 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:22:38.928 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:22:38.951 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:22:38.972 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:22:38.993 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:25:08.014 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.034 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.440 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
@@ -1294,88 +1245,112 @@ OK
 
 OK
 
-2026-08-04 23:25:08.046 [INFO] [0mnw_at_get_cereg_stat (nw.c:251) - cereg_n: 0, stat_cereg:0
 >> Read response urc, len = 104, content : 
 +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
 
 OK
 
-2026-08-04 23:25:08.047 [INFO] [0martery_product_main (main.c:258) - [HEARTBEAT] OPER:SIMNET 46000 cereg=0 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
-2026-08-04 23:25:08.055 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.076 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.446 [INFO] [0martery_product_main (main.c:398) - [HEARTBEAT] OPER:SIMNET 46000 cereg=0 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
+2026-08-18 22:45:11.461 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.097 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.482 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.505 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.118 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.139 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.525 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.546 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.163 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.184 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.568 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.204 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.609 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.225 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.245 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.632 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.653 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.253 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:25:08.266 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.287 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.287 [ERROR] [0mdial_task (dial.c:1061) - reg_check timeout (300s), policy=4
+2026-08-18 22:45:11.674 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.288 [ERROR] [0mdial_task (dial.c:2087) - reg timeout: policy=4, cfun reset and retry
+2026-08-18 22:45:11.702 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.723 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:45:11.731 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:45:11.745 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:45:11.765 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.786 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:45:11.825 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:45:11.846 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:45:11.850 [ERROR] [0mdial_task (dial.c:1061) - reg_check timeout (300s), policy=4
+2026-08-18 22:45:11.851 [ERROR] [0mdial_task (dial.c:2087) - reg timeout: policy=4, cfun reset and retry
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:25:08.288 [INFO] [0mdial_task (dial.c:2112) - reg timeout: AT+COPS=0 unlock OK, back to auto operator
-2026-08-04 23:25:08.296 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> stop_cfun
-2026-08-04 23:25:08.296 [INFO] [0mdial_task (dial.c:1640) - dial_stat_stop_cfun
+2026-08-18 22:45:11.853 [INFO] [0mdial_task (dial.c:2112) - reg timeout: AT+COPS=0 unlock OK, back to auto operator
+2026-08-18 22:45:11.860 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> stop_cfun
+2026-08-18 22:45:11.860 [INFO] [0mdial_task (dial.c:1640) - dial_stat_stop_cfun
 >> Read response urc, len = 6, content : 
 OK
 
-2026-08-04 23:25:08.330 [INFO] [0mdial_task (dial.c:1658) - cfun stop response: 
+2026-08-18 22:45:11.906 [INFO] [0mdial_task (dial.c:1658) - cfun stop response: 
 OK
 
-2026-08-04 23:25:08.340 [INFO] [0mdial_task (dial.c:918) - state: stop_cfun -> start_cfun
-2026-08-04 23:25:08.340 [ERROR] [0mdial_task (dial.c:1663) - dial_stat_start_cfun
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
+2026-08-18 22:45:11.913 [INFO] [0mdial_task (dial.c:918) - state: stop_cfun -> start_cfun
+2026-08-18 22:45:11.913 [ERROR] [0mdial_task (dial.c:1663) - dial_stat_start_cfun
 >> Read response urc, len = 6, content : 
 OK
 
-2026-08-04 23:25:08.396 [INFO] [0mdial_task (dial.c:1684) - cfun start response: 
+2026-08-18 22:45:11.949 [INFO] [0mdial_task (dial.c:1684) - cfun start response: 
 OK
 
 >> Read response urc, len = 21, content : 
@@ -1383,328 +1358,274 @@ OK
 
 OK
 
-2026-08-04 23:25:08.411 [INFO] [0mdial_task (dial.c:918) - state: start_cfun -> sim_init
-2026-08-04 23:25:08.418 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
-2026-08-04 23:25:08.426 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
-2026-08-04 23:25:08.426 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
-2026-08-04 23:25:08.426 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
+2026-08-18 22:45:11.956 [INFO] [0mdial_task (dial.c:918) - state: start_cfun -> sim_init
+2026-08-18 22:45:11.963 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
+2026-08-18 22:45:11.974 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
+2026-08-18 22:45:11.974 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
+2026-08-18 22:45:11.974 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
+2026-08-18 22:45:11.983 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
+2026-08-18 22:45:11.983 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.433 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
-2026-08-04 23:25:08.433 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.454 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.004 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.475 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.496 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.517 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.068 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.092 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.537 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.558 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.113 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.579 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.600 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.129 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:47:41.134 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.155 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.624 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.177 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.645 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.665 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.198 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.220 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.671 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:25:08.686 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.260 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.707 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.728 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.294 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.748 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.769 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.315 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.336 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.791 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.357 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.378 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.811 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.834 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.400 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.421 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.855 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.876 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.444 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.897 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.500 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.918 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:25:08.939 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.521 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.960 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.539 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:47:41.543 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.565 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:25:08.981 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.002 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.587 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.608 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.023 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.047 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.631 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.068 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.652 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.675 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.084 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:27:38.088 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.109 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.130 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.151 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.731 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.172 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.755 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.775 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.193 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.214 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.799 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.821 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.234 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.842 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.258 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.278 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.865 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.887 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.299 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.320 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.927 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.341 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.942 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:47:41.949 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.970 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.362 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.383 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:47:41.990 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.012 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.403 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.424 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.033 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.445 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.057 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.471 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.492 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.091 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.500 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:27:38.513 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.533 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.150 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.554 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.171 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.193 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.575 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.596 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.215 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.617 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.237 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.265 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.286 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.637 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.658 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.308 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.681 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.702 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.345 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.723 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.359 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:50:11.370 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.393 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.744 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.765 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.414 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:27:38.786 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.807 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:27:38.828 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:27:38.848 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.869 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:27:38.894 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:27:38.913 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:27:38.915 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.936 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:27:38.957 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:27:38.977 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:27:38.998 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:30:08.019 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.040 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.435 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.457 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
@@ -1715,102 +1636,129 @@ OK
 
 OK
 
-2026-08-04 23:30:08.051 [INFO] [0mnw_at_get_cereg_stat (nw.c:251) - cereg_n: 0, stat_cereg:0
 >> Read response urc, len = 104, content : 
 +QENG: "servingcell","NOCONN","LTE","FDD",460,00,D17C148,496,1850,3,5,5,272D,-101,-6,-75,23,18
 
 OK
 
-2026-08-04 23:30:08.051 [INFO] [0martery_product_main (main.c:258) - [HEARTBEAT] OPER:SIMNET 46000 cereg=0 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
-2026-08-04 23:30:08.061 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.082 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.472 [INFO] [0martery_product_main (main.c:398) - [HEARTBEAT] OPER:SIMNET 46000 cereg=0 cellid=D17C148 pci=496 tac=272D rsrp=-101dBm rsrq=-6dB ifname=(none) ip=0.0.0.0 rx_packets=0
+2026-08-18 22:50:11.478 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.500 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.105 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.521 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.127 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.148 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.575 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.169 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.596 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.190 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.210 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.617 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.639 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.231 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.252 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.661 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.273 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.687 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.713 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.293 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.317 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.734 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.326 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:30:08.338 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.359 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.759 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:50:11.771 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.799 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.380 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.821 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.400 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.421 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.842 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.862 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.442 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.442 [ERROR] [0mdial_task (dial.c:1061) - reg_check timeout (300s), policy=4
-2026-08-04 23:30:08.443 [ERROR] [0mdial_task (dial.c:2087) - reg timeout: policy=4, cfun reset and retry
+2026-08-18 22:50:11.887 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:50:11.909 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:50:11.930 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:50:11.952 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:52:41.016 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.038 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.038 [ERROR] [0mdial_task (dial.c:1061) - reg_check timeout (300s), policy=4
+2026-08-18 22:52:41.040 [ERROR] [0mdial_task (dial.c:2087) - reg timeout: policy=4, cfun reset and retry
 >> Read response urc, len = 30, content : 
 +COPS: 0,2,"46000",7
 
 OK
 
-2026-08-04 23:30:08.443 [INFO] [0mdial_task (dial.c:2112) - reg timeout: AT+COPS=0 unlock OK, back to auto operator
-2026-08-04 23:30:08.450 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> stop_cfun
-2026-08-04 23:30:08.450 [INFO] [0mdial_task (dial.c:1640) - dial_stat_stop_cfun
+2026-08-18 22:52:41.042 [INFO] [0mdial_task (dial.c:2112) - reg timeout: AT+COPS=0 unlock OK, back to auto operator
+>> Read response urc, len = 21, content : 
++CSQ: 15,99
+
+OK
+
+2026-08-18 22:52:41.052 [INFO] [0mdial_task (dial.c:918) - state: reg_check -> stop_cfun
+2026-08-18 22:52:41.052 [INFO] [0mdial_task (dial.c:1640) - dial_stat_stop_cfun
 >> Read response urc, len = 6, content : 
 OK
 
-2026-08-04 23:30:08.485 [INFO] [0mdial_task (dial.c:1658) - cfun stop response: 
+2026-08-18 22:52:41.087 [INFO] [0mdial_task (dial.c:1658) - cfun stop response: 
 OK
 
 >> Read response urc, len = 21, content : 
@@ -1818,12 +1766,12 @@ OK
 
 OK
 
-2026-08-04 23:30:08.492 [INFO] [0mdial_task (dial.c:918) - state: stop_cfun -> start_cfun
-2026-08-04 23:30:08.492 [ERROR] [0mdial_task (dial.c:1663) - dial_stat_start_cfun
+2026-08-18 22:52:41.095 [INFO] [0mdial_task (dial.c:918) - state: stop_cfun -> start_cfun
+2026-08-18 22:52:41.095 [ERROR] [0mdial_task (dial.c:1663) - dial_stat_start_cfun
 >> Read response urc, len = 6, content : 
 OK
 
-2026-08-04 23:30:08.544 [INFO] [0mdial_task (dial.c:1684) - cfun start response: 
+2026-08-18 22:52:41.129 [INFO] [0mdial_task (dial.c:1684) - cfun start response: 
 OK
 
 >> Read response urc, len = 21, content : 
@@ -1831,276 +1779,211 @@ OK
 
 OK
 
-2026-08-04 23:30:08.554 [INFO] [0mdial_task (dial.c:918) - state: start_cfun -> sim_init
-2026-08-04 23:30:08.562 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
-2026-08-04 23:30:08.568 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
-2026-08-04 23:30:08.569 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
-2026-08-04 23:30:08.569 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
-2026-08-04 23:30:08.575 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
-2026-08-04 23:30:08.575 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.136 [INFO] [0mdial_task (dial.c:918) - state: start_cfun -> sim_init
+2026-08-18 22:52:41.143 [INFO] [0mdial_task (dial.c:918) - state: sim_init -> sim_check
+2026-08-18 22:52:41.154 [INFO] [0mdial_task (dial.c:918) - state: sim_check -> sim_op
+2026-08-18 22:52:41.154 [INFO] [0msim_op_handler (sim.c:210) - ICCID: 
+2026-08-18 22:52:41.154 [INFO] [0msim_op_handler (sim.c:221) - IMSI: 
+2026-08-18 22:52:41.161 [INFO] [0mdial_task (dial.c:918) - state: sim_op -> reg_check
+2026-08-18 22:52:41.161 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.598 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.169 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.619 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.640 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.219 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.661 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.681 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.240 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.262 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.702 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.285 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.306 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.724 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.744 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.327 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.751 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:30:08.768 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.348 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.369 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.789 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.810 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.410 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.831 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.852 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.432 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.454 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.873 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.474 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.495 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.894 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.914 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.516 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.935 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:30:08.956 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.539 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.561 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:30:08.983 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.586 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.004 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.025 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.600 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:52:41.625 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.045 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.646 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.667 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.066 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.086 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.705 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.107 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.128 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.727 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.149 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.748 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.768 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.163 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:32:38.170 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.194 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.789 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.214 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.828 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.235 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.256 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.850 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.878 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.277 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.298 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.899 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.319 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.921 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.945 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.340 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.360 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.965 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:52:41.988 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.382 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.407 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.427 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:55:11.023 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:55:11.024 [INFO] [0martery_product_main (main.c:371) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
+2026-08-18 22:55:11.044 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.448 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.469 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:55:11.066 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:55:11.087 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.490 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:55:11.109 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.510 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.531 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:55:11.132 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:55:11.153 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.552 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.573 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:55:11.176 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.577 [INFO] [0martery_product_main (main.c:234) - [HEARTBEAT] state=reg_check csq=15 SRV:0 RAT:LTE DENY:6 RSRP:-88 RSRQ:-10 SNR:180 RSSI:-65 tcp_fail=0 rl_fail=0
-2026-08-04 23:32:38.594 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
+2026-08-18 22:55:11.196 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
 >> Read response urc, len = 21, content : 
 +CSQ: 15,99
 
 OK
 
-2026-08-04 23:32:38.616 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.637 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:32:38.658 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.679 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:32:38.700 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:32:38.721 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.742 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:32:38.763 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:32:38.783 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.804 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:32:38.828 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.849 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:32:38.869 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
-2026-08-04 23:32:38.890 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
-2026-08-04 23:32:38.910 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed
->> Read response urc, len = 21, content : 
-+CSQ: 15,99
-
-OK
-
+2026-08-18 22:55:11.238 [ERROR] [0mdial_task (dial.c:1055) - Dial_st: dial_stat_reg_check failed

@@ -40,6 +40,7 @@ struct Scenario {
     std::vector<std::string> forbid;        // 结论标题**不得包含**这些子串(抓假阳性)
     Platform expectPlat = PLAT_UNKNOWN;     // 期望识别出的平台(PLAT_UNKNOWN=不检查)
     size_t   expectUnparsed = 0;            // 期望未识别行数
+    std::vector<std::string> expectEvidence;// 结论证据必须逐字包含这些关键值
 };
 
 // —— 各场景的日志串来源(逐字照抄,勿改措辞;改了就不再是源码实证)——
@@ -66,9 +67,60 @@ static std::vector<Scenario> scenarios() {
         "[2026-07-17 09:00:03] [WARNING] Registration Denied! Code 3.\n"
         "[2026-07-17 09:05:03] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started\n"
         "[2026-07-17 09:05:03] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:20 | TEMP:35 | DownTime:300s\n",
-        { "注册被拒" },
+        { "注册被明确拒绝" },
         { "CP dump" },
-        PLAT_EC200A, 0
+        PLAT_EC200A, 0, {}
+    });
+
+    // 2026-08-18 四产品新增首次初始化 SIM 注册/账户诊断；每条逐字保留产品措辞。
+    v.push_back({
+        "modem_mng EC200A/AG35 明确网络拒绝(REG=3)",
+        "ag35_sim_account_rejected.log",
+        "=== Dial Log Opened [2026-08-18 09:00:00] daykey=2026-08-18 ===\n"
+        "[2026-08-18 09:00:00] Program started. Version: 1.32.0\n"
+        "[2026-08-18 09:00:01] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:3 | CSQ:18 | TEMP:35 | DownTime:0s | SLOT:SIM2\n"
+        "[2026-08-18 09:00:02] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started\n"
+        "[2026-08-18 09:00:03] [INIT][SIM-ACCOUNT] SIM=SIM2 NETWORK REJECTED registration: SIM READY, REG=3, CSQ=18. Possible suspended/inactive SIM, roaming or operator restriction; confirm with carrier. Evidence: CPIN:READY | +CEREG: 2,3 | +COPS: 0 | +CGATT: 0 | +CEER: EPS services not allowed\n"
+        "[2026-08-18 09:00:20] [HEARTBEAT] Network recovered after 18s\n",
+        { "注册被明确拒绝", "断网根因分类:注册被拒" },
+        { "受限服务", "疑似 SIM", "CEREG 查询" },
+        PLAT_AG35, 0,
+        { "SIM=SIM2 NETWORK REJECTED registration", "REG=3, CSQ=18" }
+    });
+
+    v.push_back({
+        "modem_mng EG25 CEREG 受限服务",
+        "eg25_sim_limited_service.log",
+        "=== Dial Log Opened [2026-08-18 10:00:00] daykey=2026-08-18 ===\n"
+        "[2026-08-18 10:00:00] [HEARTBEAT] CH:SIM | SIM:1 | REG:6 | CSQ:18 | Temp:35 | DownTime:0s | ConsecFail:0\n"
+        "[2026-08-18 10:00:01] [INIT][SIM-REG] SIM=SIM1 LIMITED SERVICE: SIM READY, REG=6, CSQ=18. Normal packet data may be unavailable; possible subscription or network restriction, confirm with carrier. Evidence: +CPIN: READY | +CEREG: 2,6 | +COPS: 0 | +CGATT: 0 | +CEER: Limited service\n",
+        { "SIM 注册处于受限服务" },
+        { "注册被明确拒绝", "疑似 SIM", "CEREG 查询" },
+        PLAT_EG25, 0,
+        { "SIM=SIM1 LIMITED SERVICE", "REG=6, CSQ=18" }
+    });
+
+    v.push_back({
+        "open_dial 持续 REG=0 疑似订阅异常",
+        "open_dial_sim_account_suspected.log",
+        "=== Dial Log Opened [2026-08-18 11:00:00] daykey=2026-08-18 ===\n"
+        "[2026-08-18 11:00:00] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:0 | CSQ:20 | TEMP:35 | DownTime:0s\n"
+        "[2026-08-18 11:02:01] [INIT][SIM-ACCOUNT] SIM=SIM1 SUSPECTED subscription issue: SIM READY with good signal but REG=0 for >=120s. Possible suspended/inactive SIM or subscription restriction; AT evidence is not definitive, confirm with carrier. Evidence: CPIN:READY | +CEREG: 2,0 | +COPS: 0 | +CGATT: 0 | +CEER: No report\n",
+        { "疑似 SIM 账户/订阅异常", "【推断】", "不是欠费/停机的确定证据" },
+        { "注册被明确拒绝", "受限服务", "CEREG 查询" },
+        PLAT_EC200A, 0,
+        { "SUSPECTED subscription issue", "REG=0 for >=120s" }
+    });
+
+    v.push_back({
+        "artery CEREG 查询/解析失败(禁止账户推断)",
+        "artery_cereg_query_failed.log",
+        "2026-08-18 12:00:00.123 [INFO] \x1b[0mmain (main.c:281) - [INIT][SIM-REG] SIM=SIM1 CEREG query/parse failed; registration state is unknown. Raw: +CEREG: malformed\n"
+        "2026-08-18 12:00:01.124 [INFO] \x1b[0mmain (main.c:282) - carrier text said NETWORK REJECTED but this is not a structured SIM diagnostic\n",
+        { "CEREG 查询/解析失败", "不得据此推断 SIM 或账户异常" },
+        { "注册被明确拒绝", "受限服务", "疑似 SIM" },
+        PLAT_ARTERY, 0,
+        { "registration state is unknown", "Raw: +CEREG: malformed" }
     });
 
 
@@ -82,7 +134,7 @@ static std::vector<Scenario> scenarios() {
         "[2026-07-17 09:00:02] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:35 | DownTime:0s\n",
         { "CP dump" },
         {},
-        PLAT_EC200A, 0
+        PLAT_EC200A, 0, {}
     });
 
     // ---- 5. 假阳性守卫:正常设备只打例行 CPDUMP,绝不该报崩溃 ----
@@ -97,7 +149,7 @@ static std::vector<Scenario> scenarios() {
         "[2026-07-17 09:00:03] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:35 | DownTime:0s\n",
         {},
         { "CP dump", "基带崩溃" },       // ← 一条结论都不该有
-        PLAT_EC200A, 0
+        PLAT_EC200A, 0, {}
     });
 
     // ---- 6. AG35 切卡期间断网 ----
@@ -117,7 +169,7 @@ static std::vector<Scenario> scenarios() {
         "[2026-07-17 09:10:21] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:32 | DownTime:0s | SLOT:eSIM\n",
         { "切卡" },
         { "CP dump", "从未成功联网" },
-        PLAT_AG35, 0
+        PLAT_AG35, 0, {}
     });
 
     // ---- 7. 进程反复重启(多会话)----
@@ -135,7 +187,7 @@ static std::vector<Scenario> scenarios() {
         "[2026-07-17 09:20:01] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:35 | DownTime:0s\n",
         {},
         { "CP dump" },
-        PLAT_EC200A, 0
+        PLAT_EC200A, 0, {}
     });
 
     // ---- 8. 温度过高 ----
@@ -148,7 +200,7 @@ static std::vector<Scenario> scenarios() {
         "[2026-07-17 09:00:31] [HEARTBEAT] SIM_AT:READY | SIM_CB:READY | REG:1 | CSQ:20 | TEMP:91 | DownTime:0s\n",
         { "温度偏高" },
         { "CP dump" },
-        PLAT_EC200A, 0
+        PLAT_EC200A, 0, {}
     });
 
 
@@ -161,6 +213,20 @@ static bool titlesHave(const std::vector<Finding>& fs, const std::string& sub) {
     for (const auto& f : fs)
         if (f.title.find(sub) != std::string::npos || f.detail.find(sub) != std::string::npos)
             return true;
+    return false;
+}
+
+static bool titleHas(const std::vector<Finding>& fs, const std::string& sub) {
+    for (const auto& f : fs)
+        if (f.title.find(sub) != std::string::npos) return true;
+    return false;
+}
+
+static bool evidenceHas(const std::vector<Finding>& fs, const std::string& sub) {
+    for (const auto& f : fs)
+        for (const auto& e : f.ev)
+            if (e.text.find(sub) != std::string::npos)
+                return true;
     return false;
 }
 
@@ -208,9 +274,12 @@ int main() {
         // 该报的必须报
         for (const auto& e : sc.expect)
             if (!titlesHave(fs, e)) { std::printf("   ✗ 缺少应有的结论:%s\n", e.c_str()); ok = false; }
+        // 新诊断不仅要“有结论”，还必须保留 SIM/REG/CSQ/AT 原始证据的具体内容。
+        for (const auto& e : sc.expectEvidence)
+            if (!evidenceHas(fs, e)) { std::printf("   ✗ 结论证据缺少关键值:%s\n", e.c_str()); ok = false; }
         // 不该报的绝不能报(假阳性守卫)
         for (const auto& f : sc.forbid)
-            if (titlesHave(fs, f)) { std::printf("   ✗ 出现不该有的结论(假阳性):%s\n", f.c_str()); ok = false; }
+            if (titleHas(fs, f)) { std::printf("   ✗ 出现不该有的结论(假阳性):%s\n", f.c_str()); ok = false; }
         // 铁律:结论必带证据
         for (const auto& f : fs)
             if (f.ev.empty()) { std::printf("   ✗ 无证据的结论:%s\n", f.title.c_str()); ok = false; }
