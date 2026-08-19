@@ -383,6 +383,36 @@ static void t12_cell_quality_and_correlation() {
        "非 2 次幂样本的负值平均不发生有符号/无符号提升错误");
 }
 
+static void t13_console_android_syslog_retention() {
+    std::printf("== T13 全打印保留 + Android/syslog 格式 ==\n");
+    std::vector<std::string> raw = L({
+        "startup raw printf",
+        "2026-07-17 10:00:00.123  1000  1001 I DIAL: [INIT] android full-year",
+        "07-17 10:00:01.456  1000  1001 E DIAL: android threadtime",
+        "raw printf after timestamp",
+        "2026-07-17T10:00:02 device modem_mng[1000]: [WARN] syslog message"
+    });
+    std::vector<LogLine> lines;
+    std::vector<std::string> sessions;
+    ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit);
+    ok(lines.size() == 5, "5 条输入全部保留，没有只留未识别样例");
+    ok(audit.parsed == 3 && audit.unparsed == 2,
+       "Android/syslog 3 条结构化解析，2 条裸输出诚实计未识别");
+    ok(lines[0].fmt == FMT_CONSOLE && lines[0].inferredTime &&
+       lines[0].t == lines[1].t && lines[0].ts == "~2026-07-17 10:00:00",
+       "文件头裸输出回填首个真实时间并显式标记为推定");
+    ok(lines[1].fmt == FMT_ANDROID && lines[1].tagText() == "INIT" &&
+       lines[1].ms == 123, "全年 Android threadtime 的级别/标签/毫秒正确");
+    ok(lines[2].fmt == FMT_ANDROID && lines[2].level == LEVEL_ERROR &&
+       lines[2].ts == "2026-07-17 10:00:01",
+       "缺年份 Android threadtime 只借同文件已知年份");
+    ok(lines[3].fmt == FMT_CONSOLE && lines[3].inferredTime &&
+       lines[3].t == lines[2].t, "中段裸输出沿用上一条时间且保留原文");
+    ok(lines[4].fmt == FMT_SYSLOG && lines[4].tagText() == "WARN",
+       "RFC3339 syslog 被解析且正文标签优先");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -396,6 +426,7 @@ int main() {
     t10_streaming_parser_equivalence();
     t11_compact_record_boundaries();
     t12_cell_quality_and_correlation();
+    t13_console_android_syslog_retention();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

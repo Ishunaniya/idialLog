@@ -44,7 +44,7 @@ void parseLines(const std::vector<std::string>& raw,
 // 取一批原始行中**第一条带时间戳的行**的 epoch 秒。只扫前 scanLimit 行
 // (日志文件头部必有时间戳,不必整份扫)。认三种来源:
 //   "=== Dial Log Opened [ts] ... ===" 会话标记(FMT_SD 文件首行常是它,logger_sd.c:424)
-//   FMT_SD / FMT_SEAS 的普通行
+//   FMT_SD / FMT_SEAS / FMT_ANDROID / FMT_SYSLOG 的普通行
 // 返回 false = 扫不到(整批都是噪声,或不是本工具支持的格式);此时 *t 不被写入。
 bool firstTimestamp(const std::vector<std::string>& raw, long long* t, size_t scanLimit = 200);
 

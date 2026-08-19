@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     if (lines.empty()) { std::printf("无可解析行\n"); return 1; }
 
     std::printf("== 解析 ==\n");
-    std::printf("  原始行:%zu  已解析:%zu  会话:%zu\n", raw.size(), lines.size(), sessions.size());
+    std::printf("  原始行:%zu  保留记录:%zu  会话:%zu\n", raw.size(), lines.size(), sessions.size());
 
     // 未识别行审计:证明“没漏”的硬证据(必须自洽:各类之和 == 原始行数)
     std::printf("== 未识别行审计 ==\n");

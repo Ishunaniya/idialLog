@@ -38,19 +38,22 @@ static const std::string kKnownTags[] = {
     "ERROR", "WARN", "WARNING", "FATAL", "INFO", "ALARM", "CFUN", "SIM", "APN",
     "INIT", "MODEM", "EVENT", "STATUS", "LED", "TZ", "NANOMSG", "PING", "PING OUT",
     "PING FAIL", "PING ERROR", "REG", "REG TIMEOUT", "REG DIAG", "ZERO", "ZERO ADDR",
-    "CPDUMP", "COPS", "SM", "LOGMIGR", "LOGCLEAN", "CLEANUP", "NetCheck"
+    "CPDUMP", "COPS", "SM", "LOGMIGR", "LOGCLEAN", "CLEANUP", "NetCheck",
+    "CONSOLE", "SYSLOG"
 };
 
 LogLine::LogLine(const LogLine& o)
     : t(o.t), lineNo(o.lineNo), ts(o.ts), msg(o.msg),
       customTag(o.customTag ? std::make_unique<std::string>(*o.customTag) : nullptr),
-      ms(o.ms), tagId(o.tagId), sourceId(o.sourceId), fmt(o.fmt), level(o.level) {}
+      ms(o.ms), tagId(o.tagId), sourceId(o.sourceId), fmt(o.fmt), level(o.level),
+      inferredTime(o.inferredTime) {}
 
 LogLine& LogLine::operator=(const LogLine& o) {
     if (this == &o) return *this;
     t = o.t; lineNo = o.lineNo; ts = o.ts; msg = o.msg;
     customTag = o.customTag ? std::make_unique<std::string>(*o.customTag) : nullptr;
     ms = o.ms; tagId = o.tagId; sourceId = o.sourceId; fmt = o.fmt; level = o.level;
+    inferredTime = o.inferredTime;
     return *this;
 }
 
@@ -191,6 +194,86 @@ static bool parseSeas(const std::string& line0, LogLine& L) {
     return true;
 }
 
+static size_t skipField(const std::string& line, size_t p) {
+    while (p < line.size() && line[p] == ' ') ++p;
+    while (p < line.size() && line[p] != ' ') ++p;
+    return p;
+}
+
+// Android logcat -v threadtime：
+//   YYYY-MM-DD HH:MM:SS.mmm pid tid I TAG: msg（部分采集器补全年）
+//   MM-DD HH:MM:SS.mmm pid tid I TAG: msg（Android 原生 threadtime）
+static bool parseAndroid(const std::string& line0, LogLine& L, int yearHint) {
+    int Y=0, Mo=0, D=0, h=0, mi=0, s=0, ms=0;
+    size_t p = 0;
+    bool fullYear = line0.size() >= 24 && line0[4] == '-' && line0[7] == '-';
+    if (fullYear) {
+        if (std::sscanf(line0.c_str(), "%4d-%2d-%2d %2d:%2d:%2d.%3d",
+                        &Y,&Mo,&D,&h,&mi,&s,&ms) != 7) return false;
+        p = 23;
+    } else {
+        if (line0.size() < 19 || line0[2] != '-' || line0[5] != ' ') return false;
+        if (std::sscanf(line0.c_str(), "%2d-%2d %2d:%2d:%2d.%3d",
+                        &Mo,&D,&h,&mi,&s,&ms) != 6) return false;
+        Y = yearHint ? yearHint : 1970;
+        p = 18;
+    }
+    // pid、tid、单字母级别。
+    p = skipField(line0, p);
+    p = skipField(line0, p);
+    while (p < line0.size() && line0[p] == ' ') ++p;
+    if (p >= line0.size() || std::string("VDIWEF").find(line0[p]) == std::string::npos)
+        return false;
+    char level = line0[p++];
+    while (p < line0.size() && line0[p] == ' ') ++p;
+    size_t colon = line0.find(':', p);
+    if (colon == std::string::npos || colon == p) return false;
+    std::string outerTag = trim(line0.substr(p, colon - p));
+    p = colon + 1;
+    while (p < line0.size() && line0[p] == ' ') ++p;
+
+    char ts[32];
+    std::snprintf(ts, sizeof ts, "%04d-%02d-%02d %02d:%02d:%02d", Y,Mo,D,h,mi,s);
+    L.ts = ts; L.t = mkEpoch(Y,Mo,D,h,mi,s); L.ms = ms; L.fmt = FMT_ANDROID;
+    if      (level == 'V') L.setLevel("ALL");
+    else if (level == 'D') L.setLevel("DEBUG");
+    else if (level == 'I') L.setLevel("INFO");
+    else if (level == 'W') L.setLevel("WARNING");
+    else if (level == 'E') L.setLevel("ERROR");
+    else if (level == 'F') L.setLevel("FATAL");
+    L.setTag(outerTag);
+    splitTag(line0.substr(p), L); // 正文中的 [RECOVERY]/[INIT] 优先
+    return true;
+}
+
+// RFC3339 syslog：YYYY-MM-DDTHH:MM:SS[.mmm] host app[pid]: msg。
+static bool parseSyslog(const std::string& line0, LogLine& L) {
+    if (line0.size() < 21 || line0[4] != '-' || line0[7] != '-' || line0[10] != 'T')
+        return false;
+    int Y=0,Mo=0,D=0,h=0,mi=0,s=0,ms=-1;
+    if (std::sscanf(line0.c_str(), "%4d-%2d-%2dT%2d:%2d:%2d",
+                    &Y,&Mo,&D,&h,&mi,&s) != 6) return false;
+    size_t p = 19;
+    if (p < line0.size() && line0[p] == '.') {
+        int parsedMs = 0;
+        if (std::sscanf(line0.c_str() + p + 1, "%3d", &parsedMs) == 1) ms = parsedMs;
+        while (p < line0.size() && line0[p] != ' ') ++p;
+    }
+    while (p < line0.size() && line0[p] == ' ') ++p;
+    p = skipField(line0, p); // host
+    while (p < line0.size() && line0[p] == ' ') ++p;
+    size_t colon = line0.find(':', p);
+    if (colon == std::string::npos) return false;
+    p = colon + 1;
+    while (p < line0.size() && line0[p] == ' ') ++p;
+    char ts[32];
+    std::snprintf(ts, sizeof ts, "%04d-%02d-%02d %02d:%02d:%02d", Y,Mo,D,h,mi,s);
+    L.ts = ts; L.t = mkEpoch(Y,Mo,D,h,mi,s); L.ms = ms; L.fmt = FMT_SYSLOG;
+    L.setTag("SYSLOG");
+    splitTag(line0.substr(p), L);
+    return true;
+}
+
 // 未识别行粗分类,供审计页展示“漏在哪”
 static std::string classifyUnparsed(const std::string& s) {
     if (s.find("+++") != std::string::npos || s.compare(0, 2, "AT") == 0) return "AT 命令/响应续行";
@@ -208,6 +291,10 @@ struct StreamingLogParser::Impl {
     std::uint16_t sourceId = 0;
     bool nextIsFileStart = false;
     bool finished = false;
+    long long lastT = 0;
+    std::string lastTs;
+    int yearHint = 0;
+    std::vector<size_t> pendingConsole;
 
     Impl(std::vector<LogLine>& outRef, std::vector<std::string>& sessionRef, size_t reserveHint)
         : out(outRef), sessions(sessionRef) {
@@ -254,9 +341,28 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
 
         LogLine L;
         L.lineNo = idx + 1;
-        if (parseSd(line, L) || parseSeas(line, L)) {
+        if (parseSd(line, L) || parseAndroid(line, L, yearHint) ||
+            parseSeas(line, L) || parseSyslog(line, L)) {
             L.sourceId = sourceId;
             ad.parsed++;
+            lastT = L.t;
+            lastTs = L.ts;
+            if (L.ts.size() >= 4)
+                yearHint = (L.ts[0]-'0')*1000 + (L.ts[1]-'0')*100 +
+                           (L.ts[2]-'0')*10 + (L.ts[3]-'0');
+            // 文件开头先出现裸 printf 时，等第一条真实时间到来后再回填；只在同一来源
+            // 内回填，绝不跨文件借时间。
+            std::vector<size_t> stillPending;
+            for (size_t pos : pendingConsole) {
+                if (pos < out.size() && out[pos].sourceId == sourceId) {
+                    out[pos].t = L.t;
+                    out[pos].ts = "~" + L.ts;
+                    out[pos].inferredTime = true;
+                } else {
+                    stillPending.push_back(pos);
+                }
+            }
+            pendingConsole.swap(stillPending);
             // 进程重启横幅(每次启动恰一次,三家措辞各异,全是正常日志行):
             //   modem_mng: "Program started. Version:" / "EG25 modem_mng Version:"
             //   open_dial: "Program started. Main Version:"
@@ -302,7 +408,7 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
         // 挡不住的就老实计入未识别,由审计报出来 —— 那才是诚实的做法。
         // 跨文件防御:本行是某文件首行时,即使无时间戳也不并入上一条(那是上一个文件的),
         // 老实计入未识别,由审计报出。
-        if (!out.empty() && !atFileStart) {
+        if (!out.empty() && out.back().fmt != FMT_CONSOLE && !atFileStart) {
             const std::string& prev = out.back().msg;
             size_t e2 = prev.find_last_not_of(" \t");
             if (e2 != std::string::npos && prev[e2] == ':') {
@@ -318,6 +424,18 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
         ad.unparsedKinds[classifyUnparsed(line)]++;
         if (ad.samples.size() < ParseAudit::kMaxSamples)
             ad.samples.push_back(UnparsedLine{idx + 1, line.substr(0, 400)});
+        // 不再丢弃未识别/裸 printf：完整保留在时间线。若已有结构化时间，只能沿用
+        // 上一条并明确打 inferredTime；这不是把推定时间冒充源码事实。
+        L.lineNo = idx + 1;
+        L.sourceId = sourceId;
+        L.fmt = FMT_CONSOLE;
+        L.t = lastT;
+        L.ts = lastTs.empty() ? "(无时间戳)" : "~" + lastTs;
+        L.inferredTime = !lastTs.empty();
+        L.setTag("CONSOLE");
+        L.msg = stripAnsi(line);
+        out.push_back(std::move(L));
+        if (lastTs.empty()) pendingConsole.push_back(out.size() - 1);
 }
 
 void StreamingLogParser::Impl::finish(ParseAudit* audit) {
@@ -351,6 +469,9 @@ void StreamingLogParser::beginFile() {
     if (impl_ && !impl_->finished) {
         impl_->nextIsFileStart = true;
         if (impl_->sourceId != UINT16_MAX) ++impl_->sourceId;
+        impl_->lastT = 0;
+        impl_->lastTs.clear();
+        impl_->yearHint = 0;
     }
 }
 
@@ -413,7 +534,8 @@ bool firstTimestamp(const std::vector<std::string>& raw, long long* t, size_t sc
         }
 
         LogLine L;
-        if (parseSd(line, L) || parseSeas(line, L)) {
+        if (parseSd(line, L) || parseAndroid(line, L, 0) ||
+            parseSeas(line, L) || parseSyslog(line, L)) {
             if (t) *t = L.t;
             return true;
         }

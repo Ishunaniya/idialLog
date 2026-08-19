@@ -46,15 +46,26 @@ sim/check_coverage.sh /home/tronlong/lyp/code/rtms_sdk/apps/modem_mng
 sim/check_coverage.sh /home/tronlong/lyp/code/open_dial_for_artery
 ```
 
-做法:`git grep` 出该仓库**全部分支**的日志格式串(`dial_log(...)` / artery 的
-`SEAS_LOG_*(...)`)取并集 → 填充占位符 → 逐条生成日志 → 喂解析器,
-要求 **未识别 0** 且 **标签全认出**。
+做法：遍历仓库**全部本地/远端分支**及真实构建范围，用 C/C++ 词法扫描完整调用，
+处理跨行参数、相邻字符串、注释、`#if 0/1` 和其他条件编译；覆盖
+`dial_log`、`SEAS_LOG_*`、`LOG_*/QLOG*/ALOG*`、Android/syslog、
+`printf/perror/fprintf(stderr)` 与 C++ iostream。反向扫描还会把名字疑似输出、
+却未分类的 API 作为失败项，防止只扩充白名单而漏掉新通道。
 
-| 仓库 | 分支 | 唯一日志串 | 标签 | 结果 |
-|---|---|---|---|---|
-| `open_dial` | 7 | **130** | 23 | ✅ 未识别 0,标签全认出 |
-| `modem_mng` | 28 | **368** | 40 | ✅ 未识别 0,标签全认出 |
-| `open_dial_for_artery` | 5 | **259** | 7 | ✅ 未识别 0,标签全认出 |
+每个分支调用实例写入 `*.calls.tsv`，去重后的静态输出形态写入
+`*.manifest.tsv`，填充占位符生成日志后再与解析结果逐项对账。截至
+2026-08-20 的审计结果：
+
+| 产品代码 | 唯一输出形态 | 结构化解析 | 裸输出保留 |
+|---|---:|---:|---:|
+| `open_dial` | **431** | 151/151 | 281 行 |
+| `modem_mng` EC200A/AG35（共享实现） | **662** | 与下项合计 630/630 | 与下项合计 606 行 |
+| `modem_mng` EG25 | **570** | 与上项合计 630/630 | 与上项合计 606 行 |
+| `open_dial_for_artery` | **285** | 255/255 | 30 行 |
+
+调用实例清单分别为 `open_dial` 2903、`modem_mng` 21857、artery 1030 条；
+这是跨分支实例数，同一个源码调用在多个分支出现会分别列出。modem_mng 的标签
+合计 38 个，open_dial 21 个，artery 6 个，全部由 manifest 对账保留。
 
 分支间确有差异(实证):`open_dial` 的 `fix_cp_dump` 用 `[WARN] Status updated`,
 另两个分支用 `[INFO] Status updated`;`Registration Denied` 的 code 一处是 `%d`、
@@ -62,8 +73,10 @@ sim/check_coverage.sh /home/tronlong/lyp/code/open_dial_for_artery
 
 ### 这个校验能证明什么、不能证明什么
 
-- ✅ **格式串本身**逐字取自源码 → "源码里能打出的每一条串,工具都认得"——这条成立。
-- ⚠️ **占位符替换值是脚本选的** → 不能推出"真机日志工具都认得"。
+- ✅ **调用点与静态格式串**逐字取自源码，且 `calls.tsv` 可逐项追溯；结构化输出
+  全部解析，无法结构化的裸输出也不会再丢弃。
+- ⚠️ **占位符替换值是脚本选的**，6 个 modem、2 个 open_dial、1 个 artery
+  动态格式入口的正文也只能在运行时确定，因此不能推出“所有真机参数值均已穷举”。
   实证:真机 `"[RECOVERY L2] AT+CFUN=0 rsp: %s"` 的 `%s` 是**多行**的 `\nOK\n`,
   我原先没料到 → 续行被当未识别丢弃(由真机日志抓出,非本校验)。
   故脚本对 `rsp:`/`response:` 后的 `%s` 专门还原多行形态,但**别的 %s 仍可能有我没想到的形态**。

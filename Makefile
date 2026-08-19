@@ -241,6 +241,7 @@ perf: $(PERF_BIN)
 	$(PERF_BIN)
 
 check: $(TEST_BINS)
+	python3 tests/unit/sourceaudit_test.py
 	$(SELFTEST_BIN) samples/rtms_eg25/dial_20260630_000026.log
 	$(SIMTEST_BIN)
 	$(HOSTRUNTEST_BIN)

@@ -1,54 +1,86 @@
 #!/bin/bash
-# check_coverage.sh — 全打印覆盖校验:某仓库能打出的**每一条** dial_log 串,
-# 工具是否都能解析、标签是否都能认出。
-#
-# 这是对"是不是全部了"的**可度量**回答,不是嘴上说。
-#
-# 边界(见 gen_all_prints.py 顶部):格式串逐字取自源码(不循环);但占位符的替换值
-# 由脚本选择(有循环风险,实证:真机 "rsp: %s" 的 %s 是多行的,曾被猜漏)。
-# 故本校验能证明"源码里的串工具都认得",**不能**证明"真机日志工具都认得"。
-#
-# 用法: sim/check_coverage.sh <repo路径> [<out.log>]
-set -u
+# 四产品全打印覆盖：完整源码调用清单 ↔ 生成夹具 ↔ 解析结果三方对账。
+set -eu
 REPO="${1:?用法: sim/check_coverage.sh <repo路径> [out.log]}"
 NAME=$(basename "$REPO")
 OUT="${2:-samples/sim/${NAME}_all_prints.log}"
-TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+MANIFEST="${OUT}.manifest.tsv"
+CALLS_MANIFEST="${OUT}.calls.tsv"
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
 
 SELFTEST="build/tests/unit/selftest"
-test -x "$SELFTEST" || make selftest >/dev/null 2>&1 || { echo "selftest 构建失败"; exit 1; }
+test -x "$SELFTEST" || make selftest >/dev/null
 
-echo "════ 全打印覆盖校验: $NAME ════"
-python3 sim/gen_all_prints.py "$REPO" "$OUT" | sed 's/^/  /'
+echo "════ 全打印调用点覆盖校验: $NAME ════"
+python3 sim/gen_all_prints.py "$REPO" "$OUT" --manifest "$MANIFEST" \
+    --calls-manifest "$CALLS_MANIFEST" | sed 's/^/  /'
 echo
 
-OUTPUT=$("$SELFTEST" "$OUT" 2>&1) || { echo "❌ selftest 执行失败"; exit 1; }
+CALLS=$(($(wc -l < "$CALLS_MANIFEST") - 1))
+if [ "$CALLS" -le 0 ]; then
+    echo "  ❌ 逐调用点清单为空"
+    exit 1
+fi
+echo "  ✅ $CALLS 个分支调用实例逐项落入 calls.tsv"
 
-# 1) 未识别必须为 0
-UNP=$(echo "$OUTPUT" | grep -oE '未识别:[0-9]+' | head -1 | tr -dc '0-9')
+UNCLASSIFIED=$(awk -F '\t' 'NR>1 && $2=="unclassified" {n++} END {print n+0}' "$MANIFEST")
+if [ "$UNCLASSIFIED" != "0" ]; then
+    echo "  ❌ 发现 $UNCLASSIFIED 个疑似输出 API 尚未分类:"
+    awk -F '\t' 'NR>1 && $2=="unclassified" {print "     "$5":"$6":"$7" "$3}' "$MANIFEST"
+    exit 1
+fi
+
+OUTPUT=$("$SELFTEST" "$OUT" 2>&1) || {
+    echo "❌ selftest 执行失败"
+    echo "$OUTPUT"
+    exit 1
+}
 echo "$OUTPUT" | grep -E '自洽校验' | sed 's/^/  /'
-if [ "${UNP:-1}" != "0" ]; then
-    echo "  ❌ 有 $UNP 条源码日志串解析不了 —— 真漏了"
-    echo "$OUTPUT" | grep -A5 '未识别分类' | sed 's/^/     /'
+
+STRUCTURED=$(awk -F '\t' 'NR>1 && $2!="console" {n++} END {print n+0}' "$MANIFEST")
+PARSED=$(echo "$OUTPUT" | sed -n '/== 未识别行审计 ==/{n;p;}' |
+    grep -oE '已解析:[0-9]+' | tr -dc '0-9')
+if [ "$PARSED" != "$STRUCTURED" ]; then
+    echo "  ❌ 结构化输出对账失败:源码 $STRUCTURED 种,解析器认出 ${PARSED:-0} 种"
     exit 1
 fi
-echo "  ✅ 未识别 0 —— 源码里的每一条串都能解析"
+echo "  ✅ 结构化输出 $STRUCTURED/$STRUCTURED 全部解析"
 
-# 2) 标签必须全认出
-git -C "$REPO" for-each-ref --format='%(refname:short)' refs/heads refs/remotes 2>/dev/null \
-  | grep -v HEAD | while read -r br; do
-      git -C "$REPO" grep -ohE '(dial_log|SEAS_LOG_[A-Z]+)[[:space:]]*\("\[[A-Za-z0-9_ ]+\]' "$br" 2>/dev/null
-    done | sed -E 's/^.*\("\[//; s/\]$//' | sort -u > "$TMP/src.txt"
+# 裸 printf/iostream 没有真实时间戳，不能伪造成结构化日志；但每一行都保留。
+UNPARSED=$(echo "$OUTPUT" | sed -n '/== 未识别行审计 ==/{n;p;}' |
+    grep -oE '未识别:[0-9]+' | tr -dc '0-9')
+CONSOLE_RETAINED=$(echo "$OUTPUT" | sed -n '/== 标签 ==/,/== 关键事件/p' |
+    awk '$1=="CONSOLE" {print $2}')
+if [ "${CONSOLE_RETAINED:-0}" != "${UNPARSED:-0}" ]; then
+    echo "  ❌ 裸输出保留对账失败:未识别 ${UNPARSED:-0},CONSOLE 保留 ${CONSOLE_RETAINED:-0}"
+    exit 1
+fi
+echo "  ✅ 裸输出 ${CONSOLE_RETAINED:-0} 行全部保留（时间推定有显式标记）"
 
-echo "$OUTPUT" | sed -n '/== 标签 ==/,/== 关键事件/p' | grep -E '^  \S' \
-  | sed -E 's/[[:space:]]+[0-9]+[[:space:]]*$//; s/^  //' | grep -v '^(无标签)' | sort -u > "$TMP/tool.txt"
-
+# 标签从完整 manifest 提取，不再用会漏跨行/误算注释的 git-grep 正则。
+python3 -c '
+import csv,re,sys
+tags=set()
+with open(sys.argv[1], encoding="utf-8") as f:
+    for row in csv.DictReader(f, delimiter="\t"):
+        if row["channel"] not in ("sd","seas","android","syslog"): continue
+        m=re.match(r"\[([A-Za-z][A-Za-z0-9_ ]*)\]", row["format"])
+        if m: tags.add(m.group(1).strip())
+print("\n".join(sorted(tags)))
+' "$MANIFEST" > "$TMP/src.txt"
+echo "$OUTPUT" | sed -n '/== 标签 ==/,/== 关键事件/p' |
+    sed -nE 's/^[[:space:]]+(.+)[[:space:]]+[0-9]+[[:space:]]*$/\1/p' |
+    sed -E 's/[[:space:]]+$//' |
+    grep -v -E '^\(无标签\)$' | sort -u > "$TMP/tool.txt"
 MISS=$(comm -23 "$TMP/src.txt" "$TMP/tool.txt")
-echo "  源码标签 $(wc -l < "$TMP/src.txt") 个 / 工具认出 $(wc -l < "$TMP/tool.txt") 个"
 if [ -n "$MISS" ]; then
-    echo "  ❌ 以下标签工具认不出:"; echo "$MISS" | sed 's/^/     /'
+    echo "  ❌ 以下源码标签未被保留:"
+    echo "$MISS" | sed 's/^/     /'
     exit 1
 fi
-echo "  ✅ 标签全部认出,无遗漏"
-echo
-echo "════ $NAME 覆盖校验通过 ════"
+echo "  ✅ 源码标签 $(wc -l < "$TMP/src.txt") 个全部保留"
+
+DYNAMIC=$(awk -F '\t' 'NR>1 && $4==1 {n++} END {print n+0}' "$MANIFEST")
+echo "  ℹ 动态格式入口 $DYNAMIC 个已逐调用点列入 manifest；运行时正文由通道包络保留"
+echo "════ $NAME 全打印覆盖校验通过 ════"

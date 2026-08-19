@@ -117,7 +117,7 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # x64: build/x64/dialLog_v1.10.11.exe
+make                     # x64: build/x64/dialLog_v1.10.12.exe
 make windows-all         # 同时构建 build/x64 与 build/x86
 make release             # 正式 x64 产物复制到仓库根目录
 make version             # 只打印当前版本号
@@ -134,7 +134,7 @@ mingw32-make CROSS=
 ### 32 位
 
 ```bash
-make windows-x86         # build/x86/dialLog_v1.10.11.exe
+make windows-x86         # build/x86/dialLog_v1.10.12.exe
 ```
 
 `CROSS` 同时派生 `CC/CXX/WINDRES`;每种工具链使用独立构建目录,连续切换架构
@@ -207,10 +207,24 @@ gzip 会校验头部边界、ISIZE 与 CRC32；损坏包会明确报错,不会�
   仅源码推断,未在真实日志上观察到。
 
 ### 覆盖率的说法只信审计,不信断言
-本工具**不声称**“覆盖了全部真机日志形态”。截至 2026-08-18，全分支源码并集已穷举：
-modem_mng 368 条唯一日志串/40 个标签，open_dial 130/23，artery 259/7，均未识别 0。
-但占位符由脚本填充，穷举证明不了运行时参数不会出现新形态。
-真实覆盖率以**“未识别行”页 + 状态栏占比**为准——那是实测,不是断言。
+
+截至 2026-08-20，审计器会遍历三个仓库的全部本地/远端分支，按真实构建范围解析
+跨行调用、相邻字符串、条件编译和 C/C++ 输出入口；每个调用实例写入 `calls.tsv`，
+去重后的输出形态写入 `manifest.tsv`。四份产品的源码输出形态为：
+
+| 产品代码 | 唯一输出形态 |
+|---|---:|
+| open_dial | 431 |
+| modem_mng EC200A/AG35（共享实现） | 662 |
+| modem_mng EG25 | 570 |
+| open_dial_for_artery | 285 |
+| **合计** | **1948** |
+
+其中带时间/通道包络的结构化输出必须全部解析；裸 `printf`、`perror`、`iostream`
+没有可靠时间戳，解析器会逐行原样保留为 `CONSOLE`，若借用前一条时间会用 `~` 明示。
+少数运行时格式串入口也会逐调用点列出，但静态穷举不能证明 `%s` 等运行时参数不会出现
+新内容。因此这里声称的是“源码调用点与静态输出形态无遗漏”，不是“所有真机参数值可预知”；
+真实设备仍以**“未识别行”页 + 状态栏占比**审计。
 
 ## 版本
 
@@ -218,9 +232,9 @@ modem_mng 368 条唯一日志串/40 个标签，open_dial 130/23，artery 259/7�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.10.11.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.10.12.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.10.11 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.10.12 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 只清理 `build/`；测试程序也位于 `build/tests/`，不会污染根目录或误删已提交的发布 exe。
@@ -246,6 +260,7 @@ modem_mng 368 条唯一日志串/40 个标签，open_dial 130/23，artery 259/7�
 | 1.10.9 | 修复 CSV 完整时间戳在 Excel 中显示为井号和信号图标题重叠;补齐 `+QENG servingcell` 的 Cell ID/PCI/TAC 解析;诊断报告新增日志起止时间 |
 | 1.10.10 | 完善小区 ID 展示;统一 CSQ/RSRP/RSRQ/SNR 的 LTE 工程参考分档与阈值线;原始日志、事件时间线和信号指标新增全页/分屏浏览、可拖动详情及完整复制交互 |
 | 1.10.11 | 跟进四产品首次初始化 SIM 诊断;区分明确网络拒绝、受限服务、疑似订阅异常与 CEREG 查询失败，并纳入断网根因证据 |
+| 1.10.12 | 穷举四产品全部输出入口（含跨行、条件分支、printf/LOG/QLOG/iostream）；Android/syslog 结构化解析，裸控制台输出逐行保留且推定时间显式标记 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞 1.2MB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

@@ -171,8 +171,8 @@ MUTATIONS = [
      'std::memcmp(d.data() + 257, "ustaX", 5) == 0;'),
     # ── 跨文件续行防御 / 时钟跳变检测 —— boundarytest 靶子 ──
     ('跨文件续行防御失效(atFileStart 恒 false)',
-     'if (!out.empty() && !atFileStart) {',
-     'if (!out.empty() && !false) {'),
+     'if (!out.empty() && out.back().fmt != FMT_CONSOLE && !atFileStart) {',
+     'if (!out.empty() && out.back().fmt != FMT_CONSOLE && !false) {'),
     ('时钟跳变阈值错(2000边界退回0)',
      'bool prevUnsynced = prevT < 946598400LL;   // <2000-01-01(与 timeBaseOf 同阈值)',
      'bool prevUnsynced = prevT < 0LL;   // <2000-01-01(与 timeBaseOf 同阈值)'),

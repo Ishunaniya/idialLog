@@ -13,7 +13,9 @@
 namespace dl {
 
 // 行格式
-enum Fmt : unsigned char { FMT_UNKNOWN = 0, FMT_SD, FMT_SEAS };
+enum Fmt : unsigned char {
+    FMT_UNKNOWN = 0, FMT_SD, FMT_SEAS, FMT_ANDROID, FMT_SYSLOG, FMT_CONSOLE
+};
 
 // seas_log 级别来自固定枚举,不必让每一行都常驻一个 32B std::string。
 enum LogLevel : unsigned char {
@@ -40,11 +42,12 @@ struct LogLine {
     // 常见标签存字典 ID；只有未知/新标签才分配字符串。不会使用进程级永久池，关闭日志
     // 后自定义标签照常释放。func/srcfile/srcline 解析后从未被消费,不再逐行保存。
     std::unique_ptr<std::string> customTag;
-    int  ms = -1;           // 毫秒;仅 FMT_SEAS 有,-1=无
+    int  ms = -1;           // 毫秒;SEAS/Android/syslog 可有,-1=无
     std::uint16_t tagId = 0;
     std::uint16_t sourceId = 0; // 合并来源编号；防止 Cell ID 等状态跨文件串联
     Fmt  fmt = FMT_UNKNOWN;
     LogLevel level = LEVEL_NONE;
+    bool inferredTime = false; // 裸控制台无时间戳：沿用上一条时间时明确标记
 
     LogLine() = default;
     ~LogLine() = default;
