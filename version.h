@@ -48,11 +48,14 @@
 //           区分日志打开与进程启动；精确判断 EG25 恢复门控；新增 NUL/RX/QENG 边界审计；
 //           同一日志内 1970→墙钟跳变处分段观测，禁止跨时基配对断网；
 //           接入 artery 标准化 Network outage started/recovered 事件
+//   1.11.0  加入 modem_mng_v2：解析 BusyBox RFC3164 syslog 与 stderr 调试镜像；
+//           动态识别 EC200A/EG25，提取 v2 CSQ/注册/联网状态并诊断 SIM、注册和 ping 故障；
+//           源码输出审计扩为五产品，RFC3164 缺失年份以 ~ 明示推定
 #pragma once
 
 #define DL_VER_MAJOR 1
-#define DL_VER_MINOR 10
-#define DL_VER_PATCH 13
+#define DL_VER_MINOR 11
+#define DL_VER_PATCH 0
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

@@ -71,6 +71,106 @@ std::map<std::string, std::string> hbFields(const std::string& msg) {
 }
 
 // ============================ 平台识别 ============================
+// modem_mng_v2 不再使用旧 modem_mng 的 HEARTBEAT/恢复阶梯语义。下列
+// 特征均是 v2 源码中的固定原文；既支持 parser 识别出的应用标签，也支持
+// 裁剪后只剩正文的控制台日志。
+static bool isModemMngV2Envelope(const LogLine& line) {
+    if (line.tagText() == "MODEM_MNG_V2") return true;
+    const std::string& msg = line.msg;
+    return msg.find("===== modem_mng_v2 start =====") != std::string::npos ||
+           (msg.find("status update: phase=") != std::string::npos &&
+            msg.find(" tty=") != std::string::npos && msg.find(" online=") != std::string::npos &&
+            msg.find(" csq=") != std::string::npos && msg.find(" reg=") != std::string::npos) ||
+           (msg.find("phase: ") != std::string::npos && msg.find(" -> ") != std::string::npos &&
+            msg.find(" tty=") != std::string::npos && msg.find(" module=") != std::string::npos) ||
+           (msg.find("Found AT port: ") != std::string::npos &&
+            msg.find("(module=") != std::string::npos) ||
+           (msg.find("Module detected: ") != std::string::npos &&
+            msg.find("(type=") != std::string::npos) ||
+           msg.find("===== modem READY =====") != std::string::npos;
+}
+
+static const char* modemMngV2Module(const LogLine& line) {
+    const std::string& msg = line.msg;
+    const bool carriesModule =
+        msg.find("Module detected: ") != std::string::npos ||
+        (msg.find("Found AT port: ") != std::string::npos && msg.find("(module=") != std::string::npos) ||
+        msg.find("===== modem READY =====") != std::string::npos ||
+        (msg.find("phase: ") != std::string::npos && msg.find(" module=") != std::string::npos);
+    if (!carriesModule) return nullptr;
+    if (msg.find("EC200A") != std::string::npos) return "EC200A";
+    if (msg.find("EG25") != std::string::npos) return "EG25";
+    return nullptr;
+}
+
+// 只将状态转换和故障动作纳入时间线。READY 的周期 CSQ/CEREG 采样进
+// 指标/结论引擎，不在这里全量保留，避免长日志的时间线被轮询噪声淹没。
+static bool isModemMngV2Event(const LogLine& line) {
+    const std::string& msg = line.msg;
+    return msg.find("===== modem_mng_v2 start =====") != std::string::npos ||
+           msg.find("status update: phase=") != std::string::npos ||
+           (msg.find("phase: ") != std::string::npos && msg.find(" -> ") != std::string::npos &&
+            msg.find(" tty=") != std::string::npos) ||
+           msg.find("Module detected: ") != std::string::npos ||
+           msg.find("Found AT port: ") != std::string::npos ||
+           msg.find("SIM not inserted (CME ") != std::string::npos ||
+           msg.find("sim ok") != std::string::npos ||
+           msg.find("===== modem READY =====") != std::string::npos ||
+           msg.find("already online (ping OK), skip dial -> READY monitor") != std::string::npos ||
+           msg.find("WAN ping OK -> network_online=1") != std::string::npos ||
+           msg.find("WAN ping fail -> network_online=0") != std::string::npos ||
+           (msg.find("ping failed ") != std::string::npos &&
+            msg.find(" times, reinit modem!") != std::string::npos) ||
+           msg.find("No registered so long, reset modem") != std::string::npos ||
+           msg.find("modem err in reading, reset modem") != std::string::npos ||
+           msg.find("soft-reset module AT+CFUN=1,1") != std::string::npos ||
+           msg.find("failed to in ready state") != std::string::npos;
+}
+
+static bool isModemMngV2Failure(const LogLine& line) {
+    const std::string& msg = line.msg;
+    const bool structuredFailure = line.tagText() == "MODEM_MNG_V2" &&
+        (line.level == LEVEL_ERROR || line.level == LEVEL_WARNING ||
+         line.level == LEVEL_FATAL || line.level == LEVEL_CRITICAL);
+    return structuredFailure ||
+           msg.find("modem init failed, phase ") != std::string::npos ||
+           msg.find("CSQ query failed (sim_present=") != std::string::npos ||
+           msg.find("ping failed (") != std::string::npos ||
+           (msg.find("ping failed ") != std::string::npos &&
+            msg.find(" times, reinit modem!") != std::string::npos) ||
+           msg.find("No registered so long, reset modem") != std::string::npos ||
+           msg.find("modem err in reading, reset modem") != std::string::npos ||
+           msg.find("failed to registered. Reset modem") != std::string::npos ||
+           msg.find("failed to detect SIM card. Reset modem") != std::string::npos ||
+           msg.find("usbnet still mode=") != std::string::npos ||
+           msg.find("CHECK_USBNET retries exhausted") != std::string::npos;
+}
+
+// 正式 parser 为保留 syslog 应用身份会把 v2 正文开头的 [where] 留在 msg；
+// 核心单元测试/旧调用者也可能直接提供已经拆掉 where 的正文。两种表示都
+// 只接受完整固定文本，避免普通的 "ping fail" 消息误触发断网统计。
+static bool v2BodyEquals(const std::string& message, const char* expected) {
+    if (message == expected) return true;
+    if (message.empty() || message.front() != '[') return false;
+    const size_t close = message.find("] ");
+    return close != std::string::npos && message.compare(close + 2, std::string::npos, expected) == 0;
+}
+
+static bool isModemMngV2WanDown(const LogLine& line) {
+    return line.tagText() == "MODEM_MNG_V2" &&
+           v2BodyEquals(line.msg, "WAN ping fail -> network_online=0");
+}
+
+static bool isModemMngV2WanUp(const LogLine& line) {
+    return line.tagText() == "MODEM_MNG_V2" &&
+           v2BodyEquals(line.msg, "WAN ping OK -> network_online=1");
+}
+
+static bool isModemMngV2Start(const LogLine& line) {
+    return line.tagText() == "MODEM_MNG_V2" &&
+           v2BodyEquals(line.msg, "===== modem_mng_v2 start =====");
+}
+
 // 全部基于源码实证的判别特征:
 //  artery : 行格式为 seas_log(FMT_SEAS)                        seas_log.c:210
 //  AG35   : 心跳含 "SLOT:" 或出现 [SLOT] 标签
@@ -90,8 +190,19 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
     const LogLine* ag35Ev = nullptr;
     const LogLine* ec200Ev = nullptr;
     const LogLine* eg25Ev = nullptr;
+    const LogLine* v2Ev = nullptr;
+    const LogLine* v2ModuleEv = nullptr;
+    const char* v2Module = nullptr;
 
     for (const auto& l : lines) {
+        if (!v2Ev && isModemMngV2Envelope(l)) v2Ev = &l;
+        if (const char* module = modemMngV2Module(l)) {
+            // 明确的模组检测行比启动时的 UNKNOWN 提示更有证据力。
+            if (!v2ModuleEv || l.msg.find("Module detected: ") != std::string::npos) {
+                v2ModuleEv = &l;
+                v2Module = module;
+            }
+        }
         if (l.fmt == FMT_SEAS) { seas++; if (!seasEv) seasEv = &l; }
         if (!ag35Ev && (l.tagText() == "SLOT" || l.msg.find("SLOT:") != std::string::npos)) ag35Ev = &l;
         if (!ec200Ev && l.msg.find("SIM_AT:") != std::string::npos &&
@@ -108,7 +219,17 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
         else   { pi.evidence = why; }
     };
 
-    if (seas > 0)      set(PLAT_ARTERY, "artery (open_dial_for_artery, seas_log)", seasEv, "行格式为 seas_log(时间带毫秒+级别+函数名)");
+    if (v2Ev || v2ModuleEv) {
+        const LogLine* evidence = v2ModuleEv ? v2ModuleEv : v2Ev;
+        pi.plat = PLAT_MODEM_MNG_V2;
+        pi.name = std::string("modem_mng_v2") +
+                  (v2Module ? " (" + std::string(v2Module) + ")" : " (模组待识别)");
+        pi.evidenceLine = evidence ? evidence->lineNo : 0;
+        pi.evidence = std::string(v2Module ? "v2 原文明确给出模组:  " :
+                                             "出现 modem_mng_v2 固定启动/状态机特征:  ") +
+                      (evidence ? evidence->msg.substr(0, 90) : "");
+    }
+    else if (seas > 0) set(PLAT_ARTERY, "artery (open_dial_for_artery, seas_log)", seasEv, "行格式为 seas_log(时间带毫秒+级别+函数名)");
     else if (ag35Ev)   set(PLAT_AG35,   "AG35 (modem_mng, 双卡)",                  ag35Ev, "出现 AG35 专有的 SLOT 切卡痕迹");
     else if (eg25Ev)   set(PLAT_EG25,   "EG25 (modem_mng)",                        eg25Ev, "出现 EG25 专有的 ROAMLINK/CH 通道字段");
     else if (ec200Ev)  set(PLAT_EC200A, "EC200A (modem_mng 或 open_dial 上游)",    ec200Ev, "心跳为 SIM_AT/SIM_CB 格式且无 SLOT");
@@ -192,6 +313,11 @@ bool isErrTag(const std::string& tag) { return inList(kErrTags, tag); }
 // 级别取值见 seas_log.h:66-121:[ALL]/[DEBUG]/[INFO]/[NOTICE]/[WARNING]/[ERROR]/[FATAL]
 bool isErrLine(const LogLine& l) {
     if (isErrTag(l.tagText())) return true;
+    if (isModemMngV2Failure(l)) return true;
+    if (l.tagText() == "MODEM_MNG_V2" || l.fmt == FMT_CONSOLE) {
+        return l.level == LEVEL_ERROR || l.level == LEVEL_WARNING ||
+               l.level == LEVEL_FATAL || l.level == LEVEL_CRITICAL;
+    }
     if (l.fmt == FMT_SEAS) {
         return l.level == LEVEL_ERROR || l.level == LEVEL_WARNING ||
                l.level == LEVEL_FATAL || l.level == LEVEL_CRITICAL;
@@ -202,9 +328,10 @@ bool isErrLine(const LogLine& l) {
 // 时间线保留:事件类标签,或 seas 的报错行(artery 大量日志无内嵌标签,
 // 只按标签过滤会让 artery 的时间线几乎全空)
 bool isEventLine(const LogLine& l) {
+    if (isModemMngV2Event(l) || isModemMngV2Failure(l)) return true;
     if (isEventTag(l.tagText())) return true;
+    if (isErrLine(l)) return true;
     if (l.fmt == FMT_SEAS) {
-        if (isErrLine(l)) return true;
         return l.level == LEVEL_NOTICE;
     }
     return false;
@@ -227,8 +354,59 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
     long long start = 0;
     size_t startLine = 0;
     std::uint16_t source = 0;
+    struct V2Open {
+        long long start = 0;
+        size_t line = 0;
+    };
+    std::map<std::uint16_t, V2Open> v2Open;
+    std::map<std::uint16_t, bool> v2SeenOnline;
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
+        const bool usableV2Clock = l.fmt == FMT_SYSLOG && l.t > 0;
+
+        // v2 的 WAN 状态日志是状态边沿，而非旧产品的 fault timer/recovery
+        // 自报时长。每个 source 必须先观察到一次 OK，避免把未插卡/启动拨号
+        // 阶段的 fail 算作“从在线掉线”；之后保存第一个 down，重复 down 只是
+        // 轮询，不能重置起点。只接受 FMT_SYSLOG：RFC3164 虽缺年份，月日时分秒
+        // 仍可用于同文件差值；console 即使借到上一条 t 也不是该行采样时刻，必须排除。
+        // 精确的 v2 启动横幅即使来自无时钟 stderr，也能证明旧进程状态已经失效。
+        // 它只作为状态屏障，不为 outage 提供恢复时间或时长。
+        if (isModemMngV2Start(l)) {
+            auto stale = v2Open.find(l.sourceId);
+            if (stale != v2Open.end()) {
+                Outage outage;
+                outage.start = stale->second.start;
+                outage.startLine = stale->second.line;
+                outage.recovered = false;
+                outs.push_back(outage);
+                v2Open.erase(stale);
+            }
+            v2SeenOnline[l.sourceId] = false;
+        }
+        if (usableV2Clock && isModemMngV2WanUp(l)) {
+            auto down = v2Open.find(l.sourceId);
+            if (down != v2Open.end()) {
+                const long long duration = l.t - down->second.start;
+                if (l.t > 0 && duration >= 0 && duration <= INT_MAX &&
+                    !crossesClockBase(down->second.start, l.t)) {
+                    Outage outage;
+                    outage.start = down->second.start;
+                    outage.startLine = down->second.line;
+                    outage.end = l.t;
+                    outage.endLine = l.lineNo;
+                    outage.dur = static_cast<int>(duration);
+                    outage.recovered = true;
+                    outs.push_back(outage);
+                }
+                // 即使时钟无效，这条 up 也终止该状态周期；不能拿旧 down 与
+                // 更晚的另一次 up 勉强配出一个看似合理的时长。
+                v2Open.erase(down);
+            }
+            v2SeenOnline[l.sourceId] = true;
+        } else if (usableV2Clock && isModemMngV2WanDown(l) && v2SeenOnline[l.sourceId]) {
+            v2Open.emplace(l.sourceId, V2Open{l.t, l.lineNo});
+        }
+
         if (have && l.sourceId != source) {
             Outage o; o.start = start; o.startLine = startLine; o.recovered = false;
             outs.push_back(o);
@@ -274,6 +452,17 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
         Outage o; o.start = start; o.startLine = startLine; o.recovered = false;
         outs.push_back(o);
     }
+    for (const auto& entry : v2Open) {
+        Outage outage;
+        outage.start = entry.second.start;
+        outage.startLine = entry.second.line;
+        outage.recovered = false;
+        outs.push_back(outage);
+    }
+    std::stable_sort(outs.begin(), outs.end(),
+                     [](const Outage& a, const Outage& b) {
+                         return a.startLine < b.startLine;
+                     });
     return outs;
 }
 
@@ -490,6 +679,122 @@ static bool parseUnsignedField(std::string_view value, unsigned base, std::uint3
     return true;
 }
 
+static std::string_view modemMngV2Payload(const std::string& message) {
+    std::string_view payload(message);
+    if (!payload.empty() && payload.front() == '[') {
+        const size_t close = payload.find("] ");
+        if (close != std::string_view::npos) payload.remove_prefix(close + 2);
+    }
+    return payload;
+}
+
+static bool consumeV2Literal(std::string_view text, size_t& pos, std::string_view literal) {
+    if (pos > text.size() || text.substr(pos, literal.size()) != literal) return false;
+    pos += literal.size();
+    return true;
+}
+
+static bool consumeV2Integer(std::string_view text, size_t& pos, long long& value) {
+    const size_t first = pos;
+    if (pos < text.size() && (text[pos] == '-' || text[pos] == '+')) ++pos;
+    const size_t digits = pos;
+    while (pos < text.size() && text[pos] >= '0' && text[pos] <= '9') ++pos;
+    return pos > digits && parseLong(text.substr(first, pos - first), value, true);
+}
+
+// log_info("[%s] CSQ: %d (sim_present=%d online=%d)", ...)。严格消费整行，
+// 防止旧 HEARTBEAT 中同名 CSQ 字段或普通应用文本被重复生成指标。0..99
+// 保留原始值供审计；AT+CSQ 只有 0..31 有效，99/32..98 都不得进入 csqVal。
+static bool parseModemMngV2Csq(const std::string& message, int& csq) {
+    const std::string_view text = modemMngV2Payload(message);
+    size_t pos = 0;
+    long long parsedCsq = 0, simPresent = 0, online = 0;
+    if (!consumeV2Literal(text, pos, "CSQ: ") ||
+        !consumeV2Integer(text, pos, parsedCsq) ||
+        !consumeV2Literal(text, pos, " (sim_present=") ||
+        !consumeV2Integer(text, pos, simPresent) ||
+        !consumeV2Literal(text, pos, " online=") ||
+        !consumeV2Integer(text, pos, online) ||
+        !consumeV2Literal(text, pos, ")") || pos != text.size()) return false;
+    if (parsedCsq < 0 || parsedCsq > 99 || (simPresent != 0 && simPresent != 1) ||
+        (online != 0 && online != 1)) return false;
+    csq = static_cast<int>(parsedCsq);
+    return true;
+}
+
+struct ModemMngV2Registration {
+    std::string cell;
+    std::string rat;
+    std::uint32_t tac = UINT32_MAX;
+    std::uint8_t tacDigits = 0;
+};
+
+static const char* modemMngV2Rat(int act) {
+    // Quectel +CEREG/+CGREG 的 AcT 枚举。只映射语义稳定的制式；未知扩展值
+    // 留空，避免把厂商未来新增枚举套成错误的 LTE 工程阈值。
+    switch (act) {
+        case 0: return "GSM";
+        case 1: return "GSM Compact";
+        case 2: return "UMTS";
+        case 3: return "EDGE";
+        case 4: return "HSDPA";
+        case 5: return "HSUPA";
+        case 6: return "HSPA";
+        case 7: return "LTE";
+        case 8: return "EC-GSM-IoT";
+        case 9: return "NB-IoT";
+        default: return "";
+    }
+}
+
+// log_info("CEREG stat=%d lac=%s ci=%s act=%d", ...) / CGREG 同形态。
+// 只有 stat=1/5 的已注册结果才继承 Cell；未注册结果会清空旧状态。
+static bool updateModemMngV2Registration(const std::string& message,
+                                         ModemMngV2Registration& state) {
+    const std::string_view text = modemMngV2Payload(message);
+    const bool cereg = text.compare(0, 11, "CEREG stat=") == 0;
+    const bool cgreg = text.compare(0, 11, "CGREG stat=") == 0;
+    if (!cereg && !cgreg) return false;
+    size_t pos = 11;
+    long long stat = 0, act = 0;
+    if (!consumeV2Integer(text, pos, stat) || !consumeV2Literal(text, pos, " lac=")) return false;
+    const size_t lacFirst = pos;
+    const size_t ciMarker = text.find(" ci=", lacFirst);
+    if (ciMarker == std::string_view::npos) return false;
+    const std::string_view lac = text.substr(lacFirst, ciMarker - lacFirst);
+    pos = ciMarker;
+    if (!consumeV2Literal(text, pos, " ci=")) return false;
+    const size_t ciFirst = pos;
+    const size_t actMarker = text.find(" act=", ciFirst);
+    if (actMarker == std::string_view::npos) return false;
+    const std::string_view ci = text.substr(ciFirst, actMarker - ciFirst);
+    pos = actMarker;
+    if (!consumeV2Literal(text, pos, " act=") ||
+        !consumeV2Integer(text, pos, act) || pos != text.size() ||
+        stat < 0 || stat > INT_MAX || act < -1 || act > INT_MAX) return false;
+
+    state.cell.clear();
+    state.rat.clear();
+    state.tac = UINT32_MAX;
+    state.tacDigits = 0;
+    if (stat != 1 && stat != 5) return true;
+    if (act < 0) return true;
+    state.rat = modemMngV2Rat(static_cast<int>(act));
+    if (state.rat.empty()) return true;
+    if (usableCell(ci)) state.cell.assign(ci.data(), ci.size());
+    // CEREG 的 lac 字段是 LTE/EPS TAC；CGREG 在非 LTE 制式下是 LAC，不能
+    // 冒充 MetricRow::tac。只有已注册且 AcT 已知时才继承，避免错配制式。
+    std::uint32_t tac = 0;
+    if (cereg && parseUnsignedField(lac, 16, tac)) {
+        state.tac = tac;
+        std::string_view digits = trimView(lac);
+        if (digits.size() > 2 && digits[0] == '0' && (digits[1] == 'x' || digits[1] == 'X'))
+            digits.remove_prefix(2);
+        state.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(digits.size(), 8));
+    }
+    return true;
+}
+
 struct CellState {
     std::string id;
     int pci = -1;
@@ -611,9 +916,31 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
     CellState currentCell;
     std::uint16_t currentSource = 0;
     bool haveSource = false;
+    std::map<std::uint16_t, ModemMngV2Registration> v2Registration;
 
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
+        ModemMngV2Registration& registration = v2Registration[l.sourceId];
+        if (l.msg.find("===== modem_mng_v2 start =====") != std::string::npos)
+            registration = ModemMngV2Registration{};
+        updateModemMngV2Registration(l.msg, registration);
+        int v2Csq = -1;
+        if (parseModemMngV2Csq(l.msg, v2Csq)) {
+            MetricRow metric;
+            metric.t = l.t;
+            metric.lineNo = l.lineNo;
+            metric.ch = "MODEM_V2";
+            metric.rat = registration.rat;
+            if (!registration.cell.empty()) metric.cellId.assign(registration.cell);
+            if (registration.tac != UINT32_MAX) {
+                metric.tac = registration.tac;
+                metric.tacDigits = registration.tacDigits;
+            }
+            metric.csqRaw = v2Csq;
+            if (v2Csq >= 0 && v2Csq <= 31) metric.csqVal = v2Csq;
+            rows.push_back(std::move(metric));
+            continue;
+        }
         if (haveSource && l.sourceId != currentSource) {
             currentCell.clear();
             haveLastRx = false;
@@ -1066,12 +1393,15 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
 {
     std::vector<Finding> fs;
     if (lines.empty()) return fs;
+    const bool v2Platform = pi.plat == PLAT_MODEM_MNG_V2;
 
     // ---- 预扫:各类特征行(全部留证据指针)----
     std::vector<const LogLine*> evNeverConn, evPolicy, evRecL1, evRecL2, evRecL3,
                                 evDenied, evLimited, evSuspectedAccount, evRegQueryFail,
                                 evRegistrationIssue, evCpdump, evSlot, evOper, evCfun,
-                                evNotReady, evOrphanRecovery, evImpossibleRecovery;
+                                evNotReady, evOrphanRecovery, evImpossibleRecovery,
+                                evV2NoSim, evV2LongUnregistered, evV2PingReinit,
+                                evV2ReadyOffline, evV2ReadyFailed;
     std::map<std::uint16_t, std::pair<long long, long long>> sourceBounds;
     std::map<std::uint16_t, bool> faultOpen;
     std::map<std::uint16_t, long long> faultStartTime;
@@ -1085,6 +1415,21 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     }
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
+        if (v2Platform) {
+            if (l.msg.find("SIM not inserted (CME ") != std::string::npos)
+                evV2NoSim.push_back(&l);
+            if (l.msg.find("No registered so long, reset modem") != std::string::npos ||
+                l.msg.find("failed to registered. Reset modem") != std::string::npos)
+                evV2LongUnregistered.push_back(&l);
+            if (l.msg.find("ping failed ") != std::string::npos &&
+                l.msg.find(" times, reinit modem!") != std::string::npos)
+                evV2PingReinit.push_back(&l);
+            if (l.msg.find("===== modem READY =====") != std::string::npos &&
+                l.msg.find(" online=0") != std::string::npos)
+                evV2ReadyOffline.push_back(&l);
+            if (l.msg.find("failed to in ready state") != std::string::npos)
+                evV2ReadyFailed.push_back(&l);
+        }
         if (isFaultStart(l.msg)) {
             faultOpen[l.sourceId] = true;
             faultStartTime[l.sourceId] = l.t;
@@ -1188,6 +1533,61 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.ev.push_back(mkEv(*line));
         }
         fs.push_back(std::move(f));
+    }
+
+    // ---- modem_mng_v2 专属状态机诊断 ----
+    // v2 没有旧产品的 HEARTBEAT、fault timer 与 L1/L2/L3 阶梯。这里只使用
+    // modem.c 的固定动作原文下结论，不从普通 ping fail/低 CSQ 猜根因。
+    if (v2Platform) {
+        auto addV2Finding = [&](int severity, std::string title, std::string detail,
+                                std::string advice, const std::vector<const LogLine*>& evidence) {
+            if (evidence.empty()) return;
+            Finding finding;
+            finding.severity = severity;
+            finding.title = std::move(title);
+            finding.detail = std::move(detail);
+            finding.advice = std::move(advice);
+            for (size_t i = 0; i < evidence.size() && i < 3; ++i)
+                finding.ev.push_back(mkEv(*evidence[i]));
+            if (!finding.ev.empty()) fs.push_back(std::move(finding));
+        };
+
+        addV2Finding(
+            2,
+            "SIM 卡未插入，v2 正在低频轮询",
+            "日志明确返回 CME SIM not inserted。v2 对该分支采用 5s→10s→15s 的慢轮询，"
+            "不会因卡缺失耗尽普通 CPIN 重试并复位模组。",
+            "检查 SIM 卡槽、卡片方向和接触；插卡后确认出现 sim ok，再继续排查注网/APN。",
+            evV2NoSim);
+        addV2Finding(
+            2,
+            "网络长期未注册，v2 已触发模组复位",
+            "日志出现 No registered so long 或注册阶段失败后的 Reset modem 固定动作，"
+            "说明不是一次尚在等待的 CEREG/CGREG 采样。",
+            "核对同一时段的 CEREG/CGREG stat、LAC/CI/AcT、SIM 状态和运营商覆盖；"
+            "复位反复出现时优先查注册条件，而不是继续缩短复位周期。",
+            evV2LongUnregistered);
+        addV2Finding(
+            2,
+            "连续 ping 失败触发重初始化",
+            "v2 的 keepalive 重试次数已经达到配置上限，源码随后将状态转入 MD_ERROR，"
+            "重新执行模组初始化；单条 ping failed(x/y) 不会触发本结论。",
+            "结合 WAN down/up 断网区间和 CSQ/CEREG 指标判断是覆盖、注册还是数据面故障；"
+            "若频繁重初始化，保留完整周期日志。",
+            evV2PingReinit);
+        addV2Finding(
+            1,
+            "进入 READY 时 WAN 仍离线",
+            "READY 横幅明确记录 online=0。v2 会继续在 READY 周期内刷新注册、CSQ 和 WAN，"
+            "该行证明当时尚未联网，但不等同于进程初始化失败。",
+            "查看随后是否出现 WAN ping OK；若持续离线，再结合注册状态和 SIM/CSQ 证据处理。",
+            evV2ReadyOffline);
+        addV2Finding(
+            2,
+            "READY 状态失败并复位",
+            "日志出现 failed to in ready state，表明状态机从 MD_READY 进入错误处理并调用模组复位。",
+            "回看此前连续 ping、WAN online、CEREG/CGREG 与 CSQ；区分网络不可达和模组/AT 端口异常。",
+            evV2ReadyFailed);
     }
     // SDK 注网摘要是 2026-07/08 四份产品代码新增字段。只有 SRV!=FULL 且 DENY>0
     // 才算拒绝证据；DENY=0 不臆测。两套 SDK 的 DENY 数字表不同,这里只保留原码。
@@ -1312,7 +1712,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     //                 或产品有边界的 SUSPECTED subscription issue；查询失败不作为根因。
     size_t causeCnt[C_N] = {0};
     std::vector<Evidence> causeEv[C_N];
-    for (const auto& o : outs) {
+    if (!v2Platform) for (const auto& o : outs) {
         long long lo = o.start - 90, hi = o.recovered ? o.end : lineRef(lines.back()).t;
         int  minCsq = 999; bool sawZeroRx = false;
         int  minRsrp = 9999;                              // 窗口内最低 RSRP(dBm,越低越差)
@@ -1450,7 +1850,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     // ---- 5. 恢复阶梯是否生效 ----
     // 阈值实证:EC200A L1>5min/L2>10min/L3>35min(ec200a/dial/dial.cpp 恢复段);
     //           EG25   L1=60s/L2=5min/L3=30min(eg25/dial/dial.c:979)。
-    if (!evRecL3.empty()) {
+    if (!v2Platform && !evRecL3.empty()) {
         Finding f;
         f.severity = 2;
         f.title  = "L3 已触发:进程主动 exit,交由 watchdog/init 重启";
@@ -1460,7 +1860,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         for (size_t i = 0; i < evRecL3.size() && i < 3; ++i) f.ev.push_back(mkEv(*evRecL3[i]));
         fs.push_back(std::move(f));
     }
-    if (!evRecL1.empty() || !evRecL2.empty()) {
+    if (!v2Platform && (!evRecL1.empty() || !evRecL2.empty())) {
         Finding f;
         f.severity = 1;
         f.title  = "恢复阶梯已生效:L1 触发 " + std::to_string(evRecL1.size()) +
@@ -1472,7 +1872,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         fs.push_back(std::move(f));
     }
     // 有"够长"的断网却一条恢复日志都没有 → 找出被什么挡住了
-    if (evRecL1.empty() && evRecL2.empty() && evRecL3.empty()) {
+    if (!v2Platform && evRecL1.empty() && evRecL2.empty() && evRecL3.empty()) {
         long long thr = (pi.plat == PLAT_EG25) ? 60 : 5 * 60;
         const Outage* lng = nullptr;
         for (const auto& o : outs) if (o.recovered && o.dur >= thr) { lng = &o; break; }

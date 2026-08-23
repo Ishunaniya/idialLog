@@ -14,7 +14,11 @@ static bool parseBound(const std::string& s, const LogLine& base, long long& out
     std::string t = trim(s);
     if (t.empty()) return false;
     int baseY = 0, baseMo = 0, baseD = 0;
-    if (std::sscanf(base.ts.c_str(), "%4d-%2d-%2d", &baseY, &baseMo, &baseD) != 3)
+    // RFC3164 缺失年份时，解析器会在推定时间前加 '~' 明示证据边界。
+    // 筛选基准仍应使用其推定出的年月日，不能因审计标记而静默忽略时间窗。
+    const char* baseTs = base.ts.c_str();
+    if (*baseTs == '~') ++baseTs;
+    if (std::sscanf(baseTs, "%4d-%2d-%2d", &baseY, &baseMo, &baseD) != 3)
         return false;
 
     // 含 '-' 视为 "MM-DD HH:MM"(年份取日志基准行的年)

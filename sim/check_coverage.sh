@@ -1,5 +1,5 @@
 #!/bin/bash
-# 四产品全打印覆盖：完整源码调用清单 ↔ 生成夹具 ↔ 解析结果三方对账。
+# 五产品全打印覆盖：完整源码调用清单 ↔ 生成夹具 ↔ 解析结果三方对账。
 set -eu
 REPO="${1:?用法: sim/check_coverage.sh <repo路径> [out.log]}"
 NAME=$(basename "$REPO")

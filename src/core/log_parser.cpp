@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <ctime>
 #include <utility>
 
 namespace dl {
@@ -39,7 +40,7 @@ static const std::string kKnownTags[] = {
     "INIT", "MODEM", "EVENT", "STATUS", "LED", "TZ", "NANOMSG", "PING", "PING OUT",
     "PING FAIL", "PING ERROR", "REG", "REG TIMEOUT", "REG DIAG", "ZERO", "ZERO ADDR",
     "CPDUMP", "COPS", "SM", "LOGMIGR", "LOGCLEAN", "CLEANUP", "NetCheck",
-    "CONSOLE", "SYSLOG"
+    "CONSOLE", "SYSLOG", "MODEM_MNG_V2"
 };
 
 LogLine::LogLine(const LogLine& o)
@@ -200,6 +201,8 @@ static size_t skipField(const std::string& line, size_t p) {
     return p;
 }
 
+static bool splitSyslogApp(const std::string& field, std::string& app);
+
 // Android logcat -v threadtime：
 //   YYYY-MM-DD HH:MM:SS.mmm pid tid I TAG: msg（部分采集器补全年）
 //   MM-DD HH:MM:SS.mmm pid tid I TAG: msg（Android 原生 threadtime）
@@ -247,7 +250,7 @@ static bool parseAndroid(const std::string& line0, LogLine& L, int yearHint) {
 }
 
 // RFC3339 syslog：YYYY-MM-DDTHH:MM:SS[.mmm] host app[pid]: msg。
-static bool parseSyslog(const std::string& line0, LogLine& L) {
+static bool parseRfc3339Syslog(const std::string& line0, LogLine& L) {
     if (line0.size() < 21 || line0[4] != '-' || line0[7] != '-' || line0[10] != 'T')
         return false;
     int Y=0,Mo=0,D=0,h=0,mi=0,s=0,ms=-1;
@@ -262,16 +265,249 @@ static bool parseSyslog(const std::string& line0, LogLine& L) {
     while (p < line0.size() && line0[p] == ' ') ++p;
     p = skipField(line0, p); // host
     while (p < line0.size() && line0[p] == ' ') ++p;
+    const size_t appStart = p;
     size_t colon = line0.find(':', p);
     if (colon == std::string::npos) return false;
+    std::string app;
+    const bool v2App = splitSyslogApp(line0.substr(appStart, colon - appStart), app) &&
+                       app == "modem_mng_v2";
     p = colon + 1;
     while (p < line0.size() && line0[p] == ' ') ++p;
     char ts[32];
     std::snprintf(ts, sizeof ts, "%04d-%02d-%02d %02d:%02d:%02d", Y,Mo,D,h,mi,s);
     L.ts = ts; L.t = mkEpoch(Y,Mo,D,h,mi,s); L.ms = ms; L.fmt = FMT_SYSLOG;
-    L.setTag("SYSLOG");
-    splitTag(line0.substr(p), L);
+    L.setTag(v2App ? "MODEM_MNG_V2" : "SYSLOG");
+    // v2 的外层 syslog ident 是可靠的进程身份；正文中形如 "[%s]" 的 where
+    // 前缀只是调用位置。若按通用内层标签覆盖，会让仅含 CSQ/ping 片段的日志丢失
+    // modem_mng_v2 身份，进而漏掉平台、指标和断网分析。
+    if (v2App) L.msg = line0.substr(p);
+    else splitTag(line0.substr(p), L);
     return true;
+}
+
+static bool decimalChar(char c) { return c >= '0' && c <= '9'; }
+
+static int monthNumber(const std::string& line, size_t p) {
+    static const char* names[] = {
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    };
+    if (p + 3 > line.size()) return 0;
+    for (int i = 0; i < 12; ++i)
+        if (line.compare(p, 3, names[i]) == 0) return i + 1;
+    return 0;
+}
+
+static bool validSyslogName(const std::string& text) {
+    if (text.empty()) return false;
+    for (char c : text) {
+        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+              (c >= '0' && c <= '9') || c == '_' || c == '-' ||
+              c == '.' || c == '/'))
+            return false;
+    }
+    return true;
+}
+
+// app-name / app-name[pid]。严格限制 PID 为数字，防止把正文里的冒号误当 syslog 头。
+static bool splitSyslogApp(const std::string& field, std::string& app) {
+    if (field.empty()) return false;
+    size_t nameEnd = field.size();
+    if (field.back() == ']') {
+        size_t open = field.rfind('[');
+        if (open == std::string::npos || open == 0 || open + 2 >= field.size()) return false;
+        for (size_t i = open + 1; i + 1 < field.size(); ++i)
+            if (!decimalChar(field[i])) return false;
+        nameEnd = open;
+    }
+    app = field.substr(0, nameEnd);
+    return validSyslogName(app);
+}
+
+static bool setFacilityLevel(const std::string& field, LogLine& L) {
+    const size_t dot = field.rfind('.');
+    if (dot == std::string::npos || dot == 0 || dot + 1 == field.size()) return false;
+    const std::string facility = lower(field.substr(0, dot));
+    const std::string severity = lower(field.substr(dot + 1));
+    bool knownFacility = facility == "auth" || facility == "authpriv" ||
+        facility == "cron" || facility == "daemon" || facility == "ftp" ||
+        facility == "kern" || facility == "lpr" || facility == "mail" ||
+        facility == "mark" || facility == "news" || facility == "security" ||
+        facility == "syslog" || facility == "user" || facility == "uucp" ||
+        (facility.size() == 6 && facility.compare(0, 5, "local") == 0 &&
+         facility[5] >= '0' && facility[5] <= '7');
+    if (!knownFacility) return false;
+
+    if (severity == "emerg" || severity == "alert" || severity == "crit")
+        L.setLevel("CRITICAL");
+    else if (severity == "err" || severity == "error") L.setLevel("ERROR");
+    else if (severity == "warn" || severity == "warning") L.setLevel("WARNING");
+    else if (severity == "notice") L.setLevel("NOTICE");
+    else if (severity == "info") L.setLevel("INFO");
+    else if (severity == "debug") L.setLevel("DEBUG");
+    else return false;
+    return true;
+}
+
+static void setPriLevel(int pri, LogLine& L) {
+    switch (pri & 7) {
+        case 0: case 1: case 2: L.setLevel("CRITICAL"); break;
+        case 3: L.setLevel("ERROR"); break;
+        case 4: L.setLevel("WARNING"); break;
+        case 5: L.setLevel("NOTICE"); break;
+        case 6: L.setLevel("INFO"); break;
+        case 7: L.setLevel("DEBUG"); break;
+    }
+}
+
+// RFC3164 本身没有年份。有同文件年份线索时优先使用；否则以当地当前年
+// 作可审计的推定，且将明显落在未来（>31 天）的日期视为上一年的归档日志。
+// 这不能恢复历史文件的真实年份，因此调用者必须保留 inferredTime/~ 标记。
+static int inferRfc3164Year(int Mo, int D, int h, int mi, int s) {
+    std::time_t nowValue = std::time(nullptr);
+    std::tm* now = std::localtime(&nowValue);
+    if (!now) return 1970;
+    int Y = now->tm_year + 1900;
+    const long long candidate = mkEpoch(Y, Mo, D, h, mi, s);
+    const long long current = mkEpoch(Y, now->tm_mon + 1, now->tm_mday,
+                                      now->tm_hour, now->tm_min, now->tm_sec);
+    if (candidate - current > 31LL * 86400LL) --Y;
+    return Y;
+}
+
+// BusyBox/RFC3164：
+//   Aug 24 12:34:56 host user.info modem_mng_v2[123]: msg
+//   Aug 24 12:34:56 host modem_mng_v2[123]: msg       (facility 可省)
+// 亦接受网络报文常见的 <PRI> 前缀。语法故意严格：必须有 host 和合法 app:，
+// 避免把普通的 "Aug ..." 文本误收为日志包络。
+static bool parseRfc3164Syslog(const std::string& line0, LogLine& L,
+                               int yearHint, int previousYear, int previousMonth,
+                               int* parsedYear, int* parsedMonth) {
+    size_t p = 0;
+    int pri = -1;
+    if (!line0.empty() && line0[0] == '<') {
+        size_t close = line0.find('>');
+        if (close == std::string::npos || close < 2 || close > 4) return false;
+        pri = 0;
+        for (size_t i = 1; i < close; ++i) {
+            if (!decimalChar(line0[i])) return false;
+            pri = pri * 10 + (line0[i] - '0');
+        }
+        if (pri > 191) return false;
+        p = close + 1;
+    }
+
+    const int Mo = monthNumber(line0, p);
+    if (!Mo || p + 4 >= line0.size() || line0[p + 3] != ' ') return false;
+    p += 4;
+    while (p < line0.size() && line0[p] == ' ') ++p;
+    size_t dayStart = p;
+    int D = 0;
+    while (p < line0.size() && decimalChar(line0[p]) && p - dayStart < 2)
+        D = D * 10 + (line0[p++] - '0');
+    if (p == dayStart || D < 1 || D > 31 || p >= line0.size() || line0[p] != ' ')
+        return false;
+    while (p < line0.size() && line0[p] == ' ') ++p;
+    if (p + 8 > line0.size() || !decimalChar(line0[p]) || !decimalChar(line0[p+1]) ||
+        line0[p+2] != ':' || !decimalChar(line0[p+3]) || !decimalChar(line0[p+4]) ||
+        line0[p+5] != ':' || !decimalChar(line0[p+6]) || !decimalChar(line0[p+7]))
+        return false;
+    int h = (line0[p]-'0')*10 + line0[p+1]-'0';
+    int mi = (line0[p+3]-'0')*10 + line0[p+4]-'0';
+    int s = (line0[p+6]-'0')*10 + line0[p+7]-'0';
+    if (h > 23 || mi > 59 || s > 60) return false;
+    p += 8;
+    if (p >= line0.size() || line0[p] != ' ') return false;
+    while (p < line0.size() && line0[p] == ' ') ++p;
+
+    // hostname
+    size_t hostStart = p;
+    while (p < line0.size() && line0[p] != ' ') ++p;
+    if (p == hostStart || !validSyslogName(line0.substr(hostStart, p - hostStart))) return false;
+    while (p < line0.size() && line0[p] == ' ') ++p;
+    if (p >= line0.size()) return false;
+
+    // BusyBox -S/-O 组合可决定是否输出 facility.severity。
+    size_t possibleFacilityStart = p;
+    while (p < line0.size() && line0[p] != ' ') ++p;
+    LogLine facilityProbe;
+    if (setFacilityLevel(line0.substr(possibleFacilityStart, p - possibleFacilityStart), facilityProbe)) {
+        L.level = facilityProbe.level;
+        while (p < line0.size() && line0[p] == ' ') ++p;
+    } else {
+        p = possibleFacilityStart;
+    }
+    if (p >= line0.size()) return false;
+
+    const size_t colon = line0.find(':', p);
+    if (colon == std::string::npos) return false;
+    // app 是单个字段；冒号前出现空格说明它已经进入正文。
+    for (size_t i = p; i < colon; ++i) if (line0[i] == ' ') return false;
+    std::string app;
+    if (!splitSyslogApp(line0.substr(p, colon - p), app)) return false;
+    p = colon + 1;
+    while (p < line0.size() && line0[p] == ' ') ++p;
+
+    int Y = previousYear ? previousYear : (yearHint ? yearHint : inferRfc3164Year(Mo,D,h,mi,s));
+    // 文件内按时间正序解析；Dec -> Jan 是 RFC3164 跨年的唯一可靠线索。
+    if (previousYear && previousMonth >= 10 && Mo <= 3) ++Y;
+    char ts[32];
+    std::snprintf(ts, sizeof ts, "~%04d-%02d-%02d %02d:%02d:%02d", Y,Mo,D,h,mi,s);
+    L.ts = ts;
+    L.t = mkEpoch(Y,Mo,D,h,mi,s);
+    L.fmt = FMT_SYSLOG;
+    L.inferredTime = true;
+    if (pri >= 0 && L.level == LEVEL_NONE) setPriLevel(pri, L);
+    const bool v2App = app == "modem_mng_v2";
+    L.setTag(v2App ? "MODEM_MNG_V2" : "SYSLOG");
+    if (v2App) L.msg = line0.substr(p);
+    else splitTag(line0.substr(p), L);
+    if (parsedYear) *parsedYear = Y;
+    if (parsedMonth) *parsedMonth = Mo;
+    return true;
+}
+
+static bool parseSyslog(const std::string& line0, LogLine& L, int yearHint = 0,
+                        int previousRfcYear = 0, int previousRfcMonth = 0,
+                        int* parsedRfcYear = nullptr, int* parsedRfcMonth = nullptr) {
+    return parseRfc3339Syslog(line0, L) ||
+           parseRfc3164Syslog(line0, L, yearHint, previousRfcYear, previousRfcMonth,
+                              parsedRfcYear, parsedRfcMonth);
+}
+
+static bool splitV2ConsoleEnvelope(const std::string& line, std::string& level,
+                                   std::string& message) {
+    struct Prefix { const char* text; const char* canonicalLevel; };
+    static const Prefix prefixes[] = {
+        {"[INFO]", "INFO"}, {"[ERR]", "ERROR"}, {"[WARN]", "WARNING"},
+        {"[NOTICE]", "NOTICE"}, {"[DBG]", "DEBUG"}
+    };
+    for (const Prefix& prefix : prefixes) {
+        const size_t n = std::char_traits<char>::length(prefix.text);
+        if (line.compare(0, n, prefix.text) != 0) continue;
+        if (line.size() != n && line[n] != ' ') return false;
+        size_t p = n;
+        if (p < line.size() && line[p] == ' ') ++p; // 只吃宏固定加的一个空格
+        level = prefix.canonicalLevel;
+        message = line.substr(p);
+        return true;
+    }
+    return false;
+}
+
+static bool isV2StartBanner(const std::string& message0) {
+    return trim(message0) == "===== modem_mng_v2 start =====";
+}
+
+static bool isV2ConsoleAnchor(const std::string& message0) {
+    // "Version 2.1" 太通用，裸 stderr 中不能证明进程身份；只有包含应用名的
+    // start 横幅是无外层 app 字段时足够强的 v2 证据。
+    return isV2StartBanner(message0);
+}
+
+static std::string inferredTimestamp(const std::string& timestamp) {
+    if (timestamp.empty()) return "(无时间戳)";
+    return timestamp[0] == '~' ? timestamp : "~" + timestamp;
 }
 
 // 未识别行粗分类,供审计页展示“漏在哪”
@@ -295,6 +531,8 @@ struct StreamingLogParser::Impl {
     long long lastT = 0;
     std::string lastTs;
     int yearHint = 0;
+    int previousRfc3164Year = 0;
+    int previousRfc3164Month = 0;
     std::vector<size_t> pendingConsole;
 
     Impl(std::vector<LogLine>& outRef, std::vector<std::string>& sessionRef, size_t reserveHint)
@@ -370,22 +608,39 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
 
         LogLine L;
         L.lineNo = idx + 1;
+        int parsedRfcYear = 0, parsedRfcMonth = 0;
         if (parseSd(line, L) || parseAndroid(line, L, yearHint) ||
-            parseSeas(line, L) || parseSyslog(line, L)) {
+            parseSeas(line, L) ||
+            parseSyslog(line, L, yearHint, previousRfc3164Year, previousRfc3164Month,
+                        &parsedRfcYear, &parsedRfcMonth)) {
             L.sourceId = sourceId;
             ad.parsed++;
             lastT = L.t;
             lastTs = L.ts;
-            if (L.ts.size() >= 4)
-                yearHint = (L.ts[0]-'0')*1000 + (L.ts[1]-'0')*100 +
-                           (L.ts[2]-'0')*10 + (L.ts[3]-'0');
+            size_t dateOffset = (!L.ts.empty() && L.ts[0] == '~') ? 1 : 0;
+            if (L.ts.size() >= dateOffset + 7 &&
+                decimalChar(L.ts[dateOffset]) && decimalChar(L.ts[dateOffset+1]) &&
+                decimalChar(L.ts[dateOffset+2]) && decimalChar(L.ts[dateOffset+3])) {
+                yearHint = (L.ts[dateOffset]-'0')*1000 + (L.ts[dateOffset+1]-'0')*100 +
+                           (L.ts[dateOffset+2]-'0')*10 + (L.ts[dateOffset+3]-'0');
+                if (parsedRfcYear) {
+                    previousRfc3164Year = parsedRfcYear;
+                    previousRfc3164Month = parsedRfcMonth;
+                } else if (decimalChar(L.ts[dateOffset+5]) &&
+                           decimalChar(L.ts[dateOffset+6])) {
+                    // 明示年份格式可作为随后 RFC3164 的同文件锚点。
+                    previousRfc3164Year = yearHint;
+                    previousRfc3164Month =
+                        (L.ts[dateOffset+5]-'0')*10 + (L.ts[dateOffset+6]-'0');
+                }
+            }
             // 文件开头先出现裸 printf 时，等第一条真实时间到来后再回填；只在同一来源
             // 内回填，绝不跨文件借时间。
             std::vector<size_t> stillPending;
             for (size_t pos : pendingConsole) {
                 if (pos < out.size() && out[pos].sourceId == sourceId) {
                     out[pos].t = L.t;
-                    out[pos].ts = "~" + L.ts;
+                    out[pos].ts = inferredTimestamp(L.ts);
                     out[pos].inferredTime = true;
                 } else {
                     stillPending.push_back(pos);
@@ -405,6 +660,12 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
                 restartTs.push_back(L.t);
                 ad.programStarted++;
             }
+            // v2 的 Version 与 start 横幅同次出现，只取带 syslog 时间包络的显式
+            // start 横幅作为启动信号，避免一轮启动重复计数。
+            if (isV2StartBanner(L.msg)) {
+                restartTs.push_back(L.t);
+                ad.programStarted++;
+            }
             // 时钟跳变检测:与上一条已解析行比较,若跨越 2000 年边界(一侧 <2000 一侧 >=2000)
             // 即认定跳变 —— 这是 RTC 未授时(1970)后中途授时的特征。只记录首次跳变(最有意义
             // 的那次:1970→真实时间)。阈值用 2000 年边界而非"差值大",避免把正常跨天误判。
@@ -421,6 +682,32 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
             }
             out.push_back(std::move(L));
             return;
+        }
+
+        // modem_mng_v2 的 log.h 固定镜像到 stderr：
+        //   [INFO]/[ERR]/[WARN]/[NOTICE]/[DBG] message
+        // 前缀本身不是 v2 身份证明（别的程序也常用），因此普通行只标 CONSOLE +
+        // 结构化 level；仅正文含 v2 强签名的该行标 MODEM_MNG_V2。
+        {
+            const std::string clean = stripAnsi(line);
+            std::string level, message;
+            if (splitV2ConsoleEnvelope(clean, level, message)) {
+                L.lineNo = idx + 1;
+                L.sourceId = sourceId;
+                L.fmt = FMT_CONSOLE;
+                L.t = lastT;
+                L.ts = inferredTimestamp(lastTs);
+                L.inferredTime = !lastTs.empty();
+                L.setLevel(level);
+                L.setTag(isV2ConsoleAnchor(message) ? "MODEM_MNG_V2" : "CONSOLE");
+                L.msg = std::move(message);
+                ad.parsed++;
+                // 纯 stderr 没有源码时间，只记录原始启动信号；不伪造 epoch/session。
+                if (isV2StartBanner(L.msg)) ad.programStarted++;
+                out.push_back(std::move(L));
+                if (lastTs.empty()) pendingConsole.push_back(out.size() - 1);
+                return;
+            }
         }
 
         // 无时间戳但紧跟在已解析行之后 → 多行日志条目的**续行**,并入上一条,不算未识别。
@@ -461,7 +748,7 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
         L.sourceId = sourceId;
         L.fmt = FMT_CONSOLE;
         L.t = lastT;
-        L.ts = lastTs.empty() ? "(无时间戳)" : "~" + lastTs;
+        L.ts = inferredTimestamp(lastTs);
         L.inferredTime = !lastTs.empty();
         L.setTag("CONSOLE");
         L.msg = stripAnsi(line);
@@ -503,6 +790,8 @@ void StreamingLogParser::beginFile() {
         impl_->lastT = 0;
         impl_->lastTs.clear();
         impl_->yearHint = 0;
+        impl_->previousRfc3164Year = 0;
+        impl_->previousRfc3164Month = 0;
     }
 }
 

@@ -1,9 +1,10 @@
-# samples/sim/ — 模拟场景日志(由 `simtest` 生成)
+# samples/sim/ — 模拟场景与源码输出审计夹具
 
-**这些不是真机日志。** 由 `../../tests/regression/simtest.cpp` 按源码格式生成,证据等级为【源码实证】。
+**这些不是真机日志。** 场景夹具由 `../../tests/regression/simtest.cpp` 按源码格式生成；
+`*_all_prints.log` 则由 `../../sim/gen_all_prints.py` 从产品源码输出入口生成。证据等级均为【源码实证】。
 
-跑 `make simtest && build/tests/regression/simtest` 会重新生成本目录下的 `.log` 并逐个断言。
-生成的文件可直接拖进 GUI 复现对应场景。
+跑 `make simtest && build/tests/regression/simtest` 会重新生成场景日志并逐个断言；
+`*_all_prints.log` 由下文的覆盖校验生成。两类文件均可直接拖进 GUI 检查解析结果。
 
 ## 为什么要有它:结论引擎有一半分支零真机覆盖
 
@@ -43,6 +44,7 @@ L3 触发、真有 CP dump、AG35 切卡、多会话重启、温度过高。
 ```bash
 sim/check_coverage.sh /home/tronlong/lyp/code/open_dial
 sim/check_coverage.sh /home/tronlong/lyp/code/rtms_sdk/apps/modem_mng
+sim/check_coverage.sh /home/tronlong/lyp/code/rtms_sdk/apps/modem_mng_v2
 sim/check_coverage.sh /home/tronlong/lyp/code/open_dial_for_artery
 ```
 
@@ -54,18 +56,24 @@ sim/check_coverage.sh /home/tronlong/lyp/code/open_dial_for_artery
 
 每个分支调用实例写入 `*.calls.tsv`，去重后的静态输出形态写入
 `*.manifest.tsv`，填充占位符生成日志后再与解析结果逐项对账。截至
-2026-08-20 的审计结果：
+2026-08-24 的审计结果：
 
 | 产品代码 | 唯一输出形态 | 结构化解析 | 裸输出保留 |
 |---|---:|---:|---:|
 | `open_dial` | **431** | 151/151 | 281 行 |
 | `modem_mng` EC200A/AG35（共享实现） | **662** | 与下项合计 630/630 | 与下项合计 606 行 |
 | `modem_mng` EG25 | **570** | 与上项合计 630/630 | 与上项合计 606 行 |
-| `open_dial_for_artery` | **285** | 255/255 | 30 行 |
+| `open_dial_for_artery` | **291** | 261/261 | 30 行 |
+| `modem_mng_v2`（EC200A/EG25 动态识别） | **143** | 136/136 | 7 行 |
 
-调用实例清单分别为 `open_dial` 2903、`modem_mng` 21857、artery 1030 条；
+v2 表按正常部署可留存的 syslog 通道统计；`log_*` 和两个 `system | logger` 的确定性 stderr
+镜像由五种级别包络回归单独覆盖，不在形态表中重复计数。目标 BusyBox 的警告包络为 `user.warn`。
+
+调用实例清单分别为 `open_dial` 3823、`modem_mng` 24521、`modem_mng_v2` 324、
+artery 1035 条（合计 29703）；
 这是跨分支实例数，同一个源码调用在多个分支出现会分别列出。modem_mng 的标签
-合计 38 个，open_dial 21 个，artery 6 个，全部由 manifest 对账保留。
+合计 38 个，open_dial 21 个，artery 6 个，全部由 manifest 对账保留。v2 的 syslog
+正文通常没有 `[TAG]`，应用身份来自 `modem_mng_v2[pid]:` 包络，不把包络标签与正文标签混算。
 
 分支间确有差异(实证):`open_dial` 的 `fix_cp_dump` 用 `[WARN] Status updated`,
 另两个分支用 `[INFO] Status updated`;`Registration Denied` 的 code 一处是 `%d`、
@@ -75,7 +83,7 @@ sim/check_coverage.sh /home/tronlong/lyp/code/open_dial_for_artery
 
 - ✅ **调用点与静态格式串**逐字取自源码，且 `calls.tsv` 可逐项追溯；结构化输出
   全部解析，无法结构化的裸输出也不会再丢弃。
-- ⚠️ **占位符替换值是脚本选的**，6 个 modem、2 个 open_dial、1 个 artery
+- ⚠️ **占位符替换值是脚本选的**，6 个 modem、2 个 open_dial、1 个 artery 以及 2 个 v2
   动态格式入口的正文也只能在运行时确定，因此不能推出“所有真机参数值均已穷举”。
   实证:真机 `"[RECOVERY L2] AT+CFUN=0 rsp: %s"` 的 `%s` 是**多行**的 `\nOK\n`,
   我原先没料到 → 续行被当未识别丢弃(由真机日志抓出,非本校验)。

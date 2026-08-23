@@ -1,7 +1,7 @@
 # dialLog — 拨号日志分析工具 (Windows 原生 / MinGW)
 
 纯 Win32 API 的原生 Windows GUI 程序,**静态链接,无任何运行时依赖**(不需要 .NET,
-不需要 MinGW 的 DLL),编译产物 `dialLog.exe` 单文件约 1.2MB,拷到 Windows 双击即用。
+不需要 MinGW 的 DLL),编译产物 `dialLog.exe` 单文件约 1.8MiB,拷到 Windows 双击即用。
 
 **目标:把日志塞进去就出结论**——不只给统计值,还给根因判断与处置建议,
 且每条结论都附带可追溯的日志证据(行号 + 时间戳)。
@@ -12,11 +12,22 @@
 |---|---|---|
 | `FMT_SD` | `logger_sd.c` 的 `dial_log()`,**modem_mng 与 open_dial 完全一致** | `[YYYY-MM-DD HH:MM:SS] [TAG] message` |
 | `FMT_SEAS` | `open_dial_for_artery` 的 `src/seas_log/seas_log.c` | `YYYY-MM-DD HH:MM:SS.mmm [LEVEL] <ESC[0m>func (file:line) - message` |
+| `FMT_ANDROID` | Android/logcat 输出 | `YYYY-MM-DD HH:MM:SS.mmm pid tid L TAG: message` |
+| `FMT_SYSLOG`(RFC3339) | 通用 syslog 转储 | `YYYY-MM-DDTHH:MM:SS host app[pid]: message` |
+| `FMT_SYSLOG`(BusyBox RFC3164) | `modem_mng_v2` 的主要部署日志 `/var/log/messages` | `Mon DD HH:MM:SS host user.info modem_mng_v2[pid]: message` |
+| `FMT_CONSOLE` | 裸控制台输出；含 `modem_mng_v2` 的 stderr 调试镜像 | `[INFO]/[ERR]/[WARN]/[NOTICE]/[DBG] message`(无自身时间) |
 
 `FMT_SEAS` 的细节(源码实证,`seas_log.c:233-296`):当前 `SEAS_DISPLAY_COLOR=0`
 故**不输出颜色码**,但 `SEAS_DISPLAY_RESET=1` 故每行在级别与函数名之间**必带一个
 `\x1B[0m`**;解析时统一剥离 ANSI CSI 序列,有无都能解析。日志级别在
 `main.c` 配成 `SEAS_LEVEL_INFO`,故 `[DEBUG]` 不会出现在文件里。
+
+`modem_mng_v2` 固定调用 `openlog("modem_mng_v2", LOG_PID|LOG_CONS, LOG_USER)`；正常启动脚本
+会丢弃 stdout/stderr，所以应优先导入 BusyBox syslogd 写出的 `/var/log/messages`。其 `log_*`
+宏虽会把带 `[INFO]` 等前缀的副本镜像到 stderr，送入 syslog 的正文却**不含这个前缀**，
+级别取自 `user.info/user.err/...` 或可选 `<PRI>`。RFC3164 不携带年份：解析器优先借同文件
+的明确年份，否则按当地当前年推定，并在原始日志时间前加 `~`；文件内 Dec→Jan 会按跨年处理，
+但脱离上下文的历史片段无法恢复真实年份。纯 stderr 片段没有可用于断网时长的可靠时基。
 
 ### 平台自动识别
 
@@ -24,6 +35,7 @@
 
 | 平台 | 判据 | 源码出处 |
 |---|---|---|
+| modem_mng_v2 | syslog 应用名为 `modem_mng_v2`，或出现 v2 固定启动/状态机原文；模组再由 `Module detected: EC200A/EG25` 动态识别 | `modem_mng_v2/src/log/log.c:22`、`src/modem/modem.c:73,147` |
 | artery | 行格式为 seas_log | `seas_log.c:210` |
 | AG35 | 心跳含 `SLOT:` 或出现 `[SLOT]` 标签 | `ec200a/dial/dial.cpp:1071-1075`(AG35-only `#ifdef`) |
 | EG25 | 心跳含 `CH:`/`RL_FAIL`/`RX_PKT`,或 `[ROAMLINK]` 标签 | `eg25/diag/diag.c:109-131` |
@@ -43,6 +55,7 @@
 | AG35 | 同 EC200A + `SLOT` | `ec200a/dial/dial.cpp` |
 | EG25 | `CH / SIM / [REG] / CSQ / Temp / DownTime / ConsecFail / [RL_FAIL] / [RX_PKT]` + `SRV / RAT / DENY / RSRP / RSRQ / SNR / RSSI`;<br>周期扩展行另有 `cereg= / ifname= / rx_packets= / OPER=`(**等号**赋值) | `eg25/diag/diag.c` |
 | artery | `state= / csq= / tcp_fail= / rl_fail=` + `SRV / RAT / DENY / RSRP / RSRQ / SNR / RSSI`;扩展 `cereg= / ifname= / ip= / rx_packets= / OPER=`(空格分隔 k=v) | `main.c` |
+| modem_mng_v2 | 无旧版 `HEARTBEAT`；READY 轮询输出 `[where] CSQ: ...`、`CEREG/CGREG stat=...` 和 `WAN ping OK/fail -> network_online=...` | `modem_mng_v2/src/modem/modem.c:1073,1443-1451,1772-1775` |
 
 字段解析器同时支持 `K:V` 与 `K=V`,并按“空白 + 标识符 + 分隔符”切分,
 否则 `RSRP:-104 RSRQ:-10`(`diag.c:33`)会把 RSRQ 吞进 RSRP 的值。
@@ -56,14 +69,15 @@
 - **粘贴分析 ★**:手上没有文件时(SSH 里 `cat` 日志直接选中复制、别人在聊天里发来一段),
   按 **Ctrl+V** 或点“粘贴日志”即可直接分析剪贴板文本。片段也能用:平台识别、未识别行审计
   照常工作。焦点在筛选输入框里时 Ctrl+V 仍是正常粘贴文字,不会误触发。
-  粘贴内容若一行都认不出,会直接弹出两种支持格式说明,而不是留个空界面让你猜。
+  粘贴内容若一行都认不出,会直接弹出支持格式说明,而不是留个空界面让你猜。
 - **总览**:上半是**仪表盘** —— hero 数字(可用率,配状态标签)+ 指标卡(断网次数/最长断网/
   未识别行/CSQ 与 LTE 信号质量)+ 断网时长分布横条;下半是仪表盘装不下的明细(温度、通道占比、
   **RX_PKT 停滞**、报错/告警、关键事件计数)。上下不重复。
 - **结论 ★**(核心):自动根因 + 处置建议 + **每条结论的日志证据(行号/时间戳)**。
   覆盖:断网根因分类(弱信号 / 数据假死 / 切卡选网期间 / 注册与账户异常)、SDK `DENY`
-  注册异常与 SNR 持续偏低提示；识别四产品首次初始化诊断中的明确网络拒绝、受限服务、
-  疑似订阅异常和 CEREG 查询/解析失败，严格区分【源码直证】与【推断】，
+  注册异常与 SNR 持续偏低提示；识别旧四产品首次初始化诊断中的明确网络拒绝、受限服务、
+  疑似订阅异常和 CEREG 查询/解析失败，并识别 v2 的 SIM 未插入、长时间未注册、READY 仍离线、
+  连续 ping 失败重初始化等明确故障动作，严格区分【源码直证】与【推断】，
   恢复阶梯 L1/L2/L3 是否触发及**被什么门控挡住**、CP dump、温度、解析覆盖率。
   **无证据支撑的结论一律不输出**(宁可少说,不臆测)。
   证据可单击定位原始行、右键复制或加入书签；顶部“书签”菜单可快速回跳，`Ctrl+B` 可切换
@@ -117,7 +131,7 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # x64: build/x64/dialLog_v1.10.13.exe
+make                     # x64: build/x64/dialLog_v1.11.0.exe
 make windows-all         # 同时构建 build/x64 与 build/x86
 make release             # 正式 x64 产物复制到仓库根目录
 make version             # 只打印当前版本号
@@ -134,7 +148,7 @@ mingw32-make CROSS=
 ### 32 位
 
 ```bash
-make windows-x86         # build/x86/dialLog_v1.10.13.exe
+make windows-x86         # build/x86/dialLog_v1.11.0.exe
 ```
 
 `CROSS` 同时派生 `CC/CXX/WINDRES`;每种工具链使用独立构建目录,连续切换架构
@@ -147,7 +161,7 @@ make windows-x86         # build/x86/dialLog_v1.10.13.exe
 `src/core/` 与 `src/presentation/` 不含 Win32 依赖,可用本机 g++ 直接编译验证:
 
 ```bash
-make check       # 十个测试程序:解析、场景、真代码、真机基线、合并、压缩、边界、虚拟表、图表、文档接管
+make check       # 核心全量回归:解析、场景、真代码、真机基线、合并、压缩、边界、虚拟表、图表、文档接管等
 make check-full  # check + 48 个变异；靶向路由、默认并发2、带逐项进度与超时
 make perf        # 10万/50万/100万行:分阶段计时 + 轻量视图/虚拟表/图表规模断言
 make ui-smoke    # wine+xvfb 启动真实 exe，验证后台加载、9 页导航、虚拟原始行、小区页与窄窗布局
@@ -187,6 +201,9 @@ gzip 会校验头部边界、ISIZE 与 CRC32；损坏包会明确报错,不会�
 > 那段 13m34s 被真实样本拆成 4m31s + 3m30s。
 
 ### ⚠️ 仅源码实证 + 合成夹具,**未经真机日志验证**
+- **modem_mng_v2**:BusyBox RFC3164 包络、EC200A/EG25 动态识别、CSQ/注册/联网状态、断网配对
+  及 SIM/注册/ping 诊断均由产品源码、源码输出审计和合成回归覆盖；当前**没有 v2 真机日志**，
+  合成夹具只证明工具按源码预期工作，不能把运行期格式或诊断升级为【样本实证】。
 - **四份产品新增心跳字段**:`SRV/RAT/DENY`、`RSRP/RSRQ/SNR/RSSI` 与 `OPER` 已由产品源码、
   SDK 头文件和四套 host-run 真代码输出共同验证；AG35 1.32.0 SD 真机日志还逐字段验证了
   `SRV=2 RAT=LTE DENY=0`、LTE 信号值和 `OPER/CID/IP`。其余产品真机样本尚未覆盖全部新字段。
@@ -208,20 +225,25 @@ gzip 会校验头部边界、ISIZE 与 CRC32；损坏包会明确报错,不会�
 
 ### 覆盖率的说法只信审计,不信断言
 
-截至 2026-08-20，审计器会遍历三个仓库的全部本地/远端分支，按真实构建范围解析
+截至 2026-08-24，审计器会遍历四个仓库的全部本地/远端分支，按真实构建范围解析
 跨行调用、相邻字符串、条件编译和 C/C++ 输出入口；每个调用实例写入 `calls.tsv`，
-去重后的输出形态写入 `manifest.tsv`。四份产品的源码输出形态为：
+去重后的输出形态写入 `manifest.tsv`。五份产品的源码输出形态为：
 
 | 产品代码 | 唯一输出形态 |
 |---|---:|
 | open_dial | 431 |
 | modem_mng EC200A/AG35（共享实现） | 662 |
 | modem_mng EG25 | 570 |
-| open_dial_for_artery | 285 |
-| **合计** | **1948** |
+| open_dial_for_artery | 291 |
+| modem_mng_v2（EC200A/EG25 运行时动态识别） | 143 |
+| **合计** | **2097** |
 
 其中带时间/通道包络的结构化输出必须全部解析；裸 `printf`、`perror`、`iostream`
 没有可靠时间戳，解析器会逐行原样保留为 `CONSOLE`，若借用前一条时间会用 `~` 明示。
+v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制台输出，未分类入口为 0；
+其 syslog 夹具使用真实 BusyBox RFC3164 包络，而不是把 stderr 的 `[LEVEL]` 前缀伪装进正文。
+统计按正常部署可留存的 syslog 通道计数：每个 `log_*` 调用固定产生的 stderr 镜像，以及
+`system | logger` 同时写往 stderr 的副本，不重复扩成第二套形态；五种 stderr 级别包络另有独立回归。
 少数运行时格式串入口也会逐调用点列出，但静态穷举不能证明 `%s` 等运行时参数不会出现
 新内容。因此这里声称的是“源码调用点与静态输出形态无遗漏”，不是“所有真机参数值可预知”；
 真实设备仍以**“未识别行”页 + 状态栏占比**审计。
@@ -232,9 +254,9 @@ gzip 会校验头部边界、ISIZE 与 CRC32；损坏包会明确报错,不会�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.10.13.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.11.0.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.10.13 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.11.0 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 只清理 `build/`；测试程序也位于 `build/tests/`，不会污染根目录或误删已提交的发布 exe。
@@ -262,8 +284,9 @@ gzip 会校验头部边界、ISIZE 与 CRC32；损坏包会明确报错,不会�
 | 1.10.11 | 跟进四产品首次初始化 SIM 诊断;区分明确网络拒绝、受限服务、疑似订阅异常与 CEREG 查询失败，并纳入断网根因证据 |
 | 1.10.12 | 穷举四产品全部输出入口（含跨行、条件分支、printf/LOG/QLOG/iostream）；Android/syslog 结构化解析，裸控制台输出逐行保留且推定时间显式标记 |
 | 1.10.13 | 修复孤立/异常恢复污染断网与可用率；按来源实际观测时长计算覆盖；区分日志打开和进程启动；EG25 门控改按 policy/CH/联网实证；补 NUL、跨来源 RX、QENG 信号审计和同 source 授时跳变切段；接入 artery 标准化断网起止事件 |
+| 1.11.0 | 加入 modem_mng_v2：BusyBox RFC3164 syslog 与 stderr 调试镜像解析、EC200A/EG25 动态识别、v2 CSQ/状态/断网和保守诊断；源码输出审计扩为五产品；RFC3164 推定年份以 `~` 明示 |
 
-> `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞 1.2MB
+> `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞约 1.8MiB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。
 
 ## 界面配色
@@ -295,7 +318,7 @@ gzip 会校验头部边界、ISIZE 与 CRC32；损坏包会明确报错,不会�
 | `third_party/miniz/` | 第三方压缩实现 |
 | `resources/windows/` | Windows 图标、manifest 与版本资源脚本 |
 | `version.h` | **版本号单一来源**(C++ 与 resource.rc 共用);改版本只改这里 |
-| `samples/` | 测试夹具,按来源分目录(rtms_eg25 / rtms_ag35 / rtms_ec200a / dial_ec200a / dial_eg25);见其 README |
+| `samples/` | 测试夹具,按来源分目录(rtms_eg25 / rtms_ag35 / rtms_ec200a / rtms_v2 / dial_ec200a / dial_eg25);见其 README |
 | `src/win32/theme.h` | **界面配色单一来源**(校验过的调色板,按角色命名) |
 | `Makefile` | 构建 |
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""穷举四套产品真实构建源码中的全部输出调用，生成覆盖夹具和可追溯清单。
+"""穷举产品真实构建源码中的全部输出调用，生成覆盖夹具和可追溯清单。
 
 完整解析跨行调用和相邻 C 字符串；剥除注释、预处理指令及 #if 0 死代码。
 覆盖 dial_log/SEAS_LOG_*、LOG_*/QLOG*/ALOG*、Android/syslog、
@@ -22,6 +22,19 @@ APIS = {
     "dial_log", "print", "printf", "vprintf", "fprintf", "vfprintf", "puts", "perror",
     "fputs", "dprintf", "vdprintf", "syslog", "__android_log_print",
     "ql_sys_log_print",
+}
+V2_LOG_LEVELS = {
+    "log_err": "err",
+    "log_warning": "warning",
+    "log_notice": "notice",
+    "log_info": "info",
+    "log_debug": "debug",
+}
+V2_APIS = set(V2_LOG_LEVELS) | {"logger", "system"}
+SYSLOG_LEVELS = {
+    "LOG_EMERG": "emerg", "LOG_ALERT": "alert", "LOG_CRIT": "crit",
+    "LOG_ERR": "err", "LOG_WARNING": "warning", "LOG_NOTICE": "notice",
+    "LOG_INFO": "info", "LOG_DEBUG": "debug",
 }
 LOG_API = re.compile(r"(?:SEAS_LOG_[A-Z0-9_]+|LOG_[A-Z0-9_]+|QLOG[A-Z0-9_]*|ALOG[A-Z0-9_]*)\Z")
 SUSPECT_API = re.compile(r".*(?:log|print|trace|debug|warn|error|fatal|dump).*", re.I)
@@ -45,6 +58,9 @@ NON_OUTPUT_SUSPECTS = {
     "ql_data_call_set_service_error_cb", "ql_nw_set_service_error_cb",
     "log_close", "log_init", "log_recovery_snapshot", "log_sim_disconnect_diag",
     "log_sim_recovery_diag", "log_to_file", "print_config", "print_init_info",
+    # modem_mng_v2:调试开关/状态处理器/openlog 初始化都不直接产生日志；
+    # 处理器内部真正的 log_* 调用仍由各调用点单独审计。
+    "ENABLE_AT_DEBUG", "IS_ENABLE_AT_DEBUG", "md_proc_error", "openlog",
     "logSetTag", "log_bad_request", "printTrafficData", "print_array", "print_number",
     "print_object", "print_string", "print_string_ptr", "print_value",
 }
@@ -67,9 +83,10 @@ class Call:
     channel: str
     fmt: str
     dynamic: bool
+    severity: str = ""
 
     def shape(self):
-        return self.product, self.channel, self.api, self.fmt
+        return self.product, self.channel, self.api, self.severity, self.fmt
 
 
 def git(repo: str, *args: str) -> str:
@@ -93,7 +110,8 @@ def all_refs(repo: str) -> list[str]:
 def product_of(repo: str) -> str:
     name = Path(repo).name
     names = {"modem_mng": "modem_mng", "open_dial": "open_dial",
-             "open_dial_for_artery": "artery"}
+             "open_dial_for_artery": "artery",
+             "modem_mng_v2": "modem_mng_v2"}
     if name not in names:
         raise ValueError(f"不支持的产品仓库：{repo}")
     return names[name]
@@ -104,6 +122,21 @@ def in_scope(product: str, path: str) -> bool:
         return False
     if path.endswith((".bak", "_todel")) or "/tests/" in path or "/sim/" in path:
         return False
+    if product == "modem_mng_v2":
+        # 与 apps/modem_mng_v2/CMakeLists.txt 的 JTT_MODEM_SRC 保持一致。头文件中的
+        # log_* 宏只是输出通道实现，扫描它们会与每个真实调用点重复计数。
+        return path in {
+            "main.c",
+            "src/gpio/gpio.c",
+            "src/modem/modem.c",
+            "src/serial/serial.c",
+            "src/modem/at_op.c",
+            "src/modem/at_func.c",
+            "src/at_server/at_server.c",
+            "src/log/log.c",
+            "src/rb/rb.c",
+            "src/config/config.c",
+        }
     if product == "modem_mng":
         if path in {"dialer_imx6ull.cpp", "imx_led.hpp"}:
             return False
@@ -361,33 +394,77 @@ def has(arg: Sequence[Token], *names: str) -> bool:
     return any(t.value in names for t in arg)
 
 
-def spec(api: str, args: Sequence[Sequence[Token]]):
+def syslog_severity(arg: Sequence[Token]) -> str:
+    """从 syslog/logger 的 priority 表达式中提取 severity；未知值保守按 info。"""
+    for token in arg:
+        if token.value in SYSLOG_LEVELS:
+            return SYSLOG_LEVELS[token.value]
+    return "info"
+
+
+def system_logger(args: Sequence[Sequence[Token]]) -> tuple[str, str] | None:
+    """识别 v2 的 system("producer | logger -t modem_mng_v2") 输出入口。"""
+    if not args:
+        return None
+    command, dynamic = get_format(args[0])
+    if dynamic:
+        return None
+    for segment in command.split(";"):
+        if "|" not in segment:
+            continue
+        producer, logger_args = segment.split("|", 1)
+        if not re.search(r"\blogger\b", logger_args):
+            continue
+        if not re.search(r"(?:^|\s)-t(?:\s+|=)modem_mng_v2(?:\s|$)", logger_args):
+            continue
+        severity = "notice"  # BusyBox logger 未给 -p 时使用 user.notice。
+        priority = re.search(
+            r"(?:^|\s)(?:-p\s+|--priority(?:=|\s+))(?:user\.)?"
+            r"(emerg|alert|crit|err|warning|notice|info|debug)(?:\s|$)",
+            logger_args)
+        if priority:
+            severity = priority.group(1)
+        producer = producer.strip()
+        return f"<dynamic:logger-output:{producer}>", severity
+    return None
+
+
+def spec(product: str, api: str, args: Sequence[Sequence[Token]]):
+    if product == "modem_mng_v2" and api in V2_LOG_LEVELS:
+        return "syslog", 0, V2_LOG_LEVELS[api]
+    if product == "modem_mng_v2" and api == "logger":
+        # 同时兼容 logger("fmt") 与 logger(LOG_WARNING, "fmt") 这两类包装。
+        if len(args) > 1 and any(t.value in SYSLOG_LEVELS for t in args[0]):
+            return "syslog", 1, syslog_severity(args[0])
+        return "syslog", 0, "notice"
     if api == "dial_log":
-        return "sd", 0
+        return "sd", 0, ""
     if api.startswith("SEAS_LOG_"):
-        return "seas", 0
+        return "seas", 0, ""
     if api in {"print", "printf", "vprintf", "puts", "perror"}:
-        return "console", 0
+        return "console", 0, ""
     if api in {"fprintf", "vfprintf", "fputs"}:
         if not args or not has(args[0], "stdout", "stderr"):
             return None
-        return "console", 0 if api == "fputs" else 1
+        return "console", 0 if api == "fputs" else 1, ""
     if api in {"dprintf", "vdprintf"}:
         if not args or not has(args[0], "1", "2", "STDOUT_FILENO", "STDERR_FILENO"):
             return None
-        return "console", 1
+        return "console", 1, ""
     if api == "syslog":
-        return "syslog", 1
+        return "syslog", 1, syslog_severity(args[0]) if args else "info"
     if api == "__android_log_print":
-        return "android", 2
+        return "android", 2, ""
     if api == "ql_sys_log_print":
-        return "android", 1
+        return "android", 1, ""
     if api.startswith("QLOG"):
-        return "android", 1
+        return "android", 1, ""
     if api.startswith("ALOG"):
-        return "android", 0
+        return "android", 0, ""
     if api.startswith("LOG_"):
-        return ("android", 1) if args and has(args[0], "NW_LOG_TAG", "LOG_TAG") else ("android", 0)
+        if args and has(args[0], "NW_LOG_TAG", "LOG_TAG"):
+            return "android", 1, ""
+        return "android", 0, ""
     return None
 
 
@@ -404,7 +481,8 @@ def extract_text(product: str, ref: str, path: str, text: str) -> list[Call]:
             continue
         api = tokens[i].value
         is_call = tokens[i].kind == "ident" and tokens[i + 1].value == "("
-        known = api in APIS or LOG_API.fullmatch(api)
+        known = (api in APIS or LOG_API.fullmatch(api) or
+                 (product == "modem_mng_v2" and api in V2_APIS))
         suspicious = is_call and SUSPECT_API.fullmatch(api)
         if not is_call or (not known and not suspicious):
             i += 1
@@ -418,17 +496,26 @@ def extract_text(product: str, ref: str, path: str, text: str) -> list[Call]:
         if close + 1 < len(tokens) and tokens[close + 1].value == "{":
             i = close + 1
             continue
+        if product == "modem_mng_v2" and api == "system":
+            logger_output = system_logger(args)
+            if logger_output is not None:
+                fmt, severity = logger_output
+                out.append(Call(product, ref, path, tokens[i].line,
+                                "system/logger", "syslog", fmt, True, severity))
+            i = close + 1
+            continue
         if not known:
             if api not in NON_OUTPUT_SUSPECTS:
                 out.append(Call(product, ref, path, tokens[i].line, api,
                                 "unclassified", f"<unclassified:{api}>", True))
             i = close + 1
             continue
-        selected = spec(api, args)
+        selected = spec(product, api, args)
         if selected is not None and selected[1] < len(args):
-            channel, index = selected
+            channel, index, severity = selected
             fmt, dynamic = get_format(args[index])
-            out.append(Call(product, ref, path, tokens[i].line, api, channel, fmt, dynamic))
+            out.append(Call(product, ref, path, tokens[i].line, api, channel,
+                            fmt, dynamic, severity))
         i = close + 1
     return out
 
@@ -459,6 +546,9 @@ PRINTF = re.compile(
 
 
 def fill(fmt: str) -> str:
+    if fmt.startswith("<dynamic:logger-output:") and fmt.endswith(">"):
+        producer = fmt[len("<dynamic:logger-output:"):-1]
+        return f"DYNAMIC LOGGER OUTPUT ({producer})"
     if fmt.startswith("<dynamic:"):
         return "DYNAMIC OUTPUT (format determined at runtime)"
     fmt = re.sub(r"((?:rsp|response):\s*)%[-+ #0'.*0-9hljztL]*s", r"\1\nOK", fmt)
@@ -483,12 +573,13 @@ def shapes(calls: Sequence[Call]) -> list[Call]:
 
 
 def write_manifest(path: Path, calls: Sequence[Call]) -> None:
-    rows = ["product\tchannel\tapi\tdynamic\tref\tpath\tline\tformat"]
+    # severity 追加在末列，保留原有八列的位置，兼容现有 awk/csv 审计脚本。
+    rows = ["product\tchannel\tapi\tdynamic\tref\tpath\tline\tformat\tseverity"]
     for c in calls:
         f = (c.fmt.replace("\\", "\\\\").replace("\t", "\\t")
              .replace("\r", "\\r").replace("\n", "\\n"))
         rows.append(f"{c.product}\t{c.channel}\t{c.api}\t{int(c.dynamic)}\t"
-                    f"{c.ref}\t{c.path}\t{c.line}\t{f}")
+                    f"{c.ref}\t{c.path}\t{c.line}\t{f}\t{c.severity}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
@@ -498,6 +589,10 @@ def generate(calls: Sequence[Call], out: Path):
     counts = {}
     for t, call in enumerate(shapes(calls)):
         body = fill(call.fmt)
+        if call.product == "modem_mng_v2" and call.channel == "syslog":
+            # BusyBox syslogd 的 split_escape_and_log 会把消息中的换行替换为空格，
+            # 因此 v2 的 /var/log/messages 不会出现脱离 syslog 包络的续行。
+            body = body.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
         physical = body.split("\n")
         first, rest = physical[0], physical[1:]
         h, minute, second = (t // 3600) % 24, (t % 3600) // 60, t % 60
@@ -514,8 +609,19 @@ def generate(calls: Sequence[Call], out: Path):
                          f"1000  1000 I DIAL: {first}")
             lines.extend(rest)
         elif call.channel == "syslog":
-            lines.append(f"2026-07-17T{h:02d}:{minute:02d}:{second:02d} "
-                         f"device modem_mng[1000]: {first}")
+            if call.product == "modem_mng_v2":
+                # RK3576/BusyBox 真机前缀：传统 RFC3164 时间 + facility.severity。
+                # log_* 的 stderr 镜像在部署脚本中被重定向；这里模拟 /var/log/messages。
+                severity = call.severity or "info"
+                # 目标 BusyBox 的 prioritynames 对 LOG_WARNING 首先返回 "warn"；
+                # 解析器也兼容其他 syslogd 常见的 "warning" 别名。
+                if severity == "warning":
+                    severity = "warn"
+                lines.append(f"Aug 24 {h:02d}:{minute:02d}:{second:02d} "
+                             f"device user.{severity} modem_mng_v2[1000]: {first}")
+            else:
+                lines.append(f"2026-07-17T{h:02d}:{minute:02d}:{second:02d} "
+                             f"device modem_mng[1000]: {first}")
             lines.extend(rest)
         else:
             lines.extend(physical)
@@ -553,7 +659,7 @@ def main(argv=None) -> int:
     by_product = {}
     for call in unique:
         by_product[call.product] = by_product.get(call.product, 0) + 1
-    print("四份代码      : " + ", ".join(f"{k}={v}" for k, v in sorted(by_product.items())))
+    print("产品变体      : " + ", ".join(f"{k}={v}" for k, v in sorted(by_product.items())))
     print("通道          : " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
     print(f"动态格式      : {sum(c.dynamic for c in unique)} 个")
     print(f"生成          : {args.out}（{line_count} 行）")

@@ -43,9 +43,13 @@ void parseLines(const std::vector<std::string>& raw,
 
 // ---- 多文件合并定序 ----
 // 取一批原始行中**第一条带时间戳的行**的 epoch 秒。只扫前 scanLimit 行
-// (日志文件头部必有时间戳,不必整份扫)。认三种来源:
+// (日志文件头部通常很快出现时间戳,不必整份扫)。认这些来源:
 //   "=== Dial Log Opened [ts] ... ===" 会话标记(FMT_SD 文件首行常是它,logger_sd.c:424)
-//   FMT_SD / FMT_SEAS / FMT_ANDROID / FMT_SYSLOG 的普通行
+//   FMT_SD / FMT_SEAS / FMT_ANDROID / FMT_SYSLOG 的普通行；FMT_SYSLOG 同时包含
+//   RFC3339 与 BusyBox RFC3164。RFC3164 本身没有年份，解析器以同文件年份或当地当前年
+//   推定，并在显示时间前加 `~`；跨年仅能依据文件内 Dec→Jan 的顺序修正。
+// modem_mng_v2 的 `[INFO]/[ERR]/[WARN]/[NOTICE]/[DBG]` stderr 镜像没有自身时间，
+// 可保留为 FMT_CONSOLE 并提取级别，但不能单独为 firstTimestamp 提供时基。
 // 返回 false = 扫不到(整批都是噪声,或不是本工具支持的格式);此时 *t 不被写入。
 bool firstTimestamp(const std::vector<std::string>& raw, long long* t, size_t scanLimit = 200);
 

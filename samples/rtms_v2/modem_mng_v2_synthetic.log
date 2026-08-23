@@ -1,0 +1,12 @@
+# 【合成，非真机】正文来自 modem_mng_v2 源码格式串，参数值为测试填充
+Aug 24 12:00:00 rk3576 user.info modem_mng_v2[400]: ===== modem_mng_v2 start =====
+Aug 24 12:00:01 rk3576 user.info modem_mng_v2[400]: Initial TTY hint: /dev/ttyUSB2, Module: UNKNOWN
+Aug 24 12:00:02 rk3576 user.info modem_mng_v2[400]: Module detected: EG25 (type=2)
+Aug 24 12:00:03 rk3576 user.info modem_mng_v2[400]: CEREG stat=1 lac=1234 ci=01ABCDEF act=7
+Aug 24 12:00:04 rk3576 user.info modem_mng_v2[400]: [CHECK_CSQ] CSQ: 20 (sim_present=1 online=1)
+Aug 24 12:00:05 rk3576 user.info modem_mng_v2[400]: ===== modem READY ===== tty=/dev/ttyUSB2 module=EG25 model=EG25G imei=867530900000001 csq=20 online=1
+Aug 24 12:00:06 rk3576 user.info modem_mng_v2[400]: [READY/enter] WAN ping OK -> network_online=1
+Aug 24 12:00:10 rk3576 user.info modem_mng_v2[400]: [READY] WAN ping fail -> network_online=0
+Aug 24 12:00:20 rk3576 user.info modem_mng_v2[400]: [READY] WAN ping fail -> network_online=0
+Aug 24 12:00:40 rk3576 user.info modem_mng_v2[400]: [READY] WAN ping OK -> network_online=1
+

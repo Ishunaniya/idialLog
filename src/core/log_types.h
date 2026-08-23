@@ -30,7 +30,10 @@ enum Platform {
     PLAT_AG35,      // modem_mng AG35(EC200A 源码路径 + [SLOT] 双卡)
     PLAT_EG25,      // modem_mng EG25
     PLAT_ARTERY,    // open_dial_for_artery(seas_log)
-    PLAT_IMX        // 仅占位:IMX 无 dial_log,不产此类日志(见 log_analysis.cpp 说明)
+    PLAT_IMX,       // 仅占位:IMX 无 dial_log,不产此类日志(见 log_analysis.cpp 说明)
+    // RK3576 重构版使用 syslog/控制台文本，状态机和恢复策略均不同于旧 modem_mng；
+    // 单列平台，避免把 v2 的事件套入旧 EG25/EC200A 恢复阶梯阈值。
+    PLAT_MODEM_MNG_V2
 };
 
 // 一条已解析的日志行
@@ -47,7 +50,7 @@ struct LogLine {
     std::uint16_t sourceId = 0; // 合并来源编号；防止 Cell ID 等状态跨文件串联
     Fmt  fmt = FMT_UNKNOWN;
     LogLevel level = LEVEL_NONE;
-    bool inferredTime = false; // 裸控制台无时间戳：沿用上一条时间时明确标记
+    bool inferredTime = false; // 时间含推定成分：RFC3164 缺年份，或裸控制台沿用相邻时间
 
     LogLine() = default;
     ~LogLine() = default;
