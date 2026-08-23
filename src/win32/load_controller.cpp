@@ -69,7 +69,7 @@ static void PresentAnalysis(bool bad) {
     MarkAllPagesDirty();
     RenderPage(CurrentPage());
 
-    std::wstring st = FmtW(L"  筛选后 %d / 共 %d 行   ·   断网 %d 次   ·   会话(重启) %d",
+    std::wstring st = FmtW(L"  筛选后 %d / 共 %d 行   ·   断网 %d 次   ·   启动证据 %d",
                            (int)App().document.filtered.size(), (int)App().document.lines.size(),
                            (int)App().document.outages.size(), (int)App().document.sessions.size());
     st += L"   ·   平台: " + U8ToW(App().document.platform.name);
@@ -83,11 +83,12 @@ static void PresentAnalysis(bool bad) {
                    static_cast<int>(App().document.cellAnalysis.cells.size()));
     else
         st += L"   ·   小区 ID: 日志未提供";
-    if (App().document.audit.unparsed == 0)
-        st += L"   ·   未识别 0 行(无遗漏)";
+    if (App().document.audit.unparsed == 0 && App().document.audit.nulBytes == 0)
+        st += L"   ·   未识别 0 行、NUL 0 字节";
     else
-        st += FmtW(L"   ·   ⚠ 未识别 %d 行(%.2f%%,见“未识别行”页)",
-                   (int)App().document.audit.unparsed, App().document.audit.unparsedRatio() * 100.0);
+        st += FmtW(L"   ·   ⚠ 未识别 %d 行(%.2f%%)，NUL %d 字节/%d 行(见审计页)",
+                   (int)App().document.audit.unparsed, App().document.audit.unparsedRatio() * 100.0,
+                   (int)App().document.audit.nulBytes, (int)App().document.audit.nulLines);
     if (bad) st += L"   ·   ⚠ 正则非法,已忽略该条件";
     SetWindowTextW(App().hStatus, st.c_str());
     if (bad && !g_regexWasBad)
@@ -126,7 +127,7 @@ static void LoadRawLines(std::vector<std::string> raw, const std::wstring& srcLa
     releaseVector(raw);
     App().document.platform = detectPlatform(App().document.lines);   // 平台识别用全量行(不受筛选影响)
     std::wstring lbl = srcLabel;
-    lbl += FmtW(L"   (%d 行, %d 会话, %s)", (int)App().document.lines.size(), (int)App().document.sessions.size(),
+    lbl += FmtW(L"   (%d 行, %d 个启动证据, %s)", (int)App().document.lines.size(), (int)App().document.sessions.size(),
                 U8ToW(App().document.platform.name).c_str());
     SetWindowTextW(App().hFileLbl, lbl.c_str());
     RefreshAll();
@@ -440,7 +441,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
         if (noTs > 0) lbl += FmtW(L",其中 %d 份扫不到时间戳→拼在最后", noTs);
         lbl += excludedNote;
     }
-    lbl += FmtW(L"   (%d 行, %d 会话, %s)", (int)result->document.lines.size(),
+    lbl += FmtW(L"   (%d 行, %d 个启动证据, %s)", (int)result->document.lines.size(),
                 (int)result->document.sessions.size(), U8ToW(result->document.platform.name).c_str());
     result->label = std::move(lbl);
     result->success = true;
@@ -757,8 +758,9 @@ void DoExportReport() {
                  now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond));
         add(); add(L"## 分析摘要"); add();
         add(FmtW(L"- 平台：%s", U8ToW(App().document.platform.name).c_str()));
-        add(FmtW(L"- 日志：筛选后 %d / 解析 %d 行，%d 个进程会话",
+        add(FmtW(L"- 日志：筛选后 %d / 解析 %d 行，日志打开 %d 次，有证据的进程启动 %d 次",
                  static_cast<int>(App().document.filtered.size()), static_cast<int>(App().document.lines.size()),
+                 static_cast<int>(App().document.audit.logOpened),
                  static_cast<int>(App().document.sessions.size())));
         if (!App().document.lines.empty()) {
             long long firstTime = App().document.lines.front().t;
@@ -769,10 +771,17 @@ void DoExportReport() {
             }
             add(FmtW(L"- 日志时间：%s → %s", U8ToW(fmtTime(firstTime, "FULL")).c_str(),
                      U8ToW(fmtTime(lastTime, "FULL")).c_str()));
+            const ObservationStats observation = observationStats(App().document.lines);
+            add(FmtW(L"- 观测覆盖：实际 %s / 日历跨度 %s（%.2f%%）；授时跳变切段 %d 处",
+                     U8ToW(fmtDur(observation.observedSpan)).c_str(),
+                     U8ToW(fmtDur(observation.calendarSpan)).c_str(), observation.coveragePercent,
+                     static_cast<int>(observation.clockDiscontinuities)));
         }
-        add(FmtW(L"- 断网：%d 次；解析遗漏：%d 行（%.2f%%）",
+        add(FmtW(L"- 断网：%d 次；解析遗漏：%d 行（%.2f%%）；NUL：%d 字节/%d 行",
                  static_cast<int>(App().document.outages.size()), static_cast<int>(App().document.audit.unparsed),
-                 App().document.audit.unparsedRatio() * 100.0));
+                 App().document.audit.unparsedRatio() * 100.0,
+                 static_cast<int>(App().document.audit.nulBytes),
+                 static_cast<int>(App().document.audit.nulLines)));
 
         if (App().document.sources.size() > 1) {
             add(); add(L"## 多日志对比"); add();
@@ -925,8 +934,15 @@ void DoExportHtml() {
         kpi("断网", std::to_string(App().document.outages.size()) + " 次");
         kpi("小区", std::to_string(App().document.cellAnalysis.cells.size()) + " 个");
         kpi("未识别", std::to_string(App().document.audit.unparsed) + " 行");
+        kpi("文件损伤", std::to_string(App().document.audit.nulBytes) + " NUL 字节");
+        const ObservationStats observation = observationStats(App().document.lines);
         html += "</div><p class=\"muted\">日志时间：" + escape(fmtTime(firstTime, "FULL")) + " → " +
-                escape(fmtTime(lastTime, "FULL")) + "</p></section>";
+                escape(fmtTime(lastTime, "FULL")) + "；实际观测 " +
+                escape(fmtDur(observation.observedSpan)) + " / 日历跨度 " +
+                escape(fmtDur(observation.calendarSpan)) + "（覆盖 " +
+                oneDecimal(static_cast<int>(observation.coveragePercent * 10.0)) +
+                "%）；授时跳变切段 " + std::to_string(observation.clockDiscontinuities) +
+                " 处</p></section>";
 
         ChartSeries csq, rsrp, rsrq, snr;
         csq.reserve(App().document.metrics.size()); rsrp.reserve(App().document.metrics.size());

@@ -276,6 +276,7 @@ static bool parseSyslog(const std::string& line0, LogLine& L) {
 
 // 未识别行粗分类,供审计页展示“漏在哪”
 static std::string classifyUnparsed(const std::string& s) {
+    if (s.find("<NUL x") != std::string::npos) return "NUL/二进制损伤";
     if (s.find("+++") != std::string::npos || s.compare(0, 2, "AT") == 0) return "AT 命令/响应续行";
     if (!s.empty() && (s[0] == '+' || s[0] == '$')) return "模组 URC/响应续行";
     if (s.find("===") != std::string::npos) return "分隔/标记行(非会话头)";
@@ -315,6 +316,28 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
         // 去掉行尾 \r\n
         while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) line.pop_back();
 
+        // 文本解析前做字节级完整性审计。NUL 不能被 trim 静默当成空行；压缩连续 NUL
+        // 为可见占位，既避免样例膨胀，也让“未识别行”页能直接看到损伤规模。
+        {
+            size_t nulCount = 0;
+            for (char c : line) if (c == '\0') ++nulCount;
+            if (nulCount) {
+                std::string visible;
+                visible.reserve(line.size() - nulCount + 32);
+                size_t pos = 0;
+                while (pos < line.size()) {
+                    if (line[pos] != '\0') { visible.push_back(line[pos++]); continue; }
+                    size_t end = pos + 1;
+                    while (end < line.size() && line[end] == '\0') ++end;
+                    visible += "<NUL x" + std::to_string(end - pos) + ">";
+                    pos = end;
+                }
+                line.swap(visible);
+                ad.nulBytes += nulCount;
+                ad.nulLines++;
+            }
+        }
+
         if (trim(line).empty()) { ad.blank++; return; }
 
         // 会话标记(logger_sd.c:424 "=== Dial Log Opened [ts] daykey=... ===" (modem_mng)
@@ -323,18 +346,24 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
         // 【真机实证】open_dial 日志开场是 "Dial Program Started",此前只认 "Dial Log Opened",
         //   导致 open_dial 首行被误计未识别(真机 954 行中恰 1 行)。二者语义对等:都是一次
         //   会话开始,都带时间戳、都算一次进程重启。
-        bool isOpened = line.find("Dial Log Opened") != std::string::npos ||
-                        line.find("Dial Program Started") != std::string::npos;
+        bool isLogOpened = line.find("Dial Log Opened") != std::string::npos;
+        bool isProgramStarted = line.find("Dial Program Started") != std::string::npos;
+        bool isOpened = isLogOpened || isProgramStarted;
+        bool isExited = line.find("Program Exit") != std::string::npos;
         if (line.compare(0, 3, "===") == 0 &&
-            (isOpened || line.find("Program Exit") != std::string::npos)) {
+            (isOpened || isExited)) {
             size_t a = line.find('[');
             size_t b = (a == std::string::npos) ? std::string::npos : line.find(']', a);
             if (a != std::string::npos && b != std::string::npos && b > a + 1 && isOpened) {
                 std::string ts = line.substr(a + 1, b - a - 1);  // "YYYY-MM-DD HH:MM:SS"
                 int Y,Mo,D,h,mi,s;
-                if (std::sscanf(ts.c_str(), "%4d-%2d-%2d %2d:%2d:%2d",&Y,&Mo,&D,&h,&mi,&s)==6)
+                if (isProgramStarted &&
+                    std::sscanf(ts.c_str(), "%4d-%2d-%2d %2d:%2d:%2d",&Y,&Mo,&D,&h,&mi,&s)==6)
                     restartTs.push_back(mkEpoch(Y,Mo,D,h,mi,s));
             }
+            if (isLogOpened) ad.logOpened++;
+            if (isProgramStarted) ad.programStarted++;
+            if (isExited) ad.programExited++;
             ad.session++;
             return;
         }
@@ -372,8 +401,10 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
             if (L.msg.find("DIAL Version:") != std::string::npos ||
                 L.msg.find("modem_mng Version:") != std::string::npos ||
                 L.msg.find("Program started. Version:") != std::string::npos ||
-                L.msg.find("Program started. Main Version:") != std::string::npos)
+                L.msg.find("Program started. Main Version:") != std::string::npos) {
                 restartTs.push_back(L.t);
+                ad.programStarted++;
+            }
             // 时钟跳变检测:与上一条已解析行比较,若跨越 2000 年边界(一侧 <2000 一侧 >=2000)
             // 即认定跳变 —— 这是 RTC 未授时(1970)后中途授时的特征。只记录首次跳变(最有意义
             // 的那次:1970→真实时间)。阈值用 2000 年边界而非"差值大",避免把正常跨天误判。

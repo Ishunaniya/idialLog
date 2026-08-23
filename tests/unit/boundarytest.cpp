@@ -102,8 +102,8 @@ static void t4_clock_jump_detection() {
     // 合成:前段 1970(未授时),中途跳到 2026(授时成功)
     std::vector<std::string> raw = L({
         "[1970-01-01 00:00:10] [HEARTBEAT] CSQ:15",
-        "[1970-01-01 00:00:20] [HEARTBEAT] CSQ:16",
-        "[2026-06-30 12:00:00] [HEARTBEAT] CSQ:20",   // ← 第3行:跳变
+        "[1970-01-01 00:00:20] [OUTAGE] Network outage started",
+        "[2026-06-30 12:00:00] [OUTAGE] Network recovered after 1786696972s", // 跳变
         "[2026-06-30 12:00:10] [HEARTBEAT] CSQ:21"
     });
     std::vector<LogLine> ll; std::vector<std::string> ss; ParseAudit ad;
@@ -112,6 +112,10 @@ static void t4_clock_jump_detection() {
     ok(ad.jumpAtLine == 3, ("跳变行号 == 3(实得 " + std::to_string(ad.jumpAtLine) + ")").c_str());
     ok(fmtTime(ad.jumpFromT, "FULL") == "1970-01-01 00:00:20", "跳变前时间正确(1970)");
     ok(fmtTime(ad.jumpToT, "FULL") == "2026-06-30 12:00:00", "跳变后时间正确(2026)");
+    const ObservationStats observation = observationStats(ll);
+    ok(observation.observedSpan == 20 && observation.clockDiscontinuities == 1,
+       "同 source 授时跳变切成 10s+10s，不把 56 年计入实际观测");
+    ok(collectOutages(ll).empty(), "跨 1970→2026 时基的 start/recovery 不配成断网");
 }
 
 // 正常日志(全程墙钟)不得误报跳变
@@ -413,6 +417,90 @@ static void t13_console_android_syslog_retention() {
        "RFC3339 syslog 被解析且正文标签优先");
 }
 
+static void t14_tbox_confirmed_boundaries() {
+    std::printf("== T14 TBOX 真机问题边界：孤立恢复/覆盖/会话/NUL/RX/门控 ==\n");
+
+    std::vector<std::string> raw{
+        "=== Dial Log Opened [2026-08-14 08:44:25] daykey=2026-08-14 ===",
+        "[2026-08-14 08:44:25] EG25 modem_mng Version: 1.31.15",
+        "[2026-08-14 08:44:28] [HEARTBEAT] Network recovered after 1786696972s",
+        std::string(899, '\0'),
+        "=== Dial Log Opened [2026-08-21 08:44:25] daykey=2026-08-21 ===",
+        "[2026-08-21 08:44:25] [HEARTBEAT] CH:SIM | rx_packets=10",
+    };
+    std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit, {0, 4});
+    ok(audit.logOpened == 2 && sessions.size() == 1,
+       "2 次日志打开只形成 1 个有版本横幅支撑的进程启动");
+    ok(audit.nulBytes == 899 && audit.nulLines == 1 && audit.unparsed == 1,
+       "899 个 NUL 被字节审计并作为可见损伤行保留");
+
+    auto outages = collectOutages(lines);
+    ok(outages.empty(), "无 fault start 的 1786696972s 恢复行不形成断网");
+    PlatformInfo eg25; eg25.plat = PLAT_EG25;
+    auto metrics = buildMetrics(lines);
+    auto findings = analyze(lines, outages, metrics, eg25, audit);
+    bool anomaly = false;
+    for (const Finding& finding : findings)
+        anomaly = anomaly || finding.title.find("恢复记录缺少可信故障起点") != std::string::npos;
+    ok(anomaly, "孤立恢复仍作为时钟/日志异常保留证据，不被静默丢弃");
+
+    std::vector<std::string> coverageRaw = L({
+        "[2026-08-14 08:00:00] [HEARTBEAT] CH:SIM",
+        "[2026-08-14 08:01:00] [HEARTBEAT] CH:SIM",
+        "[2026-08-21 08:00:00] [HEARTBEAT] CH:SIM",
+        "[2026-08-21 08:01:00] [HEARTBEAT] CH:SIM"
+    });
+    std::vector<LogLine> coverageLines; std::vector<std::string> coverageSessions;
+    parseLines(coverageRaw, coverageLines, coverageSessions, nullptr, {0, 2});
+    const ObservationStats observation = observationStats(coverageLines);
+    ok(observation.observedSpan == 120 && observation.calendarSpan == 604860,
+       "相隔七天的两份日志只累计各自 60s，不跨空档计算观测时长");
+
+    std::vector<std::string> rxRaw = L({
+        "[2026-08-14 08:00:00] [HEARTBEAT] CH:SIM | rx_packets=100",
+        "[2026-08-21 08:00:00] [HEARTBEAT] CH:SIM | rx_packets=10"
+    });
+    std::vector<LogLine> rxLines; std::vector<std::string> rxSessions;
+    parseLines(rxRaw, rxLines, rxSessions, nullptr, {0, 1});
+    const auto rxMetrics = buildMetrics(rxLines);
+    ok(rxMetrics.size() == 2 && rxMetrics[0].drx == LLONG_MIN && rxMetrics[1].drx == LLONG_MIN,
+       "新日志来源重置 RX 基线，不制造 -90 伪负增量");
+
+    std::vector<std::string> gateRaw = L({
+        "[2026-08-14 09:00:00] [ROAMLINK] probe NO_PACKAGE: RBMaster missing, force SIM, policy=4",
+        "[2026-08-14 09:00:01] [SDK] DataCall connected | profile=1",
+        "[2026-08-14 09:00:02] [HEARTBEAT] CH:SIM | DownTime:0s",
+        "[2026-08-14 09:01:00] [HEARTBEAT] Ping failed 3 consecutive times, fault timer started",
+        "[2026-08-14 09:03:00] [HEARTBEAT] Network recovered after 120s"
+    });
+    std::vector<LogLine> gateLines; std::vector<std::string> gateSessions; ParseAudit gateAudit;
+    parseLines(gateRaw, gateLines, gateSessions, &gateAudit);
+    const auto gateOutages = collectOutages(gateLines);
+    const auto gateFindings = analyze(gateLines, gateOutages, buildMetrics(gateLines), eg25, gateAudit);
+    bool enabled = false, oldFalseClaim = false;
+    for (const Finding& finding : gateFindings) {
+        enabled = enabled || finding.detail.find("可见门控条件均满足") != std::string::npos;
+        oldFalseClaim = oldFalseClaim || finding.detail.find("本日志的策略/通道不满足") != std::string::npos;
+    }
+    ok(enabled && !oldFalseClaim, "policy=4、CH=SIM、已联网不再被误判为阶梯结构性关闭");
+}
+
+static void t15_artery_persistent_outage_events() {
+    std::printf("== T15 artery 标准化断网持久事件 ==\n");
+    std::vector<std::string> raw = L({
+        "2026-08-23 10:00:00.100 [INFO] dial_status_update (dial.c:780) - [OUTAGE] Network outage started | state=reg_check channel=SWITCHING",
+        "2026-08-23 10:01:15.200 [INFO] dial_status_update (dial.c:790) - [OUTAGE] Network recovered after 75s | state=net_connected channel=SIM"
+    });
+    std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit);
+    const auto outages = collectOutages(lines);
+    ok(audit.unparsed == 0 && lines.size() == 2 && lines[0].tagText() == "OUTAGE",
+       "artery seas_log 的 [OUTAGE] 起止事件完整结构化解析");
+    ok(outages.size() == 1 && outages[0].recovered && outages[0].dur == 75,
+       "同 source 标准事件配成 1 次可信 75s 断网");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -427,6 +515,8 @@ int main() {
     t11_compact_record_boundaries();
     t12_cell_quality_and_correlation();
     t13_console_android_syslog_retention();
+    t14_tbox_confirmed_boundaries();
+    t15_artery_persistent_outage_events();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

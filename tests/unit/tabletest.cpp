@@ -138,8 +138,10 @@ int main() {
     auto qengMetrics = buildMetrics(qengLines);
     ok(qengMetrics.size() == 1 && qengMetrics[0].cellId == "D17C148" &&
        qengMetrics[0].pci == 496 && qengMetrics[0].tac == 0x272D &&
-       qengMetrics[0].tacDigits == 4,
-       "[CELL] +QENG 的 Cell ID/PCI/TAC 会延续到后续心跳");
+       qengMetrics[0].tacDigits == 4 && qengMetrics[0].rsrp == -101 &&
+       qengMetrics[0].rsrq == -6 && qengMetrics[0].rssiVal == -75 &&
+       qengMetrics[0].snr10 == 230,
+       "[CELL] +QENG 的 Cell/PCI/TAC/RSRP/RSRQ/RSSI/SINR 会延续到后续心跳");
 
     std::vector<std::string> invalidCellRaw{
         "[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | Cell:1D8DE0B | CSQ:18",

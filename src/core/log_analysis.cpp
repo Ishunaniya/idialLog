@@ -17,6 +17,12 @@
 
 namespace dl {
 
+static constexpr long long kSaneClockEpoch = 946598400LL;
+
+static bool crossesClockBase(long long first, long long second) {
+    return (first < kSaneClockEpoch) != (second < kSaneClockEpoch);
+}
+
 static std::string_view trimView(std::string_view s) {
     while (!s.empty() && (unsigned char)s.front() <= ' ') s.remove_prefix(1);
     while (!s.empty() && (unsigned char)s.back() <= ' ') s.remove_suffix(1);
@@ -112,7 +118,8 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
 
 // ============================ 判定 ============================
 bool isFaultStart(const std::string& msg) {
-    return icontains(msg, "Ping failed") && icontains(msg, "fault timer started");
+    return (icontains(msg, "Ping failed") && icontains(msg, "fault timer started")) ||
+           icontains(msg, "Network outage started");
 }
 
 bool isRecovered(const std::string& msg, int* durSec) {
@@ -144,6 +151,15 @@ bool isRecovered(const std::string& msg, int* durSec) {
     return false;
 }
 
+// open_dial 的 "Network Recovered ... Down: Ns" 是自包含事件：产品在恢复行中
+// 同时给出停机时长，即使日志截段没有 fault start 也可统计。modem_mng 的
+// "recovered after Ns" 不是该语义，仍必须与 fault start 配对。
+static bool isSelfContainedRecovery(const std::string& msg) {
+    const std::string lo = lower(msg);
+    return lo.find("network recovered") != std::string::npos &&
+           lo.find("down:") != std::string::npos;
+}
+
 // 时间线保留的“状态变化类”标签。取自三仓库 dial_log/SEAS_LOG 首参的穷举
 // (modem_mng 357 处、open_dial 107 处、artery 4 处内嵌标签),多词标签按首段匹配:
 //   "RECOVERY L1/L2/L3"→RECOVERY、"REG TIMEOUT"/"REG DIAG"→REG、
@@ -152,7 +168,7 @@ bool isRecovered(const std::string& msg, int* durSec) {
 //           LOGMIGR/LOGCLEAN/CLEANUP(日志自身维护,与网络无关)
 static const char* kEventTags[] = {
     "STATE","SDK","ROAMLINK","SLOT","OPER","LED","CFUN","SIM","APN","INIT","MODEM",
-    "RECOVERY","ERROR","WARN","WARNING","FATAL","INFO","EVENT","STATUS","ALARM","TZ","NANOMSG",
+    "RECOVERY","OUTAGE","ERROR","WARN","WARNING","FATAL","INFO","EVENT","STATUS","ALARM","TZ","NANOMSG",
     // 以下为本次按源码穷举补齐(此前被静默丢弃)
     "PING","REG","ZERO","CPDUMP","COPS","SM","DIAG", nullptr
 };
@@ -198,17 +214,53 @@ bool isEventLine(const LogLine& l) {
 template <typename Lines>
 static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
     std::vector<Outage> outs;
+    std::map<std::uint16_t, std::pair<long long, long long>> bounds;
+    for (const auto& item : lines) {
+        const LogLine& line = lineRef(item);
+        auto inserted = bounds.emplace(line.sourceId, std::make_pair(line.t, line.t));
+        if (!inserted.second) {
+            inserted.first->second.first = std::min(inserted.first->second.first, line.t);
+            inserted.first->second.second = std::max(inserted.first->second.second, line.t);
+        }
+    }
     bool have = false;
     long long start = 0;
     size_t startLine = 0;
+    std::uint16_t source = 0;
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
-        if (isFaultStart(l.msg) && !have) { have = true; start = l.t; startLine = l.lineNo; }
+        if (have && l.sourceId != source) {
+            Outage o; o.start = start; o.startLine = startLine; o.recovered = false;
+            outs.push_back(o);
+            have = false;
+        }
+        // 产品只会在 start_fail_ts==0 时打印 fault start；同一来源再次出现该行说明
+        // 上一个故障周期已被内部状态重置，最近一次 start 才能与后续 recovery 配对。
+        if (isFaultStart(l.msg)) {
+            have = true; start = l.t; startLine = l.lineNo; source = l.sourceId;
+        }
         int dur = 0;
         if (isRecovered(l.msg, &dur)) {
+            const auto bound = bounds.find(source);
+            const auto recoveryBound = bounds.find(l.sourceId);
+            const long long sourceSpan = recoveryBound == bounds.end() ? 0 :
+                                         recoveryBound->second.second - recoveryBound->second.first;
+            const bool selfContained = isSelfContainedRecovery(l.msg);
+            if ((!have || l.sourceId != source) && !selfContained) continue;
+            const long long pairedSpan = bound == bounds.end() ? 0 :
+                                         bound->second.second - bound->second.first;
+            // 声明时长可与墙钟秒差有一个心跳周期的误差，但绝不能超过本来源全部
+            // 可观测跨度。超出时属于时钟跳变/残缺日志，不能污染可用率。
+            const bool sameClockBase = !have || l.sourceId != source ||
+                                       !crossesClockBase(start, l.t);
+            const bool plausible = dur >= 0 && sameClockBase &&
+                                   (selfContained || l.t >= start) &&
+                                   static_cast<long long>(dur) <=
+                                       (selfContained ? sourceSpan : pairedSpan) + 60;
+            if (!plausible) { have = false; continue; }
             Outage o;
-            o.start = have ? start : l.t;
-            o.startLine = have ? startLine : l.lineNo;
+            o.start = have && l.sourceId == source ? start : l.t - dur;
+            o.startLine = have && l.sourceId == source ? startLine : l.lineNo;
             o.end = l.t; o.dur = dur; o.recovered = true;
             o.endLine = l.lineNo;
             // SDK L0 自愈:恢复行含 "(L0)"(open_dial "Network Recovered in SDK phase (L0)")。
@@ -231,6 +283,60 @@ std::vector<Outage> collectOutages(const std::vector<LogLine>& lines) {
 
 std::vector<Outage> collectOutages(const LogView& lines) {
     return collectOutagesImpl(lines);
+}
+
+template <typename Lines>
+static ObservationStats observationStatsImpl(const Lines& lines) {
+    ObservationStats stats;
+    if (lines.empty()) return stats;
+    struct SourceWindow {
+        bool have = false;
+        long long first = 0;
+        long long last = 0;
+        long long previous = 0;
+    };
+    std::map<std::uint16_t, SourceWindow> windows;
+    bool haveCalendar = false;
+    long long calendarFirst = 0, calendarLast = 0;
+    for (const auto& item : lines) {
+        const LogLine& line = lineRef(item);
+        if (!haveCalendar) {
+            calendarFirst = calendarLast = line.t;
+            haveCalendar = true;
+        } else {
+            calendarFirst = std::min(calendarFirst, line.t);
+            calendarLast = std::max(calendarLast, line.t);
+        }
+        SourceWindow& window = windows[line.sourceId];
+        if (!window.have) {
+            window.have = true;
+            window.first = window.last = window.previous = line.t;
+        } else if (crossesClockBase(window.previous, line.t)) {
+            stats.observedSpan += std::max(0LL, window.last - window.first);
+            ++stats.clockDiscontinuities;
+            window.first = window.last = window.previous = line.t;
+        } else {
+            window.first = std::min(window.first, line.t);
+            window.last = std::max(window.last, line.t);
+            window.previous = line.t;
+        }
+    }
+    stats.calendarSpan = std::max(0LL, calendarLast - calendarFirst);
+    stats.sourceCount = windows.size();
+    for (const auto& item : windows)
+        stats.observedSpan += std::max(0LL, item.second.last - item.second.first);
+    if (stats.calendarSpan > 0)
+        stats.coveragePercent = 100.0 * static_cast<double>(stats.observedSpan) /
+                               static_cast<double>(stats.calendarSpan);
+    return stats;
+}
+
+ObservationStats observationStats(const std::vector<LogLine>& lines) {
+    return observationStatsImpl(lines);
+}
+
+ObservationStats observationStats(const LogView& lines) {
+    return observationStatsImpl(lines);
 }
 
 std::vector<Stall> detectRxStall(const std::vector<std::pair<long long,long long>>& rxs,
@@ -389,12 +495,18 @@ struct CellState {
     int pci = -1;
     std::uint32_t tac = UINT32_MAX;
     std::uint8_t tacDigits = 0;
+    int rsrp = 1, rsrq = 1, rssi = 1, snr10 = 100000;
+    long long signalT = 0;
 
-    void clear() { id.clear(); pci = -1; tac = UINT32_MAX; tacDigits = 0; }
+    void clear() {
+        id.clear(); pci = -1; tac = UINT32_MAX; tacDigits = 0;
+        rsrp = rsrq = rssi = 1; snr10 = 100000; signalT = 0;
+    }
     void setId(std::string_view value) {
         value = trimView(value);
         if (id.size() != value.size() || !std::equal(id.begin(), id.end(), value.begin())) {
             pci = -1; tac = UINT32_MAX; tacDigits = 0;
+            rsrp = rsrq = rssi = 1; snr10 = 100000; signalT = 0;
         }
         id.assign(value.data(), value.size());
     }
@@ -411,7 +523,7 @@ static std::string_view unquote(std::string_view value) {
 // Quectel +QENG servingcell 的 LTE/WCDMA/GSM/NR5G-SA 形态都把 Cell ID 放在
 // 第 7 个 CSV 字段。LTE 的 PCI/TAC 分别位于第 8/13 个字段，NR5G-SA 的 TAC
 // 位于第 9 个字段。这里只接纳明确的 servingcell 证据，不从邻区或数字位置猜测。
-static bool qengCellState(const std::string& message, CellState& state) {
+static bool qengCellState(const std::string& message, long long sampleTime, CellState& state) {
     const size_t marker = message.find("+QENG:");
     if (marker == std::string::npos) return false;
     std::array<std::string_view, 24> fields{};
@@ -443,6 +555,20 @@ static bool qengCellState(const std::string& message, CellState& state) {
         if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X')) tac.remove_prefix(2);
         state.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(tac.size(), 8));
     }
+    // LTE QENG: fields[13..16] = RSRP/RSRQ/RSSI/SINR，SINR 原始单位为 dB；
+    // MetricRow 统一保存 0.1dB，故乘 10。仅在字段完整且数值语义有效时继承。
+    long long signal = 0;
+    if (lte && count > 16) {
+        if (parseLong(fields[13], signal, true) && signal < 0 && signal >= INT_MIN)
+            state.rsrp = static_cast<int>(signal);
+        if (parseLong(fields[14], signal, true) && signal < 0 && signal >= INT_MIN)
+            state.rsrq = static_cast<int>(signal);
+        if (parseLong(fields[15], signal, true) && signal < 0 && signal >= INT_MIN)
+            state.rssi = static_cast<int>(signal);
+        if (parseLong(fields[16], signal, true) && signal >= -3276 && signal <= 3276)
+            state.snr10 = static_cast<int>(signal * 10);
+        state.signalT = sampleTime;
+    }
     return true;
 }
 
@@ -466,7 +592,7 @@ static void updateCellState(const LogLine& line, CellState& state) {
         if (changed.empty()) state.clear();
         else state.setId(changed);
     }
-    if (qengCellState(line.msg, state)) return;
+    if (qengCellState(line.msg, line.t, state)) return;
     if (line.tagText() == "DIAG") {
         const HeartbeatFields fields = heartbeatFields(line.msg);
         const std::string_view cell = fields.cell;
@@ -488,7 +614,11 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
 
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
-        if (haveSource && l.sourceId != currentSource) currentCell.clear();
+        if (haveSource && l.sourceId != currentSource) {
+            currentCell.clear();
+            haveLastRx = false;
+            lastRx = 0;
+        }
         currentSource = l.sourceId;
         haveSource = true;
         updateCellState(l, currentCell);
@@ -598,6 +728,15 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         if (parseLong(firstOf(f.rssiUpper, f.rssiLower), number, true) &&
             number >= INT_MIN && number < 0)
             m.rssiVal = (int)number;
+        // 1.31.15 等旧固件的普通心跳不带完整 LTE 四元组，但紧邻的 QENG 已提供；
+        // 只有心跳字段缺失时才继承，绝不覆盖新版固件的明确值。
+        const bool adjacentQeng = currentCell.signalT > 0 && m.t >= currentCell.signalT &&
+                                  m.t - currentCell.signalT <= 2;
+        if (adjacentQeng && m.rsrp >= 0 && currentCell.rsrp < 0) m.rsrp = currentCell.rsrp;
+        if (adjacentQeng && m.rsrq >= 0 && currentCell.rsrq < 0) m.rsrq = currentCell.rsrq;
+        if (adjacentQeng && m.rssiVal >= 0 && currentCell.rssi < 0) m.rssiVal = currentCell.rssi;
+        if (adjacentQeng && m.snr10 == 100000 && currentCell.snr10 != 100000)
+            m.snr10 = currentCell.snr10;
         if (parseLong(f.srv, number, true) && number >= 0 && number <= 2)
             m.srvVal = (int)number;
         if (parseLong(f.deny, number, true) && number >= 0 && number <= INT_MAX)
@@ -932,9 +1071,39 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     std::vector<const LogLine*> evNeverConn, evPolicy, evRecL1, evRecL2, evRecL3,
                                 evDenied, evLimited, evSuspectedAccount, evRegQueryFail,
                                 evRegistrationIssue, evCpdump, evSlot, evOper, evCfun,
-                                evNotReady;
+                                evNotReady, evOrphanRecovery, evImpossibleRecovery;
+    std::map<std::uint16_t, std::pair<long long, long long>> sourceBounds;
+    std::map<std::uint16_t, bool> faultOpen;
+    std::map<std::uint16_t, long long> faultStartTime;
+    for (const auto& item : lines) {
+        const LogLine& line = lineRef(item);
+        auto inserted = sourceBounds.emplace(line.sourceId, std::make_pair(line.t, line.t));
+        if (!inserted.second) {
+            inserted.first->second.first = std::min(inserted.first->second.first, line.t);
+            inserted.first->second.second = std::max(inserted.first->second.second, line.t);
+        }
+    }
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
+        if (isFaultStart(l.msg)) {
+            faultOpen[l.sourceId] = true;
+            faultStartTime[l.sourceId] = l.t;
+        }
+        int recoveryDuration = 0;
+        if (isRecovered(l.msg, &recoveryDuration)) {
+            const auto bound = sourceBounds.find(l.sourceId);
+            const long long sourceSpan = bound == sourceBounds.end() ? 0 :
+                                         bound->second.second - bound->second.first;
+            const bool selfContained = isSelfContainedRecovery(l.msg);
+            if (!faultOpen[l.sourceId] && !selfContained) evOrphanRecovery.push_back(&l);
+            else if (faultOpen[l.sourceId] &&
+                     crossesClockBase(faultStartTime[l.sourceId], l.t))
+                evImpossibleRecovery.push_back(&l);
+            else if (recoveryDuration < 0 ||
+                     static_cast<long long>(recoveryDuration) > sourceSpan + 60)
+                evImpossibleRecovery.push_back(&l);
+            faultOpen[l.sourceId] = false;
+        }
         // EC200A 门控日志(ec200a/dial/dial.cpp:1615/1622)。EG25 无对应日志:
         // 其门控是静默的(eg25/dial/dial.c:974 的 has_connected_once 条件)。
         if (icontains(l.msg, "never-connected"))            evNeverConn.push_back(&l);
@@ -1000,6 +1169,25 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         if (l.tagText() == "SLOT")                          evSlot.push_back(&l);
         if (l.tagText() == "OPER")                          evOper.push_back(&l);
         if (l.tagText() == "CFUN")                          evCfun.push_back(&l);
+    }
+    if (!evOrphanRecovery.empty() || !evImpossibleRecovery.empty()) {
+        Finding f;
+        f.severity = 1;
+        f.title = "恢复记录缺少可信故障起点或时长不可能，已排除出断网统计";
+        f.detail = "恢复行必须与同一日志来源内的 fault timer started 配对；声明时长还必须"
+                   "不超过该来源的实际观测跨度。未满足时通常表示日志缺失、授时跳变或残留"
+                   "状态，不能据此计算断网和可用率。";
+        f.advice = "补充同进程的 unsynced/前序日志并核对系统授时记录；产品持续时间应使用"
+                   "CLOCK_MONOTONIC。工具已保留原始恢复值作为异常证据。";
+        for (const LogLine* line : evOrphanRecovery) {
+            if (f.ev.size() >= 3) break;
+            f.ev.push_back(mkEv(*line));
+        }
+        for (const LogLine* line : evImpossibleRecovery) {
+            if (f.ev.size() >= 3) break;
+            f.ev.push_back(mkEv(*line));
+        }
+        fs.push_back(std::move(f));
     }
     // SDK 注网摘要是 2026-07/08 四份产品代码新增字段。只有 SRV!=FULL 且 DENY>0
     // 才算拒绝证据；DENY=0 不臆测。两套 SDK 的 DENY 数字表不同,这里只保留原码。
@@ -1293,18 +1481,61 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.severity = 1;
             f.title  = "恢复阶梯一次都没触发,但存在超过 L1 阈值的断网";
             f.detail = "有断网时长 ≥ L1 阈值(EG25 60s / EC200A 5min)却无任何 [RECOVERY] 日志。";
-            if (pi.plat == PLAT_EG25 && !evPolicy.empty()) {
-                // 实证:eg25/dial/dial.c:974-977 —— 阶梯要求同时满足
-                // has_connected_once && 通道非 roamlink && policy==NET_POLICY_FORCE_SIM(4)
-                f.detail += " EG25 的阶梯(eg25/dial/dial.c:974)要求同时满足三个条件:"
-                            "已联网过、当前不在 Roamlink 通道、且策略为 4(FORCE_SIM)。"
-                            "本日志的策略/通道不满足,阶梯是被结构性关闭的,不是坏了。";
-                f.advice = "这是设计行为:Roamlink 通道有自己的失败切换逻辑,不走 L1/L2/L3。"
-                           "若期望 SIM 通道的阶梯生效,需把 network_select 设为 4。";
-                for (size_t i = 0; i < evPolicy.size() && i < 2; ++i) f.ev.push_back(mkEv(*evPolicy[i]));
+            if (pi.plat == PLAT_EG25) {
+                const std::uint16_t outageSource = sourceIdAtLine(lines, lng->startLine);
+                int policy = -1;
+                std::string channel;
+                bool connectedBefore = false;
+                const LogLine* policyEvidence = nullptr;
+                const LogLine* channelEvidence = nullptr;
+                for (const auto& item : lines) {
+                    const LogLine& line = lineRef(item);
+                    if (line.sourceId != outageSource || line.lineNo > lng->startLine) continue;
+                    std::string lowerMessage = lower(line.msg);
+                    size_t policyPos = lowerMessage.rfind("policy=");
+                    if (policyPos == std::string::npos) policyPos = lowerMessage.rfind("policy:");
+                    if (policyPos != std::string::npos) {
+                        policyPos += 7;
+                        while (policyPos < lowerMessage.size() && lowerMessage[policyPos] == ' ') ++policyPos;
+                        if (policyPos < lowerMessage.size() && std::isdigit((unsigned char)lowerMessage[policyPos])) {
+                            policy = lowerMessage[policyPos] - '0';
+                            policyEvidence = &line;
+                        }
+                    }
+                    const auto fields = hbFields(line.msg);
+                    auto ch = fields.find("CH");
+                    if (ch != fields.end() && !ch->second.empty()) {
+                        channel = ch->second;
+                        channelEvidence = &line;
+                    }
+                    if (icontains(line.msg, "DataCall connected") ||
+                        icontains(line.msg, "net_connected") ||
+                        icontains(line.msg, "Network recovered")) connectedBefore = true;
+                }
+                const bool forceSim = policy == 4;
+                const bool simChannel = channel == "SIM" || channel == "sim";
+                if ((policy >= 0 && !forceSim) || (!channel.empty() && !simChannel)) {
+                    const std::string policyText = policy >= 0 ? std::to_string(policy) : "未知";
+                    f.detail += " 日志在该断网前明确显示 policy=" + policyText +
+                                "、CH=" + (channel.empty() ? "未知" : channel) +
+                                "；其中至少一项不满足 EG25 FORCE_SIM 阶梯条件。";
+                    f.advice = "这是有日志证据的门控结果；按当前策略检查对应的 Roamlink/切卡恢复链。";
+                } else if (forceSim && simChannel && connectedBefore) {
+                    f.detail += " 日志在该断网前明确显示 policy=4、CH=SIM 且已有联网证据，"
+                                "可见门控条件均满足；不能把未触发解释成策略/通道关闭。";
+                    f.advice = "检查恢复日志是否缺失、故障计时是否被状态机提前清零，或对应产品版本"
+                               "是否仍使用受墙钟跳变影响的计时。";
+                } else {
+                    f.detail += " 未能从该断网同一来源的前序日志完整确定 policy、通道和"
+                                "has_connected_once，不能推断为结构性关闭。";
+                    f.advice = "补充该进程启动与故障前日志，确认 policy、CH 和首次联网证据。";
+                }
+                if (policyEvidence) f.ev.push_back(mkEv(*policyEvidence));
+                if (channelEvidence && channelEvidence != policyEvidence)
+                    f.ev.push_back(mkEv(*channelEvidence));
             } else {
                 f.detail += " 未能从日志证据判定被何条件门控。";
-                f.advice = "确认 has_connected_once 是否为 0(从未联网),或平台策略是否禁用了阶梯。";
+                f.advice = "确认 has_connected_once、平台策略和故障期间状态机条件。";
             }
             Evidence e; e.lineNo = lng->startLine; e.ts = fmtTime(lng->start, "FULL");
             e.text = "该次断网时长 " + fmtDur(lng->dur) + ",已超过 L1 阈值 " + fmtDur(thr);

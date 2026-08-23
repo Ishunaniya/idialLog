@@ -81,6 +81,11 @@ struct ParseAudit {
     size_t blank         = 0;   // 空行/纯空白
     size_t continuation  = 0;   // 多行条目的续行(无时间戳,已并入上一条;非丢弃)
     size_t unparsed      = 0;   // 未识别 ← 审计目标
+    size_t logOpened     = 0;   // Dial Log Opened：日志文件打开/轮转，不等价于进程启动
+    size_t programStarted = 0;  // 版本横幅或 Dial Program Started 提供的启动证据（原始信号数）
+    size_t programExited = 0;   // Program Exit 正常退出标记
+    size_t nulBytes      = 0;   // 输入中的 NUL 字节；文本解析成功也必须单独暴露完整性损伤
+    size_t nulLines      = 0;   // 含 NUL 的逻辑行数
     // 时钟跳变检测(问题①):一份日志内部时间戳大幅跳跃 —— 通常是设备开机 RTC 未授时
     // (1970 起点)后中途联网授时,时间从 1970 跳到真实年份。此时该日志的时间轴前后
     // 不在同一坐标系,断网时长/可用率跨越跳变点会算错。
@@ -116,6 +121,16 @@ struct Outage {
     bool l0Recovered = false;            // true=SDK 在 L0 阶段自愈(短断网,链路抖动);
                                          // false=走了 L1+ 恢复阶梯或普通恢复
     size_t startLine = 0, endLine = 0;   // 证据行号
+};
+
+// 多来源日志的实际观测窗口。calendarSpan 只描述首尾日历跨度；observedSpan 为
+// 各 source 内首末有效时间跨度之和，绝不跨文件间的无日志空档。
+struct ObservationStats {
+    long long calendarSpan = 0;
+    long long observedSpan = 0;
+    std::size_t sourceCount = 0;
+    std::size_t clockDiscontinuities = 0; // 同一 source 内跨 2000 年边界，观测区间在此切断
+    double coveragePercent = 0.0;
 };
 
 // 一段 RX_PKT 停滞(数据链路假死征兆)

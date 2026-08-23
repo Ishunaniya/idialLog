@@ -44,11 +44,15 @@
 //           疑似订阅异常与 CEREG 查询失败，并纳入断网根因证据
 //   1.10.12 穷举四产品全部输出入口（含 printf/LOG/QLOG/iostream/条件分支）；
 //           Android/syslog 结构化解析，裸控制台逐行保留且推定时间显式标记
+//   1.10.13 修复孤立/异常恢复污染断网和可用率；可用率按来源实际观测区间计算；
+//           区分日志打开与进程启动；精确判断 EG25 恢复门控；新增 NUL/RX/QENG 边界审计；
+//           同一日志内 1970→墙钟跳变处分段观测，禁止跨时基配对断网；
+//           接入 artery 标准化 Network outage started/recovered 事件
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 10
-#define DL_VER_PATCH 12
+#define DL_VER_PATCH 13
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

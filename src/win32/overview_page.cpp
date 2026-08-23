@@ -150,7 +150,8 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     // ---- 统计 ----
     const long long t0 = App().document.filtered.front()->t, t1 = App().document.filtered.back()->t;
-    const double span = (double)(t1 - t0);
+    const ObservationStats observation = observationStats(App().document.filtered);
+    const double span = static_cast<double>(observation.observedSpan);
     long long total = 0, longest = 0;
     int b[4] = {0,0,0,0};
     for (const auto& o : App().document.outages) {
@@ -159,7 +160,11 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         if (o.dur > longest) longest = o.dur;
         if (o.dur <= 30) b[0]++; else if (o.dur <= 60) b[1]++; else if (o.dur <= 300) b[2]++; else b[3]++;
     }
-    double avail = span > 0 ? 100.0 * (1.0 - total / span) : 0.0;
+    const bool availValid = span > 0.0 && total >= 0 && static_cast<double>(total) <= span;
+    const double avail = availValid ? 100.0 * (1.0 - static_cast<double>(total) / span) : 0.0;
+    const std::wstring clockSplit = observation.clockDiscontinuities
+        ? FmtW(L"，已切断 %d 处授时跳变", (int)observation.clockDiscontinuities)
+        : L"";
     long long csqSum = 0; int csqN = 0, csqMin = 9999, csqMax = -1;
     for (const auto& m : App().document.metrics)
         if (m.csqVal >= 0) { csqSum += m.csqVal; csqN++;
@@ -167,19 +172,24 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     // ---- hero:可用率(每视图仅此一个大数字) ----
     // 状态色须配文字标签,不能只靠颜色表意 —— 故旁边永远写着"可用率"
-    const wchar_t* heroTag = avail >= 99.9 ? L"良好" : (avail >= 99.0 ? L"偏低" : L"差");
+    const wchar_t* heroTag = !availValid ? L"数据不足" :
+                              (avail >= 99.9 ? L"良好" : (avail >= 99.0 ? L"偏低" : L"差"));
     const int pad = S(20);
     DrawText_(hdc, pad, S(14), L"可用率", App().hFontTileLbl, th::inkSec);
-    std::wstring hv = FmtW(L"%.3f%%", avail);
+    std::wstring hv = availValid ? FmtW(L"%.3f%%", avail) : L"—";
     DrawText_(hdc, pad, S(30), hv, App().hFontHero, th::inkPri);
     int hx = pad + TextW_(hdc, hv, App().hFontHero) + S(14);
     const std::wstring state = heroTag;
-    const COLORREF heroColor = avail >= 99.9 ? th::good : (avail >= 99.0 ? th::warning : th::critical);
+    const COLORREF heroColor = !availValid ? th::inkMuted :
+                               (avail >= 99.9 ? th::good : (avail >= 99.0 ? th::warning : th::critical));
     DrawPill(hdc, hx, S(48), state, th::accentSoft, th::inkSec, heroColor);
     DrawText_(hdc, pad, S(87),
-              FmtW(L"%s → %s   ·   %s   ·   %s",
+              FmtW(L"%s → %s   ·   实际观测 %s / 日历跨度 %s (覆盖 %.2f%%%s)   ·   %s",
                    U8ToW(fmtTime(t0, "FULL")).c_str(), U8ToW(fmtTime(t1, "HM")).c_str(),
-                   U8ToW(fmtDur(t1 - t0)).c_str(), U8ToW(App().document.platform.name).c_str()),
+                   U8ToW(fmtDur(observation.observedSpan)).c_str(),
+                   U8ToW(fmtDur(observation.calendarSpan)).c_str(), observation.coveragePercent,
+                   clockSplit.c_str(),
+                   U8ToW(App().document.platform.name).c_str()),
               App().hFontTileLbl, th::inkMuted);
 
     // ---- 指标卡 ----
@@ -192,10 +202,15 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         RECT r2{ r1.right + gap, ty, r1.right + gap + tw, ty + th_ };
         DrawTile(hdc, r2, L"最长单次断网", U8ToW(fmtDur(longest)), th::inkPri, L"");
         RECT r3{ r2.right + gap, ty, r2.right + gap + tw, ty + th_ };
-        DrawTile(hdc, r3, L"未识别行", FmtW(L"%d", (int)App().document.audit.unparsed),
+        DrawTile(hdc, r3, L"未识别/文件损伤",
+                 FmtW(L"%d / %d NUL", (int)App().document.audit.unparsed,
+                      (int)App().document.audit.nulBytes),
                  App().document.audit.unparsed ? th::inkPri : th::inkPri,
-                 App().document.audit.unparsed ? FmtW(L"占比 %.2f%% —— 见“未识别行”页", App().document.audit.unparsedRatio()*100.0)
-                                  : L"无遗漏(已全部识别)");
+                 (App().document.audit.unparsed || App().document.audit.nulBytes)
+                     ? FmtW(L"未识别 %.2f%%，NUL 涉及 %d 行 —— 见审计页",
+                            App().document.audit.unparsedRatio()*100.0,
+                            (int)App().document.audit.nulLines)
+                     : L"无解析遗漏或 NUL 损伤");
         RECT r4{ r3.right + gap, ty, r3.right + gap + tw, ty + th_ };
         DrawTile(hdc, r4, L"信号 CSQ(最小/均/最大)",
                  csqN ? FmtW(L"%d / %.1f / %d", csqMin, (double)csqSum/csqN, csqMax) : L"—",
@@ -421,10 +436,12 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     // ── 头部元信息卡 ──
     {
         std::wstring platform = L"来源平台:  " + U8ToW(App().document.platform.name);
-        std::wstring coverage = FmtW(L"解析覆盖:  已解析 %d 行,未识别 %d 行(%.2f%%)%s",
+        std::wstring coverage = FmtW(L"解析覆盖: 已解析 %d 行,未识别 %d 行(%.2f%%),NUL %d 字节/%d 行%s",
             (int)App().document.audit.parsed, (int)App().document.audit.unparsed,
-            App().document.audit.unparsedRatio() * 100.0,
-            App().document.audit.unparsed == 0 ? L"  → 无遗漏" : L"  → 见“未识别行”页");
+            App().document.audit.unparsedRatio() * 100.0, (int)App().document.audit.nulBytes,
+            (int)App().document.audit.nulLines,
+            App().document.audit.unparsed == 0 && App().document.audit.nulBytes == 0
+                ? L"  → 无已知损伤" : L"  → 见“未识别行”页");
         std::wstring evidence;
         if (App().document.platform.evidenceLine)
             evidence = FmtW(L"识别依据:  第 %d 行  ", (int)App().document.platform.evidenceLine) +
@@ -444,7 +461,8 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         int ty = y + CARD_PAD;
         ty += DrawWrapped(hdc, textX0, ty, textW, platform, App().hFontUI, th::inkPri);
         ty += DrawWrapped(hdc, textX0, ty, textW, coverage, App().hFontUI,
-                          App().document.audit.unparsed == 0 ? th::inkSec : th::rowWarn);
+                          App().document.audit.unparsed == 0 && App().document.audit.nulBytes == 0
+                              ? th::inkSec : th::rowWarn);
         if (!evidence.empty()) {
             const int evidenceH = DrawWrapped(hdc, textX0, ty, textW, evidence,
                                               App().hFontUI, th::accent);
@@ -456,7 +474,7 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             DrawText_(hdc, textX0, ty, FmtW(L"⚠ 时钟跳变: 第 %d 行 %s → %s", (int)App().document.audit.jumpAtLine,
                       U8ToW(fmtTime(App().document.audit.jumpFromT,"FULL")).c_str(), U8ToW(fmtTime(App().document.audit.jumpToT,"FULL")).c_str()),
                       App().hFontUI, th::rowFault); ty += S(20);
-            DrawText_(hdc, textX0, ty, L"   跨跳变点的断网时长/可用率不可信,请分段看", App().hFontUI, th::inkMuted);
+            DrawText_(hdc, textX0, ty, L"   已在跳变点切断观测区间并禁止跨时基配对；两侧分别计算", App().hFontUI, th::inkMuted);
         }
         y += h + GAP;
     }
@@ -646,13 +664,19 @@ void RenderSummary() {
     // ── 概览 ──
     {
         std::vector<std::wstring> ls;
-        ls.push_back(FmtW(L"日志行数 %d    进程会话(重启) %d", (int)App().document.filtered.size(), (int)App().document.sessions.size()));
+        ls.push_back(FmtW(L"日志行数 %d    日志打开 %d    有证据的进程启动 %d",
+                          (int)App().document.filtered.size(), (int)App().document.audit.logOpened,
+                          (int)App().document.sessions.size()));
         int acc = 0;
         if (App().document.sessions.size() > 1) {
-            acc = 1;
-            ls.push_back(FmtW(L"⚠ 检测到 %d 次进程重启 (L3 exit / watchdog 拉起?)", (int)App().document.sessions.size()));
+            ls.push_back(FmtW(L"检测到 %d 次启动横幅/Program Started 证据；启动原因不能仅凭拨号日志判定。",
+                              (int)App().document.sessions.size()));
             for (size_t i = 0; i < App().document.sessions.size() && i < 6; ++i)
                 ls.push_back(L"   " + U8ToW(App().document.sessions[i]));
+        }
+        if (App().document.audit.logOpened > App().document.sessions.size()) {
+            acc = 1;
+            ls.push_back(L"⚠ 日志打开数多于启动证据：部分可能是跨日/授时轮转，不能计为重启。");
         }
         add(L"概览", ls, acc);
     }

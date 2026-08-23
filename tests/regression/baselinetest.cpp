@@ -86,11 +86,13 @@ int main() {
             cki((long)L.audit.rawTotal, 2861, "原始行数");
             cki((long)L.audit.unparsed, 0,    "未识别行(SD 卡日志应为 0)");
             cki((long)L.outs.size(),    36,   "断网次数");
-            // 钉死"数据假死 17 次" —— 变异"数据假死判定失效"就会让它变 0
-            ck(titleWith(L.fs, "数据假死").find("17 次") != std::string::npos,
-               "数据假死归类 17 次", titleWith(L.fs, "数据假死"), "…17 次…");
-            // 钉死"弱信号 19 次" —— 变异"阈值 <10 改 <2"就会让它变 0
-            ck(has(L.fs, "弱信号"), "弱信号归类存在", has(L.fs,"弱信号")?"有":"无", "有");
+            // 1.10.13 纳入紧邻心跳的真机 QENG 信号直证后，原先因信号字段缺失而落入
+            // 数据假死的 10 次退出该类别，其中 8 次由更高优先级的弱信号直证归类；
+            // 其余由其他更具体证据归类，数字必须一起钉死。
+            ck(titleWith(L.fs, "数据假死").find("7 次") != std::string::npos,
+               "数据假死归类 7 次", titleWith(L.fs, "数据假死"), "…7 次…");
+            ck(titleWith(L.fs, "弱信号").find("27 次") != std::string::npos,
+               "弱信号归类 27 次(QENG 直证)", titleWith(L.fs, "弱信号"), "…27 次…");
             long weak = 0;
             for (const auto& m : L.mets) if (m.csqVal >= 0 && m.csqVal < 10) weak++;
             cki(weak, 84, "弱信号(CSQ<10)心跳数");

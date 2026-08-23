@@ -28,7 +28,8 @@ int main(int argc, char** argv) {
     if (lines.empty()) { std::printf("无可解析行\n"); return 1; }
 
     std::printf("== 解析 ==\n");
-    std::printf("  原始行:%zu  保留记录:%zu  会话:%zu\n", raw.size(), lines.size(), sessions.size());
+    std::printf("  原始行:%zu  保留记录:%zu  启动证据:%zu  日志打开:%zu\n",
+                raw.size(), lines.size(), sessions.size(), audit.logOpened);
 
     // 未识别行审计:证明“没漏”的硬证据(必须自洽:各类之和 == 原始行数)
     std::printf("== 未识别行审计 ==\n");
@@ -43,6 +44,7 @@ int main(int argc, char** argv) {
     for (auto& kv : audit.unparsedKinds) std::printf("  未识别分类 %-22s %zu\n", kv.first.c_str(), kv.second);
     for (size_t i = 0; i < audit.samples.size() && i < 5; ++i)
         std::printf("  样例 L%zu: %s\n", audit.samples[i].lineNo, audit.samples[i].text.substr(0,100).c_str());
+    std::printf("  文件损伤:NUL %zu 字节/%zu 行\n", audit.nulBytes, audit.nulLines);
 
     // 平台识别
     PlatformInfo pi = detectPlatform(lines);
@@ -63,10 +65,14 @@ int main(int argc, char** argv) {
         if (o.dur > longest) { longest = o.dur; longestAt = o.end; }
         if (o.dur <= 30) b0++; else if (o.dur <= 60) b1++; else if (o.dur <= 300) b2++; else b3++;
     }
-    double span = double(lines.back().t - lines.front().t);
+    const ObservationStats observation = observationStats(lines);
+    double span = static_cast<double>(observation.observedSpan);
     std::printf("== 断网 ==\n");
     std::printf("  次数:%zu  累计:%s  可用率:%.3f%%\n", outs.size(), fmtDur(total).c_str(),
-                span > 0 ? 100.0 * (1.0 - total / span) : 0.0);
+                span > 0 && total <= span ? 100.0 * (1.0 - total / span) : 0.0);
+    std::printf("  实际观测:%s  日历跨度:%s  覆盖率:%.2f%%\n",
+                fmtDur(observation.observedSpan).c_str(), fmtDur(observation.calendarSpan).c_str(),
+                observation.coveragePercent);
     std::printf("  最长:%s @ %s\n", fmtDur(longest).c_str(), fmtTime(longestAt, "MD").c_str());
     std::printf("  分布: <=30s:%d 31-60s:%d 1-5m:%d >5m:%d\n", b0,b1,b2,b3);
 
