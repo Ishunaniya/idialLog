@@ -20,7 +20,10 @@ int QL_APN_Get_Lists(ql_apn_info_list_s *apn_list) { return 0; }
 int QL_APN_Set(ql_apn_info_s *apn) { return 0; }
 int QL_Data_Call_Get_Default_Profile(ql_data_call_default_profile_s *profile) { return 0; }
 int QL_Data_Call_Info_Get(char profile_idx, ql_data_call_ip_family_e ip_family, ql_data_call_info_s *info, ql_data_call_error_e *err) { return 0; }
-int QL_Data_Call_Init(ql_data_call_evt_cb_t evt_cb) { return 0; }
+int QL_Data_Call_Init(ql_data_call_evt_cb_t evt_cb) {
+    (void)evt_cb;
+    return sim_int("SIM_DATACALL_INIT_RET", 0);
+}
 int QL_Data_Call_Init_Precondition() { return 0; }
 int QL_Data_Call_Set_Default_Profile(ql_data_call_default_profile_s *profile) { return 0; }
 int QL_Data_Call_Start(ql_data_call_s *data_call, ql_data_call_error_e *err) { return 0; }

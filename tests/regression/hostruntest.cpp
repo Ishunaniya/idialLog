@@ -67,6 +67,9 @@ static std::vector<Case> cases() {
           { "SNR偏低" }, { "CP dump" }, PLAT_EG25 },
         { "samples/sim/hostrun_eg25/eg25_reg_down.log",
           { "SDK DENY", "疑似 SIM 账户/订阅异常" }, { "CP dump" }, PLAT_EG25 },
+        { "samples/sim/hostrun_eg25/eg25_datacall_init_fail.log",
+          { "QL_Data_Call_Init 初始化失败", "进程主动退出" },
+          { "CP dump", "数据调用启动失败" }, PLAT_EG25 },
         { "samples/sim/hostrun_eg25/eg25_all_normal.log",
           {}, { "CP dump", "SDK DENY" }, PLAT_EG25 },
 
@@ -81,6 +84,13 @@ static bool has(const std::vector<Finding>& fs, const std::string& sub) {
     for (const auto& f : fs)
         if (f.title.find(sub) != std::string::npos || f.detail.find(sub) != std::string::npos)
             return true;
+    return false;
+}
+
+static bool evidenceHas(const std::vector<Finding>& fs, const std::string& sub) {
+    for (const auto& finding : fs)
+        for (const auto& evidence : finding.ev)
+            if (evidence.text.find(sub) != std::string::npos) return true;
     return false;
 }
 
@@ -117,6 +127,14 @@ int main() {
             if (!has(fs, e)) { std::printf("   ✗ 缺应有结论:%s\n", e.c_str()); ok = false; }
         for (const auto& f : c.forbid)
             if (has(fs, f)) { std::printf("   ✗ 假阳性:%s\n", f.c_str()); ok = false; }
+        if (c.file.find("eg25_datacall_init_fail.log") != std::string::npos) {
+            if (!evidenceHas(fs, "ret=-77")) {
+                std::printf("   ✗ 初始化失败结论未保留 SDK 原始返回值 ret=-77\n"); ok = false;
+            }
+            if (!evidenceHas(fs, "[PROCESS EXIT]") || !evidenceHas(fs, "pid=")) {
+                std::printf("   ✗ 初始化失败结论未保留 PROCESS EXIT/pid 证据\n"); ok = false;
+            }
+        }
         for (const auto& f : fs)
             if (f.ev.empty()) { std::printf("   ✗ 无证据结论:%s\n", f.title.c_str()); ok = false; }
 

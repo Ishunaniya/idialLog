@@ -281,6 +281,15 @@ static bool isSelfContainedRecovery(const std::string& msg) {
            lo.find("down:") != std::string::npos;
 }
 
+// 与 log_parser 的启动信号保持同一组固定措辞。这里只用于把明确的致命退出与
+// 后续启动横幅关联；Dial Log Opened 是文件打开/轮转标记，不能充当进程重启证据。
+static bool isProgramStartBanner(const std::string& msg) {
+    return msg.find("DIAL Version:") != std::string::npos ||
+           msg.find("modem_mng Version:") != std::string::npos ||
+           msg.find("Program started. Version:") != std::string::npos ||
+           msg.find("Program started. Main Version:") != std::string::npos;
+}
+
 // 时间线保留的“状态变化类”标签。取自三仓库 dial_log/SEAS_LOG 首参的穷举
 // (modem_mng 357 处、open_dial 107 处、artery 4 处内嵌标签),多词标签按首段匹配:
 //   "RECOVERY L1/L2/L3"→RECOVERY、"REG TIMEOUT"/"REG DIAG"→REG、
@@ -290,10 +299,11 @@ static bool isSelfContainedRecovery(const std::string& msg) {
 static const char* kEventTags[] = {
     "STATE","SDK","ROAMLINK","SLOT","OPER","LED","CFUN","SIM","APN","INIT","MODEM",
     "RECOVERY","OUTAGE","ERROR","WARN","WARNING","FATAL","INFO","EVENT","STATUS","ALARM","TZ","NANOMSG",
+    "LOG_E","LOG_I","LOG_D",
     // 以下为本次按源码穷举补齐(此前被静默丢弃)
     "PING","REG","ZERO","CPDUMP","COPS","SM","DIAG", nullptr
 };
-static const char* kErrTags[] = { "ERROR","WARN","WARNING","FATAL","ALARM", nullptr };
+static const char* kErrTags[] = { "ERROR","WARN","WARNING","FATAL","ALARM","LOG_E", nullptr };
 
 static bool inList(const char* const* list, const std::string& tag) {
     std::string t = lower(tag);
@@ -1400,6 +1410,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evDenied, evLimited, evSuspectedAccount, evRegQueryFail,
                                 evRegistrationIssue, evCpdump, evSlot, evOper, evCfun,
                                 evNotReady, evOrphanRecovery, evImpossibleRecovery,
+                                evDataCallInitFailed, evDataCallFatalExit,
+                                evDataCallStartFailed, evApnLoadFailed, evProgramStart,
                                 evV2NoSim, evV2LongUnregistered, evV2PingReinit,
                                 evV2ReadyOffline, evV2ReadyFailed;
     std::map<std::uint16_t, std::pair<long long, long long>> sourceBounds;
@@ -1415,6 +1427,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     }
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
+        if (isProgramStartBanner(l.msg)) evProgramStart.push_back(&l);
         if (v2Platform) {
             if (l.msg.find("SIM not inserted (CME ") != std::string::npos)
                 evV2NoSim.push_back(&l);
@@ -1503,6 +1516,27 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
          * 永远不可能触发(三种数据源全空不是"没样本",是它根本是死的)。 */
         if (icontains(l.msg, "data_call_init failed") ||
             icontains(l.msg, "data_call_init retrying"))    evNotReady.push_back(&l);
+
+        // EG25 2026-08 新增的持久化诊断。两行分别钉死 SDK 返回值和退出动作：
+        //   [SDK] Initialization data call failure, ret=N
+        //   [FATAL][PROCESS EXIT] QL_Data_Call_Init failed | ret=N | pid=P
+        // 第二行经 FMT_SD 拆分后 tag=FATAL，msg 仍以 [PROCESS EXIT] 开头。
+        if (l.tagText() == "SDK" &&
+            icontains(l.msg, "Initialization data call failure"))
+            evDataCallInitFailed.push_back(&l);
+        if (l.tagText() == "FATAL" &&
+            icontains(l.msg, "[PROCESS EXIT]") &&
+            icontains(l.msg, "QL_Data_Call_Init failed"))
+            evDataCallFatalExit.push_back(&l);
+        if (l.tagText() == "SDK" &&
+            icontains(l.msg, "start data call failure"))
+            evDataCallStartFailed.push_back(&l);
+        if (l.tagText() == "APN" &&
+            (icontains(l.msg, "fp is NULL") ||
+             icontains(l.msg, "fread error") ||
+             icontains(l.msg, "json_root is NULL") ||
+             icontains(l.msg, "json_apn_array error")))
+            evApnLoadFailed.push_back(&l);
         // 只认"真的发现了 dump"这一句,不能见 [CPDUMP] 标签就报基带崩溃。
         // 【穷举证明】源码里 [CPDUMP] 共 9 种消息(rtms_sdk + open_dial 的 HEAD),
         // 只有 "Found %d existing CP dump(s)" 表示确实崩过;其余 8 种是例行挂载/卸载/
@@ -1690,6 +1724,75 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         f.advice = "查 ql_netd 守护进程是否在跑(ps);重拨/CFUN/换卡对这类故障都无效 —— "
                    "它们治射频侧,而问题在 AP 侧的数据服务。";
         for (size_t i = 0; i < evNotReady.size() && i < 3; ++i) f.ev.push_back(mkEv(*evNotReady[i]));
+        fs.push_back(std::move(f));
+    }
+
+    // EG25 的 QL_Data_Call_Init 失败路径是进程级故障：当前产品源码在持久化
+    // [FATAL][PROCESS EXIT] 后 close 日志并 exit(EXIT_FAILURE)。后续版本横幅只证明
+    // “进程后来又启动了”；由 sw_mng 拉起是产品源码直证，不冒充成单份日志直证。
+    if (!evDataCallInitFailed.empty() || !evDataCallFatalExit.empty()) {
+        const LogLine* restartAfterExit = nullptr;
+        for (const LogLine* fatal : evDataCallFatalExit) {
+            for (const LogLine* started : evProgramStart) {
+                if (started->t <= fatal->t) continue;
+                // 只关联 5 分钟内的启动。数小时/数天后的启动可能来自维护、整机重启或
+                // 另一轮故障，不能仅凭先后顺序归到本次 Init 退出。
+                if (started->t - fatal->t > 5 * 60) continue;
+                if (!restartAfterExit || started->t < restartAfterExit->t)
+                    restartAfterExit = started;
+            }
+        }
+
+        Finding f;
+        f.severity = 2;
+        f.title = "QL_Data_Call_Init 初始化失败";
+        if (!evDataCallFatalExit.empty()) f.title += "，进程主动退出";
+        if (restartAfterExit) f.title += "，随后检测到重新启动";
+        if (!evDataCallFatalExit.empty()) {
+            f.detail = "【日志直证】[FATAL][PROCESS EXIT] 明确记录 SDK 初始化返回值和退出进程 PID。";
+        } else {
+            f.detail = "【日志直证】SDK 明确记录 Initialization data call failure；本段未见紧随其后的"
+                       " [FATAL][PROCESS EXIT]，可能是旧固件或日志在两行之间截断。";
+        }
+        if (restartAfterExit) {
+            f.detail += " 后续又出现版本启动横幅，证明进程后来重新启动；这与上层守护拉起路径相符，"
+                        "但仅凭拨号日志不能证明守护进程名称。";
+        }
+        f.detail += " 【源码直证】当前 EG25 路径随后 log_close() 并 exit(EXIT_FAILURE)，"
+                    "sw_mng 在进程缺失时启动 /usr/bin/modem_mng。";
+        f.advice = "先查 AP 侧 ql_netd/数据服务是否就绪及 SDK 返回码；再对照 sw_mng 日志确认"
+                   "拉起时间。CFUN、换卡和缩短信号恢复阈值不能修复 Data Call 服务初始化失败。";
+        for (size_t i = 0; i < evDataCallInitFailed.size() && f.ev.size() < 2; ++i)
+            f.ev.push_back(mkEv(*evDataCallInitFailed[i]));
+        for (size_t i = 0; i < evDataCallFatalExit.size() && f.ev.size() < 3; ++i)
+            f.ev.push_back(mkEv(*evDataCallFatalExit[i]));
+        if (restartAfterExit && f.ev.size() < 3) f.ev.push_back(mkEv(*restartAfterExit));
+        fs.push_back(std::move(f));
+    }
+
+    if (!evDataCallStartFailed.empty()) {
+        Finding f;
+        f.severity = evDataCallStartFailed.size() >= 3 ? 2 : 1;
+        f.title = "数据调用启动失败 " + std::to_string(evDataCallStartFailed.size()) + " 次";
+        f.detail = "[SDK] start data call failure 保存了 profile 与原始十六进制错误码；"
+                   "这是拨号 Start 阶段失败，不等同于 SIM 未注册，也不等同于 Init 导致进程退出。";
+        f.advice = "按错误码核对 APN/profile、注册状态和数据服务；若连续失败，保留前序 CEREG、"
+                   "APN 选择及随后状态机重试日志。";
+        for (size_t i = 0; i < evDataCallStartFailed.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evDataCallStartFailed[i]));
+        fs.push_back(std::move(f));
+    }
+
+    if (!evApnLoadFailed.empty()) {
+        Finding f;
+        f.severity = 1;
+        f.title = "APN 配置文件读取/解析失败 " + std::to_string(evApnLoadFailed.size()) + " 次";
+        f.detail = "[APN] 明确记录文件打开、读取或 JSON 结构失败；代码随后可能回退默认 APN，"
+                   "所以该事件本身不能证明最终拨号失败。";
+        f.advice = "检查 APN JSON 路径、权限、文件完整性和 apn 数组结构；再看是否出现"
+                   "“use default apn”以及后续 DataCall connected。";
+        for (size_t i = 0; i < evApnLoadFailed.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evApnLoadFailed[i]));
         fs.push_back(std::move(f));
     }
 

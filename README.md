@@ -131,7 +131,7 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # x64: build/x64/dialLog_v1.11.0.exe
+make                     # x64: build/x64/dialLog_v1.11.1.exe
 make windows-all         # 同时构建 build/x64 与 build/x86
 make release             # 正式 x64 产物复制到仓库根目录
 make version             # 只打印当前版本号
@@ -148,7 +148,7 @@ mingw32-make CROSS=
 ### 32 位
 
 ```bash
-make windows-x86         # build/x86/dialLog_v1.11.0.exe
+make windows-x86         # build/x86/dialLog_v1.11.1.exe
 ```
 
 `CROSS` 同时派生 `CC/CXX/WINDRES`;每种工具链使用独立构建目录,连续切换架构
@@ -254,9 +254,9 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.11.0.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.11.1.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.11.0 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.11.1 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 只清理 `build/`；测试程序也位于 `build/tests/`，不会污染根目录或误删已提交的发布 exe。
@@ -285,6 +285,7 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 | 1.10.12 | 穷举四产品全部输出入口（含跨行、条件分支、printf/LOG/QLOG/iostream）；Android/syslog 结构化解析，裸控制台输出逐行保留且推定时间显式标记 |
 | 1.10.13 | 修复孤立/异常恢复污染断网与可用率；按来源实际观测时长计算覆盖；区分日志打开和进程启动；EG25 门控改按 policy/CH/联网实证；补 NUL、跨来源 RX、QENG 信号审计和同 source 授时跳变切段；接入 artery 标准化断网起止事件 |
 | 1.11.0 | 加入 modem_mng_v2：BusyBox RFC3164 syslog 与 stderr 调试镜像解析、EC200A/EG25 动态识别、v2 CSQ/状态/断网和保守诊断；源码输出审计扩为五产品；RFC3164 推定年份以 `~` 明示 |
+| 1.11.1 | 接入 EG25 新增落盘日志：诊断 `QL_Data_Call_Init` 致命退出、Data Call Start 失败和 APN 文件/JSON 失败；仅以 5 分钟内版本横幅关联退出后的重新启动，并兼容 `[LOG_E]/[LOG_I]/[LOG_D]` 时间线 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞约 1.8MiB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

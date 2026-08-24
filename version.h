@@ -51,11 +51,13 @@
 //   1.11.0  加入 modem_mng_v2：解析 BusyBox RFC3164 syslog 与 stderr 调试镜像；
 //           动态识别 EC200A/EG25，提取 v2 CSQ/注册/联网状态并诊断 SIM、注册和 ping 故障；
 //           源码输出审计扩为五产品，RFC3164 缺失年份以 ~ 明示推定
+//   1.11.1  接入 EG25 新增持久日志：Data Call Init 致命退出、Start 失败和 APN 读取失败；
+//           5 分钟内版本横幅与 PROCESS EXIT 关联，兼容 LOG_E/LOG_I/LOG_D 标签
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 0
+#define DL_VER_PATCH 1
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

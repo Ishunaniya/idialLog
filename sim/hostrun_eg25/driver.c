@@ -12,6 +12,7 @@
 
 extern void *dial_task(void *arg);
 extern dial_mng_t *dial_mng_new(void);
+extern bool dail_start_data_call(dial_mng_t *p_dial_mng);
 
 int main(int argc, char** argv) {
     int logical = (argc > 1) ? atoi(argv[1]) : 3000;   /* 逻辑秒(sleep 已被 fastclock 加速) */
@@ -22,6 +23,13 @@ int main(int argc, char** argv) {
     dial_mng_t *m = dial_mng_new();                    /* ← 真代码的构造 */
     if (!m) { fprintf(stderr, "[driver] dial_mng_new 失败\n"); return 1; }
     fprintf(stderr, "[driver] dial_mng_new OK, smd_fd=%d(<0 表示 AT 口没打开)\n", m->smd_fd);
+
+    /* Init 致命分支无需让 SIM/AT 状态机先跑一圈：直接调用产品真实函数，
+     * 只由 SDK 桩注入返回码。成功场景仍继续走完整 dial_task。 */
+    if (getenv("SIM_DIRECT_DATACALL_INIT")) {
+        fprintf(stderr, "[driver] 直测真实 dail_start_data_call\n");
+        return dail_start_data_call(m) ? 0 : 2;
+    }
 
     pthread_t t;
     pthread_create(&t, NULL, dial_task, (void*)m);     /* ← 真任务 */

@@ -501,6 +501,47 @@ static void t15_artery_persistent_outage_events() {
        "同 source 标准事件配成 1 次可信 75s 断网");
 }
 
+static void t16_eg25_persistent_failure_diagnostics() {
+    std::printf("== T16 EG25 新增落盘故障：初始化退出/重启/APN/Start ==\n");
+    std::vector<std::string> raw = L({
+        "[2026-08-24 09:00:00] EG25 modem_mng Version: 1.31.18",
+        "[2026-08-24 09:00:10] [SDK] Initialization data call failure, ret=-77",
+        "[2026-08-24 09:00:10] [FATAL][PROCESS EXIT] QL_Data_Call_Init failed | ret=-77 | pid=4321",
+        "[2026-08-24 09:00:15] EG25 modem_mng Version: 1.31.18",
+        "[2026-08-24 09:00:16] [APN] json_root is NULL",
+        "[2026-08-24 09:00:17] [SDK] profile 1 start data call failure: 0x2a",
+        "[2026-08-24 09:00:18] [LOG_E] Failed to read /proc/uptime"
+    });
+    std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit);
+    ok(audit.unparsed == 0 && lines.size() == raw.size(),
+       "新增 SD 日志全部结构化解析，无未识别行");
+    ok(lines[2].tagText() == "FATAL" &&
+       lines[2].msg.find("[PROCESS EXIT]") == 0,
+       "嵌套 FATAL/PROCESS EXIT 保留退出动作正文");
+    ok(lines[6].tagText() == "LOG_E" && isErrLine(lines[6]),
+       "兼容当前 [LOG_E] 标题并纳入错误时间线");
+
+    PlatformInfo eg25; eg25.plat = PLAT_EG25;
+    const auto findings = analyze(lines, collectOutages(lines), buildMetrics(lines), eg25, audit);
+    bool initRestart = false, exactRetPid = false, apn = false, start = false;
+    for (const Finding& finding : findings) {
+        initRestart = initRestart ||
+            (finding.title.find("QL_Data_Call_Init 初始化失败") != std::string::npos &&
+             finding.title.find("进程主动退出") != std::string::npos &&
+             finding.title.find("随后检测到重新启动") != std::string::npos);
+        apn = apn || finding.title.find("APN 配置文件读取/解析失败 1 次") != std::string::npos;
+        start = start || finding.title.find("数据调用启动失败 1 次") != std::string::npos;
+        for (const Evidence& evidence : finding.ev)
+            if (evidence.text.find("ret=-77") != std::string::npos &&
+                evidence.text.find("pid=4321") != std::string::npos)
+                exactRetPid = true;
+    }
+    ok(initRestart && exactRetPid,
+       "致命退出与后续版本横幅关联，并钉死 ret=-77/pid=4321 证据");
+    ok(apn && start, "APN 解析失败和 Data Call Start 失败分别生成有边界的结论");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -517,6 +558,7 @@ int main() {
     t13_console_android_syslog_retention();
     t14_tbox_confirmed_boundaries();
     t15_artery_persistent_outage_events();
+    t16_eg25_persistent_failure_diagnostics();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

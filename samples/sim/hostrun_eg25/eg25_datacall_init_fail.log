@@ -1,0 +1,6 @@
+[2026-08-24 13:15:05] [ROAMLINK] /usrdata/network.ini not found, use default policy 4
+[2026-08-24 13:15:05] [ROAMLINK] RBMaster not found at /usrdata/roamlink/RBMaster → NO_PACKAGE
+[2026-08-24 13:15:05] [ROAMLINK] probe NO_PACKAGE: RBMaster missing, force SIM
+[2026-08-24 13:15:05] [ROAMLINK] RBMaster process not found in /proc
+[2026-08-24 13:15:05] [SDK] Initialization data call failure, ret=-77
+[2026-08-24 13:15:05] [FATAL][PROCESS EXIT] QL_Data_Call_Init failed | ret=-77 | pid=108124

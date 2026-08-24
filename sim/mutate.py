@@ -203,8 +203,8 @@ MUTATIONS = [
      'size_t q = d + 0;'),
     # ── open_dial 会话标记识别 —— baselinetest 靶子 ──
     ('会话标记漏认 open_dial 的 Dial Program Started',
-     'bool isOpened = line.find("Dial Log Opened") != std::string::npos ||\n                        line.find("Dial Program Started") != std::string::npos;',
-     'bool isOpened = line.find("Dial Log Opened") != std::string::npos ||\n                        line.find("Dial Program StartedZZ") != std::string::npos;'),
+     'bool isProgramStarted = line.find("Dial Program Started") != std::string::npos;',
+     'bool isProgramStarted = line.find("Dial Program StartedZZ") != std::string::npos;'),
     # ── RSRP/RSRQ 提取 —— baselinetest 靶子 ──
     ('RSRP 提取失效(字段键改错)',
      'else if (k == "RSRP")        f.rsrpUpper = v;',
