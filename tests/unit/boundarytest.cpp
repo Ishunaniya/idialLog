@@ -542,6 +542,63 @@ static void t16_eg25_persistent_failure_diagnostics() {
     ok(apn && start, "APN 解析失败和 Data Call Start 失败分别生成有边界的结论");
 }
 
+static void t17_datacall_initiator_reason_classification() {
+    std::printf("== T17 DataCall 发起方/reason 分类与新业务标题 ==\n");
+    std::vector<std::string> raw = L({
+        "2026-08-24 10:00:00.000 [INFO] dail_stop_data_call (dial.c:439) - [SDK] DataCall stop requested | reason=LICENSE_FAILURE_REDIAL profile=1",
+        "2026-08-24 10:00:00.100 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=LICENSE_FAILURE_REDIAL err=0x0",
+        "2026-08-24 10:00:01.000 [INFO] dail_stop_data_call (dial.c:439) - [SDK] DataCall stop requested | reason=START_CALL_TIMEOUT profile=1",
+        "2026-08-24 10:00:01.100 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=START_CALL_TIMEOUT err=0x0",
+        "2026-08-24 10:00:02.000 [INFO] dail_stop_data_call (dial.c:439) - [SDK] DataCall stop requested | reason=PREFER_ROAMLINK_RETRY profile=1",
+        "2026-08-24 10:00:02.100 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=PREFER_ROAMLINK_RETRY err=0x0",
+        "2026-08-24 10:00:03.000 [INFO] dail_stop_data_call (dial.c:439) - [SDK] DataCall stop requested | reason=SIM_TCP_FAILURE_SWITCH profile=1",
+        "2026-08-24 10:00:03.100 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=SIM_TCP_FAILURE_SWITCH err=0x0",
+        "2026-08-24 10:00:04.000 [INFO] dail_stop_data_call (dial.c:439) - [SDK] DataCall stop requested | reason=REGISTRATION_TIMEOUT_SWITCH profile=1",
+        "2026-08-24 10:00:04.100 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=REGISTRATION_TIMEOUT_SWITCH err=0x0",
+        "2026-08-24 10:00:05.000 [INFO] data_call_state_callback (dial.c:381) - [SDK] DataCall disconnected | initiator=SDK_URC reason=UNSOLICITED err=0xd",
+        "2026-08-24 10:00:06.000 [INFO] data_call_state_callback (dial.c:381) - [SDK] DataCall disconnected | profile=1 err=0xd",
+        "[2026-08-24 10:00:07] [SDK] DataCall disconnected | profile=1 family=v4 err=0x0",
+        "[2026-08-24 10:00:08] [SYSTEM] uptime read failed | path=/proc/uptime",
+        "[2026-08-24 10:00:09] [RECOVERY] reset suppressed | reason=BOOT_GUARD uptime=57s threshold=2000s",
+        "[2026-08-24 10:00:10] [APN] matched config | apn=internet.lte.cxn iccid_prefix=894642 username_set=user password_set=secret"
+    });
+    std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit);
+    const DataCallStats stats = collectDataCallStats(lines);
+    ok(audit.unparsed == 0 && lines.size() == raw.size(),
+       "artery 与 modem_mng 新旧 DataCall/业务标题全部结构化解析");
+    ok(stats.stopRequested == 5 && stats.disconnected == 8 && stats.appStop == 5 &&
+       stats.sdkUrc == 1 && stats.unsolicited == 1 && stats.legacy == 2 &&
+       stats.otherInitiator == 0,
+       "精确分类 Stop请求=5、APP_STOP=5、UNSOLICITED=1、旧格式=2");
+    const char* reasons[] = { "LICENSE_FAILURE_REDIAL", "START_CALL_TIMEOUT",
+        "PREFER_ROAMLINK_RETRY", "SIM_TCP_FAILURE_SWITCH",
+        "REGISTRATION_TIMEOUT_SWITCH", "UNSOLICITED" };
+    bool exactReasons = stats.reasons.size() == 6;
+    for (const char* reason : reasons) {
+        auto it = stats.reasons.find(reason);
+        exactReasons = exactReasons && it != stats.reasons.end() && it->second == 1;
+    }
+    ok(exactReasons, "6 种 reason 均精确汇总为 1 次，不重复计算 Stop 请求");
+    ok(!isErrLine(lines[1]) && isErrLine(lines[10]) && !isErrLine(lines[11]) &&
+       isErrLine(lines[13]) && isEventLine(lines[14]) && isEventLine(lines[15]),
+       "APP_STOP/旧格式不误报；UNSOLICITED 与 SYSTEM失败为告警，RECOVERY/APN进时间线");
+
+    const PlatformInfo platform = detectPlatform(lines);
+    const auto findings = analyze(lines, {}, {}, platform, audit);
+    const Finding* app = nullptr; const Finding* urc = nullptr;
+    for (const Finding& finding : findings) {
+        if (finding.title.find("应用主动停止 DataCall 5 次") != std::string::npos) app = &finding;
+        if (finding.title.find("SDK 非预期断线(SDK_URC/UNSOLICITED) 1 次") != std::string::npos) urc = &finding;
+    }
+    ok(app && app->severity == 0 && app->detail.find("START_CALL_TIMEOUT=1") != std::string::npos &&
+       app->detail.find("SIM_TCP_FAILURE_SWITCH=1") != std::string::npos,
+       "APP_STOP 仅生成信息结论并保留精确 reason 汇总");
+    ok(urc && urc->severity == 1 && !urc->ev.empty() &&
+       urc->ev[0].text.find("err=0xd") != std::string::npos,
+       "SDK_URC/UNSOLICITED 生成告警并保留原始错误码证据");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -559,6 +616,7 @@ int main() {
     t14_tbox_confirmed_boundaries();
     t15_artery_persistent_outage_events();
     t16_eg25_persistent_failure_diagnostics();
+    t17_datacall_initiator_reason_classification();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

@@ -126,6 +126,19 @@ struct Outage {
     size_t startLine = 0, endLine = 0;   // 证据行号
 };
 
+// DataCall 断开事件按产品明确给出的 initiator/reason 分类。
+// legacy 表示历史日志没有 initiator 字段，工具只计数、不猜是主动还是异常。
+struct DataCallStats {
+    size_t stopRequested = 0;
+    size_t disconnected = 0;
+    size_t appStop = 0;
+    size_t sdkUrc = 0;
+    size_t unsolicited = 0;       // initiator=SDK_URC 且 reason=UNSOLICITED
+    size_t legacy = 0;
+    size_t otherInitiator = 0;
+    std::map<std::string, size_t> reasons;
+};
+
 // 多来源日志的实际观测窗口。calendarSpan 只描述首尾日历跨度；observedSpan 为
 // 各 source 内首末有效时间跨度之和，绝不跨文件间的无日志空档。
 struct ObservationStats {

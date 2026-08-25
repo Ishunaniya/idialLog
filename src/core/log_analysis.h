@@ -17,6 +17,8 @@ std::vector<Outage> collectOutages(const std::vector<LogLine>& lines);
 std::vector<Outage> collectOutages(const LogView& lines);
 ObservationStats observationStats(const std::vector<LogLine>& lines);
 ObservationStats observationStats(const LogView& lines);
+DataCallStats collectDataCallStats(const std::vector<LogLine>& lines);
+DataCallStats collectDataCallStats(const LogView& lines);
 std::vector<Stall>  detectRxStall(const std::vector<std::pair<long long,long long>>& rxs,
                                   long long minStallSec = 120);
 std::vector<MetricRow> buildMetrics(const std::vector<LogLine>& lines);

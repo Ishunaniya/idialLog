@@ -206,6 +206,27 @@ static std::vector<Scenario> scenarios() {
 
 
 
+    // artery 1.29.17 源码固定字段；合成样例只验证分类引擎，不能替代真机。
+    v.push_back({
+        "artery DataCall 主动停止与 SDK 非预期断线分流",
+        "artery_datacall_initiators.log",
+        "2026-08-24 10:00:00.000 [INFO] dail_stop_data_call (dial.c:439) - [SDK] DataCall stop requested | reason=LICENSE_FAILURE_REDIAL profile=1\n"
+        "2026-08-24 10:00:00.100 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=LICENSE_FAILURE_REDIAL err=0x0\n"
+        "2026-08-24 10:00:01.000 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=START_CALL_TIMEOUT err=0x0\n"
+        "2026-08-24 10:00:02.000 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=PREFER_ROAMLINK_RETRY err=0x0\n"
+        "2026-08-24 10:00:03.000 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=SIM_TCP_FAILURE_SWITCH err=0x0\n"
+        "2026-08-24 10:00:04.000 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=REGISTRATION_TIMEOUT_SWITCH err=0x0\n"
+        "2026-08-24 10:00:05.000 [INFO] data_call_state_callback (dial.c:381) - [SDK] DataCall disconnected | initiator=SDK_URC reason=UNSOLICITED err=0xd\n"
+        "2026-08-24 10:00:06.000 [INFO] data_call_state_callback (dial.c:381) - [SDK] DataCall disconnected | profile=1 err=0xd\n"
+        "[2026-08-24 10:00:07] [SYSTEM] uptime read failed | path=/proc/uptime\n"
+        "[2026-08-24 10:00:08] [RECOVERY] reset suppressed | reason=BOOT_GUARD uptime=57s threshold=2000s\n"
+        "[2026-08-24 10:00:09] [APN] matched config | apn=internet.lte.cxn iccid_prefix=894642 username_set=user password_set=secret\n",
+        { "应用主动停止 DataCall 5 次", "SDK 非预期断线(SDK_URC/UNSOLICITED) 1 次" },
+        { "SDK 非预期断线(SDK_URC/UNSOLICITED) 2 次" },
+        PLAT_ARTERY, 0,
+        { "reason=START_CALL_TIMEOUT", "reason=UNSOLICITED err=0xd" }
+    });
+
     return v;
 }
 

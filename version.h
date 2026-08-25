@@ -53,11 +53,13 @@
 //           源码输出审计扩为五产品，RFC3164 缺失年份以 ~ 明示推定
 //   1.11.1  接入 EG25 新增持久日志：Data Call Init 致命退出、Start 失败和 APN 读取失败；
 //           5 分钟内版本横幅与 PROCESS EXIT 关联，兼容 LOG_E/LOG_I/LOG_D 标签
+//   1.11.2  区分 artery DataCall 的 APP_STOP 与 SDK_URC/UNSOLICITED，汇总 reason；
+//           兼容旧断线格式，并接入 EG25 SYSTEM/RECOVERY/APN 业务标题
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 1
+#define DL_VER_PATCH 2
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

@@ -866,12 +866,12 @@ void RenderSummary() {
     }
 
     // 关键事件计数
-    int sw = 0, disc = 0, states = 0, cfun = 0, slot = 0, oper = 0, cellChanges = 0;
+    int sw = 0, states = 0, cfun = 0, slot = 0, oper = 0, cellChanges = 0;
+    const DataCallStats dataCalls = collectDataCallStats(App().document.filtered);
     for (const LogLine* item : App().document.filtered) {
         const LogLine& l = *item;
         if (l.msg.find("switching to SIM") != std::string::npos ||
             l.msg.find("switching to Roamlink") != std::string::npos) sw++;
-        if (l.msg.find("DataCall disconnected") != std::string::npos) disc++;
         if (l.tagText() == "STATE") states++;
         if (l.tagText() == "CFUN" || l.msg.find("CFUN=0") != std::string::npos ||
             l.msg.find("CFUN toggle") != std::string::npos) cfun++;
@@ -879,11 +879,26 @@ void RenderSummary() {
         if (l.tagText() == "OPER") oper++;
         if (l.tagText().compare(0, 4, "CELL") == 0) cellChanges++;
     }
-    add(L"关键事件计数",
-        { FmtW(L"通道切换:%d   SDK断开:%d   状态迁移:%d   CFUN:%d   切卡:%d   选网:%d   小区变更:%d",
-               sw, disc, states, cfun, slot, oper, cellChanges),
+    std::vector<std::wstring> eventLines = {
+          FmtW(L"通道切换:%d   SDK断开:%d   状态迁移:%d   CFUN:%d   切卡:%d   选网:%d   小区变更:%d",
+               sw, (int)dataCalls.disconnected, states, cfun, slot, oper, cellChanges),
+          FmtW(L"DataCall: APP_STOP主动:%d   SDK_URC/UNSOLICITED异常:%d   旧格式未归因:%d   Stop请求:%d",
+               (int)dataCalls.appStop, (int)dataCalls.unsolicited,
+               (int)dataCalls.legacy, (int)dataCalls.stopRequested),
           L"",
-          L"提示: “时间线”看事件流，“断网”看逐次，“指标/信号图”看 CSQ、LTE 详情与 ΔRX(=0 即数据不通)。" });
+          L"提示: APP_STOP 是应用主动动作；只有 SDK_URC + UNSOLICITED 标记为异常断线证据。"
+    };
+    if (!dataCalls.reasons.empty()) {
+        std::wstring reasons = L"reason汇总: ";
+        bool firstReason = true;
+        for (const auto& entry : dataCalls.reasons) {
+            if (!firstReason) reasons += L"   ";
+            firstReason = false;
+            reasons += U8ToW(entry.first) + L":" + std::to_wstring(entry.second);
+        }
+        eventLines.insert(eventLines.begin() + 2, std::move(reasons));
+    }
+    add(L"关键事件计数", eventLines);
 
     if (App().hSummary) InvalidateRect(App().hSummary, nullptr, FALSE);
 }

@@ -1,0 +1,11 @@
+2026-08-24 10:00:00.000 [INFO] dail_stop_data_call (dial.c:439) - [SDK] DataCall stop requested | reason=LICENSE_FAILURE_REDIAL profile=1
+2026-08-24 10:00:00.100 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=LICENSE_FAILURE_REDIAL err=0x0
+2026-08-24 10:00:01.000 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=START_CALL_TIMEOUT err=0x0
+2026-08-24 10:00:02.000 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=PREFER_ROAMLINK_RETRY err=0x0
+2026-08-24 10:00:03.000 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=SIM_TCP_FAILURE_SWITCH err=0x0
+2026-08-24 10:00:04.000 [INFO] data_call_state_callback (dial.c:378) - [SDK] DataCall disconnected | initiator=APP_STOP reason=REGISTRATION_TIMEOUT_SWITCH err=0x0
+2026-08-24 10:00:05.000 [INFO] data_call_state_callback (dial.c:381) - [SDK] DataCall disconnected | initiator=SDK_URC reason=UNSOLICITED err=0xd
+2026-08-24 10:00:06.000 [INFO] data_call_state_callback (dial.c:381) - [SDK] DataCall disconnected | profile=1 err=0xd
+[2026-08-24 10:00:07] [SYSTEM] uptime read failed | path=/proc/uptime
+[2026-08-24 10:00:08] [RECOVERY] reset suppressed | reason=BOOT_GUARD uptime=57s threshold=2000s
+[2026-08-24 10:00:09] [APN] matched config | apn=internet.lte.cxn iccid_prefix=894642 username_set=user password_set=secret

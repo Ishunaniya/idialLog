@@ -72,13 +72,15 @@
   粘贴内容若一行都认不出,会直接弹出支持格式说明,而不是留个空界面让你猜。
 - **总览**:上半是**仪表盘** —— hero 数字(可用率,配状态标签)+ 指标卡(断网次数/最长断网/
   未识别行/CSQ 与 LTE 信号质量)+ 断网时长分布横条;下半是仪表盘装不下的明细(温度、通道占比、
-  **RX_PKT 停滞**、报错/告警、关键事件计数)。上下不重复。
+  **RX_PKT 停滞**、报错/告警、关键事件计数)。DataCall 事件按 `APP_STOP`、
+  `SDK_URC/UNSOLICITED` 和旧格式未归因分开统计，并汇总 `reason`。上下不重复。
 - **结论 ★**(核心):自动根因 + 处置建议 + **每条结论的日志证据(行号/时间戳)**。
   覆盖:断网根因分类(弱信号 / 数据假死 / 切卡选网期间 / 注册与账户异常)、SDK `DENY`
   注册异常与 SNR 持续偏低提示；识别旧四产品首次初始化诊断中的明确网络拒绝、受限服务、
   疑似订阅异常和 CEREG 查询/解析失败，并识别 v2 的 SIM 未插入、长时间未注册、READY 仍离线、
   连续 ping 失败重初始化等明确故障动作，严格区分【源码直证】与【推断】，
-  恢复阶梯 L1/L2/L3 是否触发及**被什么门控挡住**、CP dump、温度、解析覆盖率。
+  恢复阶梯 L1/L2/L3 是否触发及**被什么门控挡住**、CP dump、温度、解析覆盖率；
+  artery 的 `APP_STOP` 仅作为主动停止信息，只有 `SDK_URC + UNSOLICITED` 作为异常断线证据。
   **无证据支撑的结论一律不输出**(宁可少说,不臆测)。
   证据可单击定位原始行、右键复制或加入书签；顶部“书签”菜单可快速回跳，`Ctrl+B` 可切换
   当前已定位行。导出菜单可生成 Markdown 报告，以及内嵌三张 SVG 趋势图、小区质量、断网和
@@ -131,7 +133,7 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # x64: build/x64/dialLog_v1.11.1.exe
+make                     # x64: build/x64/dialLog_v1.11.2.exe
 make windows-all         # 同时构建 build/x64 与 build/x86
 make release             # 正式 x64 产物复制到仓库根目录
 make version             # 只打印当前版本号
@@ -148,7 +150,7 @@ mingw32-make CROSS=
 ### 32 位
 
 ```bash
-make windows-x86         # build/x86/dialLog_v1.11.1.exe
+make windows-x86         # build/x86/dialLog_v1.11.2.exe
 ```
 
 `CROSS` 同时派生 `CC/CXX/WINDRES`;每种工具链使用独立构建目录,连续切换架构
@@ -254,9 +256,9 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.11.1.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.11.2.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.11.1 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.11.2 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 只清理 `build/`；测试程序也位于 `build/tests/`，不会污染根目录或误删已提交的发布 exe。
@@ -286,6 +288,7 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 | 1.10.13 | 修复孤立/异常恢复污染断网与可用率；按来源实际观测时长计算覆盖；区分日志打开和进程启动；EG25 门控改按 policy/CH/联网实证；补 NUL、跨来源 RX、QENG 信号审计和同 source 授时跳变切段；接入 artery 标准化断网起止事件 |
 | 1.11.0 | 加入 modem_mng_v2：BusyBox RFC3164 syslog 与 stderr 调试镜像解析、EC200A/EG25 动态识别、v2 CSQ/状态/断网和保守诊断；源码输出审计扩为五产品；RFC3164 推定年份以 `~` 明示 |
 | 1.11.1 | 接入 EG25 新增落盘日志：诊断 `QL_Data_Call_Init` 致命退出、Data Call Start 失败和 APN 文件/JSON 失败；仅以 5 分钟内版本横幅关联退出后的重新启动，并兼容 `[LOG_E]/[LOG_I]/[LOG_D]` 时间线 |
+| 1.11.2 | 区分 artery DataCall 的 `APP_STOP` 与 `SDK_URC/UNSOLICITED`，将后者标为异常断线证据并汇总 `reason`；兼容原 `DataCall disconnected \| profile=...` 格式；接入 EG25 `[SYSTEM]/[RECOVERY]/[APN]` 业务标题，补充 artery 样例和回归测试 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞约 1.8MiB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

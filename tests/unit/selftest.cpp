@@ -117,19 +117,24 @@ int main(int argc, char** argv) {
     for (auto& kv : tc) std::printf("  %-14s %d\n", kv.first.c_str(), kv.second);
 
     // 关键事件
-    int sw=0, disc=0, states=0, cells=0, evt=0;
+    int sw=0, states=0, cells=0, evt=0;
+    const DataCallStats dataCalls = collectDataCallStats(lines);
     for (auto& l : lines) {
         if (l.msg.find("switching to SIM") != std::string::npos ||
             l.msg.find("switching to Roamlink") != std::string::npos) sw++;
-        if (l.msg.find("DataCall disconnected") != std::string::npos) disc++;
         if (l.tagText() == "STATE") states++;
         if (l.tagText().compare(0, 4, "CELL") == 0) cells++;
         bool keep = isEventLine(l);
         if (l.tagText().compare(0, 9, "HEARTBEAT") == 0 && (isFaultStart(l.msg) || isRecovered(l.msg, nullptr))) keep = true;
         if (keep) evt++;
     }
-    std::printf("== 关键事件 ==\n  通道切换:%d SDK断开:%d 状态迁移:%d 小区变更:%d 时间线事件:%d\n",
-                sw, disc, states, cells, evt);
+    std::printf("== 关键事件 ==\n  通道切换:%d SDK断开:%zu 状态迁移:%d 小区变更:%d 时间线事件:%d\n",
+                sw, dataCalls.disconnected, states, cells, evt);
+    std::printf("  DataCall APP_STOP:%zu SDK_URC:%zu UNSOLICITED:%zu 旧格式:%zu Stop请求:%zu\n",
+                dataCalls.appStop, dataCalls.sdkUrc, dataCalls.unsolicited,
+                dataCalls.legacy, dataCalls.stopRequested);
+    for (const auto& entry : dataCalls.reasons)
+        std::printf("  reason %-30s %zu\n", entry.first.c_str(), entry.second);
 
     // 结论引擎
     auto finds = analyze(lines, outs, rows, pi, audit);
@@ -161,9 +166,18 @@ int main(int argc, char** argv) {
     for (size_t i = 0; ptrOk && i < allView.size(); ++i) ptrOk = allView[i] == &lines[i];
     auto viewOuts = collectOutages(allView);
     auto viewRows = buildMetrics(allView);
+    auto viewDataCalls = collectDataCallStats(allView);
     auto viewFinds = analyze(allView, viewOuts, viewRows, pi, audit);
     bool same = ptrOk && viewOuts.size() == outs.size() && viewRows.size() == rows.size() &&
-                viewFinds.size() == finds.size();
+                viewFinds.size() == finds.size() &&
+                viewDataCalls.stopRequested == dataCalls.stopRequested &&
+                viewDataCalls.disconnected == dataCalls.disconnected &&
+                viewDataCalls.appStop == dataCalls.appStop &&
+                viewDataCalls.sdkUrc == dataCalls.sdkUrc &&
+                viewDataCalls.unsolicited == dataCalls.unsolicited &&
+                viewDataCalls.legacy == dataCalls.legacy &&
+                viewDataCalls.otherInitiator == dataCalls.otherInitiator &&
+                viewDataCalls.reasons == dataCalls.reasons;
     for (size_t i = 0; same && i < outs.size(); ++i)
         same = viewOuts[i].start == outs[i].start && viewOuts[i].end == outs[i].end &&
                viewOuts[i].dur == outs[i].dur && viewOuts[i].recovered == outs[i].recovered &&

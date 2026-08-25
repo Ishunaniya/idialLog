@@ -70,6 +70,20 @@ std::map<std::string, std::string> hbFields(const std::string& msg) {
     return d;
 }
 
+static std::string dataCallField(const std::string& msg, std::string_view wanted) {
+    std::string value;
+    scanHbFields(msg, [&](std::string_view key, std::string_view fieldValue) {
+        if (key == wanted && value.empty()) value.assign(fieldValue.data(), fieldValue.size());
+    });
+    return value;
+}
+
+static bool isUnsolicitedDataCallDisconnect(const LogLine& line) {
+    if (line.msg.find("DataCall disconnected") == std::string::npos) return false;
+    return dataCallField(line.msg, "initiator") == "SDK_URC" &&
+           dataCallField(line.msg, "reason") == "UNSOLICITED";
+}
+
 // ============================ 平台识别 ============================
 // modem_mng_v2 不再使用旧 modem_mng 的 HEARTBEAT/恢复阶梯语义。下列
 // 特征均是 v2 源码中的固定原文；既支持 parser 识别出的应用标签，也支持
@@ -298,7 +312,7 @@ static bool isProgramStartBanner(const std::string& msg) {
 //           LOGMIGR/LOGCLEAN/CLEANUP(日志自身维护,与网络无关)
 static const char* kEventTags[] = {
     "STATE","SDK","ROAMLINK","SLOT","OPER","LED","CFUN","SIM","APN","INIT","MODEM",
-    "RECOVERY","OUTAGE","ERROR","WARN","WARNING","FATAL","INFO","EVENT","STATUS","ALARM","TZ","NANOMSG",
+    "RECOVERY","OUTAGE","ERROR","WARN","WARNING","FATAL","INFO","EVENT","STATUS","ALARM","TZ","NANOMSG","SYSTEM",
     "LOG_E","LOG_I","LOG_D",
     // 以下为本次按源码穷举补齐(此前被静默丢弃)
     "PING","REG","ZERO","CPDUMP","COPS","SM","DIAG", nullptr
@@ -324,6 +338,9 @@ bool isErrTag(const std::string& tag) { return inList(kErrTags, tag); }
 bool isErrLine(const LogLine& l) {
     if (isErrTag(l.tagText())) return true;
     if (isModemMngV2Failure(l)) return true;
+    if (isUnsolicitedDataCallDisconnect(l)) return true;
+    if (l.tagText() == "SYSTEM" &&
+        l.msg.find("uptime read failed") != std::string::npos) return true;
     if (l.tagText() == "MODEM_MNG_V2" || l.fmt == FMT_CONSOLE) {
         return l.level == LEVEL_ERROR || l.level == LEVEL_WARNING ||
                l.level == LEVEL_FATAL || l.level == LEVEL_CRITICAL;
@@ -482,6 +499,43 @@ std::vector<Outage> collectOutages(const std::vector<LogLine>& lines) {
 
 std::vector<Outage> collectOutages(const LogView& lines) {
     return collectOutagesImpl(lines);
+}
+
+template <typename Lines>
+static DataCallStats collectDataCallStatsImpl(const Lines& lines) {
+    DataCallStats stats;
+    for (const auto& item : lines) {
+        const LogLine& line = lineRef(item);
+        if (line.msg.find("DataCall stop requested") != std::string::npos) {
+            ++stats.stopRequested;
+            continue;
+        }
+        if (line.msg.find("DataCall disconnected") == std::string::npos) continue;
+
+        ++stats.disconnected;
+        const std::string initiator = dataCallField(line.msg, "initiator");
+        const std::string reason = dataCallField(line.msg, "reason");
+        if (initiator.empty()) {
+            ++stats.legacy;
+        } else if (initiator == "APP_STOP") {
+            ++stats.appStop;
+        } else if (initiator == "SDK_URC") {
+            ++stats.sdkUrc;
+            if (reason == "UNSOLICITED") ++stats.unsolicited;
+        } else {
+            ++stats.otherInitiator;
+        }
+        if (!reason.empty()) ++stats.reasons[reason];
+    }
+    return stats;
+}
+
+DataCallStats collectDataCallStats(const std::vector<LogLine>& lines) {
+    return collectDataCallStatsImpl(lines);
+}
+
+DataCallStats collectDataCallStats(const LogView& lines) {
+    return collectDataCallStatsImpl(lines);
 }
 
 template <typename Lines>
@@ -1411,9 +1465,11 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evRegistrationIssue, evCpdump, evSlot, evOper, evCfun,
                                 evNotReady, evOrphanRecovery, evImpossibleRecovery,
                                 evDataCallInitFailed, evDataCallFatalExit,
-                                evDataCallStartFailed, evApnLoadFailed, evProgramStart,
+                                evDataCallStartFailed, evDataCallAppStop,
+                                evDataCallUnsolicited, evApnLoadFailed, evProgramStart,
                                 evV2NoSim, evV2LongUnregistered, evV2PingReinit,
                                 evV2ReadyOffline, evV2ReadyFailed;
+    std::map<std::string, size_t> appStopReasons, unsolicitedReasons;
     std::map<std::uint16_t, std::pair<long long, long long>> sourceBounds;
     std::map<std::uint16_t, bool> faultOpen;
     std::map<std::uint16_t, long long> faultStartTime;
@@ -1531,6 +1587,17 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         if (l.tagText() == "SDK" &&
             icontains(l.msg, "start data call failure"))
             evDataCallStartFailed.push_back(&l);
+        if (l.msg.find("DataCall disconnected") != std::string::npos) {
+            const std::string initiator = dataCallField(l.msg, "initiator");
+            const std::string reason = dataCallField(l.msg, "reason");
+            if (initiator == "APP_STOP") {
+                evDataCallAppStop.push_back(&l);
+                ++appStopReasons[reason.empty() ? "UNSPECIFIED" : reason];
+            } else if (initiator == "SDK_URC" && reason == "UNSOLICITED") {
+                evDataCallUnsolicited.push_back(&l);
+                ++unsolicitedReasons[reason];
+            }
+        }
         if (l.tagText() == "APN" &&
             (icontains(l.msg, "fp is NULL") ||
              icontains(l.msg, "fread error") ||
@@ -1780,6 +1847,46 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                    "APN 选择及随后状态机重试日志。";
         for (size_t i = 0; i < evDataCallStartFailed.size() && i < 3; ++i)
             f.ev.push_back(mkEv(*evDataCallStartFailed[i]));
+        fs.push_back(std::move(f));
+    }
+
+    auto summarizeReasons = [](const std::map<std::string, size_t>& counts) {
+        std::string text;
+        for (const auto& entry : counts) {
+            if (!text.empty()) text += ", ";
+            text += entry.first + "=" + std::to_string(entry.second);
+        }
+        return text.empty() ? std::string("无 reason 字段") : text;
+    };
+
+    if (!evDataCallAppStop.empty()) {
+        Finding f;
+        f.severity = 0;
+        f.title = "应用主动停止 DataCall " + std::to_string(evDataCallAppStop.size()) + " 次";
+        f.detail = "【源码直证】当前 artery 在调用 QL_Data_Call_Stop 前保存 reason，并在 30 秒内按"
+                   " profile/IP family 匹配断开回调后输出 initiator=APP_STOP。reason 汇总: " +
+                   summarizeReasons(appStopReasons) +
+                   "。这些事件是应用主动动作，不作为 SDK 非预期掉线或网络故障证据。";
+        f.advice = "按 reason 回看对应状态机动作；START_CALL_TIMEOUT 重点检查拨号建立阶段，"
+                   "其余切换/重拨原因结合 ROAMLINK、REG 和 TCP 诊断。";
+        for (size_t i = 0; i < evDataCallAppStop.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evDataCallAppStop[i]));
+        fs.push_back(std::move(f));
+    }
+
+    if (!evDataCallUnsolicited.empty()) {
+        Finding f;
+        f.severity = 1;
+        f.title = "SDK 非预期断线(SDK_URC/UNSOLICITED) " +
+                  std::to_string(evDataCallUnsolicited.size()) + " 次";
+        f.detail = "【日志直证】断开回调明确记录 initiator=SDK_URC reason=UNSOLICITED。"
+                   "【源码直证】当前 artery 仅在回调未命中 30 秒内同 profile/IP family 的应用 Stop"
+                   " 原因时输出该组合，因此它是非预期链路断开证据；reason 汇总: " +
+                   summarizeReasons(unsolicitedReasons) + "。";
+        f.advice = "结合断线前后的注册状态、信号、CEER、QMI/SDK 错误码和恢复耗时判断网络侧"
+                   "释放、覆盖波动或数据服务异常；不要与 APP_STOP 主动停拨混算。";
+        for (size_t i = 0; i < evDataCallUnsolicited.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evDataCallUnsolicited[i]));
         fs.push_back(std::move(f));
     }
 
