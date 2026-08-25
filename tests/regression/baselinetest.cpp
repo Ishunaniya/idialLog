@@ -209,6 +209,25 @@ int main() {
         }
     }
 
+    // ── 真机 artery 1.29.15:license 缺失/下载超时/主动降级 FORCE_SIM ──
+    {
+        auto L = load("samples/dial_eg25/real_artery_1.29.15_license_timeout.log");
+        std::printf("── 真机 artery 1.29.15(license 下载超时)\n");
+        if (!L.ok) { std::printf("   ✗ 打不开\n"); g_fail++; }
+        else {
+            cki((long)L.audit.rawTotal, 1533, "原始行数");
+            cki((long)L.audit.unparsed, 0, "未识别行");
+            cki((long)L.sessions.size(), 16, "启动会话数");
+            ck(L.pi.plat == PLAT_ARTERY, "平台=artery", L.pi.name, "artery");
+            const Finding* timeout = findingWith(L.fs, "license 下载超时");
+            ck(timeout && timeout->title.find("FORCE_SIM 1 次") != std::string::npos,
+               "报出 license 超时降级", timeout ? timeout->title : "(无)", "…FORCE_SIM 1 次");
+            ck(timeout && !timeout->ev.empty() && timeout->ev.back().lineNo == 1464,
+               "超时结论定位原始证据行", timeout && !timeout->ev.empty() ?
+               std::to_string(timeout->ev.back().lineNo) : "(无)", "1464");
+        }
+    }
+
     // ── 真机 EC200A 1.28.4(完全正常的设备:假阳性守卫)──
     {
         auto L = load("samples/dial_ec200a/real_ec200a_1.28.4_unsynced.log");

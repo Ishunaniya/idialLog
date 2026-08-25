@@ -984,6 +984,17 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
 
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
+        // 版本横幅是进程启动的直接证据。即使日志文件把多次启动串在一起，
+        // 新进程的网卡计数器、小区驻留状态也不能继承给上一会话；否则首个
+        // HEARTBEAT 会凭旧 rx_packets 算出假的 ΔRX=0/负增量，进而误报数据停滞。
+        if (l.msg.find("DIAL Version:") != std::string::npos ||
+            l.msg.find("modem_mng Version:") != std::string::npos ||
+            l.msg.find("Program started. Version:") != std::string::npos ||
+            l.msg.find("Program started. Main Version:") != std::string::npos) {
+            currentCell.clear();
+            haveLastRx = false;
+            lastRx = 0;
+        }
         ModemMngV2Registration& registration = v2Registration[l.sourceId];
         if (l.msg.find("===== modem_mng_v2 start =====") != std::string::npos)
             registration = ModemMngV2Registration{};
@@ -1467,6 +1478,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evDataCallInitFailed, evDataCallFatalExit,
                                 evDataCallStartFailed, evDataCallAppStop,
                                 evDataCallUnsolicited, evApnLoadFailed, evProgramStart,
+                                evLicenseMissing, evLicensePending, evLicenseTimeout,
                                 evV2NoSim, evV2LongUnregistered, evV2PingReinit,
                                 evV2ReadyOffline, evV2ReadyFailed;
     std::map<std::string, size_t> appStopReasons, unsolicitedReasons;
@@ -1484,6 +1496,15 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
         if (isProgramStartBanner(l.msg)) evProgramStart.push_back(&l);
+        // artery 的 license 流程使用固定的 SEAS_LOG 原文。只把“缺失 → 下载等待
+        // → 超时降级”这一完整、明确的产品动作作为结论；单条 license missing
+        // 可能随后从备份恢复，不能单独当作下载失败。
+        if (icontains(l.msg, "LICENSE_MISSING")) evLicenseMissing.push_back(&l);
+        if (icontains(l.msg, "SIM connected, starting RBMaster for license download"))
+            evLicensePending.push_back(&l);
+        if (icontains(l.msg, "license download timeout") &&
+            icontains(l.msg, "FORCE_SIM mode until next reboot"))
+            evLicenseTimeout.push_back(&l);
         if (v2Platform) {
             if (l.msg.find("SIM not inserted (CME ") != std::string::npos)
                 evV2NoSim.push_back(&l);
@@ -1834,6 +1855,31 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         for (size_t i = 0; i < evDataCallFatalExit.size() && f.ev.size() < 3; ++i)
             f.ev.push_back(mkEv(*evDataCallFatalExit[i]));
         if (restartAfterExit && f.ev.size() < 3) f.ev.push_back(mkEv(*restartAfterExit));
+        fs.push_back(std::move(f));
+    }
+
+    // artery 的 Roamlink license 缺失不是普通“断网”：产品刻意保持物理 SIM
+    // 联网，让 RBMaster 下载 license；到 300s 仍未出现才停止 RBMaster、主动断开
+    // DataCall 后重拨并保持 FORCE_SIM。该断开是应用处置动作，绝不能混入 SDK
+    // 非预期掉线或旧产品的 fault timer 断网统计。
+    if (!evLicenseTimeout.empty()) {
+        Finding f;
+        f.severity = 2;
+        f.title = "Roamlink license 下载超时，已降级 FORCE_SIM " +
+                  std::to_string(evLicenseTimeout.size()) + " 次";
+        f.detail = "【日志直证】license 缺失且无可用备份后，设备先通过物理 SIM 联网并启动 "
+                   "RBMaster 下载；日志明确记录等待上限届满后放弃下载。"
+                   "【源码直证】此分支保持 FORCE_SIM、停止 RBMaster 释放 SIM 通道，并主动"
+                   "重拨，避免 RBMaster 抢占通道造成地址/DNS 异常；因此紧随其后的 "
+                   "Net disconnected 是应用处置动作，不作为非预期网络断线统计。";
+        f.advice = "采集同一时间窗的 RBMaster、DNS/resolv.conf、许可证下载 URL 的 HTTP/TLS"
+                   " 错误及服务端请求日志；同时检查 license 主文件和备份文件的写入、挂载与持久化。";
+        if (!evLicenseMissing.empty()) f.ev.push_back(mkEv(*evLicenseMissing.front()));
+        if (!evLicensePending.empty() && f.ev.size() < 3) f.ev.push_back(mkEv(*evLicensePending.back()));
+        for (const LogLine* line : evLicenseTimeout) {
+            if (f.ev.size() >= 3) break;
+            f.ev.push_back(mkEv(*line));
+        }
         fs.push_back(std::move(f));
     }
 

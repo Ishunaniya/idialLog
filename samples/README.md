@@ -14,7 +14,7 @@
 |---|---|---|---|---|
 | `rtms_eg25/` | `rtms_sdk/apps/modem_mng` EG25 | `FMT_SD` | ✅ `dial_20260630_000026.log`(2861 行,ROAMLINK 通道)<br>✅ `real_eg25_1.31.15_unsynced.log`(133 行,SIM 通道 + 完整 L1/L2 恢复阶梯) | **真机实证** |
 | `dial_ec200a/` | `/home/tronlong/lyp/code/open_dial`(老框架 EC200A) | `FMT_SD` | ✅ `real_ec200a_1.28.4_unsynced.log`(36 行) | **真机实证**(2026-07-17 补入) |
-| `dial_eg25/` | `/home/tronlong/lyp/code/open_dial_for_artery`(老框架 EG25) | `FMT_SEAS` | ✅ `real_artery_1.29.13.log`(71 行,**含真实 ESC 字节**)<br>⚠️ `artery_seas_synthetic.log` | **真机实证**(2026-07-17 补入) |
+| `dial_eg25/` | `/home/tronlong/lyp/code/open_dial_for_artery`(老框架 EG25) | `FMT_SEAS` | ✅ `real_artery_1.29.13.log`(71 行,**含真实 ESC 字节**)<br>✅ `real_artery_1.29.15_license_timeout.log`(1533 行,多启动会话、license 下载超时并降级 FORCE_SIM)<br>⚠️ `artery_seas_synthetic.log` | **真机实证** |
 | `rtms_ag35/` | `rtms_sdk/apps/modem_mng` AG35(双卡) | `FMT_SD` | ✅ `real_ag35_1.32.16_console.log`(144 行,**控制台捕获**:SD 未挂载,dial_log 与裸 printf 交织)<br>✅ `real_ag35_1.32.0_sd.log`(333 行,2h03m 正常 eSIM 漫游,新版心跳字段)<br>⚠️ `ag35_synthetic.log` | **真机实证** |
 | `rtms_ec200a/` | `rtms_sdk/apps/modem_mng` EC200A | `FMT_SD` | ⚠️ 仅合成 | 行格式与心跳字段和 `dial_ec200a` **逐字段相同**(`open_dial/dial.c:518` vs `ec200a/dial/dial.cpp:1077`),后者已有真机实证 |
 | `rtms_v2/` | `rtms_sdk/apps/modem_mng_v2`，运行时动态支持 EC200A/EG25 | BusyBox RFC3164 `FMT_SYSLOG` | ⚠️ `modem_mng_v2_synthetic.log`；年份显示为推定 `~YYYY-...` | **源码实证**，尚无 v2 真机日志 |
