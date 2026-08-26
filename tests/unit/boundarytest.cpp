@@ -599,6 +599,45 @@ static void t17_datacall_initiator_reason_classification() {
        "SDK_URC/UNSOLICITED 生成告警并保留原始错误码证据");
 }
 
+static void t18_artery_datacall_exit_diagnostic() {
+    std::printf("== T18 artery 1.29.18 DataCall 初始化退出诊断 ==\n");
+    std::vector<std::string> raw = L({
+        "2026-08-26 10:00:00.000 [INFO] \x1b[0mmain (main.c:208) - DIAL Version: 1.29.18",
+        "2026-08-26 10:00:10.000 [ERROR] \x1b[0mdail_start_data_call (dial.c:398) - DataCall initialization failed; shutting down dial-owned RBMaster before exit(0)",
+        "2026-08-26 10:00:10.100 [ERROR] \x1b[0mdail_start_data_call (dial.c:400) - DataCall initialization failure: exiting dial with status 0 for supervisor restart",
+        "2026-08-26 10:00:20.000 [INFO] \x1b[0mmain (main.c:208) - DIAL Version: 1.29.18"
+    });
+    std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit);
+    const auto findings = analyze(lines, {}, {}, detectPlatform(lines), audit);
+    const Finding* exitFinding = nullptr;
+    for (const Finding& finding : findings) {
+        if (finding.title.find("artery DataCall 初始化失败，进程主动退出 1 次") != std::string::npos)
+            exitFinding = &finding;
+    }
+    bool cleanupEvidence = false;
+    if (exitFinding) {
+        for (const Evidence& evidence : exitFinding->ev)
+            cleanupEvidence = cleanupEvidence ||
+                evidence.text.find("shutting down dial-owned RBMaster") != std::string::npos;
+    }
+    ok(audit.unparsed == 0 && exitFinding &&
+       exitFinding->title.find("随后检测到重新启动") != std::string::npos && cleanupEvidence,
+       "SEAS 精确退出文案生成 artery 结论，并保留清理和同源重启证据");
+
+    std::vector<std::string> negativeRaw = L({
+        "[2026-08-26 11:00:00] [SDK] DataCall initialization failure: exiting dial with status 0 for supervisor restart",
+        "2026-08-26 11:00:01.000 [ERROR] \x1b[0mdail_start_data_call (dial.c:398) - DataCall initialization failed; shutting down dial-owned RBMaster before exit(0)"
+    });
+    std::vector<LogLine> negativeLines; std::vector<std::string> negativeSessions; ParseAudit negativeAudit;
+    parseLines(negativeRaw, negativeLines, negativeSessions, &negativeAudit);
+    const auto negativeFindings = analyze(negativeLines, {}, {}, detectPlatform(negativeLines), negativeAudit);
+    bool falsePositive = false;
+    for (const Finding& finding : negativeFindings)
+        falsePositive = falsePositive || finding.title.find("artery DataCall 初始化失败") != std::string::npos;
+    ok(!falsePositive, "非 SEAS 或仅清理 RBMaster 的日志不触发 artery 初始化退出诊断");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -617,6 +656,7 @@ int main() {
     t15_artery_persistent_outage_events();
     t16_eg25_persistent_failure_diagnostics();
     t17_datacall_initiator_reason_classification();
+    t18_artery_datacall_exit_diagnostic();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

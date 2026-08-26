@@ -1475,7 +1475,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evDenied, evLimited, evSuspectedAccount, evRegQueryFail,
                                 evRegistrationIssue, evCpdump, evSlot, evOper, evCfun,
                                 evNotReady, evOrphanRecovery, evImpossibleRecovery,
-                                evDataCallInitFailed, evDataCallFatalExit,
+                                evDataCallInitFailed, evDataCallFatalExit, evArteryDataCallCleanup, evArteryDataCallExit,
                                 evDataCallStartFailed, evDataCallAppStop,
                                 evDataCallUnsolicited, evApnLoadFailed, evProgramStart,
                                 evLicenseMissing, evLicensePending, evLicenseTimeout,
@@ -1505,6 +1505,16 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         if (icontains(l.msg, "license download timeout") &&
             icontains(l.msg, "FORCE_SIM mode until next reboot"))
             evLicenseTimeout.push_back(&l);
+        // artery 1.29.18 没有 SD 侧 SDK/FATAL 标签；只接受完整退出文案作为触发，
+        // RBMaster 清理文案仅作为补充证据，避免把其他产品误归为进程级退出。
+        if (l.fmt == FMT_SEAS &&
+            l.msg.find("DataCall initialization failed; shutting down dial-owned RBMaster before exit(0)")
+                != std::string::npos)
+            evArteryDataCallCleanup.push_back(&l);
+        if (l.fmt == FMT_SEAS &&
+            l.msg.find("DataCall initialization failure: exiting dial with status 0 for supervisor restart")
+                != std::string::npos)
+            evArteryDataCallExit.push_back(&l);
         if (v2Platform) {
             if (l.msg.find("SIM not inserted (CME ") != std::string::npos)
                 evV2NoSim.push_back(&l);
@@ -1854,6 +1864,45 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.ev.push_back(mkEv(*evDataCallInitFailed[i]));
         for (size_t i = 0; i < evDataCallFatalExit.size() && f.ev.size() < 3; ++i)
             f.ev.push_back(mkEv(*evDataCallFatalExit[i]));
+        if (restartAfterExit && f.ev.size() < 3) f.ev.push_back(mkEv(*restartAfterExit));
+        fs.push_back(std::move(f));
+    }
+
+    // artery 1.29.18 的 QL_Data_Call_Init 失败以 exit(0) 交给外部守护拉起，
+    // 退出前新增了当前进程所创建 RBMaster 的回收；格式不同于 EG25 的 SDK/FATAL。
+    if (!evArteryDataCallExit.empty()) {
+        const LogLine* restartAfterExit = nullptr;
+        for (const LogLine* exited : evArteryDataCallExit) {
+            for (const LogLine* started : evProgramStart) {
+                // 多文件合并时不能把另一来源的版本横幅关联到本次退出。
+                if (started->sourceId != exited->sourceId || started->t <= exited->t) continue;
+                if (started->t - exited->t > 5 * 60) continue;
+                if (!restartAfterExit || started->t < restartAfterExit->t)
+                    restartAfterExit = started;
+            }
+        }
+
+        Finding f;
+        f.severity = 2;
+        f.title = "artery DataCall 初始化失败，进程主动退出 " +
+                  std::to_string(evArteryDataCallExit.size()) + " 次";
+        if (restartAfterExit) f.title += "，随后检测到重新启动";
+        f.detail = "【日志直证】artery 明确记录 DataCall 初始化失败后以 status 0 退出，"
+                   "交由 supervisor 重启；该版本会先尝试回收本进程启动的 RBMaster。";
+        if (restartAfterExit)
+            f.detail += " 同一日志来源在 5 分钟内出现新的 DIAL Version 横幅，证明进程随后重新启动。";
+        f.advice = "检查 QL_Data_Call_Init 的调用条件、AP 侧数据服务及 supervisor 拉起记录；"
+                   "同时核对紧邻的 RBMaster 回收日志是否为 SIGTERM 超时或 SIGKILL。";
+        for (const LogLine* cleanup : evArteryDataCallCleanup) {
+            if (cleanup->sourceId == evArteryDataCallExit.front()->sourceId) {
+                f.ev.push_back(mkEv(*cleanup));
+                break;
+            }
+        }
+        for (const LogLine* exited : evArteryDataCallExit) {
+            if (f.ev.size() >= 3) break;
+            f.ev.push_back(mkEv(*exited));
+        }
         if (restartAfterExit && f.ev.size() < 3) f.ev.push_back(mkEv(*restartAfterExit));
         fs.push_back(std::move(f));
     }
