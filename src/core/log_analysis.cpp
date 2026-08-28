@@ -1479,6 +1479,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evDataCallStartFailed, evDataCallAppStop,
                                 evDataCallUnsolicited, evApnLoadFailed, evProgramStart,
                                 evLicenseMissing, evLicensePending, evLicenseTimeout,
+                                evLicenseBackupFailed, evLicenseAtomicallyBackedUp,
                                 evV2NoSim, evV2LongUnregistered, evV2PingReinit,
                                 evV2ReadyOffline, evV2ReadyFailed;
     std::map<std::string, size_t> appStopReasons, unsolicitedReasons;
@@ -1505,6 +1506,13 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         if (icontains(l.msg, "license download timeout") &&
             icontains(l.msg, "FORCE_SIM mode until next reboot"))
             evLicenseTimeout.push_back(&l);
+        // artery 与 EG25 均在备份失败时明确说明“延后重启”，而不是下载失败或
+        // 已经降级。两种格式分别来自 SEAS_LOG 和 [ROAMLINK]，故只依赖这段
+        // 产品共用的完整文案，避免把普通文件写入错误误判为 license 流程。
+        if (icontains(l.msg, "license backup failed; reboot postponed"))
+            evLicenseBackupFailed.push_back(&l);
+        if (icontains(l.msg, "license atomically backed up to "))
+            evLicenseAtomicallyBackedUp.push_back(&l);
         // artery 1.29.18 没有 SD 侧 SDK/FATAL 标签；只接受完整退出文案作为触发，
         // RBMaster 清理文案仅作为补充证据，避免把其他产品误归为进程级退出。
         if (l.fmt == FMT_SEAS &&
@@ -1904,6 +1912,42 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.ev.push_back(mkEv(*exited));
         }
         if (restartAfterExit && f.ev.size() < 3) f.ev.push_back(mkEv(*restartAfterExit));
+        fs.push_back(std::move(f));
+    }
+
+    if (!evLicenseBackupFailed.empty()) {
+        Finding f;
+        f.severity = 1;
+        f.title = "Roamlink license 备份失败，重启已延后 " +
+                  std::to_string(evLicenseBackupFailed.size()) + " 次";
+        f.detail = "【日志直证】license 备份失败后，程序明确记录已延后重启。"
+                   "【源码直证】当前 artery/EG25 会保留原有有效备份，并在 300 秒激活"
+                   "窗口内每 30 秒重新检测和尝试备份；这不是已完成激活，也不是已降级"
+                   " FORCE_SIM。";
+        f.advice = "检查 license 主文件与备份目录的挂载、剩余空间、读写权限和文件系统 I/O"
+                   " 错误；保留同一激活窗口内后续的备份成功、重启或超时降级日志。";
+        if (!evLicensePending.empty()) f.ev.push_back(mkEv(*evLicensePending.back()));
+        for (const LogLine* line : evLicenseBackupFailed) {
+            if (f.ev.size() >= 3) break;
+            f.ev.push_back(mkEv(*line));
+        }
+        fs.push_back(std::move(f));
+    }
+
+    if (!evLicenseAtomicallyBackedUp.empty()) {
+        Finding f;
+        f.severity = 0;
+        f.title = "Roamlink license 已原子备份 " +
+                  std::to_string(evLicenseAtomicallyBackedUp.size()) + " 次";
+        f.detail = "【日志直证】license 已记录为原子备份完成。"
+                   "【源码直证】当前实现先写入同目录临时文件并 fsync，再 rename 到正式"
+                   "备份路径并同步父目录，因而写入中断不会截断既有有效备份。";
+        f.advice = "这是备份持久化成功信息；若它属于首次下载激活流程，可继续查看随后"
+                   "的重启及启动后的 license probe 日志确认完整闭环。";
+        for (const LogLine* line : evLicenseAtomicallyBackedUp) {
+            if (f.ev.size() >= 3) break;
+            f.ev.push_back(mkEv(*line));
+        }
         fs.push_back(std::move(f));
     }
 

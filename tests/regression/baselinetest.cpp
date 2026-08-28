@@ -228,6 +228,33 @@ int main() {
         }
     }
 
+    // ── 2026-08-28 license 原子备份：两个上游日志格式均应给出准确状态 ──
+    // 目前尚无携带新文案的真机夹具；这里以两仓库最新源码实际输出文案做机制回归。
+    {
+        std::printf("── license 原子备份/延后重启（源码实证文案）\n");
+        std::vector<std::string> raw = {
+            "2026-08-28 17:02:12.000 [ERROR] \033[0mroamlink_license_backup_and_reboot (roamlink.c:516) - roamlink: license backup failed; reboot postponed",
+            "2026-08-28 17:02:42.000 [INFO] \033[0mroamlink_license_write_backup (roamlink.c:464) - roamlink: license atomically backed up to /data/ufs/license.cer",
+            "[2026-08-28 17:26:54] [ROAMLINK] license backup failed; reboot postponed",
+            "[2026-08-28 17:27:24] [ROAMLINK] license atomically backed up to /data/ufs/license.cer"
+        };
+        std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+        parseLines(raw, lines, sessions, &audit);
+        auto fs = analyze(lines, collectOutages(lines), buildMetrics(lines), detectPlatform(lines), audit);
+        const Finding* failed = findingWith(fs, "license 备份失败，重启已延后");
+        const Finding* backedUp = findingWith(fs, "license 已原子备份");
+        ck(failed && failed->severity == 1 && failed->title.find("2 次") != std::string::npos,
+           "artery/EG25 均识别备份失败延后重启", failed ? failed->title : "(无)", "告警…2 次");
+        ck(backedUp && backedUp->severity == 0 && backedUp->title.find("2 次") != std::string::npos,
+           "artery/EG25 均识别原子备份成功", backedUp ? backedUp->title : "(无)", "信息…2 次");
+        ck(failed && !failed->ev.empty() && failed->ev.back().lineNo == 3,
+           "失败结论保留 EG25 原始证据行", failed && !failed->ev.empty() ?
+           std::to_string(failed->ev.back().lineNo) : "(无)", "3");
+        ck(backedUp && backedUp->ev.size() == 2 && backedUp->ev.back().lineNo == 4,
+           "成功结论保留两种格式证据", backedUp && !backedUp->ev.empty() ?
+           std::to_string(backedUp->ev.back().lineNo) : "(无)", "4");
+    }
+
     // ── 真机 EC200A 1.28.4(完全正常的设备:假阳性守卫)──
     {
         auto L = load("samples/dial_ec200a/real_ec200a_1.28.4_unsynced.log");
