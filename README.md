@@ -36,16 +36,17 @@
 | 平台 | 判据 | 源码出处 |
 |---|---|---|
 | modem_mng_v2 | syslog 应用名为 `modem_mng_v2`，或出现 v2 固定启动/状态机原文；模组再由 `Module detected: EC200A/EG25` 动态识别 | `modem_mng_v2/src/log/log.c:22`、`src/modem/modem.c:73,147` |
+| 新版平台化版本标识 | `DIAL Version: dial_eg25_*` / `dial_ec200a_*`，或 `Modem_mng Version: rtms_<platform>_*`；直接识别 artery、open_dial、RTMS AG35/EC200A/EG25/IMX6ULL/RK3506J | 2026-08-31 三个产品仓库的版本标识提交 |
 | artery | 行格式为 seas_log | `seas_log.c:210` |
 | AG35 | 心跳含 `SLOT:` 或出现 `[SLOT]` 标签 | `ec200a/dial/dial.cpp:1071-1075`(AG35-only `#ifdef`) |
 | EG25 | 心跳含 `CH:`/`RL_FAIL`/`RX_PKT`,或 `[ROAMLINK]` 标签 | `eg25/diag/diag.c:109-131` |
 | EC200A | 心跳为 `SIM_AT:`/`SIM_CB:` 且无 `SLOT:` | `ec200a/dial/dial.cpp:1077` |
 
-> **EC200A 与 open_dial 不做区分**:二者行格式与心跳字段完全相同(`open_dial/dial.c:518`
-> 与 `ec200a/dial/dial.cpp:1077` 逐字段一致),无据可分,故统一报为 EC200A。
+> **旧版 EC200A 与 open_dial 不做区分**:二者心跳字段完全相同；但含新版
+> `dial_ec200a_*` / `rtms_ec200a_*` 展示版本时，工具按该直接证据区分来源。
 >
-> **IMX 不在列**:`dialer_imx6ull.cpp` 中 `dial_log` 调用数为 **0**(只用 `printf`),
-> `CMakeLists.txt` 的 IMX 分支也不链接 `logger_sd.c` —— IMX 不产此类日志。
+> **IMX6ULL / RK3506J**:新版 RTMS 在启动时发布带平台名的版本标识。当前不假设它们
+> 具备旧版拨号心跳字段；工具会识别平台和启动边界，但不会把缺失的心跳臆造成指标。
 
 ### 心跳格式逐平台不同(不要假设相同)
 

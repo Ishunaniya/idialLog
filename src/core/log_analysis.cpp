@@ -194,9 +194,30 @@ static bool isModemMngV2Start(const LogLine& line) {
 //           (注:open_dial(B) dial.c:518 心跳与此**完全相同**,故 B 的日志
 //            也会判为 EC200A —— 二者行格式与心跳字段无差异,不做无据区分)
 //  EG25   : 心跳含 "CH:"/RL_FAIL/RX_PKT 或出现 [ROAMLINK] 标签  eg25/diag/diag.c:109-131
-//  IMX    : 不可能出现 —— dialer_imx6ull.cpp 中 dial_log 调用数为 0(只用 printf),
-//           CMakeLists.txt 的 IMX 分支也不链接 logger_sd.c,故 IMX 不产此类日志。
-//           保留 PLAT_IMX 枚举仅为完整性,detectPlatform 永不返回它。
+//  IMX/RK3506J: RTMS 最新版在启动时发布带平台名的展示版本；当前不假设其存在
+//               旧版 HEARTBEAT 字段，只根据该直接证据标识平台。
+struct DisplayVersionPlatform {
+    const char* marker;
+    Platform platform;
+    const char* name;
+};
+
+static const DisplayVersionPlatform* displayVersionPlatform(const std::string& message) {
+    static constexpr DisplayVersionPlatform kPlatforms[] = {
+        {"dial version: dial_eg25_",         PLAT_ARTERY,    "artery (open_dial_for_artery, EG25)"},
+        {"dial version: dial_ec200a_",       PLAT_EC200A,    "EC200A (open_dial)"},
+        {"modem_mng version: rtms_ag35_",    PLAT_AG35,      "AG35 (modem_mng, rtms)"},
+        {"modem_mng version: rtms_ec200a_",  PLAT_EC200A,    "EC200A (modem_mng, rtms)"},
+        {"modem_mng version: rtms_eg25_",    PLAT_EG25,      "EG25 (modem_mng, rtms)"},
+        {"modem_mng version: rtms_imx6ull_", PLAT_IMX,       "IMX6ULL (modem_mng, rtms)"},
+        {"modem_mng version: rtms_rk3506j_", PLAT_RK3506J,   "RK3506J (modem_mng, rtms)"},
+    };
+    const std::string normalized = lower(message);
+    for (const auto& platform : kPlatforms)
+        if (normalized.find(platform.marker) != std::string::npos) return &platform;
+    return nullptr;
+}
+
 PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
     PlatformInfo pi;
     size_t seas = 0;
@@ -207,6 +228,8 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
     const LogLine* v2Ev = nullptr;
     const LogLine* v2ModuleEv = nullptr;
     const char* v2Module = nullptr;
+    const LogLine* displayVersionEv = nullptr;
+    const DisplayVersionPlatform* displayVersion = nullptr;
 
     for (const auto& l : lines) {
         if (!v2Ev && isModemMngV2Envelope(l)) v2Ev = &l;
@@ -215,6 +238,12 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
             if (!v2ModuleEv || l.msg.find("Module detected: ") != std::string::npos) {
                 v2ModuleEv = &l;
                 v2Module = module;
+            }
+        }
+        if (!displayVersion) {
+            if (const DisplayVersionPlatform* p = displayVersionPlatform(l.msg)) {
+                displayVersion = p;
+                displayVersionEv = &l;
             }
         }
         if (l.fmt == FMT_SEAS) { seas++; if (!seasEv) seasEv = &l; }
@@ -242,6 +271,13 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
         pi.evidence = std::string(v2Module ? "v2 原文明确给出模组:  " :
                                              "出现 modem_mng_v2 固定启动/状态机特征:  ") +
                       (evidence ? evidence->msg.substr(0, 90) : "");
+    }
+    else if (displayVersion) {
+        pi.plat = displayVersion->platform;
+        pi.name = displayVersion->name;
+        pi.evidenceLine = displayVersionEv ? displayVersionEv->lineNo : 0;
+        pi.evidence = std::string("新版展示版本标识:  ") +
+                      (displayVersionEv ? displayVersionEv->msg.substr(0, 90) : "");
     }
     else if (seas > 0) set(PLAT_ARTERY, "artery (open_dial_for_artery, seas_log)", seasEv, "行格式为 seas_log(时间带毫秒+级别+函数名)");
     else if (ag35Ev)   set(PLAT_AG35,   "AG35 (modem_mng, 双卡)",                  ag35Ev, "出现 AG35 专有的 SLOT 切卡痕迹");
@@ -295,14 +331,6 @@ static bool isSelfContainedRecovery(const std::string& msg) {
            lo.find("down:") != std::string::npos;
 }
 
-// 与 log_parser 的启动信号保持同一组固定措辞。这里只用于把明确的致命退出与
-// 后续启动横幅关联；Dial Log Opened 是文件打开/轮转标记，不能充当进程重启证据。
-static bool isProgramStartBanner(const std::string& msg) {
-    return msg.find("DIAL Version:") != std::string::npos ||
-           msg.find("modem_mng Version:") != std::string::npos ||
-           msg.find("Program started. Version:") != std::string::npos ||
-           msg.find("Program started. Main Version:") != std::string::npos;
-}
 
 // 时间线保留的“状态变化类”标签。取自三仓库 dial_log/SEAS_LOG 首参的穷举
 // (modem_mng 357 处、open_dial 107 处、artery 4 处内嵌标签),多词标签按首段匹配:
@@ -987,10 +1015,7 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         // 版本横幅是进程启动的直接证据。即使日志文件把多次启动串在一起，
         // 新进程的网卡计数器、小区驻留状态也不能继承给上一会话；否则首个
         // HEARTBEAT 会凭旧 rx_packets 算出假的 ΔRX=0/负增量，进而误报数据停滞。
-        if (l.msg.find("DIAL Version:") != std::string::npos ||
-            l.msg.find("modem_mng Version:") != std::string::npos ||
-            l.msg.find("Program started. Version:") != std::string::npos ||
-            l.msg.find("Program started. Main Version:") != std::string::npos) {
+        if (isProgramStartBanner(l.msg)) {
             currentCell.clear();
             haveLastRx = false;
             lastRx = 0;

@@ -10,6 +10,7 @@
 //
 // 构建运行:make boundarytest && build/tests/unit/boundarytest      (rc=0 全过)
 #include "logmodel.h"
+#include <climits>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -638,6 +639,51 @@ static void t18_artery_datacall_exit_diagnostic() {
     ok(!falsePositive, "非 SEAS 或仅清理 RBMaster 的日志不触发 artery 初始化退出诊断");
 }
 
+// 2026-08-31 产品提交把启动横幅统一为带平台的展示版本。此处同时钉死：
+// 1) 首字母大写的 Modem_mng 仍是启动证据；2) 重启后 RX 基线清空；
+// 3) 展示版本可直接标识所有已发布平台，而无需等待心跳特征。
+static void t19_display_version_platform_and_restart() {
+    std::printf("== T19 平台化展示版本与启动边界 ==\n");
+    std::vector<std::string> raw = L({
+        "[2026-08-31 12:00:00] Modem_mng Version: rtms_eg25_1.31.19",
+        "[2026-08-31 12:00:01] [HEARTBEAT] CH:SIM | CSQ:20 | rx_packets=100",
+        "[2026-08-31 12:01:00] Modem_mng Version: rtms_eg25_1.31.19",
+        "[2026-08-31 12:01:01] [HEARTBEAT] CH:SIM | CSQ:20 | rx_packets=10"
+    });
+    std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit);
+    const PlatformInfo eg25 = detectPlatform(lines);
+    const auto metrics = buildMetrics(lines);
+    ok(audit.programStarted == 2 && sessions.size() == 2,
+       "大写 Modem_mng Version 作为两次独立启动证据");
+    ok(eg25.plat == PLAT_EG25 && eg25.name.find("rtms") != std::string::npos,
+       "rtms_eg25 展示版本直接识别 EG25");
+    ok(metrics.size() == 2 && metrics[1].drx == LLONG_MIN,
+       "新版横幅后的首个 RX 样本不继承上一进程基线");
+
+    struct Case { const char* version; Platform platform; };
+    const Case cases[] = {
+        {"DIAL Version: dial_eg25_1.29.18", PLAT_ARTERY},
+        {"DIAL Version: dial_ec200a_1.28.14", PLAT_EC200A},
+        {"Modem_mng Version: rtms_ag35_1.32.0", PLAT_AG35},
+        {"Modem_mng Version: rtms_ec200a_1.31.11", PLAT_EC200A},
+        {"Modem_mng Version: rtms_eg25_1.31.19", PLAT_EG25},
+        {"Modem_mng Version: rtms_imx6ull_1.24", PLAT_IMX},
+        {"Modem_mng Version: rtms_rk3506j_1.28", PLAT_RK3506J},
+    };
+    bool allExact = true;
+    for (const Case& c : cases) {
+        const std::string line = std::string("[2026-08-31 12:00:00] ") + c.version;
+        std::vector<LogLine> oneLine; std::vector<std::string> oneSession; ParseAudit oneAudit;
+        parseLines(L({line.c_str()}), oneLine, oneSession, &oneAudit);
+        const PlatformInfo platform = detectPlatform(oneLine);
+        allExact = allExact && oneAudit.programStarted == 1 && oneSession.size() == 1 &&
+                   platform.plat == c.platform &&
+                   platform.evidence.find("展示版本") != std::string::npos;
+    }
+    ok(allExact, "七种新版展示版本均直接识别平台并计为启动证据");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -657,6 +703,7 @@ int main() {
     t16_eg25_persistent_failure_diagnostics();
     t17_datacall_initiator_reason_classification();
     t18_artery_datacall_exit_diagnostic();
+    t19_display_version_platform_and_restart();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

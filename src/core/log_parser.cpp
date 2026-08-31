@@ -647,16 +647,13 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
                 }
             }
             pendingConsole.swap(stillPending);
-            // 进程重启横幅(每次启动恰一次,三家措辞各异,全是正常日志行):
-            //   modem_mng: "Program started. Version:" / "EG25 modem_mng Version:"
-            //   open_dial: "Program started. Main Version:"
-            //   artery   : "DIAL Version:"(seas_log,无 "=== Dial Log Opened ===" 标记)
+            // 进程重启横幅(每次启动恰一次,各产品措辞各异,全是正常日志行):
+            //   RTMS 新版: "Modem_mng Version: rtms_<platform>_<version>"
+            //   旧版 modem_mng/open_dial: "Program started. Version/Main Version:"
+            //   artery/open_dial 新版: "DIAL Version:"(artery 无 opened 标记)
             // 【真机实证】real_artery_1.29.14 重启 3 次却只有 3 条 "DIAL Version",0 条 opened 标记
             //   —— 只认 opened 标记的话 artery/AG35控制台 的重启全漏(报 0 次)。
-            if (L.msg.find("DIAL Version:") != std::string::npos ||
-                L.msg.find("modem_mng Version:") != std::string::npos ||
-                L.msg.find("Program started. Version:") != std::string::npos ||
-                L.msg.find("Program started. Main Version:") != std::string::npos) {
+            if (isProgramStartBanner(L.msg)) {
                 restartTs.push_back(L.t);
                 ad.programStarted++;
             }

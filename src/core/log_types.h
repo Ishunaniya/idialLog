@@ -30,7 +30,8 @@ enum Platform {
     PLAT_AG35,      // modem_mng AG35(EC200A 源码路径 + [SLOT] 双卡)
     PLAT_EG25,      // modem_mng EG25
     PLAT_ARTERY,    // open_dial_for_artery(seas_log)
-    PLAT_IMX,       // 仅占位:IMX 无 dial_log,不产此类日志(见 log_analysis.cpp 说明)
+    PLAT_IMX,       // modem_mng IMX6ULL（新版可由 rtms_imx6ull 展示版本直接识别）
+    PLAT_RK3506J,   // modem_mng RK3506J（可由 rtms_rk3506j 展示版本直接识别）
     // RK3576 重构版使用 syslog/控制台文本，状态机和恢复策略均不同于旧 modem_mng；
     // 单列平台，避免把 v2 的事件套入旧 EG25/EC200A 恢复阶梯阈值。
     PLAT_MODEM_MNG_V2
