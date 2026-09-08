@@ -62,6 +62,27 @@ static bool scanHbFields(const std::string& msg, Fn&& fn) {
     return found;
 }
 
+// IMX6ULL 的在线状态来自 30s/300s 快照，而不是旧产品的 fault timer 文案。
+// 只接受完整的 online=0/1，避免正文中的普通数字或诊断说明误触发断网边沿。
+static bool imxHeartbeatOnline(const LogLine& line, bool& online) {
+    const std::string& tag = line.tagText();
+    if (tag != "HB30" && tag != "HB300") return false;
+    bool found = false;
+    scanHbFields(line.msg, [&](std::string_view key, std::string_view value) {
+        if (found || key != "online" || value.size() != 1) return;
+        if (value[0] == '0') { online = false; found = true; }
+        else if (value[0] == '1') { online = true; found = true; }
+    });
+    return found;
+}
+
+static bool isImxHeartbeatDiagnostic(const LogLine& line) {
+    const std::string& tag = line.tagText();
+    if (tag != "HB" && tag != "HB300") return false;
+    return icontains(line.msg, "snapshot stale") || icontains(line.msg, "snapshot delayed") ||
+           icontains(line.msg, "diagnostic snapshot pending");
+}
+
 std::map<std::string, std::string> hbFields(const std::string& msg) {
     std::map<std::string, std::string> d;
     scanHbFields(msg, [&](std::string_view key, std::string_view value) {
@@ -343,9 +364,11 @@ static const char* kEventTags[] = {
     "RECOVERY","OUTAGE","ERROR","WARN","WARNING","FATAL","INFO","EVENT","STATUS","ALARM","TZ","NANOMSG","SYSTEM",
     "LOG_E","LOG_I","LOG_D",
     // 以下为本次按源码穷举补齐(此前被静默丢弃)
-    "PING","REG","ZERO","CPDUMP","COPS","SM","DIAG", nullptr
+    "PING","REG","ZERO","CPDUMP","COPS","SM","DIAG",
+    // IMX6ULL 状态机：HB30/HB300 是高频指标，不放时间线；其余均为阶段或故障动作。
+    "FAILURE","RETRY","PDP","NET","DHCP","DEVICE","USB","POWER","EXIT","SERVICE","PLMN","AT","VERSION", nullptr
 };
-static const char* kErrTags[] = { "ERROR","WARN","WARNING","FATAL","ALARM","LOG_E", nullptr };
+static const char* kErrTags[] = { "ERROR","WARN","WARNING","FATAL","ALARM","LOG_E","FAILURE", nullptr };
 
 static bool inList(const char* const* list, const std::string& tag) {
     std::string t = lower(tag);
@@ -384,6 +407,7 @@ bool isErrLine(const LogLine& l) {
 // 只按标签过滤会让 artery 的时间线几乎全空)
 bool isEventLine(const LogLine& l) {
     if (isModemMngV2Event(l) || isModemMngV2Failure(l)) return true;
+    if (isImxHeartbeatDiagnostic(l)) return true;
     if (isEventTag(l.tagText())) return true;
     if (isErrLine(l)) return true;
     if (l.fmt == FMT_SEAS) {
@@ -415,6 +439,31 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
     };
     std::map<std::uint16_t, V2Open> v2Open;
     std::map<std::uint16_t, bool> v2SeenOnline;
+    // IMX6ULL 1.25 使用 [HB30]/[HB300] 的 online 边沿。与 v2 一样，必须先
+    // 观察到在线，才把后续 online=0 视为“掉线”，避免把启动拨号阶段误算断网。
+    struct ImxOpen {
+        long long start = 0;
+        size_t line = 0;
+    };
+    std::map<std::uint16_t, ImxOpen> imxOpen;
+    std::map<std::uint16_t, bool> imxSeenOnline;
+    auto closeImxOutage = [&](std::uint16_t sourceId, const LogLine& end) {
+        const auto down = imxOpen.find(sourceId);
+        if (down == imxOpen.end()) return;
+        const long long duration = end.t - down->second.start;
+        if (end.t > 0 && duration >= 0 && duration <= INT_MAX &&
+            !crossesClockBase(down->second.start, end.t)) {
+            Outage outage;
+            outage.start = down->second.start;
+            outage.startLine = down->second.line;
+            outage.end = end.t;
+            outage.endLine = end.lineNo;
+            outage.dur = static_cast<int>(duration);
+            outage.recovered = true;
+            outs.push_back(outage);
+        }
+        imxOpen.erase(down);
+    };
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
         const bool usableV2Clock = l.fmt == FMT_SYSLOG && l.t > 0;
@@ -460,6 +509,33 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
             v2SeenOnline[l.sourceId] = true;
         } else if (usableV2Clock && isModemMngV2WanDown(l) && v2SeenOnline[l.sourceId]) {
             v2Open.emplace(l.sourceId, V2Open{l.t, l.lineNo});
+        }
+
+        // 新启动不能让上个 IMX 进程的 offline 状态跨会话延续。
+        if (isProgramStartBanner(l.msg)) {
+            const auto stale = imxOpen.find(l.sourceId);
+            if (stale != imxOpen.end()) {
+                Outage outage;
+                outage.start = stale->second.start;
+                outage.startLine = stale->second.line;
+                outage.recovered = false;
+                outs.push_back(outage);
+                imxOpen.erase(stale);
+            }
+            imxSeenOnline[l.sourceId] = false;
+        }
+        bool imxOnline = false;
+        if (imxHeartbeatOnline(l, imxOnline)) {
+            if (imxOnline) {
+                closeImxOutage(l.sourceId, l);
+                imxSeenOnline[l.sourceId] = true;
+            } else if (imxSeenOnline[l.sourceId]) {
+                imxOpen.emplace(l.sourceId, ImxOpen{l.t, l.lineNo});
+            }
+        } else if (l.tagText() == "RECOVERY") {
+            // RECOVERY 在探测刚成功时即打印，比随后一个 30s 上报更接近实际恢复点。
+            closeImxOutage(l.sourceId, l);
+            imxSeenOnline[l.sourceId] = true;
         }
 
         if (have && l.sourceId != source) {
@@ -508,6 +584,13 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
         outs.push_back(o);
     }
     for (const auto& entry : v2Open) {
+        Outage outage;
+        outage.start = entry.second.start;
+        outage.startLine = entry.second.line;
+        outage.recovered = false;
+        outs.push_back(outage);
+    }
+    for (const auto& entry : imxOpen) {
         Outage outage;
         outage.start = entry.second.start;
         outage.startLine = entry.second.line;
@@ -662,10 +745,10 @@ std::vector<Stall> detectRxStall(const std::vector<std::pair<long long,long long
 struct HeartbeatFields {
     bool any = false;
     std::string_view ch, slot, state, csqUpper, csqLower, tempTitle, tempUpper;
-    std::string_view failTitle, failLower, rxUpper, rxLower;
+    std::string_view tempImx, failTitle, failLower, failImx, rxUpper, rxLower;
     std::string_view rsrpUpper, rsrpLower, rsrqUpper, rsrqLower;
     std::string_view snrUpper, snrLower, rssiUpper, rssiLower;
-    std::string_view srv, rat, deny, oper, cell, pci, tac;
+    std::string_view srv, rat, deny, oper, cell, pci, tac, servingCell, trafficValid, sampleAge;
 };
 
 static HeartbeatFields heartbeatFields(const std::string& msg) {
@@ -678,8 +761,10 @@ static HeartbeatFields heartbeatFields(const std::string& msg) {
         else if (k == "csq")         f.csqLower = v;
         else if (k == "Temp")        f.tempTitle = v;
         else if (k == "TEMP")        f.tempUpper = v;
+        else if (k == "temp_c")      f.tempImx = v;
         else if (k == "ConsecFail")  f.failTitle = v;
         else if (k == "tcp_fail")    f.failLower = v;
+        else if (k == "fail_streak") f.failImx = v;
         else if (k == "RX_PKT")      f.rxUpper = v;
         else if (k == "rx_packets")  f.rxLower = v;
         else if (k == "RSRP")        f.rsrpUpper = v;
@@ -703,6 +788,9 @@ static HeartbeatFields heartbeatFields(const std::string& msg) {
                  k == "NCI" || k == "nci") f.cell = v;
         else if (k == "pci")         f.pci = v;
         else if (k == "tac")         f.tac = v;
+        else if (k == "serving_cell") f.servingCell = v;
+        else if (k == "traffic_valid") f.trafficValid = v;
+        else if (k == "sample_age_ms") f.sampleAge = v;
     });
     return f;
 }
@@ -721,6 +809,36 @@ static bool parseLong(std::string_view text, long long& value, bool requireWhole
     }
     auto result = std::from_chars(first, last, value, 10);
     return result.ptr != first && result.ec == std::errc{} && (!requireWhole || result.ptr == last);
+}
+
+// IMX 日志把信号以人可读 dB/dBm 输出，例如 SNR:8.4dB；MetricRow 统一用 0.1dB。
+// 只在 IMX 路径调用，避免改变旧 SDK 的整数原始值语义。
+static bool parseImxSnr10(std::string_view text, int& value) {
+    text = trimView(text);
+    size_t pos = 0;
+    bool negative = false;
+    if (pos < text.size() && (text[pos] == '+' || text[pos] == '-')) {
+        negative = text[pos] == '-';
+        ++pos;
+    }
+    const size_t wholeBegin = pos;
+    while (pos < text.size() && std::isdigit(static_cast<unsigned char>(text[pos]))) ++pos;
+    if (pos == wholeBegin) return false;
+    long long whole = 0;
+    if (!parseLong(text.substr(wholeBegin, pos - wholeBegin), whole, true)) return false;
+    int tenth = 0;
+    if (pos < text.size() && text[pos] == '.') {
+        ++pos;
+        if (pos >= text.size() || !std::isdigit(static_cast<unsigned char>(text[pos]))) return false;
+        tenth = text[pos++] - '0';
+        while (pos < text.size() && std::isdigit(static_cast<unsigned char>(text[pos]))) ++pos;
+    }
+    if (text.substr(pos) != "dB") return false;
+    const long long scaled = whole * 10 + tenth;
+    const long long signedScaled = negative ? -scaled : scaled;
+    if (signedScaled < -32768 || signedScaled > 32767) return false;
+    value = static_cast<int>(signedScaled);
+    return true;
 }
 
 static bool viewContainsIgnoreCase(std::string_view text, std::string_view needle) {
@@ -917,6 +1035,46 @@ static std::string_view unquote(std::string_view value) {
     return value;
 }
 
+// IMX [HB300] 的小区明细是 serving_cell="cell_id=...;pci=...;...;tac=..."。
+// 它不是 AT +QENG 原文，故不能复用其字段下标；只读取明确命名的四个字段。
+static void updateImxServingCell(std::string_view value, CellState& state) {
+    value = unquote(value);
+    std::string_view cell, pci, tac;
+    size_t first = 0;
+    while (first <= value.size()) {
+        const size_t last = value.find(';', first);
+        const std::string_view part = trimView(value.substr(first,
+            (last == std::string_view::npos ? value.size() : last) - first));
+        const size_t equal = part.find('=');
+        if (equal != std::string_view::npos) {
+            const std::string_view key = trimView(part.substr(0, equal));
+            const std::string_view field = trimView(part.substr(equal + 1));
+            if (key == "cell_id") cell = field;
+            else if (key == "pci") pci = field;
+            else if (key == "tac") tac = field;
+        }
+        if (last == std::string_view::npos) break;
+        first = last + 1;
+    }
+    if (!cell.empty()) {
+        if (usableCell(cell)) state.setId(cell);
+        else state.clear();
+    }
+    std::uint32_t parsed = 0;
+    if (!pci.empty())
+        state.pci = parseUnsignedField(pci, 10, parsed) && parsed <= static_cast<std::uint32_t>(INT_MAX)
+                        ? static_cast<int>(parsed) : -1;
+    if (!tac.empty()) {
+        state.tac = UINT32_MAX;
+        state.tacDigits = 0;
+        if (parseUnsignedField(tac, 16, parsed)) {
+            state.tac = parsed;
+            if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X')) tac.remove_prefix(2);
+            state.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(tac.size(), 8));
+        }
+    }
+}
+
 // Quectel +QENG servingcell 的 LTE/WCDMA/GSM/NR5G-SA 形态都把 Cell ID 放在
 // 第 7 个 CSV 字段。LTE 的 PCI/TAC 分别位于第 8/13 个字段，NR5G-SA 的 TAC
 // 位于第 9 个字段。这里只接纳明确的 servingcell 证据，不从邻区或数字位置猜测。
@@ -1049,7 +1207,8 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         currentSource = l.sourceId;
         haveSource = true;
         updateCellState(l, currentCell);
-        if (l.tagText().compare(0, 9, "HEARTBEAT") != 0) continue;
+        const bool imxHeartbeat = l.tagText() == "HB30" || l.tagText() == "HB300";
+        if (l.tagText().compare(0, 9, "HEARTBEAT") != 0 && !imxHeartbeat) continue;
         HeartbeatFields f = heartbeatFields(l.msg);
         if (!f.any) continue;
 
@@ -1062,7 +1221,7 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
             m.ch.append(f.slot.data(), f.slot.size());
         } else if (!f.state.empty()) {                                 // artery
             m.ch = viewContainsIgnoreCase(f.state, "roamlink") ? "ROAMLINK" : "SIM";
-        }
+        } else if (imxHeartbeat) m.ch = "IMX6ULL";
         assignView(m.rat, f.rat);
         assignView(m.oper, f.oper);
         const std::string_view explicitCell = f.cell;
@@ -1094,7 +1253,16 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
             m.tacDigits = currentCell.tacDigits;
         }
 
-        std::string_view temp = firstOf(f.tempTitle, f.tempUpper);
+        if (imxHeartbeat && !f.servingCell.empty()) updateImxServingCell(f.servingCell, currentCell);
+        if (!currentCell.id.empty()) m.cellId.assign(currentCell.id);
+        m.pci = currentCell.pci;
+        if (currentCell.tac != UINT32_MAX) {
+            m.tac = currentCell.tac;
+            m.tacDigits = currentCell.tacDigits;
+        }
+
+        std::string_view temp = !f.tempTitle.empty() ? f.tempTitle :
+                                !f.tempUpper.empty() ? f.tempUpper : f.tempImx;
         if (!temp.empty()) {
             int best = INT_MIN; bool ok = false;
             size_t a = 0;
@@ -1114,7 +1282,9 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
             if (ok) m.tempMax = best;
         }
         long long number = 0;
-        if (parseLong(firstOf(f.failTitle, f.failLower), number) &&
+        const std::string_view fail = !f.failTitle.empty() ? f.failTitle :
+                                      !f.failLower.empty() ? f.failLower : f.failImx;
+        if (parseLong(fail, number) &&
             number >= INT_MIN && number <= INT_MAX) m.consecFail = (int)number;
 
         // RX_PKT 与 rx_packets 是**同一个计数器**的两个打印点,故合并为一条序列:
@@ -1128,7 +1298,16 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         // 注意(仅源码推断,未经实证):切通道时 roamlink_rx_packets 会被清零
         // (dial.c:1857/1875),故切换点附近可能出现一次负增量;负增量不等于 0,
         // 不会被 drxZero 误判为假死。
-        bool haveRx = parseLong(firstOf(f.rxUpper, f.rxLower), m.rx);
+        // HB300 的诊断快照可能是数分钟前的缓存。它仍可说明当时的信号/小区，
+        // 但把陈旧 rx_packets 当“当前采样”会制造假的 ΔRX=0 数据停滞。仅接收
+        // traffic_valid=1 且快照不超过一个 HB30 周期(45s)的 IMX 流量计数。
+        bool imxFreshTraffic = true;
+        if (imxHeartbeat) {
+            long long sampleAge = 0;
+            imxFreshTraffic = parseLong(f.trafficValid, number, true) && number == 1 &&
+                              parseLong(f.sampleAge, sampleAge, true) && sampleAge >= 0 && sampleAge <= 45000;
+        }
+        bool haveRx = imxFreshTraffic && parseLong(firstOf(f.rxUpper, f.rxLower), m.rx);
         if (haveRx && haveLastRx) {
             const bool overflow = (lastRx > 0 && m.rx < LLONG_MIN + lastRx) ||
                                   (lastRx < 0 && m.rx > LLONG_MAX + lastRx);
@@ -1150,8 +1329,11 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
             number >= INT_MIN && number < 0) m.rsrq = (int)number;
         // 两套 SDK 的 LTE SNR 都是 int16_t 原值,单位 0.1dB(真头示例:246=24.6dB)。
         // 0 与正值均有效,不能沿用 RSRP/RSRQ 的“只收负值”规则。
-        if (parseLong(firstOf(f.snrUpper, f.snrLower), number, true) &&
-            number >= -32768 && number <= 32767) m.snr10 = (int)number;
+        if (imxHeartbeat) {
+            int snr10 = 0;
+            if (parseImxSnr10(firstOf(f.snrUpper, f.snrLower), snr10)) m.snr10 = snr10;
+        } else if (parseLong(firstOf(f.snrUpper, f.snrLower), number, true) &&
+                   number >= -32768 && number <= 32767) m.snr10 = (int)number;
         if (parseLong(firstOf(f.rssiUpper, f.rssiLower), number, true) &&
             number >= INT_MIN && number < 0)
             m.rssiVal = (int)number;
@@ -1506,7 +1688,9 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evLicenseMissing, evLicensePending, evLicenseTimeout,
                                 evLicenseBackupFailed, evLicenseAtomicallyBackedUp,
                                 evV2NoSim, evV2LongUnregistered, evV2PingReinit,
-                                evV2ReadyOffline, evV2ReadyFailed;
+                                evV2ReadyOffline, evV2ReadyFailed,
+                                evImxFailure, evImxRetry, evImxSimNotReady, evImxRegWait,
+                                evImxPdp, evImxDhcp, evImxNetwork, evImxDevice, evImxAt;
     std::map<std::string, size_t> appStopReasons, unsolicitedReasons;
     std::map<std::uint16_t, std::pair<long long, long long>> sourceBounds;
     std::map<std::uint16_t, bool> faultOpen;
@@ -1562,6 +1746,35 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 evV2ReadyOffline.push_back(&l);
             if (l.msg.find("failed to in ready state") != std::string::npos)
                 evV2ReadyFailed.push_back(&l);
+        }
+        // IMX6ULL 的拨号状态机把阶段失败和退避动作拆成固定标签；仅在已经由
+        // rtms_imx6ull_ 横幅直接识别的平台上采集，避免把别的平台同名标签混入。
+        if (pi.plat == PLAT_IMX) {
+            const std::string& tag = l.tagText();
+            if (tag == "FAILURE") evImxFailure.push_back(&l);
+            if (tag == "RETRY") evImxRetry.push_back(&l);
+            if (tag == "SIM" && icontains(l.msg, "SIM not ready"))
+                evImxSimNotReady.push_back(&l);
+            if (tag == "REG" && (icontains(l.msg, "wait timed out") ||
+                                 icontains(l.msg, "response unparseable")))
+                evImxRegWait.push_back(&l);
+            if (tag == "PDP" && (icontains(l.msg, "rejected") ||
+                                 icontains(l.msg, "wait exhausted")))
+                evImxPdp.push_back(&l);
+            if (tag == "DHCP" && (icontains(l.msg, "failed") ||
+                                  icontains(l.msg, "ended unexpectedly") ||
+                                  icontains(l.msg, "process remains")))
+                evImxDhcp.push_back(&l);
+            if (tag == "NET" && (icontains(l.msg, "no IPv4 address") ||
+                                 icontains(l.msg, "connection failed") ||
+                                 icontains(l.msg, "default route missing")))
+                evImxNetwork.push_back(&l);
+            if (tag == "DEVICE" && (icontains(l.msg, "initial discovery failed") ||
+                                    icontains(l.msg, "USB enumeration timed out")))
+                evImxDevice.push_back(&l);
+            if (tag == "AT" && (icontains(l.msg, "open failed") ||
+                                icontains(l.msg, "read EOF")))
+                evImxAt.push_back(&l);
         }
         if (isFaultStart(l.msg)) {
             faultOpen[l.sourceId] = true;
@@ -1753,6 +1966,54 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             "日志出现 failed to in ready state，表明状态机从 MD_READY 进入错误处理并调用模组复位。",
             "回看此前连续 ping、WAN online、CEREG/CGREG 与 CSQ；区分网络不可达和模组/AT 端口异常。",
             evV2ReadyFailed);
+    }
+
+    // IMX6ULL 1.25.0 状态机诊断。每项均对应 imx6ull_dialer.cpp 的固定日志动作；
+    // 不从 online=0、低 CSQ 或普通 NET 信息猜测根因。
+    if (pi.plat == PLAT_IMX) {
+        auto addImxFinding = [&](int severity, std::string title, std::string detail,
+                                 std::string advice, const std::vector<const LogLine*>& evidence) {
+            if (evidence.empty()) return;
+            Finding finding;
+            finding.severity = severity;
+            finding.title = std::move(title);
+            finding.detail = std::move(detail);
+            finding.advice = std::move(advice);
+            for (size_t i = 0; i < evidence.size() && i < 3; ++i) finding.ev.push_back(mkEv(*evidence[i]));
+            fs.push_back(std::move(finding));
+        };
+        if (!evImxFailure.empty() || !evImxRetry.empty()) {
+            std::vector<const LogLine*> evidence = evImxFailure;
+            for (const LogLine* line : evImxRetry)
+                if (evidence.size() < 3) evidence.push_back(line);
+            addImxFinding(
+                2,
+                "IMX6ULL 拨号失败，已进入退避重试",
+                "【源码直证】状态机在 FAILURE_RETRY 输出 FAILURE，并以 RETRY 记录次数、等待秒数和失败原因；"
+                "这是已完成一次拨号失败后的恢复动作，不是普通在线探测。",
+                "按证据中的 state、pdn、if 和 reason 分流排查；保留完整失败—恢复周期，确认重试是否反复耗尽。",
+                evidence);
+        }
+        addImxFinding(2, "IMX6ULL SIM 未就绪",
+                      "【源码直证】AT+CPIN 检查未返回 READY，状态机转入 FAILURE_RETRY。",
+                      "检查卡槽、卡接触、PIN 锁状态和 CPIN 原始响应；SIM 未就绪前继续拨号没有意义。",
+                      evImxSimNotReady);
+        addImxFinding(2, "IMX6ULL 网络注册等待失败",
+                      "【源码直证】CEREG 响应无法解析或在注册等待窗口内超时，状态机未进入正常数据拨号。",
+                      "核对 CEREG、CSQ、运营商选择和 AT 端口响应；区分无注册、响应损坏和覆盖问题。",
+                      evImxRegWait);
+        addImxFinding(2, "IMX6ULL PDP 数据连接失败",
+                      "【源码直证】CID1 请求被拒、PDP 等待耗尽或状态不可解析，数据面尚未就绪。",
+                      "核对 APN/PDP 类型、QNETDEVCTL/QNETDEVSTATUS 原始响应和模组侧 PDP 上下文。",
+                      evImxPdp);
+        addImxFinding(2, "IMX6ULL DHCP/IPv4/路由配置失败",
+                      "【源码直证】DHCP 客户端失败或网卡没有 IPv4/默认路由，问题位于 AP 侧网络配置或链路可达性。",
+                      "检查接口是否存在、udhcpc 进程与租约、IP/网关/路由/DNS；再复核探测端点可达性。",
+                      evImxDhcp.empty() ? evImxNetwork : evImxDhcp);
+        addImxFinding(2, "IMX6ULL 模组拓扑或 AT 通道不可用",
+                      "【源码直证】USB 模组拓扑发现超时/失败，或已选 AT 端口打开、读写响应失败。",
+                      "检查 USB 枚举、option 驱动绑定、AT 端口节点及供电；确认网卡与 AT 口来自同一模组。",
+                      evImxDevice.empty() ? evImxAt : evImxDevice);
     }
     // SDK 注网摘要是 2026-07/08 四份产品代码新增字段。只有 SRV!=FULL 且 DENY>0
     // 才算拒绝证据；DENY=0 不臆测。两套 SDK 的 DENY 数字表不同,这里只保留原码。

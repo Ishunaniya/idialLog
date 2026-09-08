@@ -40,7 +40,9 @@ static const std::string kKnownTags[] = {
     "INIT", "MODEM", "EVENT", "STATUS", "LED", "TZ", "NANOMSG", "PING", "PING OUT",
     "PING FAIL", "PING ERROR", "REG", "REG TIMEOUT", "REG DIAG", "ZERO", "ZERO ADDR",
     "CPDUMP", "COPS", "SM", "LOGMIGR", "LOGCLEAN", "CLEANUP", "NetCheck",
-    "LOG_E", "LOG_I", "LOG_D", "CONSOLE", "SYSLOG", "MODEM_MNG_V2"
+    "LOG_E", "LOG_I", "LOG_D", "CONSOLE", "SYSLOG", "MODEM_MNG_V2",
+    // IMX6ULL modem_mng 1.25+: 30s 状态采样、5min 详细采样及故障状态机。
+    "HB", "HB30", "HB300", "FAILURE", "RETRY", "PDP", "NET", "DHCP", "DEVICE", "USB", "POWER", "EXIT", "SERVICE", "PLMN", "AT", "VERSION"
 };
 
 LogLine::LogLine(const LogLine& o)

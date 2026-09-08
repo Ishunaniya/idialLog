@@ -17,7 +17,8 @@
 | `dial_eg25/` | `/home/tronlong/lyp/code/open_dial_for_artery`(老框架 EG25) | `FMT_SEAS` | ✅ `real_artery_1.29.13.log`(71 行,**含真实 ESC 字节**)<br>✅ `real_artery_1.29.15_license_timeout.log`(1533 行,多启动会话、license 下载超时并降级 FORCE_SIM)<br>⚠️ `artery_seas_synthetic.log` | **真机实证** |
 | `rtms_ag35/` | `rtms_sdk/apps/modem_mng` AG35(双卡) | `FMT_SD` | ✅ `real_ag35_1.32.16_console.log`(144 行,**控制台捕获**:SD 未挂载,dial_log 与裸 printf 交织)<br>✅ `real_ag35_1.32.0_sd.log`(333 行,2h03m 正常 eSIM 漫游,新版心跳字段)<br>⚠️ `ag35_synthetic.log` | **真机实证** |
 | `rtms_ec200a/` | `rtms_sdk/apps/modem_mng` EC200A | `FMT_SD` | ⚠️ 仅合成 | 行格式与心跳字段和 `dial_ec200a` **逐字段相同**(`open_dial/dial.c:518` vs `ec200a/dial/dial.cpp:1077`),后者已有真机实证 |
-| `rtms_imx6ull/` / `rtms_rk3506j/` | `rtms_sdk/apps/modem_mng` IMX6ULL / RK3506J | 待新版真机日志确认 | 暂无样本；2026-08-31 后启动时会输出 `Modem_mng Version: rtms_<platform>_*` | **源码实证** |
+| `rtms_imx6ull/` | `rtms_sdk/apps/modem_mng` IMX6ULL | `FMT_SD` | ✅ `dial_20260907_101753.log`(2030 行,13h42m,`rtms_imx6ull_1.25.0`；未入库，含设备标识) | **真机实证** |
+| `rtms_rk3506j/` | `rtms_sdk/apps/modem_mng` RK3506J | 待新版真机日志确认 | 暂无样本；启动时会输出 `Modem_mng Version: rtms_rk3506j_*` | **源码实证** |
 | `rtms_v2/` | `rtms_sdk/apps/modem_mng_v2`，运行时动态支持 EC200A/EG25 | BusyBox RFC3164 `FMT_SYSLOG` | ⚠️ `modem_mng_v2_synthetic.log`；年份显示为推定 `~YYYY-...` | **源码实证**，尚无 v2 真机日志 |
 
 ## modem_mng_v2 应采哪份日志
@@ -59,11 +60,11 @@ grep 'modem_mng_v2' /var/log/messages > modem_mng_v2.log
   → 未识别占比会很高(AG35 真机样本:62/144 = 43%),**这是正常的** ——
   那 62 行本来就不是 dial_log 输出。工具老实报出来,而不是硬塞进上一条。
 
-## 为什么暂未建 `rtms_imx6ull/` / `rtms_rk3506j/`
+## IMX6ULL 真机验证与 RK3506J 的边界
 
-截至 2026-08-31，RTMS 新版会在启动时输出平台化展示版本，并为 IMX6ULL 调用
-`log_init()` / `dial_log()`。但仓库尚无对应真机日志，不能预先编造样本或假定完整运行期格式。
-拿到日志后应按平台建目录，并以 `rtms_imx6ull_*` / `rtms_rk3506j_*` 版本横幅钉死识别结果。
+已用 IMX6ULL `rtms_imx6ull_1.25.0` 真机日志验证：2030 行全量结构化解析、0 未识别行、
+1808 个 `HB30/HB300` 指标样本、0 次断网。原日志含 IMEI/IMSI/ICCID，故不随仓库提交；
+回归测试用脱敏的逐字段夹具钉死日志契约。RK3506J 仍无真机日志，不能假定其运行期字段与 IMX6ULL 相同。
 
 ## 合成夹具的效力边界(重要 —— 已被上面的事实印证)
 

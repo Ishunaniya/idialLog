@@ -684,6 +684,54 @@ static void t19_display_version_platform_and_restart() {
     ok(allExact, "七种新版展示版本均直接识别平台并计为启动证据");
 }
 
+// IMX6ULL 1.25.0 真机格式：HB30/HB300 是状态采样，online 边沿与 RECOVERY
+// 形成断网；阶段失败标签必须进入证据化结论，而不能套旧 HEARTBEAT/L1-L3 规则。
+static void t20_imx6ull_state_machine() {
+    std::printf("== T20 IMX6ULL 心跳、断网与状态机 ==\n");
+    std::vector<std::string> raw = L({
+        "[2026-09-07 12:00:00] Modem_mng Version: rtms_imx6ull_1.25.0",
+        "[2026-09-07 12:00:01] [HB30] online=1 | downtime_s=0 | cereg=5 | pdp=1 | csq=18 | RSRP:-104dBm | RSRQ:-8dB | SNR:8.4dB | RSSI:-56dBm | probe_ms=302 | temp_c=56 | sample_age_ms=1089",
+        "[2026-09-07 12:00:01] [HB300] online=1 | downtime_s=0 | if=usb0 | cereg=5 | pdp=1 | csq=18 | RSRP:-104dBm | RSRQ:-8dB | SNR:8.4dB | RSSI:-56dBm | temp_c=56 | serving_cell=\"cell_id=99D991;pci=345;earfcn=100;band=1;tac=755C\" | traffic_valid=1 | rx_packets=411 | sample_age_ms=1000",
+        "[2026-09-07 12:00:10] [HB30] online=0 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=17 | RSRP:-105dBm | RSRQ:-9dB | SNR:8.0dB | RSSI:-57dBm | temp_c=57 | fail_streak=1 | retry=0 | reason=\"internet probe failed\"",
+        "[2026-09-07 12:00:11] [FAILURE] state=FAILURE_RETRY pdn=1 if=usb0 reason=\"internet probe failed\"",
+        "[2026-09-07 12:00:11] [RETRY] number=1 | wait_s=5 | downtime_s=1 | reason=\"internet probe failed\"",
+        "[2026-09-07 12:01:00] [RECOVERY] downtime_s=50 | failures=1 | retries=1 | last_probe_ms=300 | reason=\"internet probe failed\"",
+        "[2026-09-07 12:01:01] [HB30] online=1 | downtime_s=0 | cereg=5 | pdp=1 | csq=18 | RSRP:-103dBm | RSRQ:-7dB | SNR:8.5dB | RSSI:-55dBm | probe_ms=300 | temp_c=56 | sample_age_ms=1000",
+        "[2026-09-07 12:02:00] [SIM] SIM not ready",
+        "[2026-09-07 12:02:01] [REG] registration wait timed out CEREG=0",
+        "[2026-09-07 12:02:02] [PDP] wait exhausted pdn=0 interface_present=0",
+        "[2026-09-07 12:02:03] [DHCP] start failed interface=usb0",
+        "[2026-09-07 12:02:04] [DEVICE] USB enumeration timed out vendor=2c7c product=0901 ports=0 net=(none)",
+        "[2026-09-07 12:02:05] [AT] response timed out port=/dev/ttyUSB0 request=AT"
+    });
+    std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit);
+    const PlatformInfo platform = detectPlatform(lines);
+    const auto metrics = buildMetrics(lines);
+    const auto outages = collectOutages(lines);
+    const auto findings = analyze(lines, outages, metrics, platform, audit);
+    ok(platform.plat == PLAT_IMX && audit.programStarted == 1,
+       "IMX6ULL 展示版本准确识别并形成启动边界");
+    ok(metrics.size() == 4 && metrics[1].ch == "IMX6ULL" && metrics[1].cellId == "99D991" &&
+       metrics[1].pci == 345 && metrics[1].tac == 0x755C && metrics[1].rx == 411 &&
+       metrics[1].snr10 == 84 && metrics[1].tempMax == 56,
+       "HB30/HB300 的信号、温度、流量和 serving_cell 字段进入指标模型");
+    ok(outages.size() == 1 && outages[0].recovered && outages[0].dur == 50 &&
+       outages[0].startLine == 4 && outages[0].endLine == 7,
+       "IMX online=1→0 与 RECOVERY 配成可信 50s 断网");
+    bool retry = false, sim = false, reg = false, pdp = false, network = false, device = false;
+    for (const Finding& finding : findings) {
+        retry = retry || finding.title.find("退避重试") != std::string::npos;
+        sim = sim || finding.title.find("SIM 未就绪") != std::string::npos;
+        reg = reg || finding.title.find("注册等待失败") != std::string::npos;
+        pdp = pdp || finding.title.find("PDP 数据连接失败") != std::string::npos;
+        network = network || finding.title.find("DHCP/IPv4/路由") != std::string::npos;
+        device = device || finding.title.find("拓扑或 AT 通道") != std::string::npos;
+    }
+    ok(retry && sim && reg && pdp && network && device,
+       "IMX 状态机的失败阶段全部生成有源码直证的结论");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -704,6 +752,7 @@ int main() {
     t17_datacall_initiator_reason_classification();
     t18_artery_datacall_exit_diagnostic();
     t19_display_version_platform_and_restart();
+    t20_imx6ull_state_machine();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }
