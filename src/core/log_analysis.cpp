@@ -12,12 +12,23 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <set>
 #include <string_view>
 #include <utility>
 
 namespace dl {
 
 static constexpr long long kSaneClockEpoch = 946598400LL;
+
+static std::string fmtDuration(long long seconds) {
+    if (seconds < 0) return "-";
+    const long long hours = seconds / 3600;
+    const long long minutes = (seconds % 3600) / 60;
+    const long long remain = seconds % 60;
+    if (hours > 0) return std::to_string(hours) + "h" + std::to_string(minutes) + "m" + std::to_string(remain) + "s";
+    if (minutes > 0) return std::to_string(minutes) + "m" + std::to_string(remain) + "s";
+    return std::to_string(remain) + "s";
+}
 
 static bool crossesClockBase(long long first, long long second) {
     return (first < kSaneClockEpoch) != (second < kSaneClockEpoch);
@@ -358,6 +369,60 @@ bool isRecovered(const std::string& msg, int* durSec) {
         }
     }
     return false;
+}
+
+/* COPS mode is a one-digit 3GPP field.  Keep this deliberately narrow: a
+ * command such as "AT+COPS=1" is not evidence that the modem is presently
+ * manual; only a +COPS query response is. */
+static bool hasCopsMode(const std::string& msg, char wanted) {
+    const std::string lo = lower(msg);
+    size_t p = lo.find("+cops:");
+    while (p != std::string::npos) {
+        p += 6;
+        while (p < lo.size() && (lo[p] == ' ' || lo[p] == '\t')) ++p;
+        if (p < lo.size() && lo[p] == wanted &&
+            (p + 1 == lo.size() || lo[p + 1] == ',' ||
+             lo[p + 1] == ' ' || lo[p + 1] == '\t' ||
+             lo[p + 1] == '\r' || lo[p + 1] == '\n'))
+            return true;
+        p = lo.find("+cops:", p);
+    }
+    return false;
+}
+
+/* The two EG25 products use different envelopes, but both log a successful
+ * COPS=0 restore explicitly.  Do not treat a mere COPS=0 command as success. */
+static bool isCopsAutoRestoreOk(const std::string& msg) {
+    const std::string lo = lower(msg);
+    if (lo.find("reg timeout: at+cops=0 unlock ok") != std::string::npos)
+        return true;                              // artery (seas_log)
+    return lo.find("at+cops=0 rsp:") != std::string::npos &&
+           lo.find("ok") != std::string::npos;  // RTMS EG25 ([REG TIMEOUT])
+}
+
+/* Registration progress, not merely a COPS command.  These strings are the
+ * successful state/connection records emitted by artery and RTMS EG25. */
+static bool isRegistrationRecovered(const std::string& msg) {
+    const std::string lo = lower(msg);
+    return lo.find("state: reg_check -> cereg_check") != std::string::npos ||
+           lo.find("reg_check -> cereg_check") != std::string::npos ||
+           lo.find("net connected") != std::string::npos ||
+           lo.find("datacall connected") != std::string::npos ||
+           lo.find("network recovered after ") != std::string::npos ||
+           (lo.find("network recovered") != std::string::npos &&
+            lo.find("down:") != std::string::npos);
+}
+
+static bool isRegCheckEntered(const std::string& msg) {
+    return lower(msg).find("sim_op -> reg_check") != std::string::npos;
+}
+
+/* This identifies an application-originated manual selection attempt, not an
+ * external AT client.  Absence is deliberately reported as "source unknown". */
+static bool isManualSelectionCommand(const std::string& msg) {
+    const std::string lo = lower(msg);
+    return lo.find("at+cops=1,2,") != std::string::npos ||
+           lo.find("[oper] selected operator") != std::string::npos;
 }
 
 // open_dial 的 "Network Recovered ... Down: Ns" 是自包含事件：产品在恢复行中
@@ -1712,7 +1777,9 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     // ---- 预扫:各类特征行(全部留证据指针)----
     std::vector<const LogLine*> evNeverConn, evPolicy, evRecL1, evRecL2, evRecL3,
                                 evDenied, evLimited, evSuspectedAccount, evRegQueryFail,
-                                evRegistrationIssue, evCpdump, evSlot, evOper, evCfun,
+                                evRegistrationIssue, evHardRegistrationIssue, evCpdump, evSlot, evOper, evCfun,
+                                evManualCops, evCopsAutoRestore, evRegistrationRecovered,
+                                evManualSelectionCommand,
                                 evNotReady, evOrphanRecovery, evImpossibleRecovery,
                                 evDataCallInitFailed, evDataCallFatalExit, evArteryDataCallCleanup, evArteryDataCallExit,
                                 evDataCallStartFailed, evDataCallAppStop,
@@ -1886,16 +1953,22 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         if (icontains(l.msg, "Registration Denied") || newNetworkRejected) {
             evDenied.push_back(&l);
             evRegistrationIssue.push_back(&l);
+            evHardRegistrationIssue.push_back(&l);
         }
         if (limitedService) {
             evLimited.push_back(&l);
             evRegistrationIssue.push_back(&l);
+            evHardRegistrationIssue.push_back(&l);
         }
         if (suspectedAccount) {
             evSuspectedAccount.push_back(&l);
             evRegistrationIssue.push_back(&l);
         }
         if (regQueryFailed) evRegQueryFail.push_back(&l);
+        if (hasCopsMode(l.msg, '1'))              evManualCops.push_back(&l);
+        if (isCopsAutoRestoreOk(l.msg))           evCopsAutoRestore.push_back(&l);
+        if (isRegistrationRecovered(l.msg))       evRegistrationRecovered.push_back(&l);
+        if (isManualSelectionCommand(l.msg))      evManualSelectionCommand.push_back(&l);
         /* 数据服务未就绪:AP 侧数据服务(ql_netd)没起来 → ql_data_call_init 失败。
          * 【源码穷举】真代码实际打的就这两句(rtms_sdk HEAD, apps/modem_mng):
          *   "[INIT] data_call_init failed, ret=%d"
@@ -2109,8 +2182,91 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     const bool slotTimeSorted = linePtrTimesSorted(evSlot);
     const bool operTimeSorted = linePtrTimesSorted(evOper);
     const bool cfunTimeSorted = linePtrTimesSorted(evCfun);
-    const bool registrationIssueTimeSorted = linePtrTimesSorted(evRegistrationIssue);
+    const bool hardRegistrationIssueTimeSorted = linePtrTimesSorted(evHardRegistrationIssue);
+    const bool suspectedAccountTimeSorted = linePtrTimesSorted(evSuspectedAccount);
     const bool notReadyTimeSorted = linePtrTimesSorted(evNotReady);
+
+    /* Every successful COPS=0 attempt gets its own cycle.  Do not collapse a
+     * repeated restore loop into one event: failed restore attempts are useful
+     * evidence, while only a later registration result makes it high strength. */
+    struct ManualCopsCycle {
+        const LogLine* manual = nullptr;
+        const LogLine* restored = nullptr;
+        const LogLine* recovered = nullptr;
+        const LogLine* selectCommand = nullptr;
+    };
+    std::vector<ManualCopsCycle> manualCopsCycles;
+    std::set<std::uint16_t> manualCopsRecoveredSources;
+    for (const LogLine* restored : evCopsAutoRestore) {
+        const LogLine* manual = nullptr;
+        const LogLine* selected = nullptr;
+        const LogLine* recovered = nullptr;
+        for (const LogLine* candidate : evManualCops)
+            if (candidate->sourceId == restored->sourceId && candidate->lineNo < restored->lineNo &&
+                (!manual || candidate->lineNo > manual->lineNo)) manual = candidate;
+        if (!manual) continue;
+        for (const LogLine* candidate : evManualSelectionCommand)
+            if (candidate->sourceId == restored->sourceId && candidate->lineNo < manual->lineNo &&
+                (!selected || candidate->lineNo > selected->lineNo)) selected = candidate;
+        for (const LogLine* candidate : evRegistrationRecovered)
+            if (candidate->sourceId == restored->sourceId && candidate->lineNo > restored->lineNo) {
+                recovered = candidate;
+                break;
+            }
+        manualCopsCycles.push_back({manual, restored, recovered, selected});
+        if (recovered) manualCopsRecoveredSources.insert(restored->sourceId);
+    }
+
+    /* Cold-start registration duration and expected reg_check retry logging.
+     * This is intentionally separate from an outage: no successful data path
+     * has been observed yet. */
+    struct StartupRegistrationBlock { const LogLine* begin; const LogLine* end; long long seconds; };
+    struct RegistrationLogGap { const LogLine* before; const LogLine* after; long long seconds; };
+    std::vector<StartupRegistrationBlock> startupRegistrationBlocks;
+    std::vector<RegistrationLogGap> registrationLogGaps;
+    std::map<std::uint16_t, const LogLine*> pendingStart;
+    std::map<std::uint16_t, const LogLine*> activeReg;
+    std::map<std::uint16_t, const LogLine*> previousRegLine;
+    std::map<std::uint16_t, RegistrationLogGap> largestGap;
+    std::set<std::uint16_t> connectedSources;
+    for (const auto& item : lines) {
+        const LogLine& l = lineRef(item);
+        if (isProgramStartBanner(l.msg)) {
+            connectedSources.erase(l.sourceId); pendingStart.erase(l.sourceId);
+            activeReg.erase(l.sourceId); previousRegLine.erase(l.sourceId); largestGap.erase(l.sourceId);
+        }
+        if (isRegCheckEntered(l.msg)) {
+            activeReg[l.sourceId] = &l; previousRegLine[l.sourceId] = &l;
+            largestGap.erase(l.sourceId);
+            /* A CFUN retry can enter reg_check again before the first attach.
+             * Preserve the very first attempt so the reported cold-start wait
+             * is not shortened by an intermediate recovery action. */
+            if (!connectedSources.count(l.sourceId) && !pendingStart.count(l.sourceId))
+                pendingStart[l.sourceId] = &l;
+            continue;
+        }
+        auto active = activeReg.find(l.sourceId);
+        if (active != activeReg.end()) {
+            const LogLine* previous = previousRegLine[l.sourceId];
+            if (previous && l.t >= previous->t && l.t - previous->t > 120) {
+                RegistrationLogGap gap{previous, &l, l.t - previous->t};
+                auto old = largestGap.find(l.sourceId);
+                if (old == largestGap.end() || gap.seconds > old->second.seconds) largestGap[l.sourceId] = gap;
+            }
+            previousRegLine[l.sourceId] = &l;
+            if (isRegistrationRecovered(l.msg)) {
+                auto start = pendingStart.find(l.sourceId);
+                if (start != pendingStart.end() && l.t >= start->second->t &&
+                    l.t - start->second->t >= 60)
+                    startupRegistrationBlocks.push_back({start->second, &l, l.t - start->second->t});
+                auto gap = largestGap.find(l.sourceId);
+                if (gap != largestGap.end()) registrationLogGaps.push_back(gap->second);
+                activeReg.erase(l.sourceId); previousRegLine.erase(l.sourceId);
+                largestGap.erase(l.sourceId); pendingStart.erase(l.sourceId);
+            }
+        }
+        if (isRegistrationRecovered(l.msg)) connectedSources.insert(l.sourceId);
+    }
 
     // ---- 1. 从未联网(SIM/账户问题):恢复阶梯被 has_connected_once 门控 ----
     if (!evNeverConn.empty()) {
@@ -2127,6 +2283,91 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     }
 
     // ---- 2. 注册与账户诊断 ----
+    if (!manualCopsCycles.empty()) {
+        size_t complete = 0;
+        const ManualCopsCycle* firstComplete = nullptr;
+        const ManualCopsCycle* firstIncomplete = nullptr;
+        for (const ManualCopsCycle& cycle : manualCopsCycles) {
+            if (cycle.recovered) {
+                ++complete;
+                if (!firstComplete) firstComplete = &cycle;
+            } else if (!firstIncomplete) firstIncomplete = &cycle;
+        }
+        if (firstComplete) {
+            Finding f;
+            f.severity = 1;
+            f.title = "手动选网解除后恢复注册（强关联） " + std::to_string(complete) + " 次";
+            f.detail = "【强关联推断】同一日志来源先由 AT+COPS? 确认处于手动选网(mode=1)，"
+                       "随后成功执行 AT+COPS=0，之后才出现注册/连接成功。手动锁网是本次"
+                       "未注册的首要本地侧嫌疑，但日志不能排除网络侧同时恢复，不能断言为唯一根因。";
+            if (firstComplete->selectCommand)
+                f.detail += " 此前存在应用自身的 AT+COPS=1/运营商选择日志，锁网来源可追溯至应用流程。";
+            else
+                f.detail += " 未见此前应用选网命令，锁网来源未知（可能来自旧会话或外部 AT 客户端）。";
+            f.advice = "追查手动选网来源；若业务不要求固定运营商，启动发现 mode=1 且未注册时"
+                       "应尽早切回 AT+COPS=0，并保留 COPS/CEREG 原始应答。";
+            f.ev.push_back(mkEv(*firstComplete->manual));
+            f.ev.push_back(mkEv(*firstComplete->restored));
+            f.ev.push_back(mkEv(*firstComplete->recovered));
+            fs.push_back(std::move(f));
+        }
+        if (firstIncomplete) {
+            Finding f;
+            f.severity = 0;
+            f.title = "手动选网已解锁但未见后续注册成功 " +
+                      std::to_string(manualCopsCycles.size() - complete) + " 次";
+            f.detail = "【日志直证】已确认 mode=1 并收到 COPS=0 成功应答，但当前日志片段之后"
+                       "没有注册/连接成功证据；不能把这类周期宣称为已恢复。";
+            f.advice = "补充 COPS=0 后的 CEREG、状态迁移和 DataCall 日志；同时检查运营商覆盖与账户状态。";
+            f.ev.push_back(mkEv(*firstIncomplete->manual));
+            f.ev.push_back(mkEv(*firstIncomplete->restored));
+            fs.push_back(std::move(f));
+        }
+    } else if (!evManualCops.empty()) {
+        Finding f;
+        f.severity = 0;
+        f.title = "检测到手动选网模式，尚无完整恢复证据";
+        f.detail = "【日志直证】AT+COPS? 返回 mode=1；仅有手动状态，尚无同源的 COPS=0 成功"
+                   "及后续注册成功链，不能推断本次已由解锁恢复。";
+        f.advice = "补充 COPS=0 应答与后续 CEREG/连接日志；若业务不要求固定运营商，检查手动选网来源。";
+        f.ev.push_back(mkEv(*evManualCops.front()));
+        fs.push_back(std::move(f));
+    }
+
+    if (!startupRegistrationBlocks.empty()) {
+        const StartupRegistrationBlock* longest = &startupRegistrationBlocks.front();
+        for (const auto& block : startupRegistrationBlocks)
+            if (block.seconds > longest->seconds) longest = &block;
+        Finding f;
+        f.severity = longest->seconds >= 300 ? 1 : 0;
+        f.title = "冷启动注册阻塞 " + std::to_string(startupRegistrationBlocks.size()) +
+                  " 次，最长 " + fmtDuration(longest->seconds);
+        f.detail = "【日志直证】从首次 sim_op -> reg_check 到首次注册/连接成功持续 " +
+                   fmtDuration(longest->seconds) + "；此时尚未观察到已联网业务，因此不计为运行期断网。";
+        f.advice = "结合 COPS 模式、CEREG、运营商选择与射频恢复动作排查；不要把冷启动注册耗时"
+                   "混入已联网后的可用率或断网统计。";
+        f.ev.push_back(mkEv(*longest->begin));
+        f.ev.push_back(mkEv(*longest->end));
+        fs.push_back(std::move(f));
+    }
+
+    if (!registrationLogGaps.empty()) {
+        const RegistrationLogGap* longest = &registrationLogGaps.front();
+        for (const auto& gap : registrationLogGaps)
+            if (gap.seconds > longest->seconds) longest = &gap;
+        Finding f;
+        f.severity = 1;
+        f.title = "注册等待期存在日志空洞 " + std::to_string(registrationLogGaps.size()) +
+                  " 段，最大 " + fmtDuration(longest->seconds);
+        f.detail = "【日志直证】reg_check 活动期间相邻已记录行相隔 " + fmtDuration(longest->seconds) +
+                   "；无法仅凭该空洞判定进程阻塞、日志丢失或模组命令阻塞，恢复因果链存在观测盲区。";
+        f.advice = "补充同时间段系统日志、进程/看门狗日志及存储 I/O 信息；产品侧可为 reg_check 重试"
+                   "增加带单调时钟的周期性诊断。";
+        f.ev.push_back(mkEv(*longest->before));
+        f.ev.push_back(mkEv(*longest->after));
+        fs.push_back(std::move(f));
+    }
+
     if (!evDenied.empty() || !evSdkDeny.empty()) {
         Finding f;
         f.severity = 2;
@@ -2161,12 +2402,26 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
 
     if (!evSuspectedAccount.empty()) {
         Finding f;
-        f.severity = 1;
-        f.title = "疑似 SIM 账户/订阅异常(SUSPECTED)";
-        f.detail = "【推断】产品仅在 SIM READY、信号良好且 REG=0 连续至少 120 秒时输出该诊断。"
-                   "标准 AT 无运营商后台停机字段，因此这不是欠费/停机的确定证据。";
-        f.advice = "保留行内 CPIN/CEREG/COPS/CGATT/CEER 证据，向运营商核验账户、数据业务和"
-                   "漫游权限；同时排除覆盖与选网问题。";
+        bool allSuspectedSourcesHaveManualRecovery = !evSuspectedAccount.empty();
+        for (const LogLine* line : evSuspectedAccount)
+            if (!manualCopsRecoveredSources.count(line->sourceId))
+                allSuspectedSourcesHaveManualRecovery = false;
+        if (allSuspectedSourcesHaveManualRecovery) {
+            f.severity = 0;
+            f.title = "SIM 账户/订阅异常提示已降级：存在手动选网冲突";
+            f.detail = "【推断】产品按 SIM READY、信号良好且 REG=0 持续至少 120 秒输出"
+                       "SUSPECTED；但本日志另有手动选网(mode=1)并在 COPS=0 后恢复注册的"
+                       "强关联证据。该提示不能作为本次故障的主归因，更不能据此断言欠费或停机。";
+            f.advice = "优先处理手动选网来源；若之后仍发生 REG=0，再携带 CPIN/CEREG/COPS/"
+                       "CGATT/CEER 原始应答向运营商核验账户、数据业务和漫游权限。";
+        } else {
+            f.severity = 1;
+            f.title = "疑似 SIM 账户/订阅异常(SUSPECTED)";
+            f.detail = "【推断】产品仅在 SIM READY、信号良好且 REG=0 连续至少 120 秒时输出该诊断。"
+                       "标准 AT 无运营商后台停机字段，因此这不是欠费/停机的确定证据。";
+            f.advice = "保留行内 CPIN/CEREG/COPS/CGATT/CEER 证据，向运营商核验账户、数据业务和"
+                       "漫游权限；同时排除覆盖与选网问题。";
+        }
         for (size_t i = 0; i < evSuspectedAccount.size() && i < 3; ++i)
             f.ev.push_back(mkEv(*evSuspectedAccount[i]));
         fs.push_back(std::move(f));
@@ -2432,6 +2687,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     std::vector<Evidence> causeEv[C_N];
     if (!v2Platform) for (const auto& o : outs) {
         long long lo = o.start - 90, hi = o.recovered ? o.end : lineRef(lines.back()).t;
+        const std::uint16_t outageSourceId = sourceIdAtLine(lines, o.startLine);
         int  minCsq = 999; bool sawZeroRx = false;
         int  minRsrp = 9999;                              // 窗口内最低 RSRP(dBm,越低越差)
         const MetricRow* mZero = nullptr; const MetricRow* mWeak = nullptr;
@@ -2465,8 +2721,23 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 firstLineInWindow(*switchEvents[i], lo, hi, switchSorted[i]);
             if (candidate) sw = candidate;
         }
-        const LogLine* dn = firstLineInWindow(evRegistrationIssue, lo, hi,
-                                              registrationIssueTimeSorted);
+        /* An explicit DENY/limited-service indication remains authoritative.
+         * A heuristic SUSPECTED account message does not: when the same outage
+         * overlaps a complete manual-COPS -> COPS=0 -> recovery chain, report
+         * that conflict instead of making SUSPECTED the root cause. */
+        const LogLine* dn = firstLineInWindow(evHardRegistrationIssue, lo, hi,
+                                              hardRegistrationIssueTimeSorted);
+        const LogLine* suspected = firstLineInWindow(evSuspectedAccount, lo, hi,
+                                                     suspectedAccountTimeSorted);
+        bool completedManualCycleInWindow = false;
+        for (const ManualCopsCycle& cycle : manualCopsCycles) {
+            if (cycle.manual && cycle.recovered && cycle.manual->sourceId == outageSourceId &&
+                cycle.manual->t <= hi && cycle.recovered->t >= lo) {
+                completedManualCycleInWindow = true;
+                break;
+            }
+        }
+        if (!dn && suspected && !completedManualCycleInWindow) dn = suspected;
         const LogLine* nr = firstLineInWindow(evNotReady, lo, hi, notReadyTimeSorted);
 
         Cause c = C_UNKNOWN;

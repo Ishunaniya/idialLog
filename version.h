@@ -60,11 +60,14 @@
 //   1.11.4  适配 IMX6ULL RTMS 1.25.1：分级 PDP/CFUN/硬件恢复、AT 超时确认探测、
 //           可配置探测端点；避免进行中的 RECOVERY 动作提前关闭断网；指标表和 CSV
 //           展示 AT 遥测超时、确认探测和详细诊断中断阶段。
+//   1.11.5  识别 artery 与 RTMS EG25 的“COPS 手动锁网→COPS=0 成功→恢复注册”证据链，
+//           按每次 COPS=0 独立分级并追溯选网来源；冷启动注册耗时、注册日志空洞独立统计，
+//           CFUN 重试不缩短首次等待；只在同一断网窗降级 SUSPECTED，DENY/受限保持高优先级。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 4
+#define DL_VER_PATCH 5
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

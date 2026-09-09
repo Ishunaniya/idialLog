@@ -502,6 +502,84 @@ static void t15_artery_persistent_outage_events() {
        "同 source 标准事件配成 1 次可信 75s 断网");
 }
 
+/* Both products emit a +COPS query snapshot, but artery uses untagged
+ * seas_log text for the restore while RTMS EG25 uses [REG TIMEOUT].  The
+ * analyzer must require a confirmed COPS=0 response and a later registration
+ * success; neither a manual-select command nor an unconfirmed COPS=0 is enough. */
+static void t15b_manual_cops_restore_correlation() {
+    std::printf("== T15b EG25 手动选网解锁恢复关联 ==\n");
+    const auto hasTitle = [](const std::vector<Finding>& fs, const char* needle) {
+        for (const Finding& f : fs)
+            if (f.title.find(needle) != std::string::npos) return true;
+        return false;
+    };
+    const auto hasDetail = [](const std::vector<Finding>& fs, const char* needle) {
+        for (const Finding& f : fs)
+            if (f.detail.find(needle) != std::string::npos) return true;
+        return false;
+    };
+
+    std::vector<std::string> arteryRaw = L({
+        "2026-09-09 03:30:50.000 [INFO] dial_task (dial.c:1668) - AT+COPS=1,2,\"46001\"",
+        "2026-09-09 03:31:15.304 [INFO] main (main.c:191) - [INIT] COPS: +COPS: 1 (mode=1 manual) | CEREG: +CEREG: 0,0",
+        "2026-09-09 03:31:21.464 [INFO] dial_task (dial.c:1011) - state: sim_op -> reg_check",
+        "2026-09-09 03:34:16.178 [INFO] main (main.c:378) - [INIT][SIM-ACCOUNT] SIM=SIM1 SUSPECTED subscription issue: SIM READY, CSQ>=10 and REG=0 continuously for >=120s",
+        "2026-09-09 03:36:22.067 [INFO] dial_task (dial.c:2201) - reg timeout: AT+COPS=0 unlock OK, back to auto operator",
+        "2026-09-09 03:36:38.512 [INFO] dial_task (dial.c:1011) - state: sim_op -> reg_check",
+        "2026-09-09 03:37:17.589 [ERROR] dial_task (dial.c:1144) - Dial_st: dial_stat_reg_check failed",
+        "2026-09-09 03:44:15.089 [INFO] dial_task (dial.c:1011) - state: reg_check -> cereg_check"
+    });
+    std::vector<LogLine> arteryLines; std::vector<std::string> arterySessions; ParseAudit arteryAudit;
+    parseLines(arteryRaw, arteryLines, arterySessions, &arteryAudit);
+    const PlatformInfo artery = detectPlatform(arteryLines);
+    const auto arteryFindings = analyze(arteryLines, collectOutages(arteryLines),
+                                        buildMetrics(arteryLines), artery, arteryAudit);
+    ok(arteryAudit.unparsed == 0 && artery.plat == PLAT_ARTERY,
+       "artery 的实际 seas_log 包络完整解析");
+    ok(hasTitle(arteryFindings, "手动选网解除后恢复注册") &&
+       hasDetail(arteryFindings, "强关联推断"),
+       "artery: COPS=1 → COPS=0成功 → 注册成功生成保守关联结论");
+    ok(hasTitle(arteryFindings, "账户/订阅异常提示已降级"),
+       "artery: 有手动选网恢复链时 SUSPECTED 不再作为主归因");
+    ok(hasTitle(arteryFindings, "冷启动注册阻塞") &&
+       hasTitle(arteryFindings, "注册等待期存在日志空洞") &&
+       hasDetail(arteryFindings, "应用自身的 AT+COPS=1") &&
+       hasDetail(arteryFindings, "12m54s"),
+       "artery: 首次冷启动时长不被 CFUN 后的第二轮 reg_check 缩短，日志空洞和应用选网来源均被保留");
+
+    std::vector<std::string> incompleteRaw = L({
+        "2026-09-09 03:31:15.304 [INFO] main (main.c:191) - [INIT] COPS: +COPS: 1 (mode=1 manual) | CEREG: +CEREG: 0,0",
+        "2026-09-09 03:36:22.067 [INFO] dial_task (dial.c:2201) - reg timeout: AT+COPS=0 unlock OK, back to auto operator"
+    });
+    std::vector<LogLine> incompleteLines; std::vector<std::string> incompleteSessions; ParseAudit incompleteAudit;
+    parseLines(incompleteRaw, incompleteLines, incompleteSessions, &incompleteAudit);
+    const auto incompleteFindings = analyze(incompleteLines, collectOutages(incompleteLines),
+                                            buildMetrics(incompleteLines), detectPlatform(incompleteLines), incompleteAudit);
+    ok(hasTitle(incompleteFindings, "手动选网已解锁但未见后续注册成功"),
+       "证据强度分级: 只有 COPS=0 成功、没有恢复注册时不得报强关联");
+
+    std::vector<std::string> rtmsRaw = L({
+        "[2026-09-09 03:31:15] [INIT] COPS: +COPS: 1 (mode=1 manual) | CEREG: +CEREG: 0,0",
+        "[2026-09-09 03:31:20] [HEARTBEAT] CH:SIM | SIM:1 | REG:0 | CSQ:16 | DownTime:0s",
+        "[2026-09-09 03:31:21] [STATE] sim_op -> reg_check",
+        "[2026-09-09 03:36:22] [REG TIMEOUT] COPS not auto (+COPS: 1), forcing COPS=0",
+        "[2026-09-09 03:36:23] [REG TIMEOUT] AT+COPS=0 rsp:",
+        "OK",
+        "[2026-09-09 03:44:15] [STATE] reg_check -> cereg_check"
+    });
+    std::vector<LogLine> rtmsLines; std::vector<std::string> rtmsSessions; ParseAudit rtmsAudit;
+    parseLines(rtmsRaw, rtmsLines, rtmsSessions, &rtmsAudit);
+    const PlatformInfo rtms = detectPlatform(rtmsLines);
+    const auto rtmsFindings = analyze(rtmsLines, collectOutages(rtmsLines),
+                                      buildMetrics(rtmsLines), rtms, rtmsAudit);
+    ok(rtmsAudit.unparsed == 0 && rtmsAudit.continuation == 1 && rtms.plat == PLAT_EG25,
+       "RTMS EG25 的 [REG TIMEOUT] COPS=0 多行应答完整解析");
+    ok(hasTitle(rtmsFindings, "手动选网解除后恢复注册"),
+       "RTMS EG25: COPS=1 → COPS=0成功 → 注册成功生成同一结论");
+    ok(hasTitle(rtmsFindings, "冷启动注册阻塞"),
+       "RTMS EG25: 启动注册等待独立于运行期断网统计");
+}
+
 static void t16_eg25_persistent_failure_diagnostics() {
     std::printf("== T16 EG25 新增落盘故障：初始化退出/重启/APN/Start ==\n");
     std::vector<std::string> raw = L({
@@ -795,6 +873,7 @@ int main() {
     t13_console_android_syslog_retention();
     t14_tbox_confirmed_boundaries();
     t15_artery_persistent_outage_events();
+    t15b_manual_cops_restore_correlation();
     t16_eg25_persistent_failure_diagnostics();
     t17_datacall_initiator_reason_classification();
     t18_artery_datacall_exit_diagnostic();
