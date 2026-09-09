@@ -46,9 +46,11 @@
 > `dial_ec200a_*` / `rtms_ec200a_*` 展示版本时，工具按该直接证据区分来源。
 >
 > **IMX6ULL**:新版 RTMS 除平台化版本横幅外，还输出 `[HB30]` / `[HB300]` 状态快照。
-> 工具解析其 `online/downtime_s/cereg/pdp/CSQ/RSRP/RSRQ/SNR/RSSI/temp_c`、详细快照中的
-> `serving_cell/PCI/TAC/rx_packets`，并以 `online=1→0→1` 或 `[RECOVERY]` 配对断网；
-> `[FAILURE]/[RETRY]/[SIM]/[REG]/[PDP]/[DHCP]/[NET]/[DEVICE]/[AT]` 进入状态机诊断。
+> 工具解析其 `online/downtime_s/cereg/pdp/CSQ/RSRP/RSRQ/SNR/RSSI/temp_c/at_timeout/at_probe`、详细快照中的
+> `detailed_at_timeout/detailed_at_stage/serving_cell/PCI/TAC/rx_packets`，并以 `online=1→0→1` 或 `[RECOVERY]` 配对断网；
+> 仅带 `downtime_s` 的 `[RECOVERY]` 才表示恢复完成；`class/level/action` 的 PDP、CFUN、硬件分级动作
+> 仍属于断网中的恢复过程。`[FAILURE]/[RETRY]/[SIM]/[REG]/[PDP]/[DHCP]/[NET]/[DEVICE]/[AT]` 和新版
+> `[RECOVERY]` 进入状态机诊断。
 > 陈旧的详细快照不会参与 RX 停滞计算。**RK3506J** 仍仅识别平台和启动边界，等待其真机格式验证。
 
 ### 心跳格式逐平台不同(不要假设相同)

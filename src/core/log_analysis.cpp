@@ -76,6 +76,23 @@ static bool imxHeartbeatOnline(const LogLine& line, bool& online) {
     return found;
 }
 
+// 1.25.1 的 [RECOVERY] 也会记录进入/退避/升级/软重建等进行中的动作。
+// 只有原先 CHECK_CONNECTION 成功路径输出的 downtime_s 才能关闭 online=0
+// 断网，不能把首次 "action=enter" 误当成恢复完成。
+static bool imxRecoveryComplete(const LogLine& line) {
+    if (line.tagText() != "RECOVERY") return false;
+    bool complete = false;
+    scanHbFields(line.msg, [&](std::string_view key, std::string_view value) {
+        if (key != "downtime_s") return;
+        long long seconds = 0;
+        const char* first = value.data();
+        const char* last = first + value.size();
+        const auto parsed = std::from_chars(first, last, seconds);
+        complete = parsed.ec == std::errc{} && parsed.ptr == last && seconds >= 0;
+    });
+    return complete;
+}
+
 static bool isImxHeartbeatDiagnostic(const LogLine& line) {
     const std::string& tag = line.tagText();
     if (tag != "HB" && tag != "HB300") return false;
@@ -532,7 +549,7 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
             } else if (imxSeenOnline[l.sourceId]) {
                 imxOpen.emplace(l.sourceId, ImxOpen{l.t, l.lineNo});
             }
-        } else if (l.tagText() == "RECOVERY") {
+        } else if (imxRecoveryComplete(l)) {
             // RECOVERY 在探测刚成功时即打印，比随后一个 30s 上报更接近实际恢复点。
             closeImxOutage(l.sourceId, l);
             imxSeenOnline[l.sourceId] = true;
@@ -749,6 +766,7 @@ struct HeartbeatFields {
     std::string_view rsrpUpper, rsrpLower, rsrqUpper, rsrqLower;
     std::string_view snrUpper, snrLower, rssiUpper, rssiLower;
     std::string_view srv, rat, deny, oper, cell, pci, tac, servingCell, trafficValid, sampleAge;
+    std::string_view atTimeout, atProbe, detailedAtTimeout, detailedAtStage;
 };
 
 static HeartbeatFields heartbeatFields(const std::string& msg) {
@@ -791,6 +809,10 @@ static HeartbeatFields heartbeatFields(const std::string& msg) {
         else if (k == "serving_cell") f.servingCell = v;
         else if (k == "traffic_valid") f.trafficValid = v;
         else if (k == "sample_age_ms") f.sampleAge = v;
+        else if (k == "at_timeout") f.atTimeout = v;
+        else if (k == "at_probe") f.atProbe = v;
+        else if (k == "detailed_at_timeout") f.detailedAtTimeout = v;
+        else if (k == "detailed_at_stage") f.detailedAtStage = v;
     });
     return f;
 }
@@ -1320,6 +1342,16 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
             m.csqRaw = (int)number;
             if (number != 99) m.csqVal = (int)number;               // 99 = AT+CSQ 未知
         }
+        if (imxHeartbeat) {
+            if (parseLong(f.atTimeout, number, true) && (number == 0 || number == 1))
+                m.atTelemetryTimeout = static_cast<int>(number);
+            if (parseLong(f.detailedAtTimeout, number, true) && (number == 0 || number == 1))
+                m.detailedAtTimeout = static_cast<int>(number);
+            if (!f.detailedAtStage.empty()) m.detailedAtStage.assign(f.detailedAtStage);
+            if (f.atProbe == "ok") m.atBasicProbe = 1;
+            else if (f.atProbe == "fail") m.atBasicProbe = 0;
+            else if (f.atProbe == "not_run") m.atBasicProbe = 2;
+        }
         // RSRP/RSRQ:dBm 精确信号值(负数)。真机两种分隔 hbFields 均能切出:
         //   open_dial "RSRP:-94 | RSRQ:-18"(竖线) / modem_mng "RSRP:-104 RSRQ:-10"(空格)。
         // 只接受负值,正数视为异常(1=无效标记)。
@@ -1690,7 +1722,10 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evV2NoSim, evV2LongUnregistered, evV2PingReinit,
                                 evV2ReadyOffline, evV2ReadyFailed,
                                 evImxFailure, evImxRetry, evImxSimNotReady, evImxRegWait,
-                                evImxPdp, evImxDhcp, evImxNetwork, evImxDevice, evImxAt;
+                                evImxPdp, evImxDhcp, evImxNetwork, evImxDevice, evImxAt,
+                                evImxAtTelemetryTimeout, evImxAtProbeFailed,
+                                evImxRecoverPdp, evImxRecoverCfun, evImxRecoverHardware,
+                                evImxConfigError;
     std::map<std::string, size_t> appStopReasons, unsolicitedReasons;
     std::map<std::uint16_t, std::pair<long long, long long>> sourceBounds;
     std::map<std::uint16_t, bool> faultOpen;
@@ -1773,8 +1808,30 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                     icontains(l.msg, "USB enumeration timed out")))
                 evImxDevice.push_back(&l);
             if (tag == "AT" && (icontains(l.msg, "open failed") ||
-                                icontains(l.msg, "read EOF")))
+                                icontains(l.msg, "read EOF") ||
+                                icontains(l.msg, "basic AT probe failed")))
                 evImxAt.push_back(&l);
+            if ((tag == "HB30" || tag == "HB300") &&
+                dataCallField(l.msg, "at_timeout") == "1")
+                evImxAtTelemetryTimeout.push_back(&l);
+            if ((tag == "HB30" || tag == "HB300") &&
+                dataCallField(l.msg, "at_probe") == "fail")
+                evImxAtProbeFailed.push_back(&l);
+            if (tag == "AT" && icontains(l.msg, "basic AT probe failed"))
+                evImxAtProbeFailed.push_back(&l);
+            if (tag == "RECOVERY") {
+                const std::string level = dataCallField(l.msg, "level");
+                const std::string action = dataCallField(l.msg, "action");
+                if (level == "L2_PDP" &&
+                    (action == "soft-rebuild" || action == "escalate")) evImxRecoverPdp.push_back(&l);
+                if (level == "L3_CFUN" &&
+                    (action == "cycle" || action == "escalate")) evImxRecoverCfun.push_back(&l);
+                if (level == "L4_HARDWARE" &&
+                    (action == "power-cycle" || action == "enter")) evImxRecoverHardware.push_back(&l);
+                if (dataCallField(l.msg, "class") == "CONFIGURATION" ||
+                    (action == "enter" && dataCallField(l.msg, "next") == "CONFIG_ERROR"))
+                    evImxConfigError.push_back(&l);
+            }
         }
         if (isFaultStart(l.msg)) {
             faultOpen[l.sourceId] = true;
@@ -1968,7 +2025,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             evV2ReadyFailed);
     }
 
-    // IMX6ULL 1.25.0 状态机诊断。每项均对应 imx6ull_dialer.cpp 的固定日志动作；
+    // IMX6ULL 1.25.x 状态机诊断。每项均对应 imx6ull_dialer.cpp 的固定日志动作；
     // 不从 online=0、低 CSQ 或普通 NET 信息猜测根因。
     if (pi.plat == PLAT_IMX) {
         auto addImxFinding = [&](int severity, std::string title, std::string detail,
@@ -1989,8 +2046,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             addImxFinding(
                 2,
                 "IMX6ULL 拨号失败，已进入退避重试",
-                "【源码直证】状态机在 FAILURE_RETRY 输出 FAILURE，并以 RETRY 记录次数、等待秒数和失败原因；"
-                "这是已完成一次拨号失败后的恢复动作，不是普通在线探测。",
+                "【源码直证】旧版以 FAILURE/RETRY 记录退避；1.25.1 以 RECOVERY 的 class、level、"
+                "action、attempt 和 wait_s 记录同一动作。它们是恢复进行中的证据，不是联网恢复。",
                 "按证据中的 state、pdn、if 和 reason 分流排查；保留完整失败—恢复周期，确认重试是否反复耗尽。",
                 evidence);
         }
@@ -2014,6 +2071,32 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                       "【源码直证】USB 模组拓扑发现超时/失败，或已选 AT 端口打开、读写响应失败。",
                       "检查 USB 枚举、option 驱动绑定、AT 端口节点及供电；确认网卡与 AT 口来自同一模组。",
                       evImxDevice.empty() ? evImxAt : evImxDevice);
+        addImxFinding(1, "IMX6ULL AT 遥测命令超时",
+                      "【日志直证】心跳的 at_timeout=1 表示本轮遥测 AT 命令没有获得终止响应。"
+                      "该字段本身不等同 AT 端口完全不可用；新版会另以 at_probe 或 [AT] 基础探测确认。",
+                      "查看同一心跳的 at_probe 及后续 [AT] timeout event；probe=ok 时优先保留现场观察，"
+                      "probe=fail 或连续失败达到阈值时检查 AT 口、USB 与模组供电。",
+                      evImxAtTelemetryTimeout);
+        addImxFinding(2, "IMX6ULL AT 基础确认探测失败",
+                      "【源码直证】遥测超时后，拨号循环用裸 AT 探测确认控制面；连续失败达到配置阈值才升级恢复。",
+                      "核对 failed streak/limit、AT 口节点和 USB 枚举；不要仅凭单条遥测超时直接判定模组失联。",
+                      evImxAtProbeFailed);
+        addImxFinding(1, "IMX6ULL 已执行 PDP 软重建恢复",
+                      "【源码直证】RECOVERY level=L2_PDP 的 soft-rebuild 会重建数据呼叫；达到上限才升级 CFUN。",
+                      "核对 PDP 上下文、APN 和 QNETDEV 状态；若反复出现，保留每次 attempt 与 reason。",
+                      evImxRecoverPdp);
+        addImxFinding(1, "IMX6ULL 已执行 CFUN 射频恢复",
+                      "【源码直证】RECOVERY level=L3_CFUN action=cycle 执行 CFUN=0/1，并受冷却时间限制。",
+                      "结合注册状态与 cooldown 观察；频繁升级说明 PDP 软重建未解决根因。",
+                      evImxRecoverCfun);
+        addImxFinding(2, "IMX6ULL 已升级硬件级模组恢复",
+                      "【源码直证】RECOVERY level=L4_HARDWARE 进入后会执行 power-cycle，并持久化冷却时间。",
+                      "检查 USB/供电/模组硬件和此前 AT 失败；保留冷却期内的完整日志，避免把延迟动作误判为卡死。",
+                      evImxRecoverHardware);
+        addImxFinding(2, "IMX6ULL 拨号配置错误，恢复已停止",
+                      "【源码直证】CONFIGURATION 类故障进入 CONFIG_ERROR，而非继续重拨或复位模组。",
+                      "修正 APN、PDP 类型等配置后重启服务；重拨、CFUN 和硬件复位不能修复配置值。",
+                      evImxConfigError);
     }
     // SDK 注网摘要是 2026-07/08 四份产品代码新增字段。只有 SRV!=FULL 且 DENY>0
     // 才算拒绝证据；DENY=0 不臆测。两套 SDK 的 DENY 数字表不同,这里只保留原码。

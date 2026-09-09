@@ -188,6 +188,9 @@ int main(int argc, char** argv) {
                a.pci == b.pci && a.tac == b.tac && a.tacDigits == b.tacDigits &&
                a.csqRaw == b.csqRaw &&
                a.tempMax == b.tempMax && a.consecFail == b.consecFail &&
+               a.atTelemetryTimeout == b.atTelemetryTimeout &&
+               a.atBasicProbe == b.atBasicProbe && a.detailedAtTimeout == b.detailedAtTimeout &&
+               a.detailedAtStage == b.detailedAtStage &&
                a.rx == b.rx && a.drx == b.drx && a.rat == b.rat && a.oper == b.oper &&
                a.csqVal == b.csqVal && a.rsrp == b.rsrp &&
                a.rsrq == b.rsrq && a.snr10 == b.snr10 && a.rssiVal == b.rssiVal &&

@@ -732,6 +732,53 @@ static void t20_imx6ull_state_machine() {
        "IMX 状态机的失败阶段全部生成有源码直证的结论");
 }
 
+// RTMS 1.25.1 将 RECOVERY 扩展为整个分级恢复过程的结构化记录。开始/重试/
+// 升级绝不能关闭 outage；只有 CHECK_CONNECTION 成功路径的 downtime_s 才是恢复完成。
+static void t21_imx6ull_1251_recovery_and_at_health() {
+    std::printf("== T21 IMX6ULL 1.25.1 分级恢复与 AT 健康 ==\n");
+    std::vector<std::string> raw = L({
+        "[2026-09-08 10:00:00] Modem_mng Version: rtms_imx6ull_1.25.1",
+        "[2026-09-08 10:00:01] [HB30] online=1 | downtime_s=0 | cereg=5 | pdp=1 | csq=20 | at_timeout=0 | at_probe=ok | sample_age_ms=3",
+        "[2026-09-08 10:00:10] [HB30] online=0 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=19 | reason=\"internet probe failed\"",
+        "[2026-09-08 10:00:11] [RECOVERY] class=DATA_PATH level=L2_PDP action=enter next=RECOVER_PDP reason=\"connection failed after 5 interface-bound internet checks\"",
+        "[2026-09-08 10:00:12] [RECOVERY] class=DATA_PATH level=L2_PDP action=soft-rebuild attempt=1/3 reason=\"connection failed after 5 interface-bound internet checks\"",
+        "[2026-09-08 10:00:20] [RECOVERY] class=PDP level=L3_CFUN action=escalate reason=\"PDP soft-rebuild limit exhausted\"",
+        "[2026-09-08 10:00:21] [RECOVERY] class=PDP level=L3_CFUN action=cycle attempt=1 reason=\"PDP soft-rebuild limit exhausted\"",
+        "[2026-09-08 10:00:30] [AT] timeout event request=registration generation=7; basic AT probe failed streak=3/3",
+        "[2026-09-08 10:00:31] [RECOVERY] class=AT level=L4_HARDWARE action=enter next=RECOVER_HARDWARE reason=\"three consecutive telemetry-triggered basic AT probes failed\"",
+        "[2026-09-08 10:00:32] [RECOVERY] class=AT level=L4_HARDWARE action=power-cycle attempt=1 if=usb0 ip=(none) gw=(none) route=0 dhcp=0 reason=\"three consecutive telemetry-triggered basic AT probes failed\"",
+        "[2026-09-08 10:00:40] [HB300] online=0 | downtime_s=30 | if=usb0 | cereg=0 | pdp=0 | csq=99 | at_timeout=1 | at_probe=fail | detailed_at_timeout=1 | detailed_at_stage=regular_telemetry | traffic_valid=0 | sample_age_ms=5",
+        "[2026-09-08 10:01:40] [RECOVERY] downtime_s=90 | failures=2 | retries=3 | last_probe_ms=301 | reason=\"connection failed after 5 interface-bound internet checks\"",
+        "[2026-09-08 10:01:41] [HB30] online=1 | downtime_s=0 | cereg=5 | pdp=1 | csq=20 | at_timeout=0 | at_probe=ok | sample_age_ms=4",
+        "[2026-09-08 10:02:00] [RECOVERY] class=CONFIGURATION level=NONE action=enter next=CONFIG_ERROR reason=\"RTMS_MODEM_PDP_TYPE is invalid\""
+    });
+    std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit);
+    const auto metrics = buildMetrics(lines);
+    const auto outages = collectOutages(lines);
+    const auto findings = analyze(lines, outages, metrics, detectPlatform(lines), audit);
+    bool telemetry = false, probe = false, pdp = false, cfun = false, hardware = false, config = false;
+    for (const Finding& finding : findings) {
+        telemetry = telemetry || finding.title.find("AT 遥测命令超时") != std::string::npos;
+        probe = probe || finding.title.find("AT 基础确认探测失败") != std::string::npos;
+        pdp = pdp || finding.title.find("PDP 软重建") != std::string::npos;
+        cfun = cfun || finding.title.find("CFUN 射频恢复") != std::string::npos;
+        hardware = hardware || finding.title.find("硬件级模组恢复") != std::string::npos;
+        config = config || finding.title.find("拨号配置错误") != std::string::npos;
+    }
+    ok(audit.unparsed == 0 && lines[3].tagText() == "RECOVERY" && lines[13].tagText() == "RECOVERY",
+       "1.25.1 结构化恢复记录及 CONFIG_ERROR 目标状态均被完整保留");
+    ok(outages.size() == 1 && outages[0].recovered && outages[0].dur == 90 &&
+       outages[0].startLine == 3 && outages[0].endLine == 12,
+       "进行中的 L2/L3/L4 RECOVERY 不提前结束断网，仅 downtime_s=90 完成配对");
+    ok(metrics.size() == 4 && metrics[2].atTelemetryTimeout == 1 &&
+       metrics[2].atBasicProbe == 0 && metrics[2].detailedAtTimeout == 1 &&
+       metrics[2].detailedAtStage == "regular_telemetry",
+       "HB300 的 AT 超时、确认探测和详细遥测超时状态进入指标模型");
+    ok(telemetry && probe && pdp && cfun && hardware && config,
+       "AT 健康、PDP/CFUN/硬件分级恢复和配置终止均生成对应结论");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -753,6 +800,7 @@ int main() {
     t18_artery_datacall_exit_diagnostic();
     t19_display_version_platform_and_restart();
     t20_imx6ull_state_machine();
+    t21_imx6ull_1251_recovery_and_at_health();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

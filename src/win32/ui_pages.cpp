@@ -293,6 +293,8 @@ static long long metricNumericValue(const MetricRow& metric, int column) {
     case 13: return metric.rssiVal;
     case 14: return metric.srvVal;
     case 16: return metric.denyVal;
+    case 19: return metric.atTelemetryTimeout;
+    case 20: return metric.atBasicProbe;
     default: return 0;
     }
 }
@@ -315,7 +317,8 @@ void RebuildMetricQuickFilterView() {
                 const std::string av = metricCellText(*a, static_cast<std::size_t>(g_metricSortColumn));
                 const std::string bv = metricCellText(*b, static_cast<std::size_t>(g_metricSortColumn));
                 const bool numeric = (g_metricSortColumn >= 3 && g_metricSortColumn <= 14) ||
-                                     g_metricSortColumn == 16;
+                                     g_metricSortColumn == 16 || g_metricSortColumn == 19 ||
+                                     g_metricSortColumn == 20;
                 if (numeric) {
                     const long long an = metricNumericValue(*a, g_metricSortColumn);
                     const long long bn = metricNumericValue(*b, g_metricSortColumn);

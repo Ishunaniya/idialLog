@@ -83,6 +83,16 @@ std::string metricCellText(const MetricRow& m, size_t column) {
         add("SNR", metricSignalQuality(m, 12));
         return std::string(signalQualityName(worst)) + " · " + metrics;
     }
+    case 19:
+        return m.atTelemetryTimeout < 0 ? "-" : (m.atTelemetryTimeout ? "是" : "否");
+    case 20:
+        if (m.atBasicProbe < 0) return "-";
+        if (m.atBasicProbe == 0) return "失败";
+        if (m.atBasicProbe == 1) return "成功";
+        return m.atBasicProbe == 2 ? "未探测" : "-";
+    case 21:
+        if (!m.detailedAtStage.empty()) return m.detailedAtStage.str();
+        return m.detailedAtTimeout == 1 ? "超时" : "-";
     default: return {};
     }
 }

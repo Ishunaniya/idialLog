@@ -42,7 +42,9 @@ static const std::string kKnownTags[] = {
     "CPDUMP", "COPS", "SM", "LOGMIGR", "LOGCLEAN", "CLEANUP", "NetCheck",
     "LOG_E", "LOG_I", "LOG_D", "CONSOLE", "SYSLOG", "MODEM_MNG_V2",
     // IMX6ULL modem_mng 1.25+: 30s 状态采样、5min 详细采样及故障状态机。
-    "HB", "HB30", "HB300", "FAILURE", "RETRY", "PDP", "NET", "DHCP", "DEVICE", "USB", "POWER", "EXIT", "SERVICE", "PLMN", "AT", "VERSION"
+    "HB", "HB30", "HB300", "FAILURE", "RETRY", "PDP", "NET", "DHCP", "DEVICE", "USB", "POWER", "EXIT", "SERVICE", "PLMN", "AT", "VERSION",
+    // IMX6ULL 1.25.1: registration diagnostics and terminal configuration state.
+    "REG", "CONFIG_ERROR"
 };
 
 LogLine::LogLine(const LogLine& o)

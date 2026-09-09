@@ -57,11 +57,14 @@
 //           兼容旧断线格式，并接入 EG25 SYSTEM/RECOVERY/APN 业务标题
 //   1.11.3  完整接入 IMX6ULL modem_mng：HB30/HB300 指标与小区/流量解析，
 //           online/RECOVERY 断网配对、状态机故障诊断，并排除陈旧详细快照的 RX 误报
+//   1.11.4  适配 IMX6ULL RTMS 1.25.1：分级 PDP/CFUN/硬件恢复、AT 超时确认探测、
+//           可配置探测端点；避免进行中的 RECOVERY 动作提前关闭断网；指标表和 CSV
+//           展示 AT 遥测超时、确认探测和详细诊断中断阶段。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 3
+#define DL_VER_PATCH 4
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

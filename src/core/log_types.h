@@ -191,6 +191,11 @@ struct MetricRow {
     int  csqVal  = -1;      // -1=无效/99
     int  tempMax = INT_MIN; // 多温度字段最大值；INT_MIN=无效
     int  consecFail = INT_MIN;
+    // IMX6ULL 1.25.1 AT 健康收敛。-1=该心跳未提供，atProbe: 0=fail,1=ok,2=not_run。
+    int  atTelemetryTimeout = -1;
+    int  atBasicProbe = -1;
+    int  detailedAtTimeout = -1;
+    SmallText<24> detailedAtStage;
     int  rsrp    = 1;       // dBm,负值(约-70~-120,越大越好);1=无效(正数不可能是真值)
     int  rsrq    = 1;       // dB,负值(约-3~-20);1=无效
     int  snr10   = 100000;  // SDK 原值,单位 0.1dB;100000=无效(超出 int16_t 范围)

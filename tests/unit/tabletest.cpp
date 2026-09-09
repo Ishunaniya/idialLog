@@ -52,15 +52,17 @@ int main() {
     m.consecFail = 0; m.rx = 100; m.drx = 5; m.rsrp = -104; m.rsrq = -10;
     m.snr10 = -25; m.rssiVal = -65; m.srvVal = 2; m.rat = "LTE";
     m.denyVal = 0; m.oper = "CMCC 46000";
+    m.atTelemetryTimeout = 1; m.atBasicProbe = 0; m.detailedAtTimeout = 1;
+    m.detailedAtStage = "serving_cell";
     const std::string expected[kMetricColumnCount] = {
         fmtTime(m.t, "MD"), "SIM", "D17C148", "496", "272D", "20", "60", "0", "100", "5",
         "-104", "-10", "-2.5", "-65", "2", "LTE", "0", "CMCC 46000",
-        "较差 · RSRP/SNR"
+        "较差 · RSRP/SNR", "是", "失败", "serving_cell"
     };
     bool metricCells = true;
     for (size_t i = 0; i < kMetricColumnCount; ++i)
         metricCells = metricCells && metricCellText(m, i) == expected[i];
-    ok(metricCells, "19 列文本逐列精确一致（含小区 ID 与 LTE 工程参考评价）");
+    ok(metricCells, "22 列文本逐列精确一致（含 LTE 工程参考与 IMX AT 健康字段）");
     m.rsrp = 1; m.rsrq = 1; m.snr10 = 100000; m.rssiVal = 1;
     ok(metricCellText(m, 10) == "-" && metricCellText(m, 11) == "-" &&
        metricCellText(m, 12) == "-" && metricCellText(m, 13) == "-",

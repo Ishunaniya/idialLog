@@ -10,7 +10,7 @@
 namespace dl {
 
 constexpr size_t kTimelineColumnCount = 3;
-constexpr size_t kMetricColumnCount = 19;
+constexpr size_t kMetricColumnCount = 22;
 constexpr size_t kRawColumnCount = 5;
 constexpr size_t kCellColumnCount = 15;
 

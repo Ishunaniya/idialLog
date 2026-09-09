@@ -704,7 +704,7 @@ void DoExportCsv() {
             q += '\"';
             return q;
         };
-        out += "timestamp,ch,cell_id,pci,tac,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper,lte_engineering_quality\r\n";
+        out += "timestamp,ch,cell_id,pci,tac,csq,tmax,consec_fail,rx_pkt,drx,rsrp,rsrq,snr_db,rssi,srv,rat,deny,oper,lte_engineering_quality,at_telemetry_timeout,at_basic_probe,detailed_at_stage\r\n";
         for (const auto& m : App().document.metrics) {
             for (size_t column = 0; column < kMetricColumnCount; ++column) {
                 // 程序生成的时间公式保留完整年月日；CH/Cell/RAT/OPER 等日志文本列会先
