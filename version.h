@@ -65,11 +65,14 @@
 //           CFUN 重试不缩短首次等待；只在同一断网窗降级 SUSPECTED，DENY/受限保持高优先级。
 //   1.11.6  可用率拆分为首次联网后运行期可用率与全程服务可达率；启动期未联网和日志末尾
 //           未恢复断网纳入全程不可用，避免各平台首次联网失败时误显 100%。
+//   1.11.7  完整解析 open_dial [HEARTBEAT-NET] 数据面状态；跨日文件和 L3 进程重拉
+//           合并同一设备主事故，纠正 never-connected 历史联网误判，并按现场 L3 threshold
+//           输出结论。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 6
+#define DL_VER_PATCH 7
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

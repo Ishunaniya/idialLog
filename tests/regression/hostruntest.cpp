@@ -36,7 +36,7 @@ static std::vector<Case> cases() {
     return {
         // ── EC200A(sim/hostrun,真代码 ec200a/dial/dial.cpp 产出)──
         { "samples/sim/hostrun/never_connected.log",
-          { "从未成功联网" }, { "CP dump", "L3 已触发" }, PLAT_EC200A },
+          { "当前拨号进程未成功联网" }, { "CP dump", "L3 已触发" }, PLAT_EC200A },
         { "samples/sim/hostrun/recovery_ladder.log",
           { "L3 已触发", "恢复阶梯已生效" }, { "恢复阶梯一次都没触发" }, PLAT_EC200A },
         { "samples/sim/hostrun/datacall_init_fail.log",
@@ -54,7 +54,7 @@ static std::vector<Case> cases() {
 
         // ── open_dial(sim/hostrun_open_dial,真代码 dial.c 产出)──
         { "samples/sim/hostrun_open_dial/od_never_connected.log",
-          { "从未成功联网" }, { "CP dump" }, PLAT_EC200A },
+          { "当前拨号进程未成功联网" }, { "CP dump" }, PLAT_EC200A },
         { "samples/sim/hostrun_open_dial/od_recovery_ladder.log",
           { "L3 已触发" }, {}, PLAT_EC200A },
         { "samples/sim/hostrun_open_dial/od_all_normal.log",

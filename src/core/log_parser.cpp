@@ -34,7 +34,7 @@ std::string stripAnsi(const std::string& s) {
 // 高频标签字典。顺序把百万行基准/真机最常见值放前面,线性匹配通常 1~3 次即命中；
 // 新固件出现未知标签时 customTag 仍原样保留,不会为了省内存静默丢信息。
 static const std::string kKnownTags[] = {
-    "", "HEARTBEAT", "TRACE", "STATE", "CELL CHANGE", "CELL", "SDK", "ROAMLINK",
+    "", "HEARTBEAT", "HEARTBEAT-NET", "TRACE", "STATE", "CELL CHANGE", "CELL", "SDK", "ROAMLINK",
     "DIAG", "SLOT", "OPER", "RECOVERY L1", "RECOVERY L2", "RECOVERY L3",
     "ERROR", "WARN", "WARNING", "FATAL", "INFO", "ALARM", "CFUN", "SIM", "APN",
     "INIT", "MODEM", "EVENT", "STATUS", "LED", "TZ", "NANOMSG", "PING", "PING OUT",
@@ -105,14 +105,16 @@ static void splitTag(const std::string& rest, LogLine& L) {
     size_t e = rest.find(']');
     if (e == std::string::npos) { L.msg = rest; return; }
     std::string tag = rest.substr(1, e - 1);
-    // 首字符须字母/下划线,其余允许字母数字下划线空格。
+    // 首字符须字母/下划线,其余允许字母数字下划线、连字符和空格。
+    // open_dial 的 [HEARTBEAT-NET] 是正式结构化状态行；此前连字符使其
+    // 退化为无标签普通消息，虽不丢行，但分析层无法识别数据接口状态。
     // 【源码穷举】标签绝大多数全大写,但 modem_mng 有且仅有一个混合大小写的:[NetCheck]
     // (真机 AG35 1.32.16 控制台日志实证);故不能只认 [A-Z]。
     bool ok = !tag.empty() &&
               (((tag[0] >= 'A' && tag[0] <= 'Z') || (tag[0] >= 'a' && tag[0] <= 'z') || tag[0] == '_'));
     if (ok) for (char c : tag)
         if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-              (c >= '0' && c <= '9') || c == '_' || c == ' ')) { ok = false; break; }
+              (c >= '0' && c <= '9') || c == '_' || c == '-' || c == ' ')) { ok = false; break; }
     if (!ok) { L.msg = rest; return; }
     L.setTag(trim(tag));
     size_t q = e + 1;

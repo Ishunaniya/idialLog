@@ -318,6 +318,53 @@ static void t11_mix_detection(const char* unsyncedPath, const char* wallPath) {
     ok(gotBad > truth + 1.0, buf);
 }
 
+// ============================ T12:旧拨号日志跨文件主事故 ============================
+// 这是 2026-09 客诉的最小化、可重复场景：故障开始于第 1 份日志，L3 后进程
+// 重启，次日第 2 份日志才恢复。旧实现按 sourceId 截断，漏掉整段主事故；同时
+// [HEARTBEAT-NET] 的连字符此前不被解析成标签，无法作为数据面证据。
+static bool hasFinding(const std::vector<Finding>& findings, const std::string& needle) {
+    for (const auto& f : findings)
+        if (f.title.find(needle) != std::string::npos || f.detail.find(needle) != std::string::npos)
+            return true;
+    return false;
+}
+
+static void t12_legacy_cross_file_outage() {
+    std::printf("== T12 旧拨号日志跨文件主事故与 HEARTBEAT-NET ==\n");
+    std::vector<std::string> raw = {
+        "[2026-09-09 12:27:45] [HEARTBEAT-NET] IF=ccinet1 | WINDOW=60s | TX_PKT=120(+10) RX_PKT=100(+8) | TX_IDLE=0s RX_IDLE=0s",
+        "[2026-09-09 12:28:16] [HEARTBEAT-NET] IF=ccinet1 | WINDOW=60s | TX_PKT=130(+10) RX_PKT=100(+0) | TX_IDLE=0s RX_IDLE=10s",
+        "[2026-09-09 12:28:16] [WARNING] Interface has no RX data for 10s: IF=ccinet1 TX_PKT_SINCE_RX=10",
+        "[2026-09-09 12:58:46] [RECOVERY L3] FATAL: Network down 1830 secs (threshold 1830s). Exiting for start_prog to reinitialize.",
+        "[2026-09-09 13:02:48] Program started. Main Version: 1.28.13",
+        "[2026-09-09 13:08:29] [INFO] never-connected, policy recovery (L1/L2/L3) gated.",
+        "[2026-09-09 13:08:32] [HEARTBEAT-NET] IF=(none) | DATA:N/A",
+        "[2026-09-10 03:49:34] [HEARTBEAT-NET] IF=(none) | DATA:N/A",
+        "[2026-09-10 05:39:04] Program started. Main Version: 1.28.13",
+        "[2026-09-10 05:39:05] [HEARTBEAT-NET] IF=ccinet1 | WINDOW=60s | TX_PKT=1(+1) RX_PKT=1(+1) | TX_IDLE=0s RX_IDLE=0s",
+        "[2026-09-10 05:39:06] [EVENT] Network Connected. Notification sent.",
+    };
+    // 第二个文件从下标 8 开始；必须保留真实文件边界以复现 sourceId 切换。
+    std::vector<LogLine> parsed; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, parsed, sessions, &audit, {0, 8});
+    ok(audit.unparsed == 0 && parsed.size() == raw.size(), "HEARTBEAT-NET 全部按结构化日志解析");
+    ok(parsed.size() > 1 && parsed[1].tagText() == "HEARTBEAT-NET", "连字符标签被保留为 HEARTBEAT-NET");
+
+    auto outages = collectOutages(parsed);
+    ok(outages.size() == 1, ("跨文件主事故合并为 1 段(实得 " + std::to_string(outages.size()) + ")").c_str());
+    if (outages.size() == 1) {
+        ok(outages[0].recovered, "主事故由次日接口恢复/联网通知关闭");
+        ok(outages[0].dur == 61849,
+           ("主事故时长 == 17h10m49s(实得 " + fmtDur(outages[0].dur) + ")").c_str());
+    }
+
+    auto findings = analyze(parsed, outages, buildMetrics(parsed), detectPlatform(parsed), audit);
+    ok(hasFinding(findings, "设备级主事故: 数据业务中断 17h10m49s"), "输出设备级主事故，而非历史统计替代结论");
+    ok(hasFinding(findings, "进程重启后丢失既有联网上下文"), "never-connected 不再误报为设备从未联网");
+    ok(hasFinding(findings, "数据接口不可用"), "IF=(none) 输出为数据面证据");
+    ok(hasFinding(findings, "30m30s"), "L3 使用日志实报 threshold=1830s，不套用平台默认值");
+}
+
 int main(int argc, char** argv) {
     const char* real = (argc > 1) ? argv[1] : "samples/rtms_eg25/dial_20260630_000026.log";
     const char* uns  = (argc > 2) ? argv[2] : "samples/rtms_eg25/real_eg25_1.31.15_unsynced.log";
@@ -333,6 +380,7 @@ int main(int argc, char** argv) {
     t9_scan_limit();
     t10_unsynced_observed(uns, real);
     t11_mix_detection(uns, real);
+    t12_legacy_cross_file_outage();
 
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;

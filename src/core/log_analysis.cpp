@@ -339,7 +339,61 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
 // ============================ 判定 ============================
 bool isFaultStart(const std::string& msg) {
     return (icontains(msg, "Ping failed") && icontains(msg, "fault timer started")) ||
-           icontains(msg, "Network outage started");
+           icontains(msg, "Network outage started") ||
+           // open_dial 1.28.13 的数据面监视器在 10 秒无下行时打印这一固定告警；
+           // 它是已创建接口上的直接故障边沿，不把普通 RX_IDLE 心跳当作断网。
+           (icontains(msg, "Interface has no RX data for") && icontains(msg, "IF="));
+}
+
+// open_dial 的联网通知没有自报 Down: Ns，不能复用 isRecovered()；它仍是
+// 设备级事故的明确恢复边沿。只接纳固定通知文本，避免普通说明误触发。
+static bool isNetworkConnectedNotification(const std::string& msg) {
+    return icontains(msg, "Network Connected. Notification sent");
+}
+
+// [HEARTBEAT-NET] 是 EC200A/open_dial 的数据面状态快照。IF=(none) 表示
+// 没有可用数据接口；IF=ccinetX 表示接口已创建。它不能与“已注册”混为一谈。
+static bool netHeartbeatInterface(const LogLine& line, bool& interfaceUp) {
+    if (line.tagText() != "HEARTBEAT-NET") return false;
+    const auto fields = hbFields(line.msg);
+    const auto it = fields.find("IF");
+    if (it == fields.end() || it->second.empty()) return false;
+    const std::string value = lower(trim(it->second));
+    interfaceUp = value != "(none)" && value != "none" && value != "(unknown)" && value != "unknown";
+    return true;
+}
+
+static bool netHeartbeatTxWithoutRx(const LogLine& line) {
+    if (line.tagText() != "HEARTBEAT-NET") return false;
+    const auto fields = hbFields(line.msg);
+    const auto tx = fields.find("TX_PKT");
+    const auto rxIdle = fields.find("RX_IDLE");
+    if (tx == fields.end() || rxIdle == fields.end()) return false;
+    // 30 秒普通心跳带有 RX_IDLE=0s；只有本窗口确有 TX 增量且连续 10 秒无 RX，
+    // 才是与固件 IF_TRAFFIC_IDLE_WARN_MS 一致的数据面异常样本。
+    const size_t plus = tx->second.find("(+");
+    if (plus == std::string::npos) return false;
+    long long txDelta = 0, idleSeconds = 0;
+    const char* txFirst = tx->second.data() + plus + 2;
+    const char* txLast = tx->second.data() + tx->second.size();
+    const auto txParsed = std::from_chars(txFirst, txLast, txDelta);
+    const char* idleFirst = rxIdle->second.data();
+    const char* idleLast = idleFirst + rxIdle->second.size();
+    const auto idleParsed = std::from_chars(idleFirst, idleLast, idleSeconds);
+    return txParsed.ec == std::errc{} && txDelta > 0 &&
+           idleParsed.ec == std::errc{} && idleSeconds >= 10;
+}
+
+static int loggedL3ThresholdSeconds(const std::string& message) {
+    const std::string text = lower(message);
+    const size_t marker = text.find("threshold ");
+    if (marker == std::string::npos) return -1;
+    size_t first = marker + std::strlen("threshold ");
+    size_t last = first;
+    while (last < text.size() && std::isdigit(static_cast<unsigned char>(text[last]))) ++last;
+    if (last == first || last >= text.size() || text[last] != 's') return -1;
+    const long long value = std::strtoll(text.substr(first, last - first).c_str(), nullptr, 10);
+    return value > 0 && value <= INT_MAX ? static_cast<int>(value) : -1;
 }
 
 bool isRecovered(const std::string& msg, int* durSec) {
@@ -490,6 +544,11 @@ bool isErrLine(const LogLine& l) {
 bool isEventLine(const LogLine& l) {
     if (isModemMngV2Event(l) || isModemMngV2Failure(l)) return true;
     if (isImxHeartbeatDiagnostic(l)) return true;
+    // [HEARTBEAT-NET] 是高频采样；只在接口消失或有发无收时进入时间线，
+    // 既保留数据面故障证据，又不让正常心跳淹没事件。
+    bool netInterfaceUp = false;
+    if (netHeartbeatInterface(l, netInterfaceUp) && !netInterfaceUp) return true;
+    if (netHeartbeatTxWithoutRx(l)) return true;
     if (isEventTag(l.tagText())) return true;
     if (isErrLine(l)) return true;
     if (l.fmt == FMT_SEAS) {
@@ -502,19 +561,12 @@ bool isEventLine(const LogLine& l) {
 template <typename Lines>
 static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
     std::vector<Outage> outs;
-    std::map<std::uint16_t, std::pair<long long, long long>> bounds;
-    for (const auto& item : lines) {
-        const LogLine& line = lineRef(item);
-        auto inserted = bounds.emplace(line.sourceId, std::make_pair(line.t, line.t));
-        if (!inserted.second) {
-            inserted.first->second.first = std::min(inserted.first->second.first, line.t);
-            inserted.first->second.second = std::max(inserted.first->second.second, line.t);
-        }
-    }
     bool have = false;
     long long start = 0;
     size_t startLine = 0;
     std::uint16_t source = 0;
+    bool legacySeenInterface = false;
+    bool legacyInterfaceDown = false;
     struct V2Open {
         long long start = 0;
         size_t line = 0;
@@ -620,45 +672,56 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
             imxSeenOnline[l.sourceId] = true;
         }
 
-        if (have && l.sourceId != source) {
-            Outage o; o.start = start; o.startLine = startLine; o.recovered = false;
-            outs.push_back(o);
-            have = false;
-        }
-        // 产品只会在 start_fail_ts==0 时打印 fault start；同一来源再次出现该行说明
-        // 上一个故障周期已被内部状态重置，最近一次 start 才能与后续 recovery 配对。
+        // 日切文件、L3 exit 后重拉和快速失败重启会更换 sourceId，但设备级数据
+        // 故障并不会因此结束。保留最早的未恢复起点，直到看到数据接口恢复或联网通知；
+        // 过去在 sourceId 切换时强制关闭，导致长事故被拆丢。
         if (isFaultStart(l.msg)) {
-            have = true; start = l.t; startLine = l.lineNo; source = l.sourceId;
+            // 同一进程再次声明 fault start，保持旧行为：上一状态已被内部重置，
+            // 新起点才能同本进程恢复行配对。跨文件/重拉则保留原始设备级起点。
+            if (!have || l.sourceId == source) {
+                have = true; start = l.t; startLine = l.lineNo; source = l.sourceId;
+                legacyInterfaceDown = false;
+            }
         }
+        bool netInterfaceUp = false;
+        const bool hasNetHeartbeat = netHeartbeatInterface(l, netInterfaceUp);
+        if (hasNetHeartbeat && netInterfaceUp) legacySeenInterface = true;
+        if (!have && hasNetHeartbeat && !netInterfaceUp) {
+            // 只在此前已观察到接口在线时，才将 IF=(none) 作为事故起点；避免把
+            // 单独截取的冷启动拨号阶段误判为“从在线掉线”。
+            if (legacySeenInterface) {
+                have = true; start = l.t; startLine = l.lineNo; source = l.sourceId;
+                legacyInterfaceDown = true;
+            }
+        }
+        if (have && hasNetHeartbeat && !netInterfaceUp) legacyInterfaceDown = true;
         int dur = 0;
-        if (isRecovered(l.msg, &dur)) {
-            const auto bound = bounds.find(source);
-            const auto recoveryBound = bounds.find(l.sourceId);
-            const long long sourceSpan = recoveryBound == bounds.end() ? 0 :
-                                         recoveryBound->second.second - recoveryBound->second.first;
+        const bool reportedRecovery = isRecovered(l.msg, &dur);
+        // 故障开始同一秒的末尾心跳仍可能带旧 IF=ccinetX；它只能说明接口当时
+        // 还存在，不能关闭刚刚由“无 RX”打开的事故。只有本事故已明确见过
+        // IF=(none) 后，后续 IF 回来才是接口恢复边沿。
+        const bool interfaceRecovery = have && legacyInterfaceDown && hasNetHeartbeat && netInterfaceUp;
+        const bool notificationRecovery = isNetworkConnectedNotification(l.msg);
+        if (reportedRecovery || interfaceRecovery || notificationRecovery) {
             const bool selfContained = isSelfContainedRecovery(l.msg);
-            if ((!have || l.sourceId != source) && !selfContained) continue;
-            const long long pairedSpan = bound == bounds.end() ? 0 :
-                                         bound->second.second - bound->second.first;
-            // 声明时长可与墙钟秒差有一个心跳周期的误差，但绝不能超过本来源全部
-            // 可观测跨度。超出时属于时钟跳变/残缺日志，不能污染可用率。
-            const bool sameClockBase = !have || l.sourceId != source ||
-                                       !crossesClockBase(start, l.t);
-            const bool plausible = dur >= 0 && sameClockBase &&
-                                   (selfContained || l.t >= start) &&
-                                   static_cast<long long>(dur) <=
-                                       (selfContained ? sourceSpan : pairedSpan) + 60;
+            if (!have && !selfContained) continue;
+            const long long wallDuration = have ? l.t - start : dur;
+            const long long duration = have && reportedRecovery && l.sourceId == source ? dur : wallDuration;
+            const bool sameClockBase = !have || !crossesClockBase(start, l.t);
+            const bool plausible = sameClockBase && duration >= 0 && duration <= INT_MAX &&
+                                   (!reportedRecovery || dur >= 0);
             if (!plausible) { have = false; continue; }
             Outage o;
-            o.start = have && l.sourceId == source ? start : l.t - dur;
-            o.startLine = have && l.sourceId == source ? startLine : l.lineNo;
-            o.end = l.t; o.dur = dur; o.recovered = true;
+            o.start = have ? start : l.t - dur;
+            o.startLine = have ? startLine : l.lineNo;
+            o.end = l.t; o.dur = static_cast<int>(duration); o.recovered = true;
             o.endLine = l.lineNo;
             // SDK L0 自愈:恢复行含 "(L0)"(open_dial "Network Recovered in SDK phase (L0)")。
             // 这类是短断网、链路抖动,设备自愈,与走 L1+ 阶梯的深层恢复区分。
             o.l0Recovered = (l.msg.find("(L0)") != std::string::npos);
             outs.push_back(o);
             have = false;
+            legacyInterfaceDown = false;
         }
     }
     if (have) {
@@ -1898,6 +1961,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evImxAtTelemetryTimeout, evImxAtProbeFailed,
                                 evImxRecoverPdp, evImxRecoverCfun, evImxRecoverHardware,
                                 evImxConfigError;
+    std::vector<const LogLine*> evNetInterfaceNone, evNetTxWithoutRx;
     std::map<std::string, size_t> appStopReasons, unsolicitedReasons;
     std::map<std::uint16_t, std::pair<long long, long long>> sourceBounds;
     std::map<std::uint16_t, bool> faultOpen;
@@ -2027,6 +2091,9 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         // EC200A 门控日志(ec200a/dial/dial.cpp:1615/1622)。EG25 无对应日志:
         // 其门控是静默的(eg25/dial/dial.c:974 的 has_connected_once 条件)。
         if (icontains(l.msg, "never-connected"))            evNeverConn.push_back(&l);
+        bool netUp = false;
+        if (netHeartbeatInterface(l, netUp) && !netUp) evNetInterfaceNone.push_back(&l);
+        if (netHeartbeatTxWithoutRx(l)) evNetTxWithoutRx.push_back(&l);
         if (icontains(l.msg, "Policy1:") || icontains(l.msg, "Policy2:") ||
             icontains(l.msg, "policy="))                    evPolicy.push_back(&l);
         // 按**事件**收,不是按行收:一次恢复会打多行。
@@ -2375,15 +2442,51 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
 
     // ---- 1. 从未联网(SIM/账户问题):恢复阶梯被 has_connected_once 门控 ----
     if (!evNeverConn.empty()) {
+        bool connectedBeforeGate = false;
+        const long long firstGate = evNeverConn.front()->t;
+        for (const auto& item : lines) {
+            const LogLine& line = lineRef(item);
+            if (line.t >= firstGate) break;
+            bool interfaceUp = false;
+            if (isNetworkConnectedNotification(line.msg) ||
+                (netHeartbeatInterface(line, interfaceUp) && interfaceUp)) {
+                connectedBeforeGate = true;
+                break;
+            }
+        }
         Finding f;
         f.severity = 2;
-        f.title  = "设备从未成功联网,L1/L2/L3 恢复阶梯被 has_connected_once 门控关闭";
-        f.detail = "日志出现 never-connected 门控行。按设计(ec200a/dial/dial.cpp:1615),"
-                   "从未 ping 通的设备只停留在 L0,不做软重拨/射频重置/退出——因为这类故障"
-                   "多为 SIM 卡或账户问题,复位改变不了。";
-        f.advice = "查 SIM 卡是否插好/欠费/未开通数据业务/APN 是否匹配;确认 REG 注册状态。"
-                   "复位类恢复对该场景无效,不要靠重启设备解决。";
+        if (connectedBeforeGate) {
+            f.title = "进程重启后丢失既有联网上下文,L1/L2/L3 恢复被门控";
+            f.detail = "门控行之前已有设备数据接口在线证据；因此 never-connected 仅描述新拨号进程，"
+                       "不能表述为设备或 SIM 从未联网。重拉后 has_connected_once 未恢复，"
+                       "进程停留在 L0 重拨，未继续执行射频重置或 L3。";
+            f.advice = "修复重拉后的联网历史继承，或为 never-connected 门控设置最大持续时长；"
+                       "同时保留 SIM/APN/运营商 PDP 证据以追查首次失败。";
+        } else {
+            f.title = "当前拨号进程未成功联网,L1/L2/L3 恢复被 has_connected_once 门控";
+            f.detail = "日志出现 never-connected 门控行。该结论仅覆盖当前拨号进程，"
+                       "不推断设备历史联网情况；从未 ping 通的进程只停留在 L0。";
+            f.advice = "查 SIM 数据权限、APN 和注册状态；补充故障前日志确认设备历史联网状态。";
+        }
         for (size_t i = 0; i < evNeverConn.size() && i < 3; ++i) f.ev.push_back(mkEv(*evNeverConn[i]));
+        fs.push_back(std::move(f));
+    }
+
+    if (!evNetInterfaceNone.empty()) {
+        Finding f;
+        f.severity = 2;
+        f.title = "数据接口不可用: [HEARTBEAT-NET] 记录 IF=(none) " +
+                  std::to_string(evNetInterfaceNone.size()) + " 次";
+        f.detail = "【日志直证】SIM/LTE 注册状态与数据接口是不同层次。IF=(none) 表示设备当时"
+                   "没有可用数据接口；它可直接证明 PDP/数据呼叫未建立或已释放，不能单独定责"
+                   "为运营商、SIM、APN 或模组。";
+        if (!evNetTxWithoutRx.empty())
+            f.detail += " 同期还记录到有发送但 RX 长时间空闲的接口样本，说明故障起点存在数据面异常。";
+        f.advice = "结合 PDP 激活结果、CEER、CGACT/CGATT、实际 APN 和运营商 PDP/ESM 原因码定责；"
+                   "不要仅以 REG=1 判断设备在线。";
+        for (size_t i = 0; i < evNetInterfaceNone.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evNetInterfaceNone[i]));
         fs.push_back(std::move(f));
     }
 
@@ -2781,7 +2884,29 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         fs.push_back(std::move(f));
     }
 
-    // ---- 4. 逐次断网根因分类 ----
+    // ---- 4. 设备级主事故 ----
+    const Outage* longestRecovered = nullptr;
+    for (const auto& outage : outs) {
+        if (outage.recovered && (!longestRecovered || outage.dur > longestRecovered->dur))
+            longestRecovered = &outage;
+    }
+    if (longestRecovered && longestRecovered->dur >= 30 * 60) {
+        Finding f;
+        f.severity = 2;
+        f.title = "设备级主事故: 数据业务中断 " + fmtDuration(longestRecovered->dur);
+        f.detail = "该事故按设备连续状态跨日切文件和拨号进程重拉归并；恢复边沿为数据接口重新出现、"
+                   "数据呼叫恢复或明确联网通知。其余断网分类为全量日志历史汇总，不能直接作为本事故根因。";
+        f.advice = "优先围绕本事故窗口导出 PDP/ESM、APN、SIM 数据权限、CEER 和基带/系统日志；"
+                   "不要用其他日期的短时弱信号或注册事件替代本事故定责。";
+        for (const auto& item : lines) {
+            const LogLine& line = lineRef(item);
+            if (line.lineNo == longestRecovered->startLine && f.ev.empty()) f.ev.push_back(mkEv(line));
+            if (line.lineNo == longestRecovered->endLine && f.ev.size() < 2) f.ev.push_back(mkEv(line));
+        }
+        if (!f.ev.empty()) fs.push_back(std::move(f));
+    }
+
+    // ---- 5. 逐次断网根因分类（全量历史汇总，不替代主事故定责） ----
     // 判据(均为窗口内的实证特征,窗口 = 断网起点前 90s 至恢复点):
     //   弱信号     :窗口内心跳 CSQ 有效样本的最小值 < 10(CSQ<10 ≈ RSSI<-95dBm)
     //   数据假死   :窗口内出现 ΔRX==0(RX_PKT 不增长)
@@ -2893,7 +3018,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         if (!causeCnt[c] || causeEv[c].empty()) continue;
         Finding f;
         f.severity = (c == C_UNKNOWN) ? 0 : 1;
-        f.title = "断网根因分类:" + std::string(kCauseName[c]) + " —— " +
+        f.title = "全量日志历史汇总:断网根因分类:" + std::string(kCauseName[c]) + " —— " +
                   std::to_string(causeCnt[c]) + " 次 / 共 " + std::to_string(outs.size()) + " 次";
         switch (c) {
         case C_WEAK:
@@ -2942,14 +3067,18 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     }
 
     // ---- 5. 恢复阶梯是否生效 ----
-    // 阈值实证:EC200A L1>5min/L2>10min/L3>35min(ec200a/dial/dial.cpp 恢复段);
-    //           EG25   L1=60s/L2=5min/L3=30min(eg25/dial/dial.c:979)。
+    // 版本间阈值不同，且日志可直接带实际 threshold；结论优先使用该现场值，
+    // 没有现场值时不套用可能过期的平台默认常量。
     if (!v2Platform && !evRecL3.empty()) {
         Finding f;
         f.severity = 2;
         f.title  = "L3 已触发:进程主动 exit,交由 watchdog/init 重启";
-        f.detail = "断网时长达到 L3 阈值(EC200A 35min / EG25 30min),阶梯已走到尽头。"
-                   "L3 只是纯进程退出,清不掉挂死的 CP 固件(设计权衡)。";
+        const int loggedThreshold = loggedL3ThresholdSeconds(evRecL3.front()->msg);
+        f.detail = loggedThreshold > 0
+                   ? "该事件日志实际写明 L3 阈值为 " + fmtDuration(loggedThreshold) +
+                     "；阶梯已走到尽头。L3 只是纯进程退出，清不掉挂死的 CP 固件。"
+                   : "该事件已触发 L3；日志未提供可解析的实际阈值，工具不套用平台默认值。"
+                     "L3 只是纯进程退出，清不掉挂死的 CP 固件。";
         f.advice = "若 L3 反复出现,说明重启无法解决,应查 SIM/账户/覆盖或模组固件。";
         for (size_t i = 0; i < evRecL3.size() && i < 3; ++i) f.ev.push_back(mkEv(*evRecL3[i]));
         fs.push_back(std::move(f));
