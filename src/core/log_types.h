@@ -150,6 +150,31 @@ struct ObservationStats {
     double coveragePercent = 0.0;
 };
 
+// 服务可达性与传统“已联网后断网率”分开统计。只有看到明确的进程启动横幅
+// 才将该段纳入全程口径，避免把截取到运行中段的日志误判为启动失败。
+struct AvailabilityStats {
+    long long fullObservedSeconds = 0;       // 启动横幅至该会话末尾的已知观测时长
+    long long fullUnavailableSeconds = 0;    // 首次联网前 + 已知断网（含末尾未恢复）
+    long long runtimeObservedSeconds = 0;    // 首次明确联网之后的观测时长
+    long long runtimeUnavailableSeconds = 0; // 首次联网后的已知断网（含末尾未恢复）
+    long long longestStartupSeconds = 0;     // 启动横幅至首次明确联网的最长等待
+    std::size_t startupSegments = 0;         // 有启动横幅的会话数
+    std::size_t connectedStartupSegments = 0;
+    std::size_t neverConnectedStartupSegments = 0;
+    std::size_t terminalOutages = 0;         // 日志结束前未见恢复的断网数
+
+    bool fullValid() const { return startupSegments > 0 && fullObservedSeconds > 0; }
+    bool runtimeValid() const { return connectedStartupSegments > 0 && runtimeObservedSeconds > 0; }
+    double fullPercent() const {
+        return fullValid() ? 100.0 * (1.0 - static_cast<double>(fullUnavailableSeconds) /
+                                      static_cast<double>(fullObservedSeconds)) : 0.0;
+    }
+    double runtimePercent() const {
+        return runtimeValid() ? 100.0 * (1.0 - static_cast<double>(runtimeUnavailableSeconds) /
+                                         static_cast<double>(runtimeObservedSeconds)) : 0.0;
+    }
+};
+
 // 一段 RX_PKT 停滞(数据链路假死征兆)
 struct Stall {
     long long start = 0, end = 0, dur = 0;

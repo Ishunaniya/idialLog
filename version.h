@@ -63,11 +63,13 @@
 //   1.11.5  识别 artery 与 RTMS EG25 的“COPS 手动锁网→COPS=0 成功→恢复注册”证据链，
 //           按每次 COPS=0 独立分级并追溯选网来源；冷启动注册耗时、注册日志空洞独立统计，
 //           CFUN 重试不缩短首次等待；只在同一断网窗降级 SUSPECTED，DENY/受限保持高优先级。
+//   1.11.6  可用率拆分为首次联网后运行期可用率与全程服务可达率；启动期未联网和日志末尾
+//           未恢复断网纳入全程不可用，避免各平台首次联网失败时误显 100%。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 5
+#define DL_VER_PATCH 6
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

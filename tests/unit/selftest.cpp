@@ -66,10 +66,27 @@ int main(int argc, char** argv) {
         if (o.dur <= 30) b0++; else if (o.dur <= 60) b1++; else if (o.dur <= 300) b2++; else b3++;
     }
     const ObservationStats observation = observationStats(lines);
-    double span = static_cast<double>(observation.observedSpan);
+    const AvailabilityStats availability = availabilityStats(lines, outs);
+    const auto fmtAvailability = [](bool valid, double percent) {
+        if (!valid) return std::string("—");
+        char value[32];
+        std::snprintf(value, sizeof(value), "%.3f%%", percent);
+        return std::string(value);
+    };
+    const std::string runtimeAvailability =
+        fmtAvailability(availability.runtimeValid(), availability.runtimePercent());
+    const std::string fullAvailability =
+        fmtAvailability(availability.fullValid(), availability.fullPercent());
     std::printf("== 断网 ==\n");
-    std::printf("  次数:%zu  累计:%s  可用率:%.3f%%\n", outs.size(), fmtDur(total).c_str(),
-                span > 0 && total <= span ? 100.0 * (1.0 - total / span) : 0.0);
+    std::printf("  次数:%zu  累计:%s  首次联网后运行期可用率:%s  全程服务可达率:%s\n",
+                outs.size(), fmtDur(total).c_str(),
+                runtimeAvailability.c_str(), fullAvailability.c_str());
+    if (availability.neverConnectedStartupSegments)
+        std::printf("  启动会话:%zu  未建立首次连接:%zu\n", availability.startupSegments,
+                    availability.neverConnectedStartupSegments);
+    else if (availability.fullValid())
+        std::printf("  启动至首次联网最长:%s%s\n", fmtDur(availability.longestStartupSeconds).c_str(),
+                    availability.terminalOutages ? "  （日志末尾仍有未恢复断网，服务可达率为上限）" : "");
     std::printf("  实际观测:%s  日历跨度:%s  覆盖率:%.2f%%\n",
                 fmtDur(observation.observedSpan).c_str(), fmtDur(observation.calendarSpan).c_str(),
                 observation.coveragePercent);

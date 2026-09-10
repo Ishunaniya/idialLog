@@ -151,7 +151,8 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     // ---- 统计 ----
     const long long t0 = App().document.filtered.front()->t, t1 = App().document.filtered.back()->t;
     const ObservationStats observation = observationStats(App().document.filtered);
-    const double span = static_cast<double>(observation.observedSpan);
+    const AvailabilityStats availability = availabilityStats(App().document.filtered,
+                                                              App().document.outages);
     long long total = 0, longest = 0;
     int b[4] = {0,0,0,0};
     for (const auto& o : App().document.outages) {
@@ -160,8 +161,8 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         if (o.dur > longest) longest = o.dur;
         if (o.dur <= 30) b[0]++; else if (o.dur <= 60) b[1]++; else if (o.dur <= 300) b[2]++; else b[3]++;
     }
-    const bool availValid = span > 0.0 && total >= 0 && static_cast<double>(total) <= span;
-    const double avail = availValid ? 100.0 * (1.0 - static_cast<double>(total) / span) : 0.0;
+    const bool availValid = availability.runtimeValid();
+    const double avail = availability.runtimePercent();
     const std::wstring clockSplit = observation.clockDiscontinuities
         ? FmtW(L"，已切断 %d 处授时跳变", (int)observation.clockDiscontinuities)
         : L"";
@@ -172,20 +173,37 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     // ---- hero:可用率(每视图仅此一个大数字) ----
     // 状态色须配文字标签,不能只靠颜色表意 —— 故旁边永远写着"可用率"
-    const wchar_t* heroTag = !availValid ? L"数据不足" :
+    const bool noFirstConnection = availability.neverConnectedStartupSegments > 0 &&
+                                   !availability.runtimeValid();
+    const wchar_t* heroTag = noFirstConnection ? L"未建立连接" : !availValid ? L"数据不足" :
                               (avail >= 99.9 ? L"良好" : (avail >= 99.0 ? L"偏低" : L"差"));
     const int pad = S(20);
-    DrawText_(hdc, pad, S(14), L"可用率", App().hFontTileLbl, th::inkSec);
+    DrawText_(hdc, pad, S(14), L"首次联网后运行期可用率", App().hFontTileLbl, th::inkSec);
     std::wstring hv = availValid ? FmtW(L"%.3f%%", avail) : L"—";
     DrawText_(hdc, pad, S(30), hv, App().hFontHero, th::inkPri);
     int hx = pad + TextW_(hdc, hv, App().hFontHero) + S(14);
     const std::wstring state = heroTag;
-    const COLORREF heroColor = !availValid ? th::inkMuted :
+    const COLORREF heroColor = noFirstConnection ? th::critical : !availValid ? th::inkMuted :
                                (avail >= 99.9 ? th::good : (avail >= 99.0 ? th::warning : th::critical));
     DrawPill(hdc, hx, S(48), state, th::accentSoft, th::inkSec, heroColor);
+    std::wstring serviceReachability;
+    if (availability.fullValid()) {
+        const std::wstring neverConnected = availability.neverConnectedStartupSegments
+            ? FmtW(L"（%d 个启动会话未建立首次连接）",
+                   (int)availability.neverConnectedStartupSegments)
+            : L"";
+        serviceReachability = FmtW(L"全程服务可达率 %.3f%%%s · 启动至首次联网最长 %s%s",
+                                   availability.fullPercent(),
+                                   neverConnected.c_str(),
+                                   U8ToW(fmtDur(availability.longestStartupSeconds)).c_str(),
+                                   availability.terminalOutages ? L" · 日志结束时仍有未恢复断网，上限值" : L"");
+    } else {
+        serviceReachability = L"全程服务可达率 —（未观察到可作为起点的启动横幅）";
+    }
     DrawText_(hdc, pad, S(87),
-              FmtW(L"%s → %s   ·   实际观测 %s / 日历跨度 %s (覆盖 %.2f%%%s)   ·   %s",
+              FmtW(L"%s → %s   ·   %s   ·   实际观测 %s / 日历跨度 %s (覆盖 %.2f%%%s)   ·   %s",
                    U8ToW(fmtTime(t0, "FULL")).c_str(), U8ToW(fmtTime(t1, "HM")).c_str(),
+                   serviceReachability.c_str(),
                    U8ToW(fmtDur(observation.observedSpan)).c_str(),
                    U8ToW(fmtDur(observation.calendarSpan)).c_str(), observation.coveragePercent,
                    clockSplit.c_str(),

@@ -262,9 +262,9 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.11.2.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.11.6.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.11.2 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.11.6 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 只清理 `build/`；测试程序也位于 `build/tests/`，不会污染根目录或误删已提交的发布 exe。
@@ -295,6 +295,10 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 | 1.11.0 | 加入 modem_mng_v2：BusyBox RFC3164 syslog 与 stderr 调试镜像解析、EC200A/EG25 动态识别、v2 CSQ/状态/断网和保守诊断；源码输出审计扩为五产品；RFC3164 推定年份以 `~` 明示 |
 | 1.11.1 | 接入 EG25 新增落盘日志：诊断 `QL_Data_Call_Init` 致命退出、Data Call Start 失败和 APN 文件/JSON 失败；仅以 5 分钟内版本横幅关联退出后的重新启动，并兼容 `[LOG_E]/[LOG_I]/[LOG_D]` 时间线 |
 | 1.11.2 | 区分 artery DataCall 的 `APP_STOP` 与 `SDK_URC/UNSOLICITED`，将后者标为异常断线证据并汇总 `reason`；兼容原 `DataCall disconnected \| profile=...` 格式；接入 EG25 `[SYSTEM]/[RECOVERY]/[APN]` 业务标题，补充 artery 样例和回归测试 |
+| 1.11.3 | 接入 IMX6ULL modem_mng：HB30/HB300 指标、小区与流量解析，online/RECOVERY 断网配对和状态机故障诊断；排除陈旧详细快照导致的 RX 假阳性 |
+| 1.11.4 | 适配 IMX6ULL RTMS 1.25.1 的分级 PDP/CFUN/硬件恢复、AT 超时确认探测和可配置探测端点；避免进行中的 RECOVERY 动作提前结束断网 |
+| 1.11.5 | 识别 artery 与 RTMS EG25 的“COPS 手动锁网→COPS=0 成功→恢复注册”证据链；独立统计冷启动注册等待与日志空洞，CFUN 重试不缩短首次等待 |
+| 1.11.6 | 可用率拆分为首次联网后运行期可用率与全程服务可达率；启动期未联网和日志末尾未恢复断网纳入不可用统计，避免首次联网失败误显 100% |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞约 1.8MiB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

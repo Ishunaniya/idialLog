@@ -580,6 +580,77 @@ static void t15b_manual_cops_restore_correlation() {
        "RTMS EG25: 启动注册等待独立于运行期断网统计");
 }
 
+// 可用率不能把“尚未首次联网”伪装成运行期 100%。四类平台各自的上线标志不同：
+// artery 为 net connected，旧 modem_mng 为 Network Recovered，v2 为 WAN OK，
+// IMX 为 HB online=1。末尾没有恢复的 down 也必须进入已知不可用时间。
+static void t15c_availability_startup_and_terminal_boundaries() {
+    std::printf("== T15c 启动服务可达率与末尾断网 ==\n");
+    const auto line = [](long long t, size_t no, unsigned short source, const char* tag,
+                         const char* msg, Fmt fmt = FMT_SD) {
+        LogLine value;
+        value.t = t; value.lineNo = no; value.sourceId = source; value.fmt = fmt;
+        value.setTag(tag); value.msg = msg;
+        return value;
+    };
+
+    std::vector<LogLine> artery = {
+        line(1000, 1, 0, "INFO", "DIAL Version: 1.29.18", FMT_SEAS),
+        line(1300, 2, 0, "INFO", "net connected", FMT_SEAS),
+        line(1600, 3, 0, "HEARTBEAT", "state=net_connected", FMT_SEAS)
+    };
+    const AvailabilityStats arteryStats = availabilityStats(artery, collectOutages(artery));
+    ok(arteryStats.fullValid() && arteryStats.runtimeValid() &&
+       arteryStats.fullObservedSeconds == 600 && arteryStats.fullUnavailableSeconds == 300 &&
+       arteryStats.runtimeObservedSeconds == 300 && arteryStats.runtimeUnavailableSeconds == 0 &&
+       arteryStats.fullPercent() == 50.0 && arteryStats.runtimePercent() == 100.0,
+       "artery: 启动等待计入全程服务可达率，不再与首次联网后运行期 100% 混淆");
+
+    std::vector<LogLine> legacy = {
+        line(2000, 1, 0, "INFO", "Program started. Version: 1.31.0"),
+        line(2060, 2, 0, "EVENT", "Network recovered after 30s"),
+        line(2120, 3, 0, "HEARTBEAT", "CSQ:20")
+    };
+    const AvailabilityStats legacyStats = availabilityStats(legacy, collectOutages(legacy));
+    ok(legacyStats.fullValid() && legacyStats.fullUnavailableSeconds == 60 &&
+       legacyStats.runtimeObservedSeconds == 60 && legacyStats.runtimePercent() == 100.0,
+       "传统 EC200A/EG25/AG35: 首次 Network Recovered 可结束启动不可用窗口");
+
+    std::vector<LogLine> v2 = {
+        line(3000, 1, 0, "MODEM_MNG_V2", "===== modem_mng_v2 start =====", FMT_SYSLOG),
+        line(3010, 2, 0, "MODEM_MNG_V2", "[READY] WAN ping fail -> network_online=0", FMT_SYSLOG),
+        line(3020, 3, 0, "MODEM_MNG_V2", "[READY] WAN ping OK -> network_online=1", FMT_SYSLOG),
+        line(3030, 4, 0, "MODEM_MNG_V2", "[READY] WAN ping fail -> network_online=0", FMT_SYSLOG),
+        line(3060, 5, 0, "MODEM_MNG_V2", "[READY] heartbeat", FMT_SYSLOG)
+    };
+    const AvailabilityStats v2Stats = availabilityStats(v2, collectOutages(v2));
+    ok(v2Stats.fullValid() && v2Stats.fullUnavailableSeconds == 50 &&
+       v2Stats.runtimeObservedSeconds == 40 && v2Stats.runtimeUnavailableSeconds == 30 &&
+       v2Stats.terminalOutages == 1 && v2Stats.fullPercent() < 100.0 &&
+       v2Stats.runtimePercent() < 100.0,
+       "modem_mng_v2: 首次 WAN OK 前失败及日志末尾未恢复 WAN fail 均不再显示 100%");
+
+    std::vector<LogLine> imx = {
+        line(4000, 1, 0, "VERSION", "Modem_mng Version: rtms_imx6ull_1.25.1"),
+        line(4010, 2, 0, "HB30", "online=0"),
+        line(4020, 3, 0, "HB30", "online=1"),
+        line(4030, 4, 0, "HB30", "online=0"),
+        line(4060, 5, 0, "HB30", "online=0")
+    };
+    const AvailabilityStats imxStats = availabilityStats(imx, collectOutages(imx));
+    ok(imxStats.fullValid() && imxStats.fullUnavailableSeconds == 50 &&
+       imxStats.runtimeUnavailableSeconds == 30 && imxStats.terminalOutages == 1,
+       "IMX6ULL: 首次 online=1 前离线与末尾 online=0 均进入服务不可用统计");
+
+    std::vector<LogLine> never = {
+        line(5000, 1, 0, "INFO", "DIAL Version: 1.29.18", FMT_SEAS),
+        line(5060, 2, 0, "HEARTBEAT", "CEREG: 0,0", FMT_SEAS)
+    };
+    const AvailabilityStats neverStats = availabilityStats(never, collectOutages(never));
+    ok(neverStats.fullValid() && !neverStats.runtimeValid() &&
+       neverStats.neverConnectedStartupSegments == 1 && neverStats.fullPercent() == 0.0,
+       "从未建立首次连接的启动会话全程服务可达率为 0%，不再误显 100%");
+}
+
 static void t16_eg25_persistent_failure_diagnostics() {
     std::printf("== T16 EG25 新增落盘故障：初始化退出/重启/APN/Start ==\n");
     std::vector<std::string> raw = L({
@@ -874,6 +945,7 @@ int main() {
     t14_tbox_confirmed_boundaries();
     t15_artery_persistent_outage_events();
     t15b_manual_cops_restore_correlation();
+    t15c_availability_startup_and_terminal_boundaries();
     t16_eg25_persistent_failure_diagnostics();
     t17_datacall_initiator_reason_classification();
     t18_artery_datacall_exit_diagnostic();

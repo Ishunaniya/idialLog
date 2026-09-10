@@ -1511,6 +1511,101 @@ static std::uint16_t sourceIdAtLine(const Lines& lines, std::size_t lineNo) {
     return it != lines.end() && lineRef(*it).lineNo == lineNo ? lineRef(*it).sourceId : 0;
 }
 
+// “已注册”不足以代表业务可用；这里只接受产品明确记录的数据通道/WAN 已通，
+// 或旧产品的 Network Recovered 事件。这个标志既用于全程服务可达率，也用于
+// 将首次联网前的失败与运行期掉线分开。
+static bool isDataPathUp(const LogLine& line) {
+    if (isModemMngV2WanUp(line) || imxRecoveryComplete(line)) return true;
+    bool imxOnline = false;
+    if (imxHeartbeatOnline(line, imxOnline) && imxOnline) return true;
+    int recoveredSeconds = 0;
+    if (isRecovered(line.msg, &recoveredSeconds)) return true;
+    const std::string lo = lower(line.msg);
+    return lo.find("net connected") != std::string::npos ||
+           lo.find("data call connected") != std::string::npos ||
+           lo.find("datacall connected") != std::string::npos ||
+           lo.find("wait_for_connect -> net_connected") != std::string::npos;
+}
+
+template <typename Lines>
+static AvailabilityStats availabilityStatsImpl(const Lines& lines,
+                                               const std::vector<Outage>& outages) {
+    AvailabilityStats stats;
+    struct Segment {
+        std::uint16_t sourceId = 0;
+        long long begin = 0;
+        long long end = 0;
+        long long firstUp = -1;
+        bool startKnown = false;
+    };
+    std::vector<Segment> segments;
+    std::map<std::uint16_t, std::size_t> active;
+
+    for (const auto& item : lines) {
+        const LogLine& line = lineRef(item);
+        auto it = active.find(line.sourceId);
+        // v2 的 syslog 启动记录没有传统 Version 文案，但 isModemMngV2Start()
+        // 已严格限定应用身份和完整正文，是与版本横幅等价的进程边界证据。
+        const bool banner = isProgramStartBanner(line.msg) || isModemMngV2Start(line);
+        const bool clockSplit = it != active.end() &&
+                                crossesClockBase(segments[it->second].end, line.t);
+        if (it == active.end() || banner || clockSplit) {
+            Segment segment;
+            segment.sourceId = line.sourceId;
+            segment.begin = segment.end = line.t;
+            segment.startKnown = banner;
+            segments.push_back(segment);
+            active[line.sourceId] = segments.size() - 1;
+            it = active.find(line.sourceId);
+        }
+        Segment& segment = segments[it->second];
+        segment.end = std::max(segment.end, line.t);
+        if (segment.firstUp < 0 && isDataPathUp(line)) segment.firstUp = line.t;
+    }
+
+    std::vector<long long> outageSeconds(segments.size(), 0);
+    for (const Outage& outage : outages) {
+        const std::uint16_t sourceId = sourceIdAtLine(lines, outage.startLine);
+        bool countedTerminal = false;
+        for (std::size_t i = 0; i < segments.size(); ++i) {
+            const Segment& segment = segments[i];
+            if (segment.sourceId != sourceId || segment.firstUp < 0) continue;
+            const long long outageEnd = outage.recovered ? outage.end : segment.end;
+            const long long begin = std::max(std::max(outage.start, segment.begin), segment.firstUp);
+            const long long end = std::min(outageEnd, segment.end);
+            if (end > begin) {
+                outageSeconds[i] += end - begin;
+                if (!outage.recovered) countedTerminal = true;
+            }
+        }
+        if (countedTerminal) ++stats.terminalOutages;
+    }
+
+    for (std::size_t i = 0; i < segments.size(); ++i) {
+        const Segment& segment = segments[i];
+        if (!segment.startKnown || segment.end <= segment.begin) continue;
+        const long long span = segment.end - segment.begin;
+        ++stats.startupSegments;
+        stats.fullObservedSeconds += span;
+        if (segment.firstUp < 0) {
+            ++stats.neverConnectedStartupSegments;
+            stats.fullUnavailableSeconds += span;
+            continue;
+        }
+        ++stats.connectedStartupSegments;
+        const long long startup = std::max(0LL, segment.firstUp - segment.begin);
+        stats.longestStartupSeconds = std::max(stats.longestStartupSeconds, startup);
+        stats.runtimeObservedSeconds += std::max(0LL, segment.end - segment.firstUp);
+        stats.runtimeUnavailableSeconds += std::min(outageSeconds[i],
+                                                    std::max(0LL, segment.end - segment.firstUp));
+        stats.fullUnavailableSeconds += std::min(span, startup + outageSeconds[i]);
+    }
+    stats.fullUnavailableSeconds = std::min(stats.fullUnavailableSeconds, stats.fullObservedSeconds);
+    stats.runtimeUnavailableSeconds = std::min(stats.runtimeUnavailableSeconds,
+                                               stats.runtimeObservedSeconds);
+    return stats;
+}
+
 template <typename Lines>
 static CellAnalysis analyzeCellsImpl(const Lines& lines,
                                      const std::vector<MetricRow>& metrics,
@@ -1722,6 +1817,16 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
 }
 
 } // namespace
+
+AvailabilityStats availabilityStats(const std::vector<LogLine>& lines,
+                                    const std::vector<Outage>& outages) {
+    return availabilityStatsImpl(lines, outages);
+}
+
+AvailabilityStats availabilityStats(const LogView& lines,
+                                    const std::vector<Outage>& outages) {
+    return availabilityStatsImpl(lines, outages);
+}
 
 CellAnalysis analyzeCells(const std::vector<LogLine>& lines,
                           const std::vector<MetricRow>& metrics,
