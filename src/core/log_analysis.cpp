@@ -544,6 +544,9 @@ bool isErrLine(const LogLine& l) {
 bool isEventLine(const LogLine& l) {
     if (isModemMngV2Event(l) || isModemMngV2Failure(l)) return true;
     if (isImxHeartbeatDiagnostic(l)) return true;
+    // RK3506J 1.28.1 只在运营商/PLMN 实际变化时输出这条 INIT 记录；它不是
+    // 周期快照，保留到时间线可直接定位切网证据。
+    if (l.tagText() == "INIT" && icontains(l.msg, "operator changed:")) return true;
     // [HEARTBEAT-NET] 是高频采样；只在接口消失或有发无收时进入时间线，
     // 既保留数据面故障证据，又不让正常心跳淹没事件。
     bool netInterfaceUp = false;
@@ -893,7 +896,7 @@ struct HeartbeatFields {
     std::string_view tempImx, failTitle, failLower, failImx, rxUpper, rxLower;
     std::string_view rsrpUpper, rsrpLower, rsrqUpper, rsrqLower;
     std::string_view snrUpper, snrLower, rssiUpper, rssiLower;
-    std::string_view srv, rat, deny, oper, cell, pci, tac, servingCell, trafficValid, sampleAge;
+    std::string_view srv, rat, deny, oper, cell, pci, tac, servingCell, trafficValid, sampleAge, sampleMs;
     std::string_view atTimeout, atProbe, detailedAtTimeout, detailedAtStage;
 };
 
@@ -937,6 +940,9 @@ static HeartbeatFields heartbeatFields(const std::string& msg) {
         else if (k == "serving_cell") f.servingCell = v;
         else if (k == "traffic_valid") f.trafficValid = v;
         else if (k == "sample_age_ms") f.sampleAge = v;
+        // RK3506J RTMS 1.28.1 将详细快照的时效字段改为本轮采样耗时。遗漏它会
+        // 令新版 HB300 的 rx_packets 被静默排除在流量分析之外。
+        else if (k == "sample_ms") f.sampleMs = v;
         else if (k == "at_timeout") f.atTimeout = v;
         else if (k == "at_probe") f.atProbe = v;
         else if (k == "detailed_at_timeout") f.detailedAtTimeout = v;
@@ -1317,9 +1323,12 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
     std::uint16_t currentSource = 0;
     bool haveSource = false;
     std::map<std::uint16_t, ModemMngV2Registration> v2Registration;
+    std::map<std::uint16_t, Platform> platformBySource;
 
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
+        if (const DisplayVersionPlatform* display = displayVersionPlatform(l.msg))
+            platformBySource[l.sourceId] = display->platform;
         // 版本横幅是进程启动的直接证据。即使日志文件把多次启动串在一起，
         // 新进程的网卡计数器、小区驻留状态也不能继承给上一会话；否则首个
         // HEARTBEAT 会凭旧 rx_packets 算出假的 ΔRX=0/负增量，进而误报数据停滞。
@@ -1365,13 +1374,17 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         MetricRow m;
         m.t  = l.t;
         m.lineNo = l.lineNo;
-        if (!f.ch.empty()) assignView(m.ch, f.ch);
+        if (imxHeartbeat) {
+            // HB30/HB300 的 state=CHECK_CONNECTION/SUCCESS 不是数据通道；它们
+            // 必须优先显示所属 RTMS 平台，而不能被 artery 的 state→SIM 规则截获。
+            m.ch = platformBySource[l.sourceId] == PLAT_RK3506J ? "RK3506J" : "IMX6ULL";
+        } else if (!f.ch.empty()) assignView(m.ch, f.ch);
         else if (!f.slot.empty()) {                                    // AG35
             m.ch = "SLOT";
             m.ch.append(f.slot.data(), f.slot.size());
         } else if (!f.state.empty()) {                                 // artery
             m.ch = viewContainsIgnoreCase(f.state, "roamlink") ? "ROAMLINK" : "SIM";
-        } else if (imxHeartbeat) m.ch = "IMX6ULL";
+        }
         assignView(m.rat, f.rat);
         assignView(m.oper, f.oper);
         const std::string_view explicitCell = f.cell;
@@ -1454,8 +1467,12 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         bool imxFreshTraffic = true;
         if (imxHeartbeat) {
             long long sampleAge = 0;
+            // IMX6ULL 使用 sample_age_ms；RK3506J 1.28.1 改为 sample_ms（本轮
+            // 采样耗时）。旧 RK3506J 日志仍优先使用 sample_age_ms。
+            const std::string_view freshness = !f.sampleAge.empty() ? f.sampleAge :
+                (platformBySource[l.sourceId] == PLAT_RK3506J ? f.sampleMs : std::string_view{});
             imxFreshTraffic = parseLong(f.trafficValid, number, true) && number == 1 &&
-                              parseLong(f.sampleAge, sampleAge, true) && sampleAge >= 0 && sampleAge <= 45000;
+                              parseLong(freshness, sampleAge, true) && sampleAge >= 0 && sampleAge <= 45000;
         }
         bool haveRx = imxFreshTraffic && parseLong(firstOf(f.rxUpper, f.rxLower), m.rx);
         if (haveRx && haveLastRx) {
@@ -1960,7 +1977,9 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evImxPdp, evImxDhcp, evImxNetwork, evImxDevice, evImxAt,
                                 evImxAtTelemetryTimeout, evImxAtProbeFailed,
                                 evImxRecoverPdp, evImxRecoverCfun, evImxRecoverHardware,
-                                evImxConfigError;
+                                evImxConfigError,
+                                evRkRetry, evRkSimNotReady, evRkRegistration, evRkPdp,
+                                evRkNetwork, evRkDeviceAt, evRkPing;
     std::vector<const LogLine*> evNetInterfaceNone, evNetTxWithoutRx;
     std::map<std::string, size_t> appStopReasons, unsolicitedReasons;
     std::map<std::uint16_t, std::pair<long long, long long>> sourceBounds;
@@ -2068,6 +2087,39 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                     (action == "enter" && dataCallField(l.msg, "next") == "CONFIG_ERROR"))
                     evImxConfigError.push_back(&l);
             }
+        }
+        // RK3506J 不使用 IMX 的 FAILURE/RETRY/RECOVERY 标签；EC200A 与 EG912
+        // 两条实际构建路径均把状态机前缀写入正文。以下均为 rk3506j_dialer.cpp
+        // 的固定日志，不以普通 online=0 或 CSQ 值猜测故障。
+        if (pi.plat == PLAT_RK3506J) {
+            const std::string& tag = l.tagText();
+            if ((tag == "EC200A" || tag == "EG912") &&
+                (icontains(l.msg, "state=FAILURE_RETRY") ||
+                 icontains(l.msg, "-> FAILURE_RETRY")))
+                evRkRetry.push_back(&l);
+            if (tag == "bringup" && icontains(l.msg, "SIM is not ready"))
+                evRkSimNotReady.push_back(&l);
+            if (tag == "bringup" && icontains(l.msg, "LTE/EPS is not registered"))
+                evRkRegistration.push_back(&l);
+            if (tag == "bringup" &&
+                (icontains(l.msg, "PDP profile configuration failed") ||
+                 icontains(l.msg, "failed to configure PDP") ||
+                 icontains(l.msg, "CGACT activate") ||
+                 icontains(l.msg, "QNETDEVCTL did not reach") ||
+                 icontains(l.msg, "QNETDEVCTL wait timed out")))
+                evRkPdp.push_back(&l);
+            if (tag == "bringup" &&
+                (icontains(l.msg, "DHCP") || icontains(l.msg, "IPv4") ||
+                 icontains(l.msg, "static IP")))
+                evRkNetwork.push_back(&l);
+            if ((tag == "DEVICE" || tag == "AT" || tag == "usb") &&
+                (icontains(l.msg, "missing") || icontains(l.msg, "failed") ||
+                 icontains(l.msg, "not found") || icontains(l.msg, "unavailable")))
+                evRkDeviceAt.push_back(&l);
+            if ((tag == "EC200A" || tag == "EG912") &&
+                (icontains(l.msg, "Unable to ping google, attempt") ||
+                 icontains(l.msg, "ping failed, attempt")))
+                evRkPing.push_back(&l);
         }
         if (isFaultStart(l.msg)) {
             faultOpen[l.sourceId] = true;
@@ -2342,6 +2394,52 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                       "【源码直证】CONFIGURATION 类故障进入 CONFIG_ERROR，而非继续重拨或复位模组。",
                       "修正 APN、PDP 类型等配置后重启服务；重拨、CFUN 和硬件复位不能修复配置值。",
                       evImxConfigError);
+    }
+
+    // RK3506J 的两个实际构建分支（外置 EC200A / EG912 minimal）共用下列
+    // bringup 与状态机文案。仅在平台横幅已确认时输出，避免把其它产品的普通
+    // “failed” 文本错归入 RK3506。
+    if (pi.plat == PLAT_RK3506J) {
+        auto addRkFinding = [&](int severity, std::string title, std::string detail,
+                                std::string advice, const std::vector<const LogLine*>& evidence) {
+            if (evidence.empty()) return;
+            Finding finding;
+            finding.severity = severity;
+            finding.title = std::move(title);
+            finding.detail = std::move(detail);
+            finding.advice = std::move(advice);
+            for (size_t index = 0; index < evidence.size() && index < 3; ++index)
+                finding.ev.push_back(mkEv(*evidence[index]));
+            fs.push_back(std::move(finding));
+        };
+        addRkFinding(2, "RK3506J SIM 未就绪",
+                     "【源码直证】ECM bringup 的 AT+CPIN 检查未返回 READY，拨号不会继续进入 PDP 激活。",
+                     "检查卡槽、卡接触和 PIN 锁；保留 CPIN 原始应答，确认不是 AT 通道超时。",
+                     evRkSimNotReady);
+        addRkFinding(2, "RK3506J LTE/EPS 未注册",
+                     "【源码直证】注册等待耗尽后明确记录 LTE/EPS is not registered，当前尚不能建立数据连接。",
+                     "核对 CEREG、运营商选择、覆盖和 SIM 数据权限；不要仅凭一次 CSQ 数值归因。",
+                     evRkRegistration);
+        addRkFinding(2, "RK3506J PDP/ECM 数据激活失败",
+                     "【源码直证】PDP profile、CGACT 或 QNETDEVCTL 的固定 bringup 失败文案表明模组侧数据面未就绪。",
+                     "核对 APN、PDP 类型、CGACT 与 QNETDEVCTL 原始响应，再检查模组 profile。",
+                     evRkPdp);
+        addRkFinding(2, "RK3506J DHCP/IPv4 配置失败",
+                     "【源码直证】DHCP 或 CGCONTRDP 静态 IPv4 回退失败，问题位于 AP 侧接口配置或模组返回的地址信息。",
+                     "检查接口存在性、udhcpc、IP/网关/默认路由和 CGCONTRDP 响应。",
+                     evRkNetwork);
+        addRkFinding(2, "RK3506J 模组拓扑或 AT 通道不可用",
+                     "【源码直证】设备发现/AT 端口日志明确报告缺失、未找到或操作失败。",
+                     "检查 USB 枚举、option 驱动绑定、AT 端口节点及供电，并确认 AT 口和网卡属于同一模组。",
+                     evRkDeviceAt);
+        addRkFinding(1, "RK3506J 连通性探测失败",
+                     "【日志直证】状态机记录了接口绑定的 Google ping 连续失败尝试；单次失败不等同于已完成重拨。",
+                     "结合随后 HB30 的 online、fail_streak/retry 和 FAILURE_RETRY 状态判断是否升级恢复。",
+                     evRkPing);
+        addRkFinding(2, "RK3506J 已进入失败重试状态",
+                     "【源码直证】EC200A/EG912 状态机明确进入 FAILURE_RETRY；这不是普通心跳中的离线采样。",
+                     "从同一轮前序 bringup、注册、PDP、DHCP 和 AT 证据定位失败层级，保留恢复完成前的完整日志。",
+                     evRkRetry);
     }
     // SDK 注网摘要是 2026-07/08 四份产品代码新增字段。只有 SRV!=FULL 且 DENY>0
     // 才算拒绝证据；DENY=0 不臆测。两套 SDK 的 DENY 数字表不同,这里只保留原码。

@@ -152,6 +152,33 @@ int main() {
         }
     }
 
+    // ── 真机 RK3506J 1.28（外置 EC200A，全 AT/ECM 拨号）──
+    {
+        auto L = load("samples/rtms_rk3506j/dial_20260910_091342.log");
+        std::printf("── 真机 RK3506J 1.28(EC200A ECM 拨号,62 行)\n");
+        if (!L.ok) { std::printf("   ✗ 打不开\n"); g_fail++; }
+        else {
+            cki((long)L.audit.rawTotal, 62, "原始行数");
+            cki((long)L.audit.unparsed, 0, "未识别行(真机 SD 日志)");
+            // CFUN/CPIN/CGACT 各含“响应 + 空行 + OK”，QNETDEVCTL 含“OK”。
+            // 空行不能截断续行状态，否则会回归为 3 个未识别 OK。
+            cki((long)L.audit.continuation, 7, "多行 AT 应答续行数");
+            ck(L.pi.plat == PLAT_RK3506J, "平台=RK3506J", L.pi.name, "RK3506J");
+            cki((long)L.outs.size(), 0, "断网次数(连续正常运行)");
+            cki((long)L.mets.size(), 9, "HB30 指标行数");
+            bool rkMetrics = !L.mets.empty();
+            for (const auto& metric : L.mets)
+                rkMetrics = rkMetrics && metric.ch == "RK3506J" && metric.csqVal >= 25 && metric.csqVal <= 27;
+            ck(rkMetrics, "HB30 标注RK3506J并提取CSQ", rkMetrics ? "9 条, CSQ=25..27" : "字段缺失", "9 条, CSQ=25..27");
+            const LogLine* cfun = nullptr;
+            for (const auto& line : L.lines) if (line.lineNo == 22) cfun = &line;
+            ck(cfun && cfun->msg.find("+CFUN: 1") != std::string::npos &&
+               cfun->msg.find("OK") != std::string::npos,
+               "CFUN 多行应答保留在同一证据", cfun ? cfun->msg : "(无)", "含 +CFUN: 1 与 OK");
+            cki((long)L.fs.size(), 0, "结论数(正常设备应为0)");
+        }
+    }
+
     // ── 真机 EG25 1.31.15(SIM 通道 + 完整 L1/L2 阶梯 + 多行 AT 应答)──
     {
         auto L = load("samples/rtms_eg25/real_eg25_1.31.15_unsynced.log");

@@ -1,0 +1,62 @@
+=== Dial Log Opened [2026-09-10 09:13:42] daykey=2026-09-10 ===
+[2026-09-10 09:13:42] Modem_mng Version: rtms_rk3506j_1.28
+[2026-09-10 09:13:42] [SERVICE] program=/usr/bin/modem_mng version=1.28
+[2026-09-10 09:13:42] [NANOMSG] REQ/REP handler started, url=tcp://127.0.0.1:38001 sock=1
+[2026-09-10 09:13:45] [probe] modem family identified on /dev/ttyUSB1
+[2026-09-10 09:13:46] [DEVICE] AT ports primary=/dev/ttyUSB1 aux=/dev/ttyUSB1
+[2026-09-10 09:13:46] [EC200A] EC200A external, full AT dial on /dev/ttyUSB1
+[2026-09-10 09:13:46] [EC200A] dial_loop enter, isExist=0
+[2026-09-10 09:13:46] [DEVICE] USB vendor present=2c7c
+[2026-09-10 09:13:46] [AT] adapting modem port=/dev/ttyUSB1
+[2026-09-10 09:13:46] [AT] initial adaptation complete
+[2026-09-10 09:13:46] [EC200A] not online, soft ECM bringup (no power cycle)
+[2026-09-10 09:13:46] [TZ] AT+QLTS response=+QLTS: "2026/09/10,09:14:03+32,0" OK
+[2026-09-10 09:13:46] [TZ] extracted modem time=2026/09/10,09:14:03+32,0
+[2026-09-10 09:13:46] [TZ] parsed offset=32
+[2026-09-10 09:13:46] [EC200A] state=POWER_ON
+[2026-09-10 09:13:46] [DEVICE] AT ports primary=/dev/ttyUSB1 aux=/dev/ttyUSB1
+[2026-09-10 09:13:46] [usb] registered 2c7c:0901 via /sys/bus/usb-serial/drivers/option1/new_id
+[2026-09-10 09:13:46] [DEVICE] AT ports primary=/dev/ttyUSB1 aux=/dev/ttyUSB1
+[2026-09-10 09:13:48] [EC200A] state=WRITE_TO_MODEM, ECM AT bringup
+[2026-09-10 09:13:48] [bringup] ECM bringup on /dev/ttyUSB1
+[2026-09-10 09:13:48] [bringup] CFUN: 
++CFUN: 1
+
+OK
+
+[2026-09-10 09:13:48] [bringup] CPIN: 
++CPIN: READY
+
+OK
+
+[2026-09-10 09:13:48] [bringup] PDP APN is not configured; preserving modem profile
+[2026-09-10 09:13:48] [bringup] CEREG status=5
+[2026-09-10 09:13:48] [bringup] CGACT: 
++CGACT: 1,1
+
+OK
+
+[2026-09-10 09:13:48] [bringup] QNETDEVCTL=3,1,1: 
+OK
+
+[2026-09-10 09:13:48] [bringup] QNETDEVCTL state: type=3 cid=1 urc=1 status=1
+[2026-09-10 09:13:50] [EC200A] state=CONFIGURE_NETWORK
+[2026-09-10 09:13:55] [EC200A] connectivity restored
+[2026-09-10 09:13:55] [INIT] modem | at=/dev/ttyUSB1 | if=eth1 | model="Quectel EC200A Revision: EC200ACNV1LBR02A06M08 OK" | fw="EC200ACNV1LBR02A06M08 OK"
+[2026-09-10 09:13:55] [INIT] identity | imei=868822088638463 | imsi=240422616350747 | iccid=89464283216163507470
+[2026-09-10 09:13:55] [INIT] service | sim=+CPIN: READY OK | cereg=5 | registration="Registered, roaming" | csq=26 | operator="Telenor CXN" | plmn=(unavailable)
+[2026-09-10 09:13:55] [INIT] data | pdn=1 | attach=+CGATT: 1 OK | cfun=+CFUN: 1 OK | apn="(unavailable)" | context="+CGDCONT:  OK"
+[2026-09-10 09:13:55] [INIT] radio | nwinfo="+QNWINFO: "FDD LTE","46001","LTE BAND 3",1850 OK"
+[2026-09-10 09:13:57] [SERVICE] 4G interface=eth1
+[2026-09-10 09:14:09] [EC200A] operator=Telenor CXN plmn=46001
+[2026-09-10 09:14:23] [HB30] online=1 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=27 | signal=csq:27 | probe_ms=380 | temp_c=-1 | at_timeout=0 | fail_streak=0 | retry=0 | reason="(none)" | sample_age_ms=0
+[2026-09-10 09:14:52] [HB30] online=1 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=27 | signal=csq:27 | probe_ms=389 | temp_c=-1 | at_timeout=0 | fail_streak=0 | retry=0 | reason="(none)" | sample_age_ms=0
+[2026-09-10 09:15:21] [HB30] online=1 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=27 | signal=csq:27 | probe_ms=390 | temp_c=-1 | at_timeout=0 | fail_streak=0 | retry=0 | reason="(none)" | sample_age_ms=0
+[2026-09-10 09:15:50] [HB30] online=1 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=27 | signal=csq:27 | probe_ms=395 | temp_c=-1 | at_timeout=0 | fail_streak=0 | retry=0 | reason="(none)" | sample_age_ms=0
+[2026-09-10 09:16:19] [HB30] online=1 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=27 | signal=csq:27 | probe_ms=398 | temp_c=-1 | at_timeout=0 | fail_streak=0 | retry=0 | reason="(none)" | sample_age_ms=0
+[2026-09-10 09:16:34] [EC200A] operator=Telenor CXN plmn=46001
+[2026-09-10 09:16:48] [HB30] online=1 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=27 | signal=csq:27 | probe_ms=391 | temp_c=-1 | at_timeout=0 | fail_streak=0 | retry=0 | reason="(none)" | sample_age_ms=0
+[2026-09-10 09:17:17] [HB30] online=1 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=27 | signal=csq:27 | probe_ms=397 | temp_c=-1 | at_timeout=0 | fail_streak=0 | retry=0 | reason="(none)" | sample_age_ms=0
+[2026-09-10 09:17:46] [HB30] online=1 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=26 | signal=csq:26 | probe_ms=401 | temp_c=-1 | at_timeout=0 | fail_streak=0 | retry=0 | reason="(none)" | sample_age_ms=0
+[2026-09-10 09:18:17] [HB30] online=1 | downtime_s=0 | state=SUCCESS | cereg=5 | pdp=1 | csq=25 | signal=csq:25 | probe_ms=377 | temp_c=-1 | at_timeout=0 | fail_streak=0 | retry=0 | reason="(none)" | sample_age_ms=0
+[2026-09-10 09:18:39] [NANOMSG] status served OK, 30 replies since last log

@@ -928,6 +928,67 @@ static void t21_imx6ull_1251_recovery_and_at_health() {
        "AT 健康、PDP/CFUN/硬件分级恢复和配置终止均生成对应结论");
 }
 
+// RK3506J 与 IMX6ULL 共用 HB30/HB300 外壳，但实际拨号状态机是外置 EC200A
+// 或 EG912 的 ECM 流程，失败文案与标签均不同。这里逐字采用 rk3506j_dialer.cpp
+// 的固定输出，覆盖两条状态机共同的诊断入口及 1.28.1 的新心跳契约。
+static void t22_rk3506j_state_machine() {
+    std::printf("== T22 RK3506J ECM 状态机 ==\n");
+    std::vector<std::string> raw = L({
+        "[2026-09-10 10:00:00] Modem_mng Version: rtms_rk3506j_1.28.1",
+        "[2026-09-10 10:00:00] [DEVICE] AT ports primary=/dev/ttyUSB5 aux=/dev/ttyUSB5",
+        "[2026-09-10 10:00:00] [INIT] operator changed: operator=CMCC plmn=46000",
+        "[2026-09-10 10:00:01] [bringup] CFUN: +CFUN: 1 | OK",
+        "[2026-09-10 10:00:01] [HB30] online=1 | downtime_s=0 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=23 | probe_ms=300 | temp_c=(unavailable) | at_timeout=0 | fail_streak=0 | retry=0 | reason=\"(none)\" | sample_ms=8",
+        "[2026-09-10 10:00:10] [EC200A] Unable to ping google, attempt 1/3",
+        "[2026-09-10 10:00:20] [HB30] online=0 | downtime_s=10 | state=CHECK_CONNECTION | cereg=5 | pdp=1 | csq=22 | probe_ms=500 | temp_c=(unavailable) | at_timeout=0 | fail_streak=1 | retry=1 | reason=\"Unable to ping google, attempt 1/3\" | sample_ms=9",
+        "[2026-09-10 10:00:21] [bringup] SIM is not ready",
+        "[2026-09-10 10:00:22] [bringup] LTE/EPS is not registered",
+        "[2026-09-10 10:00:23] [bringup] QNETDEVCTL did not reach connected state",
+        "[2026-09-10 10:00:24] [bringup] DHCP and CGCONTRDP fallback did not provide an IPv4 address",
+        "[2026-09-10 10:00:25] [DEVICE] AT port missing: /dev/ttyUSB1",
+        "[2026-09-10 10:00:26] [EC200A] state=FAILURE_RETRY: Unable to ping google, attempt 3/3 -> power off -> POWER_ON",
+        "[2026-09-10 10:01:00] [HB300] online=0 | downtime_s=50 | if=eth1 | if_present=1 | ip=10.0.0.2 | gw=10.0.0.1 | route=1 | dns=1.1.1.1 | cereg=5 | pdp=1 | csq=22 | temp_c=(unavailable) | probe=fail | probe_ms=500 | at_timeout=0 | cops=\"(unavailable)\" | context=\"(unavailable)\" | registration=\"Registered\" | serving_cell=\"+QENG: \\\"servingcell\\\",\\\"NOCONN\\\"\" | traffic_valid=1 | rx_bytes=100 | tx_bytes=50 | rx_packets=10 | tx_packets=5 | sample_ms=11",
+        "[2026-09-10 10:01:10] [EC200A] connectivity restored",
+        "[2026-09-10 10:01:20] [HB30] online=1 | downtime_s=0 | state=SUCCESS | cereg=5 | pdp=1 | csq=24 | probe_ms=300 | temp_c=(unavailable) | at_timeout=0 | fail_streak=0 | retry=0 | reason=\"(none)\" | sample_ms=10"
+    });
+    std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit);
+    const PlatformInfo platform = detectPlatform(lines);
+    const auto metrics = buildMetrics(lines);
+    const auto outages = collectOutages(lines);
+    const auto findings = analyze(lines, outages, metrics, platform, audit);
+    bool sim = false, registration = false, pdp = false, network = false, device = false, ping = false, retry = false;
+    for (const Finding& finding : findings) {
+        sim = sim || finding.title.find("RK3506J SIM 未就绪") != std::string::npos;
+        registration = registration || finding.title.find("RK3506J LTE/EPS 未注册") != std::string::npos;
+        pdp = pdp || finding.title.find("RK3506J PDP/ECM") != std::string::npos;
+        network = network || finding.title.find("RK3506J DHCP/IPv4") != std::string::npos;
+        device = device || finding.title.find("RK3506J 模组拓扑或 AT") != std::string::npos;
+        ping = ping || finding.title.find("RK3506J 连通性探测失败") != std::string::npos;
+        retry = retry || finding.title.find("RK3506J 已进入失败重试") != std::string::npos;
+    }
+    bool compactBringup = false, operatorChanged = false, operatorChangedIsEvent = false;
+    for (const LogLine& line : lines) {
+        compactBringup = compactBringup || (line.tagText() == "bringup" &&
+            line.msg == "CFUN: +CFUN: 1 | OK");
+        const bool plmnChanged = line.tagText() == "INIT" &&
+            line.msg.find("operator changed: operator=CMCC plmn=46000") != std::string::npos;
+        operatorChanged = operatorChanged || plmnChanged;
+        operatorChangedIsEvent = operatorChangedIsEvent || (plmnChanged && isEventLine(line));
+    }
+    ok(audit.unparsed == 0 && audit.continuation == 0 && platform.plat == PLAT_RK3506J &&
+       audit.programStarted == 1 && compactBringup && operatorChanged && operatorChangedIsEvent,
+       "RK3506J 1.28.1 版本、压缩 AT 应答、PLMN 变更和新行格式准确识别");
+    ok(metrics.size() == 4 && metrics[0].ch == "RK3506J" && metrics[2].rx == 10 &&
+       metrics[2].drx == LLONG_MIN && metrics[2].csqVal == 22,
+       "RK3506J HB30/HB300 的 sample_ms 时效、无温度和CSQ/流量准确解析");
+    ok(outages.size() == 1 && outages[0].recovered && outages[0].dur == 60 &&
+       outages[0].startLine == 7 && outages[0].endLine == 16,
+       "RK3506J online=1→0→1 配成可信60秒断网");
+    ok(sim && registration && pdp && network && device && ping && retry,
+       "RK3506J SIM/注册/PDP/DHCP/AT/ping/失败重试均形成源码直证结论");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -952,6 +1013,7 @@ int main() {
     t19_display_version_platform_and_restart();
     t20_imx6ull_state_machine();
     t21_imx6ull_1251_recovery_and_at_health();
+    t22_rk3506j_state_machine();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }

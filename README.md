@@ -45,13 +45,14 @@
 > **旧版 EC200A 与 open_dial 不做区分**:二者心跳字段完全相同；但含新版
 > `dial_ec200a_*` / `rtms_ec200a_*` 展示版本时，工具按该直接证据区分来源。
 >
-> **IMX6ULL**:新版 RTMS 除平台化版本横幅外，还输出 `[HB30]` / `[HB300]` 状态快照。
+> **IMX6ULL / RK3506J**:新版 RTMS 都输出 `[HB30]` / `[HB300]` 状态快照。
 > 工具解析其 `online/downtime_s/cereg/pdp/CSQ/RSRP/RSRQ/SNR/RSSI/temp_c/at_timeout/at_probe`、详细快照中的
 > `detailed_at_timeout/detailed_at_stage/serving_cell/PCI/TAC/rx_packets`，并以 `online=1→0→1` 或 `[RECOVERY]` 配对断网；
 > 仅带 `downtime_s` 的 `[RECOVERY]` 才表示恢复完成；`class/level/action` 的 PDP、CFUN、硬件分级动作
 > 仍属于断网中的恢复过程。`[FAILURE]/[RETRY]/[SIM]/[REG]/[PDP]/[DHCP]/[NET]/[DEVICE]/[AT]` 和新版
-> `[RECOVERY]` 进入状态机诊断。
-> 陈旧的详细快照不会参与 RX 停滞计算。**RK3506J** 仍仅识别平台和启动边界，等待其真机格式验证。
+> `[RECOVERY]` 进入 IMX6ULL 状态机诊断。RK3506J 的外置 EC200A / EG912 ECM 状态机则识别
+> `[EC200A]` / `[EG912]` 的失败重试、`[bringup]` 的 SIM/注册/PDP/DHCP 失败，以及
+> `[DEVICE]` / `[AT]` 的拓扑和端口失败。陈旧的详细快照不会参与 RX 停滞计算。
 
 ### 心跳格式逐平台不同(不要假设相同)
 
@@ -262,9 +263,9 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.11.6.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.11.8.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
-| 标题栏 | `dialLog v1.11.6 — 拨号日志分析` |
+| 标题栏 | `dialLog v1.11.8 — 拨号日志分析` |
 
 文件名自带版本号:发给别人、存档、收截图时都不会搞混是哪个 build。
 `make clean` 只清理 `build/`；测试程序也位于 `build/tests/`，不会污染根目录或误删已提交的发布 exe。
@@ -299,6 +300,8 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 | 1.11.4 | 适配 IMX6ULL RTMS 1.25.1 的分级 PDP/CFUN/硬件恢复、AT 超时确认探测和可配置探测端点；避免进行中的 RECOVERY 动作提前结束断网 |
 | 1.11.5 | 识别 artery 与 RTMS EG25 的“COPS 手动锁网→COPS=0 成功→恢复注册”证据链；独立统计冷启动注册等待与日志空洞，CFUN 重试不缩短首次等待 |
 | 1.11.6 | 可用率拆分为首次联网后运行期可用率与全程服务可达率；启动期未联网和日志末尾未恢复断网纳入不可用统计，避免首次联网失败误显 100% |
+| 1.11.7 | 完整解析 open_dial `HEARTBEAT-NET` 数据面状态；跨日文件和 L3 进程重拉合并同一设备主事故，并按现场阈值输出结论 |
+| 1.11.8 | 接入 RK3506J RTMS 1.28.1：兼容 `sample_ms`、`temp_c=(unavailable)`、压缩 AT 应答和按变更输出的 PLMN；新版 HB300 流量计数持续纳入分析 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞约 1.8MiB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

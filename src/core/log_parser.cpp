@@ -540,6 +540,9 @@ struct StreamingLogParser::Impl {
     int previousRfc3164Year = 0;
     int previousRfc3164Month = 0;
     std::vector<size_t> pendingConsole;
+    // SD 日志的 AT 回显可能是“带时间戳的标题 + 响应 + 空行 + OK”。空行不应
+    // 关闭这个条目，否则最后的 OK 会被误判为裸控制台输出。
+    bool continuationOpen = false;
 
     Impl(std::vector<LogLine>& outRef, std::vector<std::string>& sessionRef, size_t reserveHint)
         : out(outRef), sessions(sessionRef) {
@@ -684,6 +687,9 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
                 }
             }
             out.push_back(std::move(L));
+            const std::string& message = out.back().msg;
+            const size_t last = message.find_last_not_of(" \t");
+            continuationOpen = last != std::string::npos && message[last] == ':';
             return;
         }
 
@@ -708,6 +714,7 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
                 // 纯 stderr 没有源码时间，只记录原始启动信号；不伪造 epoch/session。
                 if (isV2StartBanner(L.msg)) ad.programStarted++;
                 out.push_back(std::move(L));
+                continuationOpen = false;
                 if (lastTs.empty()) pendingConsole.push_back(out.size() - 1);
                 return;
             }
@@ -729,15 +736,11 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
         // 挡不住的就老实计入未识别,由审计报出来 —— 那才是诚实的做法。
         // 跨文件防御:本行是某文件首行时,即使无时间戳也不并入上一条(那是上一个文件的),
         // 老实计入未识别,由审计报出。
-        if (!out.empty() && out.back().fmt != FMT_CONSOLE && !atFileStart) {
-            const std::string& prev = out.back().msg;
-            size_t e2 = prev.find_last_not_of(" \t");
-            if (e2 != std::string::npos && prev[e2] == ':') {
-                out.back().msg += " ⏎ ";
-                out.back().msg += line;
-                ad.continuation++;
-                return;
-            }
+        if (!out.empty() && out.back().fmt != FMT_CONSOLE && !atFileStart && continuationOpen) {
+            out.back().msg += " ⏎ ";
+            out.back().msg += line;
+            ad.continuation++;
+            return;
         }
 
         // 未识别:计数 + 分类 + 留样(这是“没漏消息”的唯一硬证据)
@@ -756,6 +759,7 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
         L.setTag("CONSOLE");
         L.msg = stripAnsi(line);
         out.push_back(std::move(L));
+        continuationOpen = false;
         if (lastTs.empty()) pendingConsole.push_back(out.size() - 1);
 }
 

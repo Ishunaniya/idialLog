@@ -68,11 +68,13 @@
 //   1.11.7  完整解析 open_dial [HEARTBEAT-NET] 数据面状态；跨日文件和 L3 进程重拉
 //           合并同一设备主事故，纠正 never-connected 历史联网误判，并按现场 L3 threshold
 //           输出结论。
+//   1.11.8  接入 RK3506J RTMS 1.28.1：兼容 sample_ms、无温度与压缩 AT 应答；
+//           识别 PLMN 变更，确保新版 HB300 流量计数仍按当前采样解析。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 7
+#define DL_VER_PATCH 8
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)
