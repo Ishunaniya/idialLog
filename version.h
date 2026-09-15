@@ -70,11 +70,13 @@
 //           输出结论。
 //   1.11.8  接入 RK3506J RTMS 1.28.1：兼容 sample_ms、无温度与压缩 AT 应答；
 //           识别 PLMN 变更，确保新版 HB300 流量计数仍按当前采样解析。
+//   1.11.9  新日志不继承历史筛选；支持设备回传的 vendor logcat 与 dmesg 快照；
+//           CP dump 库存与当前 CP 异常分级，断网表标明设备自报时长。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 8
+#define DL_VER_PATCH 9
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

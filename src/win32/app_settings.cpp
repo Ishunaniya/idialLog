@@ -14,26 +14,11 @@ constexpr size_t kMaxRecentFiles = 5;
 constexpr size_t kMaxSearchHistory = 8;
 AppSettings g_settings;
 
-std::wstring ReadString(HKEY key, const wchar_t* name) {
-    DWORD type = 0, bytes = 0;
-    if (RegQueryValueExW(key, name, nullptr, &type, nullptr, &bytes) != ERROR_SUCCESS ||
-        type != REG_SZ || bytes < sizeof(wchar_t)) return L"";
-    std::vector<wchar_t> value(bytes / sizeof(wchar_t) + 1, L'\0');
-    if (RegQueryValueExW(key, name, nullptr, nullptr,
-                         reinterpret_cast<BYTE*>(value.data()), &bytes) != ERROR_SUCCESS) return L"";
-    return value.data();
-}
-
 DWORD ReadDword(HKEY key, const wchar_t* name, DWORD fallback) {
     DWORD value = fallback, bytes = sizeof(value), type = 0;
     if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<BYTE*>(&value), &bytes) != ERROR_SUCCESS ||
         type != REG_DWORD || bytes != sizeof(value)) return fallback;
     return value;
-}
-
-void WriteString(HKEY key, const wchar_t* name, const std::wstring& value) {
-    RegSetValueExW(key, name, 0, REG_SZ, reinterpret_cast<const BYTE*>(value.c_str()),
-                   static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t)));
 }
 
 void WriteDword(HKEY key, const wchar_t* name, DWORD value) {
@@ -77,10 +62,7 @@ void LoadAppSettings() {
     HKEY key = nullptr;
     if (RegOpenKeyExW(HKEY_CURRENT_USER, kSettingsKey, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS) return;
 
-    g_settings.tagFilter = ReadString(key, L"TagFilter");
-    g_settings.grepFilter = ReadString(key, L"GrepFilter");
-    g_settings.sinceFilter = ReadString(key, L"SinceFilter");
-    g_settings.untilFilter = ReadString(key, L"UntilFilter");
+    // 筛选是一次分析的临时范围，跨会话恢复会把新日志静默筛成空页，故不再读取旧值。
     g_settings.lastPage = static_cast<int>(ReadDword(key, L"LastPage", 0));
     if (g_settings.lastPage < 0 || g_settings.lastPage >= 9) g_settings.lastPage = 0;
     g_settings.filtersExpanded = ReadDword(key, L"FiltersExpanded", 0) != 0;
@@ -103,10 +85,11 @@ void SaveAppSettings() {
     HKEY key = nullptr;
     if (RegCreateKeyExW(HKEY_CURRENT_USER, kSettingsKey, 0, nullptr, 0, KEY_SET_VALUE,
                         nullptr, &key, nullptr) != ERROR_SUCCESS) return;
-    WriteString(key, L"TagFilter", g_settings.tagFilter);
-    WriteString(key, L"GrepFilter", g_settings.grepFilter);
-    WriteString(key, L"SinceFilter", g_settings.sinceFilter);
-    WriteString(key, L"UntilFilter", g_settings.untilFilter);
+    // 清理旧版本留下的值，避免用户升级后首开仍被隐藏筛选影响。
+    RegDeleteValueW(key, L"TagFilter");
+    RegDeleteValueW(key, L"GrepFilter");
+    RegDeleteValueW(key, L"SinceFilter");
+    RegDeleteValueW(key, L"UntilFilter");
     WriteDword(key, L"LastPage", static_cast<DWORD>(g_settings.lastPage));
     WriteDword(key, L"FiltersExpanded", g_settings.filtersExpanded ? 1 : 0);
     if (g_settings.hasPlacement) {

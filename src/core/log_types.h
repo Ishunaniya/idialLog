@@ -14,7 +14,9 @@ namespace dl {
 
 // 行格式
 enum Fmt : unsigned char {
-    FMT_UNKNOWN = 0, FMT_SD, FMT_SEAS, FMT_ANDROID, FMT_SYSLOG, FMT_CONSOLE
+    FMT_UNKNOWN = 0, FMT_SD, FMT_SEAS, FMT_ANDROID, FMT_SYSLOG, FMT_CONSOLE,
+    // dmesg 只有单调 uptime，不能和墙钟日志混排；仍作为内核快照保留原文和相对时间。
+    FMT_KERNEL
 };
 
 // seas_log 级别来自固定枚举,不必让每一行都常驻一个 32B std::string。
@@ -122,6 +124,8 @@ struct Outage {
     long long end   = 0;
     int  dur        = 0;
     bool recovered  = false;
+    // true=设备在恢复行自报 Down:N；没有独立的原始故障起点，展示和统计必须明确其证据等级。
+    bool reportedDuration = false;
     bool l0Recovered = false;            // true=SDK 在 L0 阶段自愈(短断网,链路抖动);
                                          // false=走了 L1+ 恢复阶梯或普通恢复
     size_t startLine = 0, endLine = 0;   // 证据行号

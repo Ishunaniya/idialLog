@@ -660,7 +660,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                                           GetModuleHandleW(nullptr), nullptr);
         App().hUnparsed = CreateList(IDC_UNPARSED, {{L"原始行号", 90}, {L"未识别的原文", 960}});
         App().hTimeline = CreateList(IDC_TIMELINE, {{L"时间", 140}, {L"标签", 90}, {L"消息", 820}}, true);
-        App().hOutage = CreateList(IDC_OUTAGE, {{L"#", 44}, {L"开始", 160}, {L"恢复", 160}, {L"时长", 90}});
+        App().hOutage = CreateList(IDC_OUTAGE, {{L"#", 44}, {L"开始", 160}, {L"恢复", 160}, {L"时长", 90}, {L"依据", 140}});
         App().hMetric = CreateList(IDC_METRIC, {{L"时间", 140}, {L"CH", 82},
             {L"小区 ID", 105}, {L"PCI", 58}, {L"TAC", 70}, {L"CSQ", 58}, {L"Tmax", 58},
             {L"ConsecFail", 86}, {L"RX_PKT", 105}, {L"ΔRX", 76}, {L"RSRP", 68}, {L"RSRQ", 68},

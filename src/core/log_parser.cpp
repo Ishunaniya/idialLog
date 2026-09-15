@@ -212,7 +212,8 @@ static bool splitSyslogApp(const std::string& field, std::string& app);
 // Android logcat -v threadtime：
 //   YYYY-MM-DD HH:MM:SS.mmm pid tid I TAG: msg（部分采集器补全年）
 //   MM-DD HH:MM:SS.mmm pid tid I TAG: msg（Android 原生 threadtime）
-static bool parseAndroid(const std::string& line0, LogLine& L, int yearHint) {
+static bool parseAndroid(const std::string& line0, LogLine& L, int yearHint,
+                         bool yearHintInferred = false) {
     int Y=0, Mo=0, D=0, h=0, mi=0, s=0, ms=0;
     size_t p = 0;
     bool fullYear = line0.size() >= 24 && line0[4] == '-' && line0[7] == '-';
@@ -224,26 +225,50 @@ static bool parseAndroid(const std::string& line0, LogLine& L, int yearHint) {
         if (line0.size() < 19 || line0[2] != '-' || line0[5] != ' ') return false;
         if (std::sscanf(line0.c_str(), "%2d-%2d %2d:%2d:%2d.%3d",
                         &Mo,&D,&h,&mi,&s,&ms) != 6) return false;
-        Y = yearHint ? yearHint : 1970;
+        // MM-DD logcat 本身不能证明年份。调用方没有文件名年份锚点时，宁可保留为
+        // 未定序来源，也不能伪造 1970 并触发跨时基排除。
+        if (!yearHint) return false;
+        Y = yearHint;
         p = 18;
     }
-    // pid、tid、单字母级别。
-    p = skipField(line0, p);
-    p = skipField(line0, p);
     while (p < line0.size() && line0[p] == ' ') ++p;
-    if (p >= line0.size() || std::string("VDIWEF").find(line0[p]) == std::string::npos)
-        return false;
-    char level = line0[p++];
-    while (p < line0.size() && line0[p] == ' ') ++p;
-    size_t colon = line0.find(':', p);
-    if (colon == std::string::npos || colon == p) return false;
-    std::string outerTag = trim(line0.substr(p, colon - p));
-    p = colon + 1;
+    char level = 0;
+    std::string outerTag;
+
+    // 标准 threadtime: "pid tid I TAG: msg"。
+    // 本机快照: "V/kernel  ( 4719): msg"；它没有 tid，优先级与 tag 合成 V/tag。
+    if (p + 2 < line0.size() && std::string("VDIWEF").find(line0[p]) != std::string::npos &&
+        line0[p + 1] == '/') {
+        level = line0[p];
+        const size_t tagStart = p + 2;
+        size_t tagEnd = tagStart;
+        while (tagEnd < line0.size() && line0[tagEnd] != ' ' && line0[tagEnd] != '\t' &&
+               line0[tagEnd] != ':') ++tagEnd;
+        if (tagEnd == tagStart) return false;
+        const size_t colon = line0.find(':', tagEnd);
+        if (colon == std::string::npos) return false;
+        outerTag = line0.substr(tagStart, tagEnd - tagStart);
+        p = colon + 1;
+    } else {
+        p = skipField(line0, p);
+        p = skipField(line0, p);
+        while (p < line0.size() && line0[p] == ' ') ++p;
+        if (p >= line0.size() || std::string("VDIWEF").find(line0[p]) == std::string::npos)
+            return false;
+        level = line0[p++];
+        while (p < line0.size() && line0[p] == ' ') ++p;
+        size_t colon = line0.find(':', p);
+        if (colon == std::string::npos || colon == p) return false;
+        outerTag = trim(line0.substr(p, colon - p));
+        p = colon + 1;
+    }
     while (p < line0.size() && line0[p] == ' ') ++p;
 
     char ts[32];
     std::snprintf(ts, sizeof ts, "%04d-%02d-%02d %02d:%02d:%02d", Y,Mo,D,h,mi,s);
-    L.ts = ts; L.t = mkEpoch(Y,Mo,D,h,mi,s); L.ms = ms; L.fmt = FMT_ANDROID;
+    L.ts = (fullYear || !yearHintInferred) ? std::string(ts) : "~" + std::string(ts);
+    L.t = mkEpoch(Y,Mo,D,h,mi,s); L.ms = ms; L.fmt = FMT_ANDROID;
+    L.inferredTime = !fullYear && yearHintInferred;
     if      (level == 'V') L.setLevel("ALL");
     else if (level == 'D') L.setLevel("DEBUG");
     else if (level == 'I') L.setLevel("INFO");
@@ -252,6 +277,26 @@ static bool parseAndroid(const std::string& line0, LogLine& L, int yearHint) {
     else if (level == 'F') L.setLevel("FATAL");
     L.setTag(outerTag);
     splitTag(line0.substr(p), L); // 正文中的 [RECOVERY]/[INIT] 优先
+    return true;
+}
+
+// dmesg: "[ 1008.354622] message"。它是相对开机时间，不能作为墙钟时间轴的一部分，
+// 但必须结构化保留，才能让 CP/内核故障证据不被淹没在“未识别行”里。
+static bool parseDmesg(const std::string& line0, LogLine& L) {
+    if (line0.size() < 5 || line0[0] != '[') return false;
+    const size_t close = line0.find(']');
+    if (close == std::string::npos || close <= 1) return false;
+    const std::string uptime = trim(line0.substr(1, close - 1));
+    char* end = nullptr;
+    const double seconds = std::strtod(uptime.c_str(), &end);
+    if (!end || end == uptime.c_str() || *end != '\0' || seconds < 0 ||
+        seconds > static_cast<double>(LLONG_MAX)) return false;
+    L.t = static_cast<long long>(seconds);
+    L.ts = "~uptime " + uptime;
+    L.fmt = FMT_KERNEL;
+    L.inferredTime = true;
+    L.setTag("KERNEL");
+    L.msg = trim(line0.substr(close + 1));
     return true;
 }
 
@@ -537,6 +582,7 @@ struct StreamingLogParser::Impl {
     long long lastT = 0;
     std::string lastTs;
     int yearHint = 0;
+    bool yearHintInferred = false;
     int previousRfc3164Year = 0;
     int previousRfc3164Month = 0;
     std::vector<size_t> pendingConsole;
@@ -618,10 +664,10 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
         LogLine L;
         L.lineNo = idx + 1;
         int parsedRfcYear = 0, parsedRfcMonth = 0;
-        if (parseSd(line, L) || parseAndroid(line, L, yearHint) ||
+        if (parseSd(line, L) || parseAndroid(line, L, yearHint, yearHintInferred) ||
             parseSeas(line, L) ||
             parseSyslog(line, L, yearHint, previousRfc3164Year, previousRfc3164Month,
-                        &parsedRfcYear, &parsedRfcMonth)) {
+                        &parsedRfcYear, &parsedRfcMonth) || parseDmesg(line, L)) {
             L.sourceId = sourceId;
             ad.parsed++;
             lastT = L.t;
@@ -632,6 +678,7 @@ void StreamingLogParser::Impl::pushLine(std::string line) {
                 decimalChar(L.ts[dateOffset+2]) && decimalChar(L.ts[dateOffset+3])) {
                 yearHint = (L.ts[dateOffset]-'0')*1000 + (L.ts[dateOffset+1]-'0')*100 +
                            (L.ts[dateOffset+2]-'0')*10 + (L.ts[dateOffset+3]-'0');
+                yearHintInferred = false;
                 if (parsedRfcYear) {
                     previousRfc3164Year = parsedRfcYear;
                     previousRfc3164Month = parsedRfcMonth;
@@ -790,13 +837,14 @@ StreamingLogParser::~StreamingLogParser() = default;
 StreamingLogParser::StreamingLogParser(StreamingLogParser&&) noexcept = default;
 StreamingLogParser& StreamingLogParser::operator=(StreamingLogParser&&) noexcept = default;
 
-void StreamingLogParser::beginFile() {
+void StreamingLogParser::beginFile(int sourceYearHint) {
     if (impl_ && !impl_->finished) {
         impl_->nextIsFileStart = true;
         if (impl_->sourceId != UINT16_MAX) ++impl_->sourceId;
         impl_->lastT = 0;
         impl_->lastTs.clear();
-        impl_->yearHint = 0;
+        impl_->yearHint = sourceYearHint;
+        impl_->yearHintInferred = sourceYearHint != 0;
         impl_->previousRfc3164Year = 0;
         impl_->previousRfc3164Month = 0;
     }

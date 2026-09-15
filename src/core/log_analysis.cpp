@@ -345,6 +345,13 @@ bool isFaultStart(const std::string& msg) {
            (icontains(msg, "Interface has no RX data for") && icontains(msg, "IF="));
 }
 
+// 来自 CP/SEH 的直接异常标志。它只证明基带通信异常或断言发生过；没有厂商符号表和
+// 原始 dump，绝不把它扩展解释为固件、供电、射频或网络侧的唯一根因。
+static bool isCpCrashEvidence(const std::string& msg) {
+    return icontains(msg, "CP down") || icontains(msg, "DSP_COM_ERR=") ||
+           icontains(msg, "MSOCKET_DOWN") || icontains(msg, "CP-ASSERT");
+}
+
 // open_dial 的联网通知没有自报 Down: Ns，不能复用 isRecovered()；它仍是
 // 设备级事故的明确恢复边沿。只接纳固定通知文本，避免普通说明误触发。
 static bool isNetworkConnectedNotification(const std::string& msg) {
@@ -542,6 +549,7 @@ bool isErrLine(const LogLine& l) {
 // 时间线保留:事件类标签,或 seas 的报错行(artery 大量日志无内嵌标签,
 // 只按标签过滤会让 artery 的时间线几乎全空)
 bool isEventLine(const LogLine& l) {
+    if (isCpCrashEvidence(l.msg)) return true;
     if (isModemMngV2Event(l) || isModemMngV2Failure(l)) return true;
     if (isImxHeartbeatDiagnostic(l)) return true;
     // RK3506J 1.28.1 只在运营商/PLMN 实际变化时输出这条 INIT 记录；它不是
@@ -722,6 +730,7 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
             // SDK L0 自愈:恢复行含 "(L0)"(open_dial "Network Recovered in SDK phase (L0)")。
             // 这类是短断网、链路抖动,设备自愈,与走 L1+ 阶梯的深层恢复区分。
             o.l0Recovered = (l.msg.find("(L0)") != std::string::npos);
+            o.reportedDuration = reportedRecovery && selfContained;
             outs.push_back(o);
             have = false;
             legacyInterfaceDown = false;
@@ -1962,7 +1971,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     // ---- 预扫:各类特征行(全部留证据指针)----
     std::vector<const LogLine*> evNeverConn, evPolicy, evRecL1, evRecL2, evRecL3,
                                 evDenied, evLimited, evSuspectedAccount, evRegQueryFail,
-                                evRegistrationIssue, evHardRegistrationIssue, evCpdump, evSlot, evOper, evCfun,
+                                evRegistrationIssue, evHardRegistrationIssue, evCpdump, evCpCrash, evSlot, evOper, evCfun,
                                 evManualCops, evCopsAutoRestore, evRegistrationRecovered,
                                 evManualSelectionCommand,
                                 evNotReady, evOrphanRecovery, evImpossibleRecovery,
@@ -1982,6 +1991,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evRkNetwork, evRkDeviceAt, evRkPing;
     std::vector<const LogLine*> evNetInterfaceNone, evNetTxWithoutRx;
     std::map<std::string, size_t> appStopReasons, unsolicitedReasons;
+    std::set<std::string> historicalCpInventories;
     std::map<std::uint16_t, std::pair<long long, long long>> sourceBounds;
     std::map<std::uint16_t, bool> faultOpen;
     std::map<std::uint16_t, long long> faultStartTime;
@@ -1996,6 +2006,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
         if (isProgramStartBanner(l.msg)) evProgramStart.push_back(&l);
+        if (isCpCrashEvidence(l.msg)) evCpCrash.push_back(&l);
         // artery 的 license 流程使用固定的 SEAS_LOG 原文。只把“缺失 → 下载等待
         // → 超时降级”这一完整、明确的产品动作作为结论；单条 license missing
         // 可能随后从备份恢复，不能单独当作下载失败。
@@ -2242,7 +2253,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         // 【样本实证】真机 EC200A 1.28.4(完全正常的设备)只打了 "Bind mounted ..." 和
         // "No existing CP dumps.",旧实现据此报出 [严重] 基带崩溃 —— 假阳性,会误导排查方向。
         if (l.tagText() == "CPDUMP" && icontains(l.msg, "existing CP dump") &&
-            !icontains(l.msg, "No existing"))                evCpdump.push_back(&l);
+            !icontains(l.msg, "No existing") && historicalCpInventories.insert(l.msg).second)
+            evCpdump.push_back(&l);
         if (l.tagText() == "SLOT")                          evSlot.push_back(&l);
         if (l.tagText() == "OPER")                          evOper.push_back(&l);
         if (l.tagText() == "CFUN")                          evCfun.push_back(&l);
@@ -2972,12 +2984,23 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         fs.push_back(std::move(f));
     }
 
-    if (!evCpdump.empty()) {
+    if (!evCpCrash.empty()) {
         Finding f;
         f.severity = 2;
-        f.title  = "检测到模组 CP dump(基带崩溃)";
-        f.detail = "日志出现 \"[CPDUMP] Found N existing CP dump(s)\" —— 模组基带侧确实发生过崩溃转储。\n(注:仅 \"Found ... existing CP dump(s)\" 计入;例行的 bind mount / \"No existing CP dumps\" 不算。)";
-        f.advice = "取回 dump 文件反馈模组厂商;纯应用层重拨/CFUN 无法根治固件崩溃。";
+        f.title = "检测到基带 CP 异常/重置的直接证据";
+        f.detail = "快照中出现 CP down、DSP_COM_ERR、MSOCKET_DOWN 或 CP-ASSERT。该证据可确认"
+                   "基带通信异常/重置，但不能仅凭文本确定固件、硬件、供电、射频或网络侧根因。";
+        f.advice = "保留同一时段的 CP dump、SEH/内核日志和供电/射频记录，交由模组厂商按符号表解析。";
+        for (size_t i = 0; i < evCpCrash.size() && i < 4; ++i) f.ev.push_back(mkEv(*evCpCrash[i]));
+        fs.push_back(std::move(f));
+    }
+    if (!evCpdump.empty()) {
+        Finding f;
+        f.severity = 1;
+        f.title  = "检测到历史 CP dump 库存（不能定为当前崩溃）";
+        f.detail = "[CPDUMP] Found N existing CP dump(s) 只说明启动时存储中已有转储；它不提供本次"
+                   "启动内的崩溃时刻，也不能作为当前事故或独立崩溃次数。相同库存文本已去重。";
+        f.advice = "如需定责，请以 CP down/CP-ASSERT 等当前事件及对应 dump 文件为准，并让模组厂商解析。";
         for (size_t i = 0; i < evCpdump.size() && i < 3; ++i) f.ev.push_back(mkEv(*evCpdump[i]));
         fs.push_back(std::move(f));
     }

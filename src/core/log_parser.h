@@ -24,7 +24,8 @@ public:
     StreamingLogParser& operator=(StreamingLogParser&&) noexcept;
 
     // 在下一行前建立文件边界,阻止该行被并入上一文件末行的续行。
-    void beginFile();
+    // yearHint 仅用于 Android MM-DD 日志缺失年份时，由文件名/目录的可审计日期补全；0=不补全。
+    void beginFile(int yearHint = 0);
     // 接受一行原始文本；允许带行尾 CR/LF。调用后不再保留参数内容。
     void pushLine(std::string line);
     // 完成会话去重并取回审计。finish 后不再接受新行。

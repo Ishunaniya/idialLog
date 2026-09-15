@@ -120,14 +120,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     int argc = 0;
     LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (!argv || argc != 3) return 90;
-    // 冒烟测试复用 Wine 前缀时，不应继承人工测试留下的筛选条件，否则样本可能被筛成 0 行。
+    // 新输入必须不继承旧会话筛选；故意写入必定不匹配的条件验证该回归点。
     HKEY settings = nullptr;
     if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\dialLog", 0, nullptr, 0,
                         KEY_SET_VALUE, nullptr, &settings, nullptr) == ERROR_SUCCESS) {
-        const wchar_t empty[] = L"";
+        const wchar_t stale[] = L"__stale_filter_must_not_apply__";
         for (const wchar_t* name : {L"TagFilter", L"GrepFilter", L"SinceFilter", L"UntilFilter"})
             RegSetValueExW(settings, name, 0, REG_SZ,
-                           reinterpret_cast<const BYTE*>(empty), sizeof(empty));
+                           reinterpret_cast<const BYTE*>(stale), sizeof(stale));
         RegCloseKey(settings);
     }
     std::wstring command = L"\"" + std::wstring(argv[1]) + L"\" \"" + argv[2] + L"\"";
@@ -168,7 +168,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     HWND metrics = GetDlgItem(window, 1014);
     HWND chart = GetDlgItem(window, 1017);
     HWND header = ListView_GetHeader(metrics);
-    if (!header || Header_GetItemCount(header) != 19) return finish(20);
+    if (!header || Header_GetItemCount(header) != 22) return finish(20);
     if (!IsWindowVisible(chart)) return finish(22);
     HWND chartMode = GetDlgItem(window, 1047), splitMode = GetDlgItem(window, 1048);
     HWND tableMode = GetDlgItem(window, 1049);

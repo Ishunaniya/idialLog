@@ -156,10 +156,12 @@ static void RenderOutages() {
         if (o.recovered) {
             LvSet(App().hOutage, row, 2, U8ToW(fmtTime(o.end, "MD")));
             LvSet(App().hOutage, row, 3, U8ToW(fmtDur(o.dur)));
+            LvSet(App().hOutage, row, 4, o.reportedDuration ? L"设备自报 Down 时长" : L"原始起止边沿");
             g_ogColors.push_back(o.dur > 60 ? th::critical : (o.dur > 30 ? th::rowWarn : th::inkPri));
         } else {
             LvSet(App().hOutage, row, 2, L"未恢复");
             LvSet(App().hOutage, row, 3, L"?");
+            LvSet(App().hOutage, row, 4, L"尚未闭合");
             g_ogColors.push_back(th::critical);
         }
         row++;

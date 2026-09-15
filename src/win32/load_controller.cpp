@@ -63,6 +63,37 @@ struct LoadResult {
     bool success = false;
 };
 
+// 日志文件名/归档目录通常带 YYYYMMDD。仅提取已经存在于来源名称里的年份，供 Android
+// MM-DD logcat 补全年；提取失败就保持未定序，绝不拿当前年份或 1970 猜测。
+static int YearHintFromLabel(const std::wstring& label) {
+    for (size_t i = 0; i + 8 <= label.size(); ++i) {
+        int digits[8]{};
+        bool allDigits = true;
+        for (size_t k = 0; k < 8; ++k) {
+            if (label[i + k] < L'0' || label[i + k] > L'9') { allDigits = false; break; }
+            digits[k] = label[i + k] - L'0';
+        }
+        if (!allDigits) continue;
+        const int year = digits[0] * 1000 + digits[1] * 100 + digits[2] * 10 + digits[3];
+        const int month = digits[4] * 10 + digits[5];
+        const int day = digits[6] * 10 + digits[7];
+        if (year >= 2000 && year <= 2999 && month >= 1 && month <= 12 && day >= 1 && day <= 31)
+            return year;
+    }
+    return 0;
+}
+
+// 一份新输入默认必须以全量日志分析。筛选只属于当前文档，绝不让隐藏的旧条件影响新文档。
+static void ResetFiltersForNewInput() {
+    for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
+        if (edit) SetWindowTextW(edit, L"");
+    ClearMetricQuickFilters(false);
+    if (App().hFilterToggle) {
+        SetWindowTextW(App().hFilterToggle, L"筛选");
+        SetModernButtonActive(App().hFilterToggle, false);
+    }
+}
+
 } // namespace
 
 static void PresentAnalysis(bool bad) {
@@ -122,6 +153,7 @@ static void LoadRawLines(std::vector<std::string> raw, const std::wstring& srcLa
                          const std::vector<size_t>& fileBoundaries = {}) {
     // raw 已成功读取/合并后才卸载旧日志；读取失败仍保留当前分析。释放旧分析结果后再
     // parse,避免“大旧日志模型 + 新日志原文 + 新分析模型”三者在切换期间重叠。
+    ResetFiltersForNewInput();
     ReleaseLoadedData();
     parseLines(raw, App().document.lines, App().document.sessions, &App().document.audit, fileBoundaries);
     releaseVector(raw);
@@ -346,8 +378,8 @@ static DWORD WINAPI LoadWorker(void* parameter) {
         for (size_t orderIndex = 0; orderIndex < ord.size(); ++orderIndex) {
             if (LoadCancelled()) { parseOk = false; parseErr = L"操作已取消"; break; }
             const size_t i = ord[orderIndex];
-            parser.beginFile();
             LoadSource& source = sources[i];
+            parser.beginFile(YearHintFromLabel(source.label));
             SourceRange range{source.label, result->document.lines.size(), result->document.lines.size()};
             if (source.streamPlain) {
                 WorkerProgress progress{
@@ -472,10 +504,12 @@ void LoadFiles(const std::vector<std::wstring>& paths) {
     }
     request->owner = App().hMain;
     request->paths = paths;
-    request->tag = WToU8(GetText(App().hTagBox));
-    request->grep = WToU8(GetText(App().hGrepBox));
-    request->since = WToU8(GetText(App().hSinceBox));
-    request->until = WToU8(GetText(App().hUntilBox));
+    // 拖入/打开另一份日志就是新的分析会话：后台从全量数据构建。但直到加载成功前，
+    // 不碰当前界面与筛选，确保取消或失败时旧文档的显示状态保持不变。
+    request->tag.clear();
+    request->grep.clear();
+    request->since.clear();
+    request->until.clear();
     InterlockedExchange(&g_loadCancel, 0);
     InterlockedExchange(&g_loadShutdown, 0);
     InterlockedExchange(&g_loadActive, 1);
@@ -555,6 +589,7 @@ bool HandleLoadControllerMessage(UINT message, WPARAM wparam, LPARAM lparam) {
     ResetVirtualTables();
     ReleaseLoadedData();
     App().document.swap(result->document);
+    ResetFiltersForNewInput();
     RebuildMetricQuickFilterView();
     SetWindowTextW(App().hFileLbl, result->label.c_str());
     PresentAnalysis(result->badRegex);

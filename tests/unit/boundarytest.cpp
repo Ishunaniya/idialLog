@@ -989,6 +989,57 @@ static void t22_rk3506j_state_machine() {
        "RK3506J SIM/注册/PDP/DHCP/AT/ping/失败重试均形成源码直证结论");
 }
 
+// 当前设备 ZIP 同时携带 vendor logcat 与 dmesg。二者不能再退化为海量 CONSOLE 未识别行，
+// 且 CP dump 库存与当前 CP 异常必须分级，避免把历史残留误报成正在发生的崩溃。
+static void t23_snapshot_formats_and_cp_evidence() {
+    std::printf("== T23 快照格式、CP 证据分级与自报时长 ==\n");
+    std::vector<LogLine> lines;
+    std::vector<std::string> sessions;
+    ParseAudit audit;
+    StreamingLogParser parser(lines, sessions);
+    parser.beginFile(2026);  // 文件名中的 20260914，是 MM-DD logcat 的可审计年份锚点
+    parser.pushLine("09-14 10:21:50.000 E/kernel  ( 4719): CP down !!!! DSP_COM_ERR=0x8164");
+    parser.beginFile();
+    parser.pushLine("[ 1008.354622] CP-ASSERT Silent Reset MSOCKET_DOWN");
+    parser.finish(&audit);
+
+    const auto metrics = buildMetrics(lines);
+    const auto outages = collectOutages(lines);
+    const auto findings = analyze(lines, outages, metrics, detectPlatform(lines), audit);
+    bool directCp = false;
+    for (const Finding& finding : findings)
+        directCp = directCp || finding.title.find("CP 异常/重置的直接证据") != std::string::npos;
+    ok(audit.parsed == 2 && audit.unparsed == 0 && lines.size() == 2 &&
+       lines[0].fmt == FMT_ANDROID && lines[0].inferredTime &&
+       lines[0].ts == "~2026-09-14 10:21:50" &&
+       lines[1].fmt == FMT_KERNEL && lines[1].ts.find("~uptime 1008.354622") == 0,
+       "vendor Android logcat 与 dmesg 快照结构化保留，缺年仅按文件名显式补全");
+    ok(directCp && isEventLine(lines[0]) && isEventLine(lines[1]),
+       "CP down/ASSERT/MSOCKET 进入时间线和直接证据结论");
+
+    std::vector<std::string> inventoryRaw = L({
+        "[2026-09-14 10:00:00] [CPDUMP] Found 1 existing CP dump(s)",
+        "[2026-09-14 10:05:00] [CPDUMP] Found 1 existing CP dump(s)",
+        "[2026-09-14 10:10:00] [INFO] Network Recovered. Down: 15s"
+    });
+    std::vector<LogLine> inventoryLines; std::vector<std::string> inventorySessions; ParseAudit inventoryAudit;
+    parseLines(inventoryRaw, inventoryLines, inventorySessions, &inventoryAudit);
+    const auto inventoryOutages = collectOutages(inventoryLines);
+    const auto inventoryFindings = analyze(inventoryLines, inventoryOutages, buildMetrics(inventoryLines),
+                                           detectPlatform(inventoryLines), inventoryAudit);
+    int historicalCount = 0;
+    bool falseCurrentCp = false;
+    for (const Finding& finding : inventoryFindings) {
+        historicalCount += finding.title.find("历史 CP dump 库存") != std::string::npos;
+        falseCurrentCp = falseCurrentCp || finding.title.find("CP 异常/重置的直接证据") != std::string::npos;
+    }
+    ok(historicalCount == 1 && !falseCurrentCp,
+       "重复 CP dump 库存只保留一条历史提示，不再误报当前基带崩溃");
+    ok(inventoryOutages.size() == 1 && inventoryOutages[0].recovered &&
+       inventoryOutages[0].reportedDuration && inventoryOutages[0].dur == 15,
+       "仅含 Down:N 的恢复记录明确标为设备自报时长");
+}
+
 int main() {
     t1_cross_file_continuation();
     t2_intra_file_continuation_still_works();
@@ -1014,6 +1065,7 @@ int main() {
     t20_imx6ull_state_machine();
     t21_imx6ull_1251_recovery_and_at_health();
     t22_rk3506j_state_machine();
+    t23_snapshot_formats_and_cp_evidence();
     std::printf("\n%s 失败 %d 项\n", g_fail ? "**" : "==", g_fail);
     return g_fail ? 1 : 0;
 }
