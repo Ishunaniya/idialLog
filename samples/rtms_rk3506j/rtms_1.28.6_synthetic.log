@@ -1,0 +1,22 @@
+[2026-09-16 10:00:00] Modem_mng Version: rtms_rk3506j_1.28.6
+[2026-09-16 10:00:00] [WAKE] hard_recovery=forbidden reason=startup mode initialized: boot reason unavailable
+[2026-09-16 10:00:01] [STARTUP] phase=dialer_started process_elapsed_ms=1000 boot_ms=11000
+[2026-09-16 10:00:02] [AT-CACHE] accepted family=EC200A verified=/dev/ttyUSB1 primary=/dev/ttyUSB1 aux=/dev/ttyUSB1
+[2026-09-16 10:00:03] [FULL-DIAL] family=EC200A port=/dev/ttyUSB1
+[2026-09-16 10:00:04] [AT-READY] CPIN attempt=1 port=/dev/ttyUSB1 status=completed ok=0 class=transient state=CME 10 elapsed_ms=20 total_ms=20 response=+CME ERROR: 10
+[2026-09-16 10:00:05] [AT-READY] CPIN attempt=2 port=/dev/ttyUSB1 status=read_timed_out ok=0 class=ready state=READY elapsed_ms=1000 total_ms=1020 response=+CPIN: READY
+[2026-09-16 10:00:06] [AT-READY] CGACT attempt=1 port=/dev/ttyUSB1 status=read_timed_out ok=0 usable=1 elapsed_ms=1000 total_ms=1000 response=+CGACT: 1,1
+[2026-09-16 10:00:07] [NANOMSG] PUB unavailable; dialing continues, retry_ms=1000 attempts=1 error=nn_bind failed
+[2026-09-16 10:00:08] [STARTUP] phase=ecm_ready process_elapsed_ms=8000 boot_ms=18000
+[2026-09-16 10:00:09] [STARTUP] phase=host_network_ready process_elapsed_ms=9000 boot_ms=19000
+[2026-09-16 10:00:10] [STARTUP] phase=internet_ready process_elapsed_ms=10000 boot_ms=20000
+[2026-09-16 10:00:10] [INTERNET-READY] ===== PUBLIC PING OK ===== target=223.5.5.5 if=eth1 ip=192.0.2.2 path=EC200A-full-dial retained=none probe_ms=380 process_elapsed_ms=10000 boot_ms=20000
+[2026-09-16 10:00:30] [HB30] online=1 | csq=26 | pdp=1 | cereg=5 | temp_c=(unavailable) | sample_ms=80
+[2026-09-16 10:00:35] [FULL-DIAL] Unable to ping google, attempt 1/5
+[2026-09-16 10:00:40] [HB30] online=0 | csq=24 | pdp=1 | cereg=5 | temp_c=(unavailable) | sample_ms=90
+[2026-09-16 10:00:45] [FULL-DIAL] state=REDIAL_AT: redial stage 2/4: AT reconnect retry 1/2
+[2026-09-16 10:00:46] [redial] QNETDEVCTL stop status=completed ok=1 elapsed_ms=20 response=OK
+[2026-09-16 10:00:47] [AT-READY] QNETDEVCTL attempt=1 port=/dev/ttyUSB1 status=read_timed_out ok=0 connected=1 state=type=3 cid=1 urc=1 status=1 elapsed_ms=1000 total_ms=1000 response=+QNETDEVCTL: 3,1,1,1
+[2026-09-16 10:01:05] [FULL-DIAL] connectivity restored
+[2026-09-16 10:01:10] [HB30] online=1 | csq=25 | pdp=1 | cereg=5 | temp_c=(unavailable) | sample_ms=70
+[2026-09-16 10:01:30] [HB300] online=1 | csq=26 | pdp=1 | cereg=5 | temp_c=(unavailable) | traffic_valid=1 | sample_ms=100 | rx_packets=12 | tx_packets=34

@@ -157,9 +157,11 @@ static bool runOne(size_t n) {
 }
 
 int main(int argc, char** argv) {
-    const bool compactRecords = sizeof(LogLine) <= 112 && sizeof(MetricRow) <= 192;
+    // 1.11.4 的 AT 健康字段使 x64 MetricRow 从 192 B 增至 232 B。
+    // 以当前已发布模型为布局上限；本轮 RK 适配没有添加逐行/指标字段。
+    const bool compactRecords = sizeof(LogLine) <= 112 && sizeof(MetricRow) <= 232;
     std::printf("== 紧凑记录布局 ==\n"
-                "   LogLine %zu B (上限 112) | MetricRow %zu B (上限 192) | %s\n",
+                "   LogLine %zu B (上限 112) | MetricRow %zu B (上限 232) | %s\n",
                 sizeof(LogLine), sizeof(MetricRow), compactRecords ? "通过" : "失败");
     std::vector<size_t> sizes;
     for (int i = 1; i < argc; ++i) {

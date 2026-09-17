@@ -19,6 +19,7 @@
 | `rtms_ec200a/` | `rtms_sdk/apps/modem_mng` EC200A | `FMT_SD` | ⚠️ 仅合成 | 行格式与心跳字段和 `dial_ec200a` **逐字段相同**(`open_dial/dial.c:518` vs `ec200a/dial/dial.cpp:1077`),后者已有真机实证 |
 | `rtms_imx6ull/` | `rtms_sdk/apps/modem_mng` IMX6ULL | `FMT_SD` | ✅ `dial_20260907_101753.log`(2030 行,13h42m,`rtms_imx6ull_1.25.0`；未入库，含设备标识) | **真机实证** |
 | `rtms_rk3506j/` | `rtms_sdk/apps/modem_mng` RK3506J | `FMT_SD` | ✅ `dial_20260910_091342.log`(62 行,外置 EC200A、完整 ECM bringup 与 9 个 HB30) | **真机实证** |
+| `rtms_rk3506j/rtms_1.28.6_synthetic.log` | RTMS 提交 `8f9aaa19..461b2b2f` | `FMT_SD` | 22 行，首次公网成功、AT 容错、IPC 重试、25 秒断网与恢复 | **源码派生合成输入，不是真机日志** |
 | `rtms_v2/` | `rtms_sdk/apps/modem_mng_v2`，运行时动态支持 EC200A/EG25 | BusyBox RFC3164 `FMT_SYSLOG` | ⚠️ `modem_mng_v2_synthetic.log`；年份显示为推定 `~YYYY-...` | **源码实证**，尚无 v2 真机日志 |
 
 ## modem_mng_v2 应采哪份日志
@@ -72,6 +73,16 @@ RK3506J 已用 `rtms_rk3506j/dial_20260910_091342.log` 真机日志验证：62 �
 IMX6ULL 共用 HB30/HB300 包络，但故障状态机并不相同，RK3506J 的 ECM 故障诊断单独测试。
 RTMS RK3506J 1.28.1 已将心跳的 `sample_age_ms` 改为 `sample_ms`、允许
 `temp_c=(unavailable)`，并将多行 AT 应答压缩为单条记录；这些新契约由边界回归逐字段覆盖。
+
+1.28.2–1.28.6 另由 `tests/regression/rk3506jtest.cpp` 和 22 行源码派生夹具验证：
+首次联网等待 10 秒，运行期断网 25 秒，全程不可用 35/90 秒、运行期不可用 25/80 秒。
+回归覆盖 FULL-DIAL/旧前缀、STARTUP/FAST-BOOT 接管的 internet=0/1、AT 初始化容错、
+IPC 不阻塞拨号、关键时间线，以及来源、同秒重启和时基隔离。尚未取得这些新版的真机样本。
+
+后续 `e15a5232`（RTMS 仍为 1.28.6）的 10 文件核验见
+[补充核验记录](rtms_rk3506j/e15a5232_audit.md)。同一专项回归追加公共 TRAFFIC 五平台、
+固定/异常原因、限流计数、COPS 事务失败与 ECM 停止容错、旧候选 OK、严格历史 PLMN、
+EG912 第四级循环、来源隔离及 64 位 JSON 回显；这些仍是源码派生输入。
 
 ## 合成夹具的效力边界(重要 —— 已被上面的事实印证)
 

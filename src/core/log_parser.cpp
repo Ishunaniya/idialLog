@@ -44,7 +44,11 @@ static const std::string kKnownTags[] = {
     // IMX6ULL modem_mng 1.25+: 30s 状态采样、5min 详细采样及故障状态机。
     "HB", "HB30", "HB300", "FAILURE", "RETRY", "PDP", "NET", "DHCP", "DEVICE", "USB", "POWER", "EXIT", "SERVICE", "PLMN", "AT", "VERSION",
     // IMX6ULL 1.25.1: registration diagnostics and terminal configuration state.
-    "REG", "CONFIG_ERROR"
+    "REG", "CONFIG_ERROR",
+    // RK3506J 1.28.2–1.28.6：两个拨号分支及启动/接管/查询标签。
+    "FULL-DIAL", "EC200A", "EG912", "WAKE", "STARTUP", "FAST-BOOT",
+    "AT-READY", "AT-CACHE", "INTERNET-READY", "adopt", "bringup", "usb",
+    "probe", "redial", "udhcpc", "power", "TRAFFIC"
 };
 
 LogLine::LogLine(const LogLine& o)

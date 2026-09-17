@@ -56,21 +56,48 @@ TEST_SOURCES = {
     "hostruntest": "tests/regression/hostruntest.cpp",
     "baselinetest": "tests/regression/baselinetest.cpp",
     "mergetest": "tests/regression/mergetest.cpp",
+    "rk3506jtest": "tests/regression/rk3506jtest.cpp",
 }
-# 变异测试只验证行为,不做性能基准。-O0 可把 48 次重复编译从数十分钟压到可接受范围。
+# 变异测试只验证行为,不做性能基准。-O0 可降低重复编译成本。
 CXX  = ["g++", "-std=c++17", "-O0"]
 RUN_TIMEOUT_SECONDS = 120
+COMPILE_TIMEOUT_SECONDS = 300
 
 
 def run_cmd(cmd, **kwargs):
-    """所有编译/测试都有上限；超时按“变异被抓住”处理,避免整轮永久卡住。"""
+    """所有编译/测试都有上限；超时由调用方作为验证异常处理。"""
     try:
-        return subprocess.run(cmd, timeout=RUN_TIMEOUT_SECONDS, **kwargs)
+        return subprocess.run(cmd, timeout=kwargs.pop("timeout", RUN_TIMEOUT_SECONDS), **kwargs)
     except subprocess.TimeoutExpired:
         return subprocess.CompletedProcess(cmd, 124)
 
 # 每个变异:(名字, 源码里的原片段, 改坏成什么)。片段取**唯一**的核心串,避免上下文差异。
 MUTATIONS = [
+    ("RK3506J e15公共流量故障诊断被删除",
+     'if (modemTrafficSkipped(l)) evTrafficSkipped.push_back(&l);',
+     'if (false) evTrafficSkipped.push_back(&l);'),
+    ("RK3506J e15允许的ECM停止拒绝误报选网失败",
+     'const bool required = command == "AT+CFUN=0"',
+     'const bool required = command == "AT+QNETDEVCTL=0" || command == "AT+CFUN=0"'),
+    ("RK3506J e15旧候选OK误升级为严格PLMN验证",
+     'e.selectionVerified = tag == "FULL-DIAL" && rkHistorySelectionVerified(msg);',
+     'e.selectionVerified = tag == "FULL-DIAL" && (rkHistorySelectionVerified(msg) || startsWith(msg, "set operator OK -> "));'),
+    ("RK3506J e15恢复循环重启误当公网恢复",
+     '(line.msg == "connectivity restored" ||',
+     '(startsWith(line.msg, "escalate: redial stage 4/4: restart EG912 recovery cycle") || line.msg == "connectivity restored" ||'),
+    # ── RK3506J 首次公网、前缀兼容、初始化容错与启动会话 ──
+    ("RK3506J 首次公网成功不进入可用率",
+     'if (rkSource && rkTimedInternetUp(line)) return true;',
+     'if (false && rkTimedInternetUp(line)) return true;'),
+    ("RK3506J FULL-DIAL 前缀兼容被删除",
+     'return tag == "FULL-DIAL" || tag == "EC200A" || tag == "EG912";',
+     'return tag == "EC200A" || tag == "EG912";'),
+    ("RK3506J CPIN transient 被当成永久SIM故障",
+     'rkField(msg, "class") == "permanent" &&\n                rkField(msg, "state")',
+     'rkField(msg, "class") == "transient" &&\n                rkField(msg, "state")'),
+    ("RK3506J 未恢复断网跨启动会话累加",
+     'if (!outage.recovered && (outage.startLine < segment.beginLine ||',
+     'if (false && (outage.startLine < segment.beginLine ||'),
     # ── 分类/结论逻辑 ──
     ("CP dump 退回'见标签就报'",
      'l.tagText() == "CPDUMP" && icontains(l.msg, "existing CP dump")',
@@ -79,11 +106,11 @@ MUTATIONS = [
      'if (!v.empty() && l.t - v.back()->t <= 30) return;',
      'if (false) return;'),
     ("续行退回丢弃(不并入上一条)",
-     "if (e2 != std::string::npos && prev[e2] == ':') {",
-     "if (false) {"),
+     "&& !atFileStart && continuationOpen) {",
+     "&& !atFileStart && false) {"),
     ("续行规则退回'无时间戳即续行'",
-     "if (e2 != std::string::npos && prev[e2] == ':') {",
-     "if (true) {"),
+     "&& !atFileStart && continuationOpen) {",
+     "&& !atFileStart && true) {"),
     # 注意:必须用**唯一**片段。"(c >= 'A' ...)" 在 isIdentChar(:14)与 splitTag(:122)
     # 各出现一次,replace(...,1) 会改到无关的 isIdentChar → 变异无效。用 splitTag 独有的
     # "!((c >= 'A'" 前缀锁定标签识别那处。
@@ -171,8 +198,8 @@ MUTATIONS = [
      'std::memcmp(d.data() + 257, "ustaX", 5) == 0;'),
     # ── 跨文件续行防御 / 时钟跳变检测 —— boundarytest 靶子 ──
     ('跨文件续行防御失效(atFileStart 恒 false)',
-     'if (!out.empty() && out.back().fmt != FMT_CONSOLE && !atFileStart) {',
-     'if (!out.empty() && out.back().fmt != FMT_CONSOLE && !false) {'),
+     '&& !atFileStart && continuationOpen) {',
+     '&& !false && continuationOpen) {'),
     ('时钟跳变阈值错(2000边界退回0)',
      'bool prevUnsynced = prevT < 946598400LL;   // <2000-01-01(与 timeBaseOf 同阈值)',
      'bool prevUnsynced = prevT < 0LL;   // <2000-01-01(与 timeBaseOf 同阈值)'),
@@ -242,6 +269,8 @@ MUTATIONS = [
 # 若路由选错,该变异会“存活”并令整轮失败,不会被静默放过。
 def target_test(mut_name):
     lower_name = mut_name.lower()
+    if mut_name.startswith("RK3506J"):
+        return "rk3506jtest"
     if any(k in mut_name for k in ("跨文件", "时钟跳变", "CRLF")):
         return "boundarytest"
     # 用 startswith 避免 "Started" / "trailer" 中间恰含 "tar" 而误路由。
@@ -270,13 +299,40 @@ def _miniz_obj():
     path = os.path.join(tempfile.gettempdir(), "dl_mutate_miniz.o")
     if run_cmd(["gcc", "-std=c11", "-O2", "-DMINIZ_NO_STDIO", "-DMINIZ_NO_TIME",
                 "-c", os.path.join(ROOT, "third_party/miniz/miniz.c"), "-o", path], cwd=ROOT,
-               stderr=subprocess.DEVNULL).returncode != 0:
+               timeout=COMPILE_TIMEOUT_SECONDS, stderr=subprocess.DEVNULL).returncode != 0:
         return None
     _MINIZ_CACHE[0] = path
     return path
 
 
-def run_tests(tmp, sources, mut_name=""):
+def build_shared_objects(tmp, originals):
+    """从本轮捕获的源码编译公共对象；每个变异只重编真正改变的模块。"""
+    shared = {}
+    directory = os.path.join(tmp, "shared")
+    for source, content in originals.items():
+        snapshot = os.path.join(directory, source)
+        os.makedirs(os.path.dirname(snapshot), exist_ok=True)
+        with open(snapshot, "w", encoding="utf-8") as output:
+            output.write(content)
+        stem = os.path.splitext(os.path.basename(source))[0]
+        modes = (False, True) if stem == "archive_reader" else (False,)
+        for archive_enabled in modes:
+            obj = os.path.join(directory, stem + ("_miniz" if archive_enabled else "") + ".o")
+            flags = ["-DDL_HAVE_MINIZ"] if archive_enabled else []
+            if run_cmd(CXX + flags + INCLUDE_FLAGS + ["-c", snapshot, "-o", obj], cwd=ROOT,
+                       timeout=COMPILE_TIMEOUT_SECONDS, stderr=subprocess.DEVNULL).returncode != 0:
+                raise RuntimeError(f"公共模块 {stem} 编译失败或超时")
+            shared[(stem, archive_enabled)] = obj
+    table = os.path.join(directory, "tablemodel.o")
+    if run_cmd(CXX + INCLUDE_FLAGS + ["-c", os.path.join(ROOT, "src/presentation/tablemodel.cpp"),
+                                     "-o", table], cwd=ROOT, timeout=COMPILE_TIMEOUT_SECONDS,
+               stderr=subprocess.DEVNULL).returncode != 0:
+        raise RuntimeError("公共表格模块编译失败或超时")
+    shared[("tablemodel", False)] = table
+    return shared
+
+
+def run_tests(tmp, sources, mut_name="", shared_objects=None, changed_source=None):
     """编译拆分后的核心对象并运行靶向测试。全绿=变异存活=测试有洞。"""
     test = target_test(mut_name)
     exe = os.path.join(tmp, test)
@@ -286,26 +342,35 @@ def run_tests(tmp, sources, mut_name=""):
         stem = os.path.splitext(os.path.basename(source))[0]
         obj = os.path.join(tmp, stem + ".o")
         flags = ["-DDL_HAVE_MINIZ"] if archive_enabled and stem == "archive_reader" else []
+        if shared_objects is not None and os.path.relpath(source, tmp) != changed_source:
+            objects.append(shared_objects[(stem, bool(flags))])
+            continue
         if run_cmd(CXX + flags + INCLUDE_FLAGS + ["-c", source, "-o", obj], cwd=ROOT,
-                   stderr=subprocess.DEVNULL).returncode != 0:
-            return False
+                   timeout=COMPILE_TIMEOUT_SECONDS, stderr=subprocess.DEVNULL).returncode != 0:
+            raise RuntimeError("核心编译失败或超时")
         objects.append(obj)
 
     link_flags = ["-DDL_HAVE_MINIZ"] if archive_enabled else []
     test_source = os.path.join(ROOT, TEST_SOURCES[test])
     cmd = CXX + link_flags + INCLUDE_FLAGS + ["-o", exe, test_source] + objects
+    if test == "rk3506jtest":
+        cmd.append(shared_objects[("tablemodel", False)] if shared_objects is not None else
+                   os.path.join(ROOT, "src/presentation/tablemodel.cpp"))
     if archive_enabled:
         mzobj = _miniz_obj()
         if mzobj is None:
-            return False
+            raise RuntimeError("miniz 编译失败或超时")
         cmd.append(mzobj)
-    if run_cmd(cmd, cwd=ROOT, stderr=subprocess.DEVNULL).returncode != 0:
-        return False
-    return run_cmd([exe], cwd=ROOT, stdout=subprocess.DEVNULL,
-                   stderr=subprocess.DEVNULL).returncode == 0
+    if run_cmd(cmd, cwd=ROOT, timeout=COMPILE_TIMEOUT_SECONDS, stderr=subprocess.DEVNULL).returncode != 0:
+        raise RuntimeError("靶向测试编译/链接失败或超时")
+    result = run_cmd([exe], cwd=ROOT, stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL)
+    if result.returncode == 124 or result.returncode < 0:
+        raise RuntimeError("靶向测试超时或被信号中止")
+    return result.returncode == 0
 
 
-def run_mutation(tmp_root, originals, idx, name, old, new, total):
+def run_mutation(tmp_root, originals, idx, name, old, new, total, shared_objects=None):
     """在独立临时目录运行一个变异；返回 (状态,耗时)。"""
     started = time.monotonic()
     print(f"  [{idx:02d}/{total:02d}] {name}", flush=True)
@@ -322,7 +387,11 @@ def run_mutation(tmp_root, originals, idx, name, old, new, total):
         with open(copy, "w", encoding="utf-8") as f:
             f.write(text.replace(old, new, 1) if source == target else text)
         sources.append(copy)
-    survived = run_tests(tmp, sources, name)
+    try:
+        survived = run_tests(tmp, sources, name, shared_objects, target)
+    except RuntimeError as err:
+        print(f"      ⚠ {name}:{err}", flush=True)
+        return "error", time.monotonic() - started
     return ("survived" if survived else "caught"), time.monotonic() - started
 
 
@@ -332,7 +401,7 @@ def main():
         with open(os.path.join(ROOT, source), encoding="utf-8") as f:
             originals[source] = f.read()
     tmp = tempfile.mkdtemp(prefix="diallog_mutate_")
-    caught = survived = bad = 0
+    caught = survived = bad = errors = 0
     all_started = time.monotonic()
     try:
         requested_jobs = int(os.environ.get("DL_MUTATE_JOBS", "2"))
@@ -344,10 +413,12 @@ def main():
     try:
         # 避免多个 archive 变异同时争抢同一个 miniz 缓存文件。
         _miniz_obj()
+        shared_objects = build_shared_objects(tmp, originals)
         with ThreadPoolExecutor(max_workers=jobs) as pool:
             futures = {}
             for idx, (name, old, new) in enumerate(MUTATIONS, 1):
-                fut = pool.submit(run_mutation, tmp, originals, idx, name, old, new, len(MUTATIONS))
+                fut = pool.submit(run_mutation, tmp, originals, idx, name, old, new,
+                                  len(MUTATIONS), shared_objects)
                 futures[fut] = name
             for fut in as_completed(futures):
                 status, elapsed = fut.result()
@@ -355,23 +426,30 @@ def main():
                 if status == "bad":
                     print(f"      ⚠ {name}:变异点不存在(片段对不上) ({elapsed:.1f}s)", flush=True)
                     bad += 1
+                elif status == "error":
+                    errors += 1
                 elif status == "survived":
                     print(f"      ❌ {name}:存活 —— 测试没抓住,有洞 ({elapsed:.1f}s)", flush=True)
                     survived += 1
                 else:
                     print(f"      ✅ {name}:被抓住 ({elapsed:.1f}s)", flush=True)
                     caught += 1
+    except RuntimeError as err:
+        print(f"公共构建验证异常:{err}", flush=True)
+        return 1
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
     total_elapsed = time.monotonic() - all_started
-    print(f"\n════ {len(MUTATIONS)} 个变异:{caught} 被抓住,{survived} 存活,{bad} 片段失配"
+    print(f"\n════ {len(MUTATIONS)} 个变异:{caught} 被抓住,{survived} 存活,{bad} 片段失配,{errors} 验证异常"
           f"，总耗时 {total_elapsed:.1f}s ════", flush=True)
     if survived:
         print("存活 = 测试有洞,必须补断言(不是代码没问题)")
     if bad:
         print("片段失配 = mutate.py 的 old 串和源码对不上,不是真跳过 —— 必须修")
-    return 1 if (survived or bad) else 0
+    if errors:
+        print("验证异常 = 没有有效断言结果，不能算作变异被抓住")
+    return 1 if (survived or bad or errors) else 0
 
 
 if __name__ == "__main__":

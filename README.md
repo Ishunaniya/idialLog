@@ -51,8 +51,23 @@
 > 仅带 `downtime_s` 的 `[RECOVERY]` 才表示恢复完成；`class/level/action` 的 PDP、CFUN、硬件分级动作
 > 仍属于断网中的恢复过程。`[FAILURE]/[RETRY]/[SIM]/[REG]/[PDP]/[DHCP]/[NET]/[DEVICE]/[AT]` 和新版
 > `[RECOVERY]` 进入 IMX6ULL 状态机诊断。RK3506J 的外置 EC200A / EG912 ECM 状态机则识别
-> `[EC200A]` / `[EG912]` 的失败重试、`[bringup]` 的 SIM/注册/PDP/DHCP 失败，以及
+> `[FULL-DIAL]` / `[EC200A]` / `[EG912]` 的失败重试、`[bringup]` 的 SIM/注册/PDP/DHCP 失败，以及
 > `[DEVICE]` / `[AT]` 的拓扑和端口失败。陈旧的详细快照不会参与 RX 停滞计算。
+>
+> RK3506J RTMS 1.28.2–1.28.6 支持 `[STARTUP]`、`[WAKE]`、`[AT-CACHE]`、
+> `[AT-READY]`、`[FAST-BOOT]` 与 `[INTERNET-READY]` 的关键事件。
+> 首次公网 `PUBLIC PING OK`、`phase=internet_ready` 或接管结果 `internet=1` 进入联网统计，
+> `connectivity restored` 在下一条心跳前闭合运行期断网；保留 MQTT/PDP、IP 就绪和恢复动作本身
+> 不代表主机公网已通。初始化瞬态、只读查询完整状态行但末尾 OK 超时、缓存拒绝、
+> 本地 IPC 后台重试及开始 DHCP/静态 IP 回退不会被直接当作最终拨号失败。
+> 公告的 `process_elapsed_ms` 与 `boot_ms` 分别保留为进程时长与开机时长。
+> 新版适配由指定提交的源码派生回归验证，尚无 1.28.2–1.28.6 新真机样本。
+>
+> 后续提交 `e15a5232` 未更改 RTMS 版本号。共享 `[TRAFFIC] sample/persist skipped`
+> 进入流量采样/持久化告警与时间线；其累计失败 `count` 按首次/每十次输出，不是丢包数。
+> RK 的 `[COPS] command/status/ok`、历史 PLMN 验证和候选失败进入选网诊断；
+> ECM 停止被拒绝可继续选网，旧版 `set operator OK` 不提升为严格验证。
+> EG912 第四级恢复识别为恢复循环重新开始，选网/循环事件均不代替公网成功。
 
 ### 心跳格式逐平台不同(不要假设相同)
 
@@ -171,14 +186,15 @@ make windows-x86         # build/x86/dialLog_v1.11.2.exe
 
 ```bash
 make check       # 核心全量回归:解析、场景、真代码、真机基线、合并、压缩、边界、虚拟表、图表、文档接管等
-make check-full  # check + 48 个变异；靶向路由、默认并发2、带逐项进度与超时
+make check-full  # check + 56 个变异；靶向路由、默认并发2，编译失败/超时单独计为验证异常
 make perf        # 10万/50万/100万行:分阶段计时 + 轻量视图/虚拟表/图表规模断言
 make ui-smoke    # wine+xvfb 启动真实 exe，验证后台加载、9 页导航、虚拟原始行、小区页与窄窗布局
 ```
 
 变异并发数可用 `DL_MUTATE_JOBS=1..4` 调整。
 性能基准校验数据规模、分析结果和轻量视图归属,并钉死紧凑记录的尺寸上限:
-x64 `LogLine` 由 248 B 降至 104 B、`MetricRow` 在加入 Cell ID/PCI/TAC 后仍控制在 192 B;
+x64 `LogLine` 由 248 B 降至 104 B；`MetricRow` 加入 Cell ID/PCI/TAC 后为 192 B，
+1.11.4 增加 AT 健康字段后为 232 B，本轮 RK 适配没有增加记录字段；
 百万行 + 10 万指标样本时，两类结构主数组理论占用由约 277.7 MiB 降至 117.5 MiB。
 基准还对比指针视图与对象数组的结构字节数,
 统计虚拟时间线/指标表省去的预写单元格数、1920px 信号图降采样后的绘制点数,
@@ -302,6 +318,8 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 | 1.11.6 | 可用率拆分为首次联网后运行期可用率与全程服务可达率；启动期未联网和日志末尾未恢复断网纳入不可用统计，避免首次联网失败误显 100% |
 | 1.11.7 | 完整解析 open_dial `HEARTBEAT-NET` 数据面状态；跨日文件和 L3 进程重拉合并同一设备主事故，并按现场阈值输出结论 |
 | 1.11.8 | 接入 RK3506J RTMS 1.28.1：兼容 `sample_ms`、`temp_c=(unavailable)`、压缩 AT 应答和按变更输出的 PLMN；新版 HB300 流量计数持续纳入分析 |
+| 1.11.9 | 新日志不继承历史筛选；支持 vendor logcat/dmesg 快照，区分历史 CP dump 与当前异常，并标明设备自报断网时长 |
+| 1.11.10 | 合并 RK3506J RTMS 1.28.2–1.28.6 与后续 e15a5232 适配：首次公网联网、保留网络接管、明确恢复边沿、FULL-DIAL/启动诊断与关键时间线；修复静态 IP 成功误报，补齐公共流量采样/落盘缺失、RK 选网失败、严格历史 PLMN 验证与 EG912 恢复循环；保留旧候选 OK 的证据边界，覆盖来源/重启/时基/容错及本地 IPC/64 位计数反例 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞约 1.8MiB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

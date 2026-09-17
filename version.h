@@ -72,11 +72,15 @@
 //           识别 PLMN 变更，确保新版 HB300 流量计数仍按当前采样解析。
 //   1.11.9  新日志不继承历史筛选；支持设备回传的 vendor logcat 与 dmesg 快照；
 //           CP dump 库存与当前 CP 异常分级，断网表标明设备自报时长。
+//   1.11.10 适配 RK3506J RTMS 1.28.2–1.28.6：公网成功/接管/恢复边沿、
+//           FULL-DIAL 与启动诊断；区分初始化容错和最终失败，修复静态IP成功误报。
+//           同时接入 e15a5232：公共流量采样/落盘缺失、严格历史PLMN验证与选网
+//           失败回退、EG912恢复循环；旧候选OK不提升成严格验证或公网成功。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 9
+#define DL_VER_PATCH 10
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

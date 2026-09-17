@@ -127,6 +127,263 @@ static std::string dataCallField(const std::string& msg, std::string_view wanted
     return value;
 }
 
+// RK3506J 的查询日志在 response/last 后附加原始 AT 数据。只读头部字段，
+// 避免 AT 回显、重复的 status 字段或引号中的文字冒充查询结果。
+static std::string_view rkField(const std::string& msg, std::string_view wanted) {
+    const std::string_view text(msg);
+    size_t pos = 0;
+    while (pos < text.size()) {
+        while (pos < text.size() && (text[pos] <= ' ' || text[pos] == '|')) ++pos;
+        const size_t keyBegin = pos;
+        while (pos < text.size() && isIdentChar(text[pos])) ++pos;
+        if (pos == keyBegin || pos == text.size() || text[pos] != '=') {
+            while (pos < text.size() && text[pos] > ' ' && text[pos] != '|') ++pos;
+            continue;
+        }
+        const auto key = text.substr(keyBegin, pos - keyBegin);
+        if (key == "response" || key == "last") return {};
+        const size_t valueBegin = ++pos;
+        bool quoted = false;
+        while (pos < text.size()) {
+            if (text[pos] == '"') quoted = !quoted;
+            if (quoted && text[pos] == '\\' && pos + 1 < text.size()) { pos += 2; continue; }
+            if (!quoted && (text[pos] <= ' ' || text[pos] == '|')) {
+                size_t next = pos;
+                while (next < text.size() && (text[next] <= ' ' || text[next] == '|')) ++next;
+                size_t end = next;
+                while (end < text.size() && isIdentChar(text[end])) ++end;
+                if (text[pos] == '|' || (end > next && end < text.size() && text[end] == '=')) break;
+            }
+            ++pos;
+        }
+        if (key == wanted) {
+            auto value = trimView(text.substr(valueBegin, pos - valueBegin));
+            if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
+                value.remove_prefix(1); value.remove_suffix(1);
+            }
+            return value;
+        }
+    }
+    return {};
+}
+
+static bool startsWith(std::string_view text, std::string_view prefix) {
+    return text.size() >= prefix.size() && text.substr(0, prefix.size()) == prefix;
+}
+
+static bool rkDialTag(const std::string& tag) {
+    return tag == "FULL-DIAL" || tag == "EC200A" || tag == "EG912";
+}
+
+// e15a5232 的流量监控为各 modem_mng 平台共用，不是 RK 专属故障。
+static bool modemTrafficSkipped(const LogLine& line) {
+    if (line.tagText() != "TRAFFIC" ||
+        !startsWith(line.msg, "sample/persist skipped count=")) return false;
+    const auto field = rkField(line.msg, "count");
+    if (field.empty() || rkField(line.msg, "reason").empty()) return false;
+    std::uint32_t count = 0;
+    const auto result = std::from_chars(field.data(), field.data() + field.size(), count);
+    return result.ec == std::errc{} && result.ptr == field.data() + field.size();
+}
+
+static bool rkHistorySelectionVerified(const std::string& message) {
+    constexpr std::string_view prefix = "history PLMN verified=";
+    constexpr std::string_view suffix = " -> WRITE_TO_MODEM";
+    if (!startsWith(message, prefix) || message.size() < prefix.size() + suffix.size() ||
+        std::string_view(message).substr(message.size() - suffix.size()) != suffix) return false;
+    const auto plmn = std::string_view(message).substr(prefix.size(),
+        message.size() - prefix.size() - suffix.size());
+    return (plmn.size() == 5 || plmn.size() == 6) &&
+           std::all_of(plmn.begin(), plmn.end(), [](char c) { return c >= '0' && c <= '9'; });
+}
+
+static bool rkInternetUp(const LogLine& line) {
+    const auto& tag = line.tagText();
+    if (tag == "INTERNET-READY") {
+        return startsWith(line.msg, "===== PUBLIC PING OK ===== ") &&
+               rkField(line.msg, "target") == "223.5.5.5" &&
+               !rkField(line.msg, "if").empty();
+    }
+    if (tag == "STARTUP" && rkField(line.msg, "phase") == "internet_ready") {
+        // 该阶段只在首次公网成功公告内打印；USB/ECM/主机就绪不算公网成功。
+        const auto elapsed = rkField(line.msg, "process_elapsed_ms");
+        const auto boot = rkField(line.msg, "boot_ms");
+        if (elapsed.empty() || boot.empty()) return false;
+        long long elapsedMs = -1, bootMs = -1;
+        const auto a = std::from_chars(elapsed.data(), elapsed.data() + elapsed.size(), elapsedMs);
+        const auto b = std::from_chars(boot.data(), boot.data() + boot.size(), bootMs);
+        return a.ec == std::errc{} && b.ec == std::errc{} &&
+               a.ptr == elapsed.data() + elapsed.size() && b.ptr == boot.data() + boot.size() &&
+               elapsedMs >= 0 && bootMs >= 0;
+    }
+    if (tag == "FAST-BOOT" && startsWith(line.msg, "adopted retained=")) {
+        const auto retained = rkField(line.msg, "retained");
+        return (retained == "active-pdp" || retained == "connected-mqtt") &&
+               !rkField(line.msg, "if").empty() && rkField(line.msg, "ip") == "1" &&
+               rkField(line.msg, "route") == "1" && rkField(line.msg, "internet") == "1";
+    }
+    if (tag == "STARTUP" && startsWith(line.msg, "adopted existing PDP ")) {
+        return !rkField(line.msg, "if").empty() && rkField(line.msg, "internet") == "1";
+    }
+    return rkDialTag(tag) && (line.msg == "connectivity restored" ||
+                              line.msg == "startup adopted existing network");
+}
+
+static bool rkTimedInternetUp(const LogLine& line) {
+    // 裸控制台镜像借用相邻行的时间，不能拿来推算联网/恢复的准确边沿。
+    return line.fmt != FMT_CONSOLE && line.fmt != FMT_KERNEL && rkInternetUp(line);
+}
+
+struct RkEvidence {
+    bool sim = false, cpinDeadline = false, registration = false, pdp = false;
+    bool host = false, at = false, ping = false, retry = false;
+    bool softRecovery = false, hardRecovery = false, guard = false;
+    bool cacheRejected = false, cacheWriteFailed = false, ipcPending = false;
+    bool powerUnconfirmed = false;
+    bool selectionFailed = false, selectionVerified = false, eg912Cycle = false;
+    bool queryFallback = false, hostFallback = false, event = false;
+    bool failed() const { return sim || cpinDeadline || registration || pdp || host || at || retry || powerUnconfirmed || selectionFailed; }
+};
+
+static RkEvidence rkEvidence(const LogLine& line) {
+    RkEvidence e;
+    const auto& tag = line.tagText();
+    const auto& msg = line.msg;
+    if (rkDialTag(tag)) {
+        e.selectionFailed = msg == "history PLMN verification failed -> operator scan" ||
+                            startsWith(msg, "set operator FAIL -> ");
+        // 旧版本候选分支的 set operator OK 只检查字符串 COPS；不把它提升为严格验证。
+        e.selectionVerified = tag == "FULL-DIAL" && rkHistorySelectionVerified(msg);
+        e.eg912Cycle = tag == "EG912" && startsWith(msg,
+            "escalate: redial stage 4/4: restart EG912 recovery cycle -> state=");
+        e.retry = icontains(msg, "state=FAILURE_RETRY") || icontains(msg, "-> FAILURE_RETRY");
+        e.ping = startsWith(msg, "Unable to ping google, attempt ") ||
+                 startsWith(msg, "ping failed, attempt ");
+        e.sim = icontains(msg, "SIM is not ready");
+        e.registration = icontains(msg, "LTE/EPS is not registered");
+        e.pdp = icontains(msg, "PDP profile configuration failed") ||
+                startsWith(msg, "CGACT activate failed:") ||
+                startsWith(msg, "QNETDEVCTL activate failed:") ||
+                icontains(msg, "QNETDEVCTL did not reach connected state");
+        // 全 AT 失败转移可以直接携带 bringup 失败原因。
+        e.at = icontains(msg, "adapterAT failed") || startsWith(msg, "AT redial failed") ||
+               (msg.find(" failed: ") != std::string::npos &&
+                (msg.find("read_timed_out") != std::string::npos ||
+                 msg.find("write_timed_out") != std::string::npos ||
+                 msg.find("open_failed") != std::string::npos ||
+                 msg.find("configure_failed") != std::string::npos ||
+                 msg.find("drain_failed") != std::string::npos ||
+                 msg.find("write_failed") != std::string::npos ||
+                 msg.find("read_failed") != std::string::npos ||
+                 msg.find("response_too_large") != std::string::npos ||
+                 msg.find("disconnected") != std::string::npos));
+        e.host = icontains(msg, "not found after ECM bringup");
+        e.event = startsWith(msg, "state=") || startsWith(msg, "escalate:") ||
+                  startsWith(msg, "family=") || startsWith(msg, "full dial startup ") ||
+                  startsWith(msg, "dial_loop") || icontains(msg, "operator") ||
+                  icontains(msg, "->") || rkInternetUp(line);
+    } else if (tag == "COPS" && startsWith(msg, "command=")) {
+        const auto command = rkField(msg, "command");
+        // QNETDEVCTL=0 在 ECM 已停止时可被拒绝；它不阻止后续 CFUN/选网。
+        const bool required = command == "AT+CFUN=0" || command == "AT+CFUN=1" ||
+                              command == "AT+COPS?" || startsWith(command, "AT+COPS=1,2,");
+        e.selectionFailed = required && rkField(msg, "ok") == "0" &&
+                            !rkField(msg, "status").empty();
+    } else if (tag == "AT-READY") {
+        e.cpinDeadline = startsWith(msg, "CPIN not ready ");
+        e.sim = startsWith(msg, "CPIN attempt=") && rkField(msg, "class") == "permanent" &&
+                rkField(msg, "state") != "<none>" && !rkField(msg, "state").empty();
+        e.at = startsWith(msg, "basic AT not ready ") || startsWith(msg, "CFUN not ready ");
+        e.queryFallback = startsWith(msg, "CGACT query unavailable ");
+        // 完整状态行而终端超时是合法容错。留下容错和异常查询证据，正常轮询不进时间线。
+        e.event = rkField(msg, "ok") == "0" ||
+                  startsWith(msg, "accept exact CPIN READY ") ||
+                  rkField(msg, "class") == "permanent";
+    } else if (tag == "FAST-BOOT") {
+        e.pdp = icontains(msg, "ECM attach failed");
+        e.host = startsWith(msg, "ECM connected but interface ") && icontains(msg, "is absent");
+        e.at = startsWith(msg, "no AT port after ");
+        e.ping = startsWith(msg, "adopted retained=") && rkField(msg, "internet") == "0" &&
+                 rkField(msg, "ip") == "1" && rkField(msg, "route") == "1";
+        e.host = e.host || (startsWith(msg, "adopted retained=") &&
+                           (rkField(msg, "ip") == "0" || rkField(msg, "route") == "0"));
+        e.event = true; // 有界启动探测，与 30s/300s 周期心跳不同。
+    } else if (tag == "STARTUP") {
+        e.host = startsWith(msg, "DHCP incomplete;");
+        e.ping = startsWith(msg, "adopted existing PDP ") && rkField(msg, "action") == "none" &&
+                 rkField(msg, "internet") == "0";
+        e.event = rkField(msg, "phase") == "dialer_started" ||
+                  rkField(msg, "phase") == "usb_topology_ready" ||
+                  rkField(msg, "phase") == "ecm_ready" ||
+                  rkField(msg, "phase") == "host_network_ready" ||
+                  rkField(msg, "phase") == "internet_ready" ||
+                  startsWith(msg, "adopted existing PDP ") || startsWith(msg, "existing ECM ");
+    } else if (tag == "WAKE") {
+        e.guard = startsWith(msg, "destructive_recovery=forbidden ") ||
+                  startsWith(msg, "hard_recovery=forbidden ") || icontains(msg, "blocked") ||
+                  icontains(msg, "forbids");
+        e.host = startsWith(msg, "DHCP failed; skip CGCONTRDP fallback ");
+        e.event = true;
+    } else if (tag == "AT-CACHE") {
+        e.cacheRejected = startsWith(msg, "ignore ");
+        e.cacheWriteFailed = startsWith(msg, "cannot store ");
+        e.event = e.cacheRejected || e.cacheWriteFailed || startsWith(msg, "accepted ") ||
+                  startsWith(msg, "stored ") ||
+                  (startsWith(msg, "validate result ") && rkField(msg, "ok") == "0");
+    } else if (tag == "adopt") {
+        e.event = true;
+    } else if (tag == "bringup") {
+        e.sim = icontains(msg, "SIM is not ready");
+        e.registration = icontains(msg, "LTE/EPS is not registered") ||
+                         startsWith(msg, "CEREG wait timed out ");
+        e.pdp = icontains(msg, "PDP profile configuration failed") ||
+                icontains(msg, "failed to configure PDP") ||
+                (icontains(msg, "CGACT activate") && icontains(msg, "failed")) ||
+                icontains(msg, "QNETDEVCTL did not reach") ||
+                startsWith(msg, "QNETDEVCTL wait timed out ") ||
+                startsWith(msg, "invalid MODEM_PDP_APN or MODEM_PDP_TYPE");
+        e.host = startsWith(msg, "DHCP and CGCONTRDP fallback did not provide ") ||
+                 startsWith(msg, "static IP configuration failed") ||
+                 startsWith(msg, "failed to parse CGCONTRDP");
+        e.hostFallback = startsWith(msg, "DHCP failed, trying static IP ");
+        e.queryFallback = startsWith(msg, "CGACT state unavailable after ") ||
+                          startsWith(msg, "CGACT active state not observable ") ||
+                          startsWith(msg, "QNETDEVCTL start not confirmed;");
+        e.at = startsWith(msg, "ERROR: ") &&
+               (icontains(msg, "not found") || icontains(msg, "failed") || icontains(msg, "not ready"));
+        e.event = e.hostFallback || e.queryFallback || startsWith(msg, "static IP ");
+    } else if (tag == "DEVICE" || tag == "AT" || tag == "usb" || tag == "redial") {
+        e.at = icontains(msg, "missing") || icontains(msg, "failed") ||
+               icontains(msg, "not found") || icontains(msg, "unavailable") ||
+               (tag == "AT" && startsWith(msg, "ATE0 retry timed out ")) ||
+               (tag == "redial" && startsWith(msg, "no AT character device;"));
+        e.event = tag == "redial" || tag == "usb";
+    } else if (tag == "udhcpc") {
+        e.host = msg == "ensure failed";
+        e.hostFallback = msg == "foreground attempt failed";
+        e.event = e.host || e.hostFallback;
+    } else if (tag == "NANOMSG") {
+        e.ipcPending = (startsWith(msg, "PUB unavailable; dialing continues,") ||
+                        startsWith(msg, "REQ/REP unavailable; dialing continues,"));
+    } else if (tag == "power" || tag == "POWER") {
+        e.powerUnconfirmed = startsWith(msg, "physical PWRKEY shutdown failed") ||
+                             startsWith(msg, "physical PWRKEY shutdown pulse release failed") ||
+                             startsWith(msg, "PWRKEY power-on pulse could not be ") ||
+                             startsWith(msg, "physical PWRKEY shutdown disabled; CFUN=0 was not confirmed") ||
+                             startsWith(msg, "module power-off not confirmed;");
+    }
+    if (tag == "WAKE" || tag == "FAST-BOOT" || rkDialTag(tag)) {
+        e.softRecovery = icontains(msg, "enter SOFT_RECOVERY") ||
+                         startsWith(msg, "adoption failed; enter SOFT_RECOVERY");
+        e.hardRecovery = icontains(msg, "enter HARD_RECOVERY");
+    }
+    e.event = e.event || e.failed() || e.ping || e.softRecovery || e.hardRecovery ||
+              e.selectionVerified || e.eg912Cycle ||
+              e.queryFallback || e.hostFallback ||
+              (tag == "INTERNET-READY" && rkInternetUp(line));
+    return e;
+}
+
 static bool isUnsolicitedDataCallDisconnect(const LogLine& line) {
     if (line.msg.find("DataCall disconnected") == std::string::npos) return false;
     return dataCallField(line.msg, "initiator") == "SDK_URC" &&
@@ -267,6 +524,46 @@ static const DisplayVersionPlatform* displayVersionPlatform(const std::string& m
     return nullptr;
 }
 
+static bool rkIdentityLine(const LogLine& line) {
+    const auto& tag = line.tagText();
+    return ((tag == "INTERNET-READY" || tag == "STARTUP") && rkInternetUp(line)) ||
+           (tag == "FAST-BOOT" && startsWith(line.msg, "adopted retained=") &&
+            !rkField(line.msg, "retained").empty() && !rkField(line.msg, "if").empty()) ||
+           (tag == "FULL-DIAL" && startsWith(line.msg, "family=") &&
+            !rkField(line.msg, "port").empty()) ||
+           (tag == "FULL-DIAL" && rkHistorySelectionVerified(line.msg));
+}
+
+template <typename Lines>
+static std::map<std::uint16_t, Platform> sourceDisplayPlatforms(const Lines& lines) {
+    std::map<std::uint16_t, Platform> platforms;
+    for (const auto& item : lines) {
+        const auto& line = lineRef(item);
+        if (isProgramStartBanner(line.msg))
+            if (const auto* display = displayVersionPlatform(line.msg))
+                platforms.emplace(line.sourceId, display->platform);
+    }
+    for (const auto& item : lines) {
+        const auto& line = lineRef(item);
+        if (rkIdentityLine(line)) platforms.emplace(line.sourceId, PLAT_RK3506J);
+    }
+    return platforms;
+}
+
+static Platform sourcePlatformAt(std::map<std::uint16_t, Platform>& platforms,
+                                 const LogLine& line) {
+    auto& platform = platforms[line.sourceId];
+    if (isProgramStartBanner(line.msg)) {
+        const auto* display = displayVersionPlatform(line.msg);
+        platform = display ? display->platform : PLAT_UNKNOWN;
+    } else if (isModemMngV2Start(line)) {
+        platform = PLAT_MODEM_MNG_V2;
+    } else if (platform == PLAT_UNKNOWN && rkIdentityLine(line)) {
+        platform = PLAT_RK3506J;
+    }
+    return platform;
+}
+
 PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
     PlatformInfo pi;
     size_t seas = 0;
@@ -279,8 +576,10 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
     const char* v2Module = nullptr;
     const LogLine* displayVersionEv = nullptr;
     const DisplayVersionPlatform* displayVersion = nullptr;
+    const LogLine* rkEv = nullptr;
 
     for (const auto& l : lines) {
+        if (!rkEv && rkIdentityLine(l)) rkEv = &l;
         if (!v2Ev && isModemMngV2Envelope(l)) v2Ev = &l;
         if (const char* module = modemMngV2Module(l)) {
             // 明确的模组检测行比启动时的 UNKNOWN 提示更有证据力。
@@ -332,6 +631,7 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
     else if (ag35Ev)   set(PLAT_AG35,   "AG35 (modem_mng, 双卡)",                  ag35Ev, "出现 AG35 专有的 SLOT 切卡痕迹");
     else if (eg25Ev)   set(PLAT_EG25,   "EG25 (modem_mng)",                        eg25Ev, "出现 EG25 专有的 ROAMLINK/CH 通道字段");
     else if (ec200Ev)  set(PLAT_EC200A, "EC200A (modem_mng 或 open_dial 上游)",    ec200Ev, "心跳为 SIM_AT/SIM_CB 格式且无 SLOT");
+    else if (rkEv)     set(PLAT_RK3506J, "RK3506J (modem_mng, rtms)", rkEv, "RK3506J 公网成功/保留网络/完整拨号固定日志");
     else               set(PLAT_UNKNOWN, "未识别", nullptr, "无任何平台特征字段");
     return pi;
 }
@@ -530,6 +830,9 @@ bool isErrTag(const std::string& tag) { return inList(kErrTags, tag); }
 // seas_log 的严重度在 level 字段(seas_log.c:239),不在标签里。
 // 级别取值见 seas_log.h:66-121:[ALL]/[DEBUG]/[INFO]/[NOTICE]/[WARNING]/[ERROR]/[FATAL]
 bool isErrLine(const LogLine& l) {
+    if (modemTrafficSkipped(l)) return true;
+    const auto rk = rkEvidence(l);
+    if (rk.failed() || rk.ping || rk.cacheWriteFailed) return true;
     if (isErrTag(l.tagText())) return true;
     if (isModemMngV2Failure(l)) return true;
     if (isUnsolicitedDataCallDisconnect(l)) return true;
@@ -549,6 +852,7 @@ bool isErrLine(const LogLine& l) {
 // 时间线保留:事件类标签,或 seas 的报错行(artery 大量日志无内嵌标签,
 // 只按标签过滤会让 artery 的时间线几乎全空)
 bool isEventLine(const LogLine& l) {
+    if (rkEvidence(l).event) return true;
     if (isCpCrashEvidence(l.msg)) return true;
     if (isModemMngV2Event(l) || isModemMngV2Failure(l)) return true;
     if (isImxHeartbeatDiagnostic(l)) return true;
@@ -592,6 +896,8 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
     };
     std::map<std::uint16_t, ImxOpen> imxOpen;
     std::map<std::uint16_t, bool> imxSeenOnline;
+    auto sourcePlatforms = sourceDisplayPlatforms(lines);
+    std::map<std::uint16_t, long long> previousClock;
     auto closeImxOutage = [&](std::uint16_t sourceId, const LogLine& end) {
         const auto down = imxOpen.find(sourceId);
         if (down == imxOpen.end()) return;
@@ -611,6 +917,7 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
     };
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
+        const bool rkSource = sourcePlatformAt(sourcePlatforms, l) == PLAT_RK3506J;
         const bool usableV2Clock = l.fmt == FMT_SYSLOG && l.t > 0;
 
         // v2 的 WAN 状态日志是状态边沿，而非旧产品的 fault timer/recovery
@@ -657,7 +964,11 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
         }
 
         // 新启动不能让上个 IMX 进程的 offline 状态跨会话延续。
-        if (isProgramStartBanner(l.msg)) {
+        const auto previous = previousClock.find(l.sourceId);
+        const bool clockSplit = previous != previousClock.end() &&
+                                crossesClockBase(previous->second, l.t);
+        previousClock[l.sourceId] = l.t;
+        if (isProgramStartBanner(l.msg) || clockSplit) {
             const auto stale = imxOpen.find(l.sourceId);
             if (stale != imxOpen.end()) {
                 Outage outage;
@@ -677,7 +988,7 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
             } else if (imxSeenOnline[l.sourceId]) {
                 imxOpen.emplace(l.sourceId, ImxOpen{l.t, l.lineNo});
             }
-        } else if (imxRecoveryComplete(l)) {
+        } else if (imxRecoveryComplete(l) || (rkSource && rkTimedInternetUp(l))) {
             // RECOVERY 在探测刚成功时即打印，比随后一个 30s 上报更接近实际恢复点。
             closeImxOutage(l.sourceId, l);
             imxSeenOnline[l.sourceId] = true;
@@ -1332,12 +1643,11 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
     std::uint16_t currentSource = 0;
     bool haveSource = false;
     std::map<std::uint16_t, ModemMngV2Registration> v2Registration;
-    std::map<std::uint16_t, Platform> platformBySource;
+    auto platformBySource = sourceDisplayPlatforms(lines);
 
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
-        if (const DisplayVersionPlatform* display = displayVersionPlatform(l.msg))
-            platformBySource[l.sourceId] = display->platform;
+        sourcePlatformAt(platformBySource, l);
         // 版本横幅是进程启动的直接证据。即使日志文件把多次启动串在一起，
         // 新进程的网卡计数器、小区驻留状态也不能继承给上一会话；否则首个
         // HEARTBEAT 会凭旧 rx_packets 算出假的 ΔRX=0/负增量，进而误报数据停滞。
@@ -1558,7 +1868,9 @@ static Evidence mkEv(const LogLine& l) {
     e.lineNo = l.lineNo;
     e.ts     = l.ts;
     const std::string& tag = l.tagText();
-    e.text   = (tag.empty() ? "" : "[" + tag + "] ") + l.msg.substr(0, 160);
+    // 公网公告的时序字段位于行尾，保留其完整短记录供结论复制和跳转审计。
+    e.text   = (tag.empty() ? "" : "[" + tag + "] ") +
+               l.msg.substr(0, tag == "INTERNET-READY" ? 512 : 160);
     return e;
 }
 
@@ -1603,7 +1915,8 @@ static std::uint16_t sourceIdAtLine(const Lines& lines, std::size_t lineNo) {
 // “已注册”不足以代表业务可用；这里只接受产品明确记录的数据通道/WAN 已通，
 // 或旧产品的 Network Recovered 事件。这个标志既用于全程服务可达率，也用于
 // 将首次联网前的失败与运行期掉线分开。
-static bool isDataPathUp(const LogLine& line) {
+static bool isDataPathUp(const LogLine& line, bool rkSource) {
+    if (rkSource && rkTimedInternetUp(line)) return true;
     if (isModemMngV2WanUp(line) || imxRecoveryComplete(line)) return true;
     bool imxOnline = false;
     if (imxHeartbeatOnline(line, imxOnline) && imxOnline) return true;
@@ -1626,12 +1939,15 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
         long long end = 0;
         long long firstUp = -1;
         bool startKnown = false;
+        size_t beginLine = 0, endLine = 0;
     };
     std::vector<Segment> segments;
     std::map<std::uint16_t, std::size_t> active;
+    auto sourcePlatforms = sourceDisplayPlatforms(lines);
 
     for (const auto& item : lines) {
         const LogLine& line = lineRef(item);
+        const bool rkSource = sourcePlatformAt(sourcePlatforms, line) == PLAT_RK3506J;
         auto it = active.find(line.sourceId);
         // v2 的 syslog 启动记录没有传统 Version 文案，但 isModemMngV2Start()
         // 已严格限定应用身份和完整正文，是与版本横幅等价的进程边界证据。
@@ -1642,6 +1958,7 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
             Segment segment;
             segment.sourceId = line.sourceId;
             segment.begin = segment.end = line.t;
+            segment.beginLine = segment.endLine = line.lineNo;
             segment.startKnown = banner;
             segments.push_back(segment);
             active[line.sourceId] = segments.size() - 1;
@@ -1649,7 +1966,8 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
         }
         Segment& segment = segments[it->second];
         segment.end = std::max(segment.end, line.t);
-        if (segment.firstUp < 0 && isDataPathUp(line)) segment.firstUp = line.t;
+        segment.endLine = line.lineNo;
+        if (segment.firstUp < 0 && isDataPathUp(line, rkSource)) segment.firstUp = line.t;
     }
 
     std::vector<long long> outageSeconds(segments.size(), 0);
@@ -1659,6 +1977,9 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
         for (std::size_t i = 0; i < segments.size(); ++i) {
             const Segment& segment = segments[i];
             if (segment.sourceId != sourceId || segment.firstUp < 0) continue;
+            // 未恢复事件属于打开它的启动/时基会话，不可在重启后的会话重复累加。
+            if (!outage.recovered && (outage.startLine < segment.beginLine ||
+                                     outage.startLine > segment.endLine)) continue;
             const long long outageEnd = outage.recovered ? outage.end : segment.end;
             const long long begin = std::max(std::max(outage.start, segment.begin), segment.firstUp);
             const long long end = std::min(outageEnd, segment.end);
@@ -1988,13 +2309,19 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evImxRecoverPdp, evImxRecoverCfun, evImxRecoverHardware,
                                 evImxConfigError,
                                 evRkRetry, evRkSimNotReady, evRkRegistration, evRkPdp,
-                                evRkNetwork, evRkDeviceAt, evRkPing;
+                                evRkNetwork, evRkDeviceAt, evRkPing,
+                                evRkCpinDeadline, evRkSoftRecovery, evRkHardRecovery, evRkGuard,
+                                evRkCacheRejected, evRkCacheWriteFailed, evRkIpcPending,
+                                evRkQueryFallback, evRkHostFallback, evRkInternetReady, evRkPowerUnconfirmed,
+                                evRkSelectionFailed, evRkSelectionVerified, evRkEg912Cycle;
+    std::vector<const LogLine*> evTrafficSkipped;
     std::vector<const LogLine*> evNetInterfaceNone, evNetTxWithoutRx;
     std::map<std::string, size_t> appStopReasons, unsolicitedReasons;
     std::set<std::string> historicalCpInventories;
     std::map<std::uint16_t, std::pair<long long, long long>> sourceBounds;
     std::map<std::uint16_t, bool> faultOpen;
     std::map<std::uint16_t, long long> faultStartTime;
+    auto rkSourcePlatforms = sourceDisplayPlatforms(lines);
     for (const auto& item : lines) {
         const LogLine& line = lineRef(item);
         auto inserted = sourceBounds.emplace(line.sourceId, std::make_pair(line.t, line.t));
@@ -2005,6 +2332,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     }
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
+        const bool rkSource = sourcePlatformAt(rkSourcePlatforms, l) == PLAT_RK3506J;
+        if (modemTrafficSkipped(l)) evTrafficSkipped.push_back(&l);
         if (isProgramStartBanner(l.msg)) evProgramStart.push_back(&l);
         if (isCpCrashEvidence(l.msg)) evCpCrash.push_back(&l);
         // artery 的 license 流程使用固定的 SEAS_LOG 原文。只把“缺失 → 下载等待
@@ -2102,35 +2431,29 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         // RK3506J 不使用 IMX 的 FAILURE/RETRY/RECOVERY 标签；EC200A 与 EG912
         // 两条实际构建路径均把状态机前缀写入正文。以下均为 rk3506j_dialer.cpp
         // 的固定日志，不以普通 online=0 或 CSQ 值猜测故障。
-        if (pi.plat == PLAT_RK3506J) {
-            const std::string& tag = l.tagText();
-            if ((tag == "EC200A" || tag == "EG912") &&
-                (icontains(l.msg, "state=FAILURE_RETRY") ||
-                 icontains(l.msg, "-> FAILURE_RETRY")))
-                evRkRetry.push_back(&l);
-            if (tag == "bringup" && icontains(l.msg, "SIM is not ready"))
-                evRkSimNotReady.push_back(&l);
-            if (tag == "bringup" && icontains(l.msg, "LTE/EPS is not registered"))
-                evRkRegistration.push_back(&l);
-            if (tag == "bringup" &&
-                (icontains(l.msg, "PDP profile configuration failed") ||
-                 icontains(l.msg, "failed to configure PDP") ||
-                 icontains(l.msg, "CGACT activate") ||
-                 icontains(l.msg, "QNETDEVCTL did not reach") ||
-                 icontains(l.msg, "QNETDEVCTL wait timed out")))
-                evRkPdp.push_back(&l);
-            if (tag == "bringup" &&
-                (icontains(l.msg, "DHCP") || icontains(l.msg, "IPv4") ||
-                 icontains(l.msg, "static IP")))
-                evRkNetwork.push_back(&l);
-            if ((tag == "DEVICE" || tag == "AT" || tag == "usb") &&
-                (icontains(l.msg, "missing") || icontains(l.msg, "failed") ||
-                 icontains(l.msg, "not found") || icontains(l.msg, "unavailable")))
-                evRkDeviceAt.push_back(&l);
-            if ((tag == "EC200A" || tag == "EG912") &&
-                (icontains(l.msg, "Unable to ping google, attempt") ||
-                 icontains(l.msg, "ping failed, attempt")))
-                evRkPing.push_back(&l);
+        if (rkSource) {
+            const auto e = rkEvidence(l);
+            if (e.retry) evRkRetry.push_back(&l);
+            if (e.sim) evRkSimNotReady.push_back(&l);
+            if (e.cpinDeadline) evRkCpinDeadline.push_back(&l);
+            if (e.registration) evRkRegistration.push_back(&l);
+            if (e.pdp) evRkPdp.push_back(&l);
+            if (e.host) evRkNetwork.push_back(&l);
+            if (e.at) evRkDeviceAt.push_back(&l);
+            if (e.ping) evRkPing.push_back(&l);
+            if (e.softRecovery) evRkSoftRecovery.push_back(&l);
+            if (e.hardRecovery) evRkHardRecovery.push_back(&l);
+            if (e.guard) evRkGuard.push_back(&l);
+            if (e.cacheRejected) evRkCacheRejected.push_back(&l);
+            if (e.cacheWriteFailed) evRkCacheWriteFailed.push_back(&l);
+            if (e.ipcPending) evRkIpcPending.push_back(&l);
+            if (e.queryFallback) evRkQueryFallback.push_back(&l);
+            if (e.hostFallback) evRkHostFallback.push_back(&l);
+            if (e.powerUnconfirmed) evRkPowerUnconfirmed.push_back(&l);
+            if (e.selectionFailed) evRkSelectionFailed.push_back(&l);
+            if (e.selectionVerified) evRkSelectionVerified.push_back(&l);
+            if (e.eg912Cycle) evRkEg912Cycle.push_back(&l);
+            if (l.tagText() == "INTERNET-READY" && rkInternetUp(l)) evRkInternetReady.push_back(&l);
         }
         if (isFaultStart(l.msg)) {
             faultOpen[l.sourceId] = true;
@@ -2409,9 +2732,9 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     }
 
     // RK3506J 的两个实际构建分支（外置 EC200A / EG912 minimal）共用下列
-    // bringup 与状态机文案。仅在平台横幅已确认时输出，避免把其它产品的普通
+    // bringup 与状态机文案。按来源/启动平台身份输出，避免把其它产品的普通
     // “failed” 文本错归入 RK3506。
-    if (pi.plat == PLAT_RK3506J) {
+    if (!rkSourcePlatforms.empty()) {
         auto addRkFinding = [&](int severity, std::string title, std::string detail,
                                 std::string advice, const std::vector<const LogLine*>& evidence) {
             if (evidence.empty()) return;
@@ -2425,7 +2748,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             fs.push_back(std::move(finding));
         };
         addRkFinding(2, "RK3506J SIM 未就绪",
-                     "【源码直证】ECM bringup 的 AT+CPIN 检查未返回 READY，拨号不会继续进入 PDP 激活。",
+                     "【源码直证】CPIN 明确报告非 READY 状态或需要处理的 SIM 锁；初始化 transient 查询不作为永久故障证据。",
                      "检查卡槽、卡接触和 PIN 锁；保留 CPIN 原始应答，确认不是 AT 通道超时。",
                      evRkSimNotReady);
         addRkFinding(2, "RK3506J LTE/EPS 未注册",
@@ -2437,21 +2760,87 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                      "核对 APN、PDP 类型、CGACT 与 QNETDEVCTL 原始响应，再检查模组 profile。",
                      evRkPdp);
         addRkFinding(2, "RK3506J DHCP/IPv4 配置失败",
-                     "【源码直证】DHCP 或 CGCONTRDP 静态 IPv4 回退失败，问题位于 AP 侧接口配置或模组返回的地址信息。",
+                     "【源码直证】主机接口缺失、IP/路由不完整，或 DHCP/CGCONTRDP 明确失败；成功静态 IP 与开始回退不作为最终失败。",
                      "检查接口存在性、udhcpc、IP/网关/默认路由和 CGCONTRDP 响应。",
                      evRkNetwork);
         addRkFinding(2, "RK3506J 模组拓扑或 AT 通道不可用",
-                     "【源码直证】设备发现/AT 端口日志明确报告缺失、未找到或操作失败。",
+                     "【源码直证】设备发现/AT 端口报告不可用，或基本 AT/CFUN 就绪窗口耗尽、状态机报告传输失败。",
                      "检查 USB 枚举、option 驱动绑定、AT 端口节点及供电，并确认 AT 口和网卡属于同一模组。",
                      evRkDeviceAt);
         addRkFinding(1, "RK3506J 连通性探测失败",
-                     "【日志直证】状态机记录了接口绑定的 Google ping 连续失败尝试；单次失败不等同于已完成重拨。",
+                     "【日志直证】状态机记录公网 PING 失败，或保留网络接管后 IP/路由完整但 internet=0；单次失败不等同于已完成重拨。",
                      "结合随后 HB30 的 online、fail_streak/retry 和 FAILURE_RETRY 状态判断是否升级恢复。",
                      evRkPing);
         addRkFinding(2, "RK3506J 已进入失败重试状态",
-                     "【源码直证】EC200A/EG912 状态机明确进入 FAILURE_RETRY；这不是普通心跳中的离线采样。",
+                     "【源码直证】FULL-DIAL/EC200A/EG912 状态机明确进入或转移到 FAILURE_RETRY；普通 REDIAL_AT 不等同该状态。",
                      "从同一轮前序 bringup、注册、PDP、DHCP 和 AT 证据定位失败层级，保留恢复完成前的完整日志。",
                      evRkRetry);
+        addRkFinding(2, "RK3506J SIM 就绪等待耗尽",
+                     "【日志直证】CPIN 的限时就绪窗口结束仍未获得可接受的 READY；单凭该总结不能确认缺卡或 PIN 锁。",
+                     "检查前序 CPIN class/state、CME 原码和 AT 传输状态，区分 SIM 初始化、SIM 锁与 AT 不响应。",
+                     evRkCpinDeadline);
+        addRkFinding(1, "RK3506J 已进入启动软恢复",
+                     "【源码直证】保留网络接管失败后进入 SOFT_RECOVERY，先尝试 AT/ECM 恢复。",
+                     "结合前序 retained、CID、ECM、接口和公网结果定位接管失败层级；后续 PING 成功才证明公网恢复。",
+                     evRkSoftRecovery);
+        addRkFinding(2, "RK3506J 已进入硬恢复阶段",
+                     "【日志直证】启动软恢复或运行期恢复耗尽，明确进入 HARD_RECOVERY；许可 allowed 本身不算执行动作。",
+                     "继续检查 CFUN、POWER/PWRKEY 和冷却日志，确认软关机或物理关机是否成功；不要仅凭阶段名认定已断电复位。",
+                     evRkHardRecovery);
+        addRkFinding(0, "RK3506J 启动保留网络保护",
+                     "【日志直证】启动期限制破坏性或硬件恢复以保护已有会话；缺少唤醒事件不证明冷启动。",
+                     "结合 MQTT/PDP 保留状态和接管结果判断路径；关注 SOFT_RECOVERY/HARD_RECOVERY 的实际后续动作。",
+                     evRkGuard);
+        addRkFinding(0, "RK3506J AT 端口缓存未采用",
+                     "【日志直证】缓存身份、端口或 ATI 校验不满足要求，转入探测；缓存拒绝不等同拨号失败。",
+                     "查看拒绝原因及后续 family/AT ports；只有端口探测或拨号明确失败时再判定通道故障。",
+                     evRkCacheRejected);
+        addRkFinding(1, "RK3506J AT 端口缓存写入失败",
+                     "【日志直证】缓存无法持久化，源码明确说明 dialing remains active。",
+                     "检查缓存路径和文件系统权限；依据公网 PING/HB30 判断当前联网，不把缓存写入失败当断网。",
+                     evRkCacheWriteFailed);
+        addRkFinding(0, "RK3506J 本地 IPC 等待就绪，拨号继续",
+                     "【源码直证】NANOMSG 的 PUB/REQ-REP 后台重试；本地 IPC 尚不可用不阻塞拨号。",
+                     "检查 loopback 与本地端点；用公网成功、接管 internet 和心跳判断外网状态。",
+                     evRkIpcPending);
+        addRkFinding(0, "RK3506J AT 状态查询进入回退验证",
+                     "【日志直证】CGACT 查询不可用或 QNETDEVCTL 启动未确认，转入幂等激活/只读验证；此时尚不能断言最终数据激活失败。",
+                     "查看随后 CGACT/QNETDEVCTL 状态和公网 PING；只读完整状态行可能在末尾 OK 超时时仍被接受。",
+                     evRkQueryFallback);
+        addRkFinding(0, "RK3506J DHCP 尝试失败或进入静态 IP 回退",
+                     "【日志直证】单次 DHCP 尝试失败或开始 CGCONTRDP 回退；静态 IP 成功及公网可达可以完成恢复。",
+                     "检查后续静态地址、网关、路由和 PING；仅在明确最终失败时判断主机网络配置故障。",
+                     evRkHostFallback);
+        addRkFinding(0, "RK3506J 首次公网 PING 成功",
+                     "【源码直证】每进程首次 PUBLIC PING OK 公告确认接口绑定的 223.5.5.5 可达，作为首次联网边沿。",
+                     "查看证据中的 path/retained、probe_ms、process_elapsed_ms 和 boot_ms；开机时长与墙钟时间分别解释。",
+                     evRkInternetReady);
+        addRkFinding(1, "RK3506J 模组关机/上电未确认",
+                     "【日志直证】CFUN 软关机未确认、PWRKEY 脉冲操作失败或关机结果不明；源码可能跳过300秒上电冷却。",
+                     "核对具体失败步骤与后续 USB/AT 枚举；不能将未确认关机或允许硬恢复当作已完成物理断电。",
+                     evRkPowerUnconfirmed);
+        addRkFinding(1, "RK3506J 选网事务失败或结果未验证",
+                     "【日志直证】CFUN/手动选网/查询事务未完成，或历史/候选 PLMN 未通过验证；历史失败转入扫描，候选失败尝试下一项。",
+                     "检查对应 COPS command/status/ok 与后续候选结果；ECM 停止被拒绝不单独算选网失败，选网失败也不证明公网已掉线。",
+                     evRkSelectionFailed);
+        addRkFinding(0, "RK3506J 历史 PLMN 选网验证成功",
+                     "【源码直证】history PLMN verified 确认指定数字 PLMN 的手动 LTE 查询结果通过严格验证，随后进入 WRITE_TO_MODEM；它不代表已注册或公网已通。",
+                     "结合后续 CEREG、PDP/ECM 和公网 PING；旧版 set operator OK 与单独 AT 命令不能提升为这条验证结论。",
+                     evRkSelectionVerified);
+        addRkFinding(0, "RK3506J EG912 恢复循环重新开始",
+                     "【源码直证】EG912 第四级恢复重新进入 FAILURE_RETRY 恢复循环；此事件不是恢复完成。",
+                     "检查随后 FAILURE_RETRY/POWER 日志及公网恢复结果；不要把循环重启当作已经切换运营商或已完成物理复位。",
+                     evRkEg912Cycle);
+    }
+    if (!evTrafficSkipped.empty()) {
+        Finding finding;
+        finding.severity = 1;
+        finding.title = "流量采样/持久化已跳过";
+        finding.detail = "【源码直证】共享流量监控跳过采样或数据库持久化；原因可能是接口计数器、数据库、保存记录、时钟或线程异常。count 是监控累计失败次数，日志仅首次和每十次输出；不是丢包数或连续断网次数。";
+        finding.advice = "按 reason 检查接口和存储/时间；落盘失败可保留内存累计值，接口读失败是缺失采样，均不能单独证明公网断网或总流量归零。";
+        for (size_t i = 0; i < evTrafficSkipped.size() && i < 3; ++i)
+            finding.ev.push_back(mkEv(*evTrafficSkipped[i]));
+        fs.push_back(std::move(finding));
     }
     // SDK 注网摘要是 2026-07/08 四份产品代码新增字段。只有 SRV!=FULL 且 DENY>0
     // 才算拒绝证据；DENY=0 不臆测。两套 SDK 的 DENY 数字表不同,这里只保留原码。

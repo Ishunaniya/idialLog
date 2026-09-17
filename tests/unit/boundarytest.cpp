@@ -982,9 +982,9 @@ static void t22_rk3506j_state_machine() {
     ok(metrics.size() == 4 && metrics[0].ch == "RK3506J" && metrics[2].rx == 10 &&
        metrics[2].drx == LLONG_MIN && metrics[2].csqVal == 22,
        "RK3506J HB30/HB300 的 sample_ms 时效、无温度和CSQ/流量准确解析");
-    ok(outages.size() == 1 && outages[0].recovered && outages[0].dur == 60 &&
-       outages[0].startLine == 7 && outages[0].endLine == 16,
-       "RK3506J online=1→0→1 配成可信60秒断网");
+    ok(outages.size() == 1 && outages[0].recovered && outages[0].dur == 50 &&
+       outages[0].startLine == 7 && outages[0].endLine == 15,
+       "RK3506J offline到明确connectivity restored配成50秒断网，不延至下一心跳");
     ok(sim && registration && pdp && network && device && ping && retry,
        "RK3506J SIM/注册/PDP/DHCP/AT/ping/失败重试均形成源码直证结论");
 }
