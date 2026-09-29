@@ -76,11 +76,13 @@
 //           FULL-DIAL 与启动诊断；区分初始化容错和最终失败，修复静态IP成功误报。
 //           同时接入 e15a5232：公共流量采样/落盘缺失、严格历史PLMN验证与选网
 //           失败回退、EG912恢复循环；旧候选OK不提升成严格验证或公网成功。
+//   1.11.11 跟进 artery 71fe1fa：按 MCM 卡态与应用态区分未插卡、SIM 锁定、
+//           其他未就绪和 SDK 查询失败；主机模拟补齐卡态字段。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 10
+#define DL_VER_PATCH 11
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

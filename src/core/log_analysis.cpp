@@ -2301,6 +2301,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 evDataCallUnsolicited, evApnLoadFailed, evProgramStart,
                                 evLicenseMissing, evLicensePending, evLicenseTimeout,
                                 evLicenseBackupFailed, evLicenseAtomicallyBackedUp,
+                                evArterySimAbsent, evArterySimLocked, evArterySimOther,
+                                evArterySimQueryFailed,
                                 evV2NoSim, evV2LongUnregistered, evV2PingReinit,
                                 evV2ReadyOffline, evV2ReadyFailed,
                                 evImxFailure, evImxRetry, evImxSimNotReady, evImxRegWait,
@@ -2352,6 +2354,29 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             evLicenseBackupFailed.push_back(&l);
         if (icontains(l.msg, "license atomically backed up to "))
             evLicenseAtomicallyBackedUp.push_back(&l);
+        // artery 71fe1fa: SIM 句柄查询会输出真实卡态和应用态；按 SDK 枚举值
+        // 分类，避免把查询失败、未插卡和需要 PIN/PUK 的卡混为同一种故障。
+        // FMT_SEAS 是 artery 的日志包络；合并不同产品日志时，整体平台可能由
+        // 另一来源的版本横幅决定，仍须逐行保留 artery 的 SIM 诊断。
+        if (l.fmt == FMT_SEAS) {
+            if (l.msg.find("QL_MCM_SIM_GetCardStatus: SIM client not initialized") == 0 ||
+                l.msg.find("QL_MCM_SIM_GetCardStatus failed: ret=") == 0)
+                evArterySimQueryFailed.push_back(&l);
+            else if (l.msg.find("SIM not ready: card_state=0x") == 0 &&
+                     l.msg.find(", app_3gpp_state=0x") != std::string::npos) {
+                if (l.msg.find("card_state=0xb02 (") != std::string::npos)
+                    evArterySimAbsent.push_back(&l);
+                else if (l.msg.find("app_3gpp_state=0xb02 (") != std::string::npos ||
+                         l.msg.find("app_3gpp_state=0xb03 (") != std::string::npos ||
+                         l.msg.find("app_3gpp_state=0xb05 (") != std::string::npos ||
+                         l.msg.find("app_3gpp_state=0xb06 (") != std::string::npos ||
+                         l.msg.find("app_3gpp_state=0xb07 (") != std::string::npos ||
+                         l.msg.find("app_3gpp_state=0xb08 (") != std::string::npos)
+                    evArterySimLocked.push_back(&l);
+                else
+                    evArterySimOther.push_back(&l);
+            }
+        }
         // artery 1.29.18 没有 SD 侧 SDK/FATAL 标签；只接受完整退出文案作为触发，
         // RBMaster 清理文案仅作为补充证据，避免把其他产品误归为进程级退出。
         if (l.fmt == FMT_SEAS &&
@@ -3145,6 +3170,31 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.ev.push_back(mkEv(*evRegQueryFail[i]));
         fs.push_back(std::move(f));
     }
+
+    auto addArterySimFinding = [&](const std::vector<const LogLine*>& ev,
+                                   int severity, const char* title,
+                                   const char* detail, const char* advice) {
+        if (ev.empty()) return;
+        Finding f;
+        f.severity = severity;
+        f.title = title;
+        f.detail = detail;
+        f.advice = advice;
+        for (size_t i = 0; i < ev.size() && i < 3; ++i) f.ev.push_back(mkEv(*ev[i]));
+        fs.push_back(std::move(f));
+    };
+    addArterySimFinding(evArterySimAbsent, 2, "artery SIM 卡未检测到",
+        "【源码直证】MCM 返回 card_state=0xb02(ABSENT)。重复状态日志每约 60 秒提醒一次，日志条数不是查询次数。",
+        "检查 SIM 卡槽、卡片接触和供电；插卡后确认应用状态变为 READY。");
+    addArterySimFinding(evArterySimLocked, 2, "artery SIM 应用需要解锁或已锁定",
+        "【源码直证】MCM 返回 PIN/PUK、个性化解锁或永久锁定的应用状态；以证据行中的 app_3gpp_state 原码区分具体情况。",
+        "核对应用状态原码并按卡的实际锁定类型处理，勿将其归因于运营商账户停机。");
+    addArterySimFinding(evArterySimOther, 1, "artery SIM 应用尚未就绪",
+        "【源码直证】MCM 返回非 READY 应用状态；证据行同时保留卡态与应用态。未知态、初始化态或卡错误不能仅凭这一行确定根因。",
+        "检查证据中的 card_state、app_3gpp_state 及后续状态变化；结合模组与卡槽日志排查。");
+    addArterySimFinding(evArterySimQueryFailed, 1, "artery SIM 状态查询失败",
+        "【源码直证】SIM 客户端未初始化或 MCM 查询返回错误；此时没有可靠卡状态，不能推断未插卡或账户异常。",
+        "检查 SIM 客户端初始化及 SDK 返回码，再获取有效卡状态。");
 
     // ---- 3. 模组 CP 崩溃 ----
     /* 数据服务未就绪的**独立结论**(不依附于断网事件)。

@@ -155,7 +155,7 @@
 
 ```bash
 sudo apt-get install -y mingw-w64
-make                     # x64: build/x64/dialLog_v1.11.2.exe
+make                     # x64: build/x64/dialLog_v1.11.11.exe
 make windows-all         # 同时构建 build/x64 与 build/x86
 make release             # 正式 x64 产物复制到仓库根目录
 make version             # 只打印当前版本号
@@ -172,7 +172,7 @@ mingw32-make CROSS=
 ### 32 位
 
 ```bash
-make windows-x86         # build/x86/dialLog_v1.11.2.exe
+make windows-x86         # build/x86/dialLog_v1.11.11.exe
 ```
 
 `CROSS` 同时派生 `CC/CXX/WINDRES`;每种工具链使用独立构建目录,连续切换架构
@@ -279,7 +279,7 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 
 | 处 | 表现 |
 |---|---|
-| **exe 文件名** | `dialLog_v1.11.8.exe`(Makefile 从 `version.h` 解析) |
+| **exe 文件名** | `dialLog_v1.11.11.exe`(Makefile 从 `version.h` 解析) |
 | exe 版本资源 | 右键→属性→详细信息:`FileVersion` / `OriginalFilename` |
 | 标题栏 | `dialLog v1.11.8 — 拨号日志分析` |
 
@@ -320,6 +320,7 @@ v2 的 143 种形态进一步分为 136 种持久 syslog 和 7 种直接控制�
 | 1.11.8 | 接入 RK3506J RTMS 1.28.1：兼容 `sample_ms`、`temp_c=(unavailable)`、压缩 AT 应答和按变更输出的 PLMN；新版 HB300 流量计数持续纳入分析 |
 | 1.11.9 | 新日志不继承历史筛选；支持 vendor logcat/dmesg 快照，区分历史 CP dump 与当前异常，并标明设备自报断网时长 |
 | 1.11.10 | 合并 RK3506J RTMS 1.28.2–1.28.6 与后续 e15a5232 适配：首次公网联网、保留网络接管、明确恢复边沿、FULL-DIAL/启动诊断与关键时间线；修复静态 IP 成功误报，补齐公共流量采样/落盘缺失、RK 选网失败、严格历史 PLMN 验证与 EG912 恢复循环；保留旧候选 OK 的证据边界，覆盖来源/重启/时基/容错及本地 IPC/64 位计数反例 |
+| 1.11.11 | 跟进 artery 71fe1fa 的 SIM 状态查询日志：区分卡缺失、应用解锁/锁定、其他未就绪和 SDK 查询失败；证据保留卡态、应用态及返回码，且不把限频日志条数当作查询次数；更新真实代码主机模拟的卡态桩 |
 
 > `dialLog.exe` **有意入库**(方便直接取用,不必装 MinGW)。代价是每次提交都往 git 历史塞约 1.8MiB
 > 且永久留存。**约定:只在升版本号时提交 exe**,日常改源码不要跟着提交,否则仓库会被二进制撑爆。

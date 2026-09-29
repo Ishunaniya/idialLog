@@ -788,6 +788,51 @@ static void t18_artery_datacall_exit_diagnostic() {
     ok(!falsePositive, "非 SEAS 或仅清理 RBMaster 的日志不触发 artery 初始化退出诊断");
 }
 
+static void t18b_artery_sim_card_status() {
+    std::printf("== T18b artery 新版 SIM 卡态与查询错误 ==\n");
+    const auto raw = L({
+        "2026-09-29 10:00:00.000 [INFO] \x1b[0mmain (main.c:267) - DIAL Version: dial_eg25_1.29.18",
+        "2026-09-29 10:00:01.000 [INFO] \x1b[0msim_card_ready (sim.c:149) - SIM not ready: card_state=0xb02 (No SIM detected), app_3gpp_state=0xb00 (Application status unknown)",
+        "2026-09-29 10:01:01.000 [INFO] \x1b[0msim_card_ready (sim.c:149) - SIM not ready: card_state=0xb02 (No SIM detected), app_3gpp_state=0xb00 (Application status unknown)",
+        "2026-09-29 10:02:01.000 [INFO] \x1b[0msim_card_ready (sim.c:149) - SIM not ready: card_state=0xb03 (SIM detected), app_3gpp_state=0xb02 (PIN required)",
+        "2026-09-29 10:03:01.000 [INFO] \x1b[0msim_card_ready (sim.c:149) - SIM not ready: card_state=0xb03 (SIM detected), app_3gpp_state=0xb04 (SIM application initializing)",
+        "2026-09-29 10:04:01.000 [ERROR] \x1b[0msim_card_ready (sim.c:127) - QL_MCM_SIM_GetCardStatus failed: ret=5 (0x5)"
+    });
+    std::vector<LogLine> lines; std::vector<std::string> sessions; ParseAudit audit;
+    parseLines(raw, lines, sessions, &audit);
+    const auto findings = analyze(lines, {}, {}, detectPlatform(lines), audit);
+    bool absent = false, locked = false, other = false, query = false;
+    bool noAccount = true;
+    for (const Finding& finding : findings) {
+        absent |= finding.title == "artery SIM 卡未检测到" &&
+                  !finding.ev.empty() && finding.ev[0].text.find("card_state=0xb02") != std::string::npos;
+        locked |= finding.title == "artery SIM 应用需要解锁或已锁定" &&
+                  !finding.ev.empty() && finding.ev[0].text.find("app_3gpp_state=0xb02") != std::string::npos;
+        other |= finding.title == "artery SIM 应用尚未就绪" &&
+                 !finding.ev.empty() && finding.ev[0].text.find("app_3gpp_state=0xb04") != std::string::npos;
+        query |= finding.title == "artery SIM 状态查询失败" &&
+                 !finding.ev.empty() && finding.ev[0].text.find("ret=5") != std::string::npos;
+        noAccount &= finding.title.find("账户/订阅异常") == std::string::npos;
+    }
+    ok(audit.unparsed == 0 && absent && locked && other && query && noAccount,
+       "SEAS 卡态、应用锁、初始化和 SDK 错误分别留证，未臆断账户异常");
+
+    const auto mixedRaw = L({
+        "[2026-09-29 09:59:59] Modem_mng Version: rtms_eg25_1.31.19",
+        "2026-09-29 10:00:01.000 [INFO] \x1b[0msim_card_ready (sim.c:154) - SIM not ready: card_state=0xb02 (No SIM detected), app_3gpp_state=0xb00 (Application status unknown)"
+    });
+    std::vector<LogLine> mixedLines; std::vector<std::string> mixedSessions; ParseAudit mixedAudit;
+    parseLines(mixedRaw, mixedLines, mixedSessions, &mixedAudit);
+    const PlatformInfo mixedPlatform = detectPlatform(mixedLines);
+    const auto mixedFindings = analyze(mixedLines, {}, {}, mixedPlatform, mixedAudit);
+    bool mixedAbsent = false;
+    for (const Finding& finding : mixedFindings)
+        mixedAbsent |= finding.title == "artery SIM 卡未检测到" &&
+                       !finding.ev.empty() && finding.ev[0].text.find("card_state=0xb02") != std::string::npos;
+    ok(mixedAudit.unparsed == 0 && mixedPlatform.plat == PLAT_EG25 && mixedAbsent,
+       "混合 RTMS EG25 与 artery 日志时仍按 SEAS 行识别 SIM 卡缺失");
+}
+
 // 2026-08-31 产品提交把启动横幅统一为带平台的展示版本。此处同时钉死：
 // 1) 首字母大写的 Modem_mng 仍是启动证据；2) 重启后 RX 基线清空；
 // 3) 展示版本可直接标识所有已发布平台，而无需等待心跳特征。
@@ -1061,6 +1106,7 @@ int main() {
     t16_eg25_persistent_failure_diagnostics();
     t17_datacall_initiator_reason_classification();
     t18_artery_datacall_exit_diagnostic();
+    t18b_artery_sim_card_status();
     t19_display_version_platform_and_restart();
     t20_imx6ull_state_machine();
     t21_imx6ull_1251_recovery_and_at_health();
