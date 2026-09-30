@@ -205,7 +205,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (ListView_GetSelectedCount(raw) < 1) return finish(42);
     SendMessageW(raw, WM_KEYDOWN, VK_RETURN, 0);
     HWND detail = GetDlgItem(window, 1112);
-    if (!detail || !IsWindowVisible(detail) || GetWindowTextLengthW(detail) < 20) return finish(37);
+    if (!detail || !IsWindowVisible(detail) || SendMessageW(detail, WM_GETTEXTLENGTH, 0, 0) < 20) return finish(37);
     SendMessageW(window, WM_COMMAND, MAKEWPARAM(1111, BN_CLICKED),
                  reinterpret_cast<LPARAM>(GetDlgItem(window, 1111)));
     if (IsWindowVisible(detail)) return finish(38);

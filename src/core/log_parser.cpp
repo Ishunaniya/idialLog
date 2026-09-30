@@ -202,6 +202,11 @@ static bool parseSeas(const std::string& line0, LogLine& L) {
     else if (p < line.size() && line[p] == '-' && p + 1 == line.size()) p += 1;
 
     splitTag(line.substr(p), L);   // 消息内可再带 [TAG](实证:[INIT]/[HEARTBEAT]/[ROAMLINK]/[ZERO ADDR])
+    // 旧版 artery 的 INFO 状态/回调没有内嵌标签，正文保持原样，只补语义标签。
+    if (L.tagText().empty()) {
+        if (arteryStateTransition(L)) L.setTag("STATE");
+        else if (arteryLegacyConnected(L) || arteryLegacyDisconnected(L)) L.setTag("SDK");
+    }
     return true;
 }
 

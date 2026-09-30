@@ -144,6 +144,19 @@ struct DataCallStats {
     std::map<std::string, size_t> reasons;
 };
 
+// artery 应用状态停留与 SDK 事件分别保存；停留区间不是业务断网时长。
+struct ArteryStateStall {
+    long long start = 0, end = 0;
+    size_t entryLine = 0, lastLine = 0, redialLine = 0, sdkConnectedLine = 0;
+    size_t heartbeatCount = 0;
+};
+struct ArteryDiagnostics {
+    std::vector<ArteryStateStall> startCallStalls;
+    std::vector<size_t> legacyDisconnectEvidence;
+    std::vector<size_t> contradictoryStateEvidence;
+    size_t legacyDisconnected = 0;
+};
+
 // 多来源日志的实际观测窗口。calendarSpan 只描述首尾日历跨度；observedSpan 为
 // 各 source 内首末有效时间跨度之和，绝不跨文件间的无日志空档。
 struct ObservationStats {
@@ -167,6 +180,11 @@ struct AvailabilityStats {
     std::size_t neverConnectedStartupSegments = 0;
     std::size_t terminalOutages = 0;         // 日志结束前未见恢复的断网数
 
+    // 百分比仍是“已识别事件”口径；以下证据缺口禁止把数值标成业务正常。
+    bool legacyArteryEvents = false, arteryStateStall = false, mixedArteryStates = false;
+    bool evidenceLimited() const {
+        return legacyArteryEvents || arteryStateStall || mixedArteryStates;
+    }
     bool fullValid() const { return startupSegments > 0 && fullObservedSeconds > 0; }
     bool runtimeValid() const { return connectedStartupSegments > 0 && runtimeObservedSeconds > 0; }
     double fullPercent() const {

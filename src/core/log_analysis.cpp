@@ -1089,11 +1089,13 @@ static DataCallStats collectDataCallStatsImpl(const Lines& lines) {
             ++stats.stopRequested;
             continue;
         }
-        if (line.msg.find("DataCall disconnected") == std::string::npos) continue;
+        if (line.msg.find("DataCall disconnected") == std::string::npos &&
+            !arteryLegacyDisconnected(line)) continue;
 
         ++stats.disconnected;
         const std::string initiator = dataCallField(line.msg, "initiator");
-        const std::string reason = dataCallField(line.msg, "reason");
+        const std::string reason = arteryLegacyDisconnected(line)
+            ? line.msg.substr(line.msg.rfind("0x")) : dataCallField(line.msg, "reason");
         if (initiator.empty()) {
             ++stats.legacy;
         } else if (initiator == "APP_STOP") {
@@ -1343,7 +1345,7 @@ static bool usableCell(std::string_view value) {
                 std::tolower(static_cast<unsigned char>(expected[index]))) return false;
         return true;
     };
-    return !value.empty() && value != "-" && !equalsIgnoreCase("N/A") &&
+    return !value.empty() && value != "-" && !equalsIgnoreCase("N/A") && !equalsIgnoreCase("NA") &&
            !equalsIgnoreCase("FFFFFFFF") && !equalsIgnoreCase("init");
 }
 
@@ -1929,6 +1931,82 @@ static bool isDataPathUp(const LogLine& line, bool rkSource) {
            lo.find("wait_for_connect -> net_connected") != std::string::npos;
 }
 
+// 仅判定有连续心跳支持的应用状态停留；300/120 秒是观察阈值，不是拨号协议超时。
+template <typename Lines>
+static ArteryDiagnostics collectArteryDiagnosticsImpl(const Lines& lines) {
+    ArteryDiagnostics result;
+    struct Progress {
+        std::string state;
+        long long lastTime = 0, transitionTime = 0, mismatchTime = 0;
+        size_t transitionLine = 0, redialLine = 0, mismatchLine = 0;
+        bool haveTime = false, conflictReported = false;
+        ArteryStateStall span;
+    };
+    std::map<std::uint16_t, Progress> progress;
+    auto finish = [&](Progress& p) {
+        if (p.span.heartbeatCount >= 3 && p.span.end - p.span.start >= 300)
+            result.startCallStalls.push_back(p.span);
+        p.span = ArteryStateStall{};
+    };
+    for (const auto& item : lines) {
+        const LogLine& l = lineRef(item);
+        if (l.fmt != FMT_SEAS) continue;
+        Progress& p = progress[l.sourceId];
+        if (isProgramStartBanner(l.msg) ||
+            (p.haveTime && (l.t < p.lastTime || crossesClockBase(p.lastTime, l.t)))) {
+            finish(p); p = Progress{};
+        }
+        p.haveTime = true; p.lastTime = l.t;
+        if (arteryLegacyDisconnected(l)) {
+            ++result.legacyDisconnected;
+            if (result.legacyDisconnectEvidence.size() < 3)
+                result.legacyDisconnectEvidence.push_back(l.lineNo);
+        }
+        if (l.msg == "policy=force_sim: SIM failed, redialing" ||
+            l.msg.find("license pending: SIM TCP failed, redialing SIM") == 0)
+            p.redialLine = l.lineNo;
+        std::string to;
+        if (arteryStateTransition(l, nullptr, &to)) {
+            finish(p);
+            p.state = to; p.transitionTime = l.t; p.transitionLine = l.lineNo;
+            p.mismatchLine = 0; p.conflictReported = false;
+            if (to == "net_connected") p.redialLine = 0;
+            if (to == "start_call") {
+                p.span.start = p.span.end = l.t;
+                p.span.entryLine = p.span.lastLine = l.lineNo;
+                p.span.redialLine = p.redialLine;
+            }
+            continue;
+        }
+        // SDK 成功回调不能代替应用状态迁移，不能提前结束 start_call 停留。
+        if (arteryLegacyConnected(l) && p.span.entryLine)
+            p.span.sdkConnectedLine = l.lineNo;
+        if (l.tagText() != "HEARTBEAT") continue;
+        const std::string_view state = heartbeatFields(l.msg).state;
+        if (state.empty()) continue;
+        const bool conflict = (p.state == "net_connected" && state == "start_call") ||
+                              (p.state == "start_call" && state == "net_connected");
+        if (conflict && l.t - p.transitionTime >= 15 && !p.conflictReported) {
+            if (p.mismatchLine && l.t - p.mismatchTime <= 180) {
+                if (result.contradictoryStateEvidence.empty())
+                    result.contradictoryStateEvidence = {p.transitionLine, p.mismatchLine, l.lineNo};
+                p.conflictReported = true;
+            } else { p.mismatchLine = l.lineNo; p.mismatchTime = l.t; }
+        }
+        if (state != "start_call") { finish(p); continue; }
+        // 明确迁移到别的状态后出现的旧心跳只作冲突证据，不能归到新进程的停留区间。
+        if (!p.state.empty() && p.state != "start_call") continue;
+        if (p.span.entryLine && l.t - p.span.end > 120) finish(p);
+        if (!p.span.entryLine) {
+            p.span.start = l.t; p.span.entryLine = l.lineNo;
+            p.span.redialLine = p.redialLine;
+        }
+        p.span.end = l.t; p.span.lastLine = l.lineNo; ++p.span.heartbeatCount;
+    }
+    for (auto& entry : progress) finish(entry.second);
+    return result;
+}
+
 template <typename Lines>
 static AvailabilityStats availabilityStatsImpl(const Lines& lines,
                                                const std::vector<Outage>& outages) {
@@ -2013,6 +2091,10 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
     stats.fullUnavailableSeconds = std::min(stats.fullUnavailableSeconds, stats.fullObservedSeconds);
     stats.runtimeUnavailableSeconds = std::min(stats.runtimeUnavailableSeconds,
                                                stats.runtimeObservedSeconds);
+    const ArteryDiagnostics artery = collectArteryDiagnosticsImpl(lines);
+    stats.legacyArteryEvents = artery.legacyDisconnected > 0;
+    stats.arteryStateStall = !artery.startCallStalls.empty();
+    stats.mixedArteryStates = !artery.contradictoryStateEvidence.empty();
     return stats;
 }
 
@@ -2059,7 +2141,14 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
     long long previousTime = 0, previousSwitchTime = 0;
     for (std::size_t index = 0; index < metrics.size(); ++index) {
         const MetricRow& metric = metrics[index];
-        if (metric.cellId.empty()) continue;
+        if (metric.cellId.empty()) {
+            // 未知小区终止连续观测，不能拼出 A→未知→B 的确定切换/乒乓。
+            previousCell.clear(); cellBeforePrevious.clear(); previousSwitchTime = 0;
+            continue;
+        }
+        if (!previousCell.empty() && (metric.t < previousTime || metric.t - previousTime > 600)) {
+            previousCell.clear(); cellBeforePrevious.clear(); previousSwitchTime = 0;
+        }
         const std::string id = metric.cellId.str();
         CellAccumulator& accumulator = accumulators[cellIndex(id)];
         CellSummary& summary = accumulator.summary;
@@ -2161,6 +2250,7 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
         const Outage& outage = *outagePtr;
         while (metricCursor < metrics.size() && metrics[metricCursor].lineNo <= outage.startLine) {
             if (!metrics[metricCursor].cellId.empty()) latestMetric[sourceIds[metricCursor]] = metricCursor;
+            else latestMetric.erase(sourceIds[metricCursor]);
             ++metricCursor;
         }
         const std::uint16_t sourceId = sourceIdAtLine(lines, outage.startLine);
@@ -2173,7 +2263,8 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
             std::size_t fallback = index;
             while (age < 0 && fallback > 0) {
                 --fallback;
-                if (sourceIds[fallback] != sourceId || metrics[fallback].cellId.empty()) continue;
+                if (sourceIds[fallback] != sourceId) continue;
+                if (metrics[fallback].cellId.empty()) break;
                 const long long fallbackAge = outage.start - metrics[fallback].t;
                 if (fallbackAge >= 0) {
                     const MetricRow& candidate = metrics[fallback];
@@ -2227,6 +2318,21 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
 }
 
 } // namespace
+
+ArteryDiagnostics collectArteryDiagnostics(const std::vector<LogLine>& lines) {
+    return collectArteryDiagnosticsImpl(lines);
+}
+ArteryDiagnostics collectArteryDiagnostics(const LogView& lines) {
+    return collectArteryDiagnosticsImpl(lines);
+}
+std::string availabilityEvidenceNote(const AvailabilityStats& stats) {
+    if (!stats.evidenceLimited()) return {};
+    std::string note = "证据不足：";
+    if (stats.legacyArteryEvents) note += "旧版 SDK 断开回调未计入业务断网区间；";
+    if (stats.arteryStateStall) note += "应用长期停留 start_call，后续监测状态不能确认；";
+    if (stats.mixedArteryStates) note += "状态证据冲突，可能混入多个实例/日志流；";
+    return note + "百分比仅按已识别事件计算，不能据此确认业务 100% 可用。";
+}
 
 AvailabilityStats availabilityStats(const std::vector<LogLine>& lines,
                                     const std::vector<Outage>& outages) {
@@ -2288,6 +2394,49 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     std::vector<Finding> fs;
     if (lines.empty()) return fs;
     const bool v2Platform = pi.plat == PLAT_MODEM_MNG_V2;
+    const ArteryDiagnostics artery = collectArteryDiagnosticsImpl(lines);
+    auto addLineEvidence = [&](Finding& f, size_t number) {
+        if (!number) return;
+        auto it = std::lower_bound(lines.begin(), lines.end(), number,
+            [](const auto& item, size_t n) { return lineRef(item).lineNo < n; });
+        if (it != lines.end() && lineRef(*it).lineNo == number) f.ev.push_back(mkEv(lineRef(*it)));
+    };
+    if (!artery.startCallStalls.empty()) {
+        const ArteryStateStall* longest = &artery.startCallStalls.front();
+        for (const auto& s : artery.startCallStalls)
+            if (s.end - s.start > longest->end - longest->start) longest = &s;
+        Finding f;
+        f.severity = 2; f.title = "artery 应用长期停留 start_call";
+        f.detail = "【日志直证】连续心跳支持 " + std::to_string(artery.startCallStalls.size()) +
+            " 段 start_call 停留，最长 " + fmtDuration(longest->end - longest->start) +
+            "，" + std::to_string(longest->heartbeatCount) +
+            " 条心跳。观察规则为至少 300 秒、3 条心跳且相邻间隔不超过 120 秒，非协议超时。";
+        if (longest->redialLine) f.detail += " 该段前记录了 SIM TCP 失败重拨。";
+        if (longest->sdkConnectedLine) f.detail += " 期间 SDK 仍报告联网；SDK 连通不代表应用恢复 net_connected。";
+        f.detail += " 这是应用状态推进/后续监测异常证据，不能折算成整段业务断网。";
+        f.advice = "核对重拨后的 DataCall Stop/Start 与状态门控；日志未打印门控变量，具体代码原因需结合对应固件源码确认。补充 PID、业务探测和单调时间，勿以 tcp_fail=0 证明健康。";
+        addLineEvidence(f, longest->redialLine);
+        addLineEvidence(f, longest->entryLine);
+        addLineEvidence(f, longest->sdkConnectedLine);
+        addLineEvidence(f, longest->lastLine);
+        fs.push_back(std::move(f));
+    }
+    if (!artery.contradictoryStateEvidence.empty()) {
+        Finding f;
+        f.severity = 1; f.title = "artery 状态证据冲突，疑似混合实例/日志流";
+        f.detail = "【日志直证】明确状态迁移后，超过 15 秒仍重复出现相反的 start_call/net_connected 心跳（180 秒内至少两次）。【推断】可能有多个实例/日志流；无 PID，无法确定实例数量或逐行归属。";
+        f.advice = "按 PID/启动标识分别采集日志，并核对守护进程是否重复拉起；不要把这些心跳解释成同一实例反复迁移，也不要跨启动拼接停留时长。";
+        for (size_t number : artery.contradictoryStateEvidence) addLineEvidence(f, number);
+        fs.push_back(std::move(f));
+    }
+    if (artery.legacyDisconnected) {
+        Finding f;
+        f.severity = 1; f.title = "artery 旧版 SDK 断开回调 " + std::to_string(artery.legacyDisconnected) + " 次";
+        f.detail = "【日志直证】Net disconnected 回调已纳入旧格式未归因计数；原始原因码不能证明是应用主动停止或 SDK 自发断开，回调区间也不等于业务中断区间。";
+        f.advice = "结合对应 Net Connected、业务探测和 RX 判断恢复；未识别业务断网不意味着业务 100% 可用，概览和报告按证据不足展示。";
+        for (size_t number : artery.legacyDisconnectEvidence) addLineEvidence(f, number);
+        fs.push_back(std::move(f));
+    }
 
     // ---- 预扫:各类特征行(全部留证据指针)----
     std::vector<const LogLine*> evNeverConn, evPolicy, evRecL1, evRecL2, evRecL3,
@@ -2868,7 +3017,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         fs.push_back(std::move(finding));
     }
     // SDK 注网摘要是 2026-07/08 四份产品代码新增字段。只有 SRV!=FULL 且 DENY>0
-    // 才算拒绝证据；DENY=0 不臆测。两套 SDK 的 DENY 数字表不同,这里只保留原码。
+    // 才作为注网异常线索；不能统一当作明确拒绝，SDK 编码表按来源区分。
     std::vector<const MetricRow*> evSdkDeny;
     for (const auto& m : mets)
         if (m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0) evSdkDeny.push_back(&m);
@@ -3100,21 +3249,37 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         fs.push_back(std::move(f));
     }
 
-    if (!evDenied.empty() || !evSdkDeny.empty()) {
+    if (!evDenied.empty()) {
         Finding f;
-        f.severity = 2;
-        f.title  = "网络注册被明确拒绝(REG=3 / SDK DENY)";
-        f.detail = "【源码直证】产品首次初始化诊断输出 NETWORK REJECTED/旧版 Registration "
-                   "Denied，或 SDK 摘要同时满足 SRV!=2(FULL) 且 DENY>0。DENY 是平台 SDK "
-                   "原始码；EC200A 与 EG25 编码表不同，工具不跨平台套用名称。";
-        f.advice = "核对卡状态(欠费/停机/未开通漫游或数据)、IMSI 与运营商签约是否一致;"
-                   "海外场景确认是否需要选网(COPS)。";
+        f.severity = 2; f.title = "网络注册被明确拒绝(REG=3)";
+        f.detail = "【源码直证】产品输出 NETWORK REJECTED/Registration Denied；这是明确拒绝证据，仍需原始 AT 响应确定具体原因。";
+        f.advice = "核对 SIM/运营商签约、漫游权限与 COPS 原始响应；明确拒绝本身不能证明欠费。";
         for (size_t i = 0; i < evDenied.size() && i < 3; ++i) f.ev.push_back(mkEv(*evDenied[i]));
-        for (size_t i = 0; i < evSdkDeny.size() && f.ev.size() < 3; ++i) {
-            Evidence e; e.lineNo = evSdkDeny[i]->lineNo; e.ts = fmtTime(evSdkDeny[i]->t, "MD");
-            e.text = "SDK注网摘要 SRV=" + std::to_string(evSdkDeny[i]->srvVal) +
-                     " RAT=" + (evSdkDeny[i]->rat.empty() ? "-" : evSdkDeny[i]->rat) +
-                     " DENY=" + std::to_string(evSdkDeny[i]->denyVal);
+        fs.push_back(std::move(f));
+    }
+    if (!evSdkDeny.empty()) {
+        Finding f;
+        f.severity = 1; f.title = "SDK 注网异常(SDK DENY)";
+        f.detail = "【日志直证】SDK 摘要存在 SRV!=2(FULL) 且 DENY>0；该组合表示注册/服务异常线索，不能统一提升为 REG=3 明确拒绝，更不能直接判断账户欠费。FULL 状态下的非零原因码可能是残留值。";
+        f.advice = "保留 SRV/RAT/DENY 原码，结合 CEREG/COPS/CEER 与 SDK 版本核验；EG25 SDK 的 DENY=9 为无合适小区、10 为网络失败、21 为消息类型不存在或未实现；勿套用 EC200A 编码表。";
+        // 原因名称仅使用有来源证据的 artery/EG25 平台，其他 SDK 保留原码。
+        const auto platforms = sourceDisplayPlatforms(lines);
+        for (size_t i = 0; i < evSdkDeny.size() && i < 3; ++i) {
+            const MetricRow& m = *evSdkDeny[i];
+            Evidence e; e.lineNo = m.lineNo; e.ts = fmtTime(m.t, "MD");
+            e.text = "SDK注网摘要 SRV=" + std::to_string(m.srvVal) +
+                     " RAT=" + (m.rat.empty() ? "-" : m.rat) + " DENY=" + std::to_string(m.denyVal);
+            auto platform = platforms.find(sourceIdAtLine(lines, m.lineNo));
+            auto sourceLine = std::lower_bound(lines.begin(), lines.end(), m.lineNo,
+                [](const auto& item, size_t n) { return lineRef(item).lineNo < n; });
+            const bool arteryEnvelope = sourceLine != lines.end() &&
+                lineRef(*sourceLine).lineNo == m.lineNo && lineRef(*sourceLine).fmt == FMT_SEAS;
+            if (arteryEnvelope || (platform != platforms.end() &&
+                (platform->second == PLAT_ARTERY || platform->second == PLAT_EG25))) {
+                if (m.denyVal == 9) e.text += " (EG25 SDK: NO_SUITABLE_CELLS_IN_LA)";
+                if (m.denyVal == 10) e.text += " (EG25 SDK: NETWORK_FAILURE)";
+                if (m.denyVal == 21) e.text += " (EG25 SDK: MESSAGE_TYPE_NON_EXISTENT_OR_NOT_IMPLEMENTED)";
+            }
             f.ev.push_back(std::move(e));
         }
         fs.push_back(std::move(f));
@@ -3600,7 +3765,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         case C_DENIED:
             f.detail = "断网窗口内出现注册明确拒绝、受限服务、产品有边界的疑似账户诊断，"
                        "或 SDK 摘要为 SRV!=2 且 DENY>0。证据等级以上方对应独立结论为准。";
-            f.advice = "按注册/SIM/账户方向处理，并保留原始 AT 证据；SUSPECTED 不能当成停机实锤。";
+            f.advice = "按对应注册/服务异常证据核查网络、SIM 与运营商，并保留原始 AT 响应；SDK DENY 不等于明确拒绝，SUSPECTED 不能当成停机实锤。";
             break;
         case C_NOTREADY:
             f.detail = "断网窗口内出现 data_call_init 失败/重试 —— **AP 侧数据服务(ql_netd)没起来**,"

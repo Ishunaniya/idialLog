@@ -818,6 +818,23 @@ void DoExportReport() {
                  static_cast<int>(App().document.audit.nulBytes),
                  static_cast<int>(App().document.audit.nulLines)));
 
+        const AvailabilityStats availability = availabilityStats(App().document.filtered, App().document.outages);
+        const DataCallStats calls = collectDataCallStats(App().document.filtered);
+        if (availability.evidenceLimited()) {
+            add(L"- 业务可用率：证据不足");
+            add(L"- " + U8ToW(availabilityEvidenceNote(availability)));
+        }
+        if (availability.runtimeValid())
+            add(FmtW(L"- 首次联网后运行期可用率%s：%.3f%%",
+                     availability.evidenceLimited() ? L"（仅已识别事件口径）" : L"",
+                     availability.runtimePercent()));
+        if (availability.fullValid())
+            add(FmtW(L"- 全程服务可达率%s：%.3f%%",
+                     availability.evidenceLimited() ? L"（仅已识别事件口径）" : L"",
+                     availability.fullPercent()));
+        add(FmtW(L"- DataCall 断开：%d 次（APP_STOP %d / SDK_URC %d / 旧格式未归因 %d）",
+                 (int)calls.disconnected, (int)calls.appStop, (int)calls.sdkUrc, (int)calls.legacy));
+
         if (App().document.sources.size() > 1) {
             add(); add(L"## 多日志对比"); add();
             add(L"| 来源 | 解析行 | 断网 | 指标样本 | 平均 RSRP |");
@@ -970,6 +987,18 @@ void DoExportHtml() {
         kpi("小区", std::to_string(App().document.cellAnalysis.cells.size()) + " 个");
         kpi("未识别", std::to_string(App().document.audit.unparsed) + " 行");
         kpi("文件损伤", std::to_string(App().document.audit.nulBytes) + " NUL 字节");
+        const AvailabilityStats availability = availabilityStats(App().document.filtered, App().document.outages);
+        const DataCallStats calls = collectDataCallStats(App().document.filtered);
+        if (availability.evidenceLimited()) kpi("业务可用率", "证据不足");
+        if (availability.runtimeValid())
+            kpi(availability.evidenceLimited() ? "运行期可用率（仅已识别事件）" : "运行期可用率",
+                WToU8(FmtW(L"%.3f%%", availability.runtimePercent())));
+        if (availability.fullValid())
+            kpi(availability.evidenceLimited() ? "全程可达率（仅已识别事件）" : "全程可达率",
+                WToU8(FmtW(L"%.3f%%", availability.fullPercent())));
+        kpi("DataCall 断开", std::to_string(calls.disconnected) + " 次（APP_STOP " +
+            std::to_string(calls.appStop) + " / SDK_URC " + std::to_string(calls.sdkUrc) +
+            " / 旧格式未归因 " + std::to_string(calls.legacy) + "）");
         const ObservationStats observation = observationStats(App().document.lines);
         html += "</div><p class=\"muted\">日志时间：" + escape(fmtTime(firstTime, "FULL")) + " → " +
                 escape(fmtTime(lastTime, "FULL")) + "；实际观测 " +
@@ -977,7 +1006,8 @@ void DoExportHtml() {
                 escape(fmtDur(observation.calendarSpan)) + "（覆盖 " +
                 oneDecimal(static_cast<int>(observation.coveragePercent * 10.0)) +
                 "%）；授时跳变切段 " + std::to_string(observation.clockDiscontinuities) +
-                " 处</p></section>";
+                " 处</p>" + (availability.evidenceLimited()
+                    ? "<p>" + escape(availabilityEvidenceNote(availability)) + "</p>" : "") + "</section>";
 
         ChartSeries csq, rsrp, rsrq, snr;
         csq.reserve(App().document.metrics.size()); rsrp.reserve(App().document.metrics.size());

@@ -161,7 +161,8 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         if (o.dur > longest) longest = o.dur;
         if (o.dur <= 30) b[0]++; else if (o.dur <= 60) b[1]++; else if (o.dur <= 300) b[2]++; else b[3]++;
     }
-    const bool availValid = availability.runtimeValid();
+    const bool evidenceLimited = availability.evidenceLimited();
+    const bool availValid = availability.runtimeValid() && !evidenceLimited;
     const double avail = availability.runtimePercent();
     const std::wstring clockSplit = observation.clockDiscontinuities
         ? FmtW(L"，已切断 %d 处授时跳变", (int)observation.clockDiscontinuities)
@@ -175,7 +176,7 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     // 状态色须配文字标签,不能只靠颜色表意 —— 故旁边永远写着"可用率"
     const bool noFirstConnection = availability.neverConnectedStartupSegments > 0 &&
                                    !availability.runtimeValid();
-    const wchar_t* heroTag = noFirstConnection ? L"未建立连接" : !availValid ? L"数据不足" :
+    const wchar_t* heroTag = evidenceLimited ? L"证据不足" : noFirstConnection ? L"未建立连接" : !availValid ? L"数据不足" :
                               (avail >= 99.9 ? L"良好" : (avail >= 99.0 ? L"偏低" : L"差"));
     const int pad = S(20);
     DrawText_(hdc, pad, S(14), L"首次联网后运行期可用率", App().hFontTileLbl, th::inkSec);
@@ -183,11 +184,13 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     DrawText_(hdc, pad, S(30), hv, App().hFontHero, th::inkPri);
     int hx = pad + TextW_(hdc, hv, App().hFontHero) + S(14);
     const std::wstring state = heroTag;
-    const COLORREF heroColor = noFirstConnection ? th::critical : !availValid ? th::inkMuted :
+    const COLORREF heroColor = evidenceLimited ? th::warning : noFirstConnection ? th::critical : !availValid ? th::inkMuted :
                                (avail >= 99.9 ? th::good : (avail >= 99.0 ? th::warning : th::critical));
     DrawPill(hdc, hx, S(48), state, th::accentSoft, th::inkSec, heroColor);
     std::wstring serviceReachability;
-    if (availability.fullValid()) {
+    if (evidenceLimited) {
+        serviceReachability = L"业务可用率证据不足：已识别事件统计无法确认持续在线，详见结论";
+    } else if (availability.fullValid()) {
         const std::wstring neverConnected = availability.neverConnectedStartupSegments
             ? FmtW(L"（%d 个启动会话未建立首次连接）",
                    (int)availability.neverConnectedStartupSegments)

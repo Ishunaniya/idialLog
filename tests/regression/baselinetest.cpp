@@ -467,7 +467,7 @@ int main() {
         auto mets = buildMetrics(lines);
         auto fs = analyze(lines, collectOutages(lines), mets, detectPlatform(lines), a);
         const Finding* deny = findingWith(fs, "SDK DENY");
-        ck(deny != nullptr, "SDK DENY 形成注册拒绝结论", deny ? deny->title : "(无)", "有");
+        ck(deny != nullptr, "SDK DENY 形成注网异常线索（不能一概视为拒绝）", deny ? deny->title : "(无)", "有");
         if (deny) {
             ck(!deny->ev.empty() && deny->ev[0].text.find("SRV=0 RAT=LTE DENY=6") != std::string::npos,
                "DENY证据钉死0/LTE/6", deny->ev.empty() ? "(无证据)" : deny->ev[0].text,

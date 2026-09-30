@@ -81,6 +81,9 @@ int main(int argc, char** argv) {
     std::printf("  次数:%zu  累计:%s  首次联网后运行期可用率:%s  全程服务可达率:%s\n",
                 outs.size(), fmtDur(total).c_str(),
                 runtimeAvailability.c_str(), fullAvailability.c_str());
+    if (availability.evidenceLimited())
+        std::printf("  业务可用率:证据不足；以上百分比仅为已识别事件口径。%s\n",
+                    availabilityEvidenceNote(availability).c_str());
     if (availability.neverConnectedStartupSegments)
         std::printf("  启动会话:%zu  未建立首次连接:%zu\n", availability.startupSegments,
                     availability.neverConnectedStartupSegments);

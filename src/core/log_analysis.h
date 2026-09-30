@@ -13,6 +13,9 @@ std::map<std::string, std::string> hbFields(const std::string& msg);
 PlatformInfo detectPlatform(const std::vector<LogLine>& lines);
 
 // ---- 分析 ----
+ArteryDiagnostics collectArteryDiagnostics(const std::vector<LogLine>& lines);
+ArteryDiagnostics collectArteryDiagnostics(const LogView& lines);
+std::string availabilityEvidenceNote(const AvailabilityStats& stats);
 std::vector<Outage> collectOutages(const std::vector<LogLine>& lines);
 std::vector<Outage> collectOutages(const LogView& lines);
 ObservationStats observationStats(const std::vector<LogLine>& lines);
