@@ -1667,6 +1667,7 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
             MetricRow metric;
             metric.t = l.t;
             metric.lineNo = l.lineNo;
+            metric.inferredTime = l.inferredTime;
             metric.ch = "MODEM_V2";
             metric.rat = registration.rat;
             if (!registration.cell.empty()) metric.cellId.assign(registration.cell);
@@ -1695,6 +1696,7 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         MetricRow m;
         m.t  = l.t;
         m.lineNo = l.lineNo;
+        m.inferredTime = l.inferredTime;
         if (imxHeartbeat) {
             // HB30/HB300 的 state=CHECK_CONNECTION/SUCCESS 不是数据通道；它们
             // 必须优先显示所属 RTMS 平台，而不能被 artery 的 state→SIM 规则截获。

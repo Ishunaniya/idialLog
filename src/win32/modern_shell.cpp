@@ -27,6 +27,7 @@ constexpr wchar_t kButtonActiveProp[] = L"dialModernButtonActive";
 HWND g_navigation = nullptr;
 int g_selectedPage = 0;
 int g_hoverPage = -1;
+bool g_navigationKeyboardFocus = false;
 HBRUSH g_surfaceBrush = nullptr;
 COLORREF g_surfaceBrushColor = CLR_INVALID;
 HWND g_notice = nullptr;
@@ -42,11 +43,11 @@ std::wstring g_busyStatus;
 struct NavItem { int page; const wchar_t* text; const wchar_t* detail; int y; };
 
 std::array<NavItem, 9> NavItems() {
-    return {{{0, L"概览", L"健康度与关键摘要", 112},
+    return {{{0, L"概览", L"可用率、断网与信号统计", 112},
              {1, L"诊断结论", L"根因、建议与证据", 160},
              {3, L"断网记录", L"中断、恢复与时长", 208},
              {8, L"小区分析", L"质量、切换与断网关联", 256},
-             {2, L"事件时间线", L"状态与关键动作流", 354},
+             {2, L"事件时间线", L"状态变化与恢复动作", 354},
              {4, L"信号指标", L"小区、射频与数据面", 402},
              {5, L"标签统计", L"消息来源与分布", 450},
              {6, L"原始日志", L"逐行定位与复制", 498},
@@ -136,9 +137,15 @@ int HitNavigationPage(int y) {
 LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
     switch (message) {
     case WM_GETDLGCODE: return DLGC_WANTARROWS | DLGC_WANTCHARS;
-    case WM_SETFOCUS: case WM_KILLFOCUS:
+    case WM_SETFOCUS:
+        g_navigationKeyboardFocus = true;
+        InvalidateRect(hwnd, nullptr, FALSE); return 0;
+    case WM_KILLFOCUS:
+        g_navigationKeyboardFocus = false;
         InvalidateRect(hwnd, nullptr, FALSE); return 0;
     case WM_KEYDOWN: {
+        g_navigationKeyboardFocus = true;
+        InvalidateRect(hwnd, nullptr, FALSE);
         const auto items = NavItems();
         int index = 0;
         for (std::size_t i = 0; i < items.size(); ++i) if (items[i].page == g_selectedPage) index = static_cast<int>(i);
@@ -163,6 +170,8 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
         g_hoverPage = -1; InvalidateRect(hwnd, nullptr, FALSE); return 0;
     case WM_LBUTTONUP: {
         SetFocus(hwnd);
+        g_navigationKeyboardFocus = false;
+        InvalidateRect(hwnd, nullptr, FALSE);
         const int page = HitNavigationPage(GET_Y_LPARAM(lparam));
         if (page >= 0) SendMessageW(GetParent(hwnd), WM_APP_NAVIGATE, page, 0);
         return 0;
@@ -184,9 +193,9 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
         DrawTextAt(dc, L"日志诊断工作台", sub, App().hFontSmall, th::inkMuted);
 
         RECT group1{S(20), S(78), client.right - S(16), S(101)};
-        DrawTextAt(dc, L"工作台  ·  研判与处置", group1, App().hFontUI, th::inkPri);
+        DrawTextAt(dc, L"工作台", group1, App().hFontUI, th::inkPri);
         RECT group2{S(20), S(320), client.right - S(16), S(343)};
-        DrawTextAt(dc, L"数据  ·  时序与原始证据", group2, App().hFontUI, th::inkPri);
+        DrawTextAt(dc, L"数据", group2, App().hFontUI, th::inkPri);
 
         for (const auto& item : NavItems()) {
             RECT row{S(10), S(item.y), client.right - S(10), S(item.y + 44)};
@@ -219,8 +228,13 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
                 DrawTextAt(dc, badge.c_str(), br, App().hFontSmall,
                            selected ? th::onAccent : th::inkSec, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             }
-            if (selected && GetFocus() == hwnd) {
-                RECT focus = row; InflateRect(&focus, -S(4), -S(3)); DrawFocusRect(dc, &focus);
+            if (selected && GetFocus() == hwnd && g_navigationKeyboardFocus) {
+                RECT focus = row; InflateRect(&focus, -S(2), -S(2));
+                HPEN focusPen = CreatePen(PS_SOLID, std::max(1, S(1)), th::accent);
+                HGDIOBJ oldPen = SelectObject(dc, focusPen);
+                HGDIOBJ oldBrush = SelectObject(dc, GetStockObject(NULL_BRUSH));
+                RoundRect(dc, focus.left, focus.top, focus.right, focus.bottom, S(7), S(7));
+                SelectObject(dc, oldBrush); SelectObject(dc, oldPen); DeleteObject(focusPen);
             }
         }
 
@@ -439,10 +453,30 @@ bool DrawModernButton(const DRAWITEMSTRUCT& item) {
     RECT r = item.rcItem; InflateRect(&r, -1, -1);
     FillRound(item.hDC, r, S(7), fill, border);
     wchar_t label[128]{}; GetWindowTextW(item.hwndItem, label, 128);
-    DrawTextAt(item.hDC, label, r, App().hFontUI, text, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-    if (item.itemState & ODS_FOCUS) {
+    RECT textRect = r;
+    const size_t labelLength = wcslen(label);
+    const bool dropdown = labelLength && label[labelLength - 1] == L'▾';
+    if (dropdown) {
+        label[labelLength - 1] = L'\0';
+        if (labelLength > 1 && label[labelLength - 2] == L' ') label[labelLength - 2] = L'\0';
+        textRect.right -= S(12);
+    }
+    DrawTextAt(item.hDC, label, textRect, App().hFontUI, text, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    if (dropdown) {
+        const int x = r.right - S(12), y = (r.top + r.bottom) / 2;
+        POINT arrow[] = {{x - S(3), y - S(1)}, {x + S(3), y - S(1)}, {x, y + S(2)}};
+        HPEN pen = CreatePen(PS_SOLID, 1, text); HBRUSH brush = CreateSolidBrush(text);
+        HGDIOBJ oldPen = SelectObject(item.hDC, pen), oldBrush = SelectObject(item.hDC, brush);
+        Polygon(item.hDC, arrow, 3);
+        SelectObject(item.hDC, oldBrush); SelectObject(item.hDC, oldPen); DeleteObject(brush); DeleteObject(pen);
+    }
+    if ((item.itemState & ODS_FOCUS) && !(item.itemState & ODS_NOFOCUSRECT)) {
         RECT focus = r; InflateRect(&focus, -S(3), -S(3));
-        DrawFocusRect(item.hDC, &focus);
+        HPEN pen = CreatePen(PS_SOLID, std::max(1, S(1)), kind == ModernButtonKind::Primary ? th::onAccent : th::accent);
+        HGDIOBJ oldPen = SelectObject(item.hDC, pen);
+        HGDIOBJ oldBrush = SelectObject(item.hDC, GetStockObject(NULL_BRUSH));
+        RoundRect(item.hDC, focus.left, focus.top, focus.right, focus.bottom, S(5), S(5));
+        SelectObject(item.hDC, oldBrush); SelectObject(item.hDC, oldPen); DeleteObject(pen);
     }
     return true;
 }

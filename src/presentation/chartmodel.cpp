@@ -3,10 +3,37 @@
 
 #include <algorithm>
 #include <climits>
+#include <cmath>
 #include <iterator>
 #include <limits>
 
 namespace dl {
+
+std::vector<long long> chartTimeTicks(long long start, long long end,
+                                     size_t pixelWidth, size_t labelWidth) {
+    if (!pixelWidth || end < start) return {};
+    if (end == start) return {start};
+    const size_t intervals = std::max<size_t>(1, std::min<size_t>(12, pixelWidth / std::max<size_t>(1, labelWidth)));
+    const long double span = static_cast<long double>(end) - start;
+    const long double minimum = span / intervals;
+    const long long steps[] = {1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800,
+                              3600, 7200, 10800, 21600, 43200, 86400, 172800, 604800};
+    long double step = 0;
+    for (long long candidate : steps) if (candidate >= minimum) { step = candidate; break; }
+    if (!step) {
+        const long double power = std::pow(10.0L, std::floor(std::log10(minimum)));
+        step = power * (minimum <= power * 2 ? 2 : minimum <= power * 5 ? 5 : 10);
+    }
+    std::vector<long long> ticks{start};
+    const long double spacing = span * std::min<size_t>(pixelWidth, labelWidth) / pixelWidth;
+    long double tick = (std::floor(static_cast<long double>(start) / step) + 1) * step;
+    for (int count = 0; count < 32 && tick < end; ++count, tick += step) {
+        if (tick - ticks.back() >= spacing && end - tick >= spacing)
+            ticks.push_back(static_cast<long long>(tick));
+    }
+    ticks.push_back(end);
+    return ticks;
+}
 
 static bool timeLess(const ChartPoint& a, const ChartPoint& b) {
     return a.first < b.first;
@@ -25,6 +52,17 @@ static unsigned long long timeDistance(long long a, long long b) {
 
 static long long publicDistance(unsigned long long d) {
     return d > (unsigned long long)LLONG_MAX ? LLONG_MAX : (long long)d;
+}
+
+std::vector<ChartGap> chartSampleGaps(const ChartSeries& series, long long maxInterval) {
+    std::vector<ChartGap> gaps;
+    if (maxInterval < 0) return gaps;
+    for (size_t index = 1; index < series.size(); ++index) {
+        const long long previous = series[index - 1].first, current = series[index].first;
+        if (current > previous && timeDistance(current, previous) > static_cast<unsigned long long>(maxInterval))
+            gaps.emplace_back(previous, current);
+    }
+    return gaps;
 }
 
 const ChartPoint* nearestChartPoint(const ChartSeries& series, long long target,

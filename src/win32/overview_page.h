@@ -12,5 +12,7 @@ LRESULT CALLBACK SummaryProc(HWND window, UINT message, WPARAM wparam, LPARAM lp
 void RenderSummary();
 void RenderFindings();
 void ReleaseOverviewPageData();
+// 概览 / 结论的 Ctrl+C 与显式复制入口共用同一份页面文本。
+bool CopyOverviewPage(int page);
 
 } // namespace dl

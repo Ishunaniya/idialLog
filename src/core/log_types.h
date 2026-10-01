@@ -234,6 +234,7 @@ struct MetricRow {
     int pci = -1;               // 物理小区 ID；-1=无效
     std::uint32_t tac = UINT32_MAX; // 跟踪区码（按十六进制展示）
     std::uint8_t tacDigits = 0; // 保留 TAC 的前导零位数
+    bool inferredTime = false; // 保留原始行的推定年份/相邻时间标记；使用现有对齐空隙
     int  csqRaw  = -1;      // 原始数值；99=AT+CSQ 未知，-1=缺失/非法
     int  csqVal  = -1;      // -1=无效/99
     int  tempMax = INT_MIN; // 多温度字段最大值；INT_MIN=无效

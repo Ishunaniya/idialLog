@@ -28,8 +28,8 @@ std::wstring GetText(HWND window) {
     int n = GetWindowTextLengthW(window);
     if (n <= 0) return L"";
     std::wstring text(static_cast<std::size_t>(n) + 1, L'\0');
-    GetWindowTextW(window, &text[0], n + 1);
-    text.resize(static_cast<std::size_t>(n));
+    const int copied = GetWindowTextW(window, &text[0], n + 1);
+    text.resize(static_cast<std::size_t>(copied));
     return text;
 }
 

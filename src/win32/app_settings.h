@@ -9,6 +9,8 @@
 namespace dl {
 
 struct AppSettings {
+    std::wstring uiFont = L"Microsoft YaHei UI";
+    std::wstring logFont = L"Consolas";
     std::vector<std::wstring> recentFiles;
     std::vector<std::wstring> searchHistory;
     std::wstring tagFilter;

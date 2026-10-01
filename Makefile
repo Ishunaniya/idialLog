@@ -163,6 +163,7 @@ ARTERYTEST_BIN := $(REGRESSION_BIN_DIR)/arterytest
 RK3506JTEST_BIN := $(REGRESSION_BIN_DIR)/rk3506jtest
 PERF_BIN := $(PERF_BIN_DIR)/perftest
 UI_SMOKE_BIN := $(HOST_TEST_DIR)/ui/smoke.exe
+UI_WINEPREFIX ?= $(abspath $(BUILD_ROOT)/wine-smoke)
 TEST_BINS := $(SELFTEST_BIN) $(SIMTEST_BIN) $(HOSTRUNTEST_BIN) $(BASELINETEST_BIN) \
              $(MERGETEST_BIN) $(MODEMV2TEST_BIN) $(ARCHIVETEST_BIN) $(BOUNDARYTEST_BIN) \
              $(TABLETEST_BIN) $(CHARTTEST_BIN) $(DOCUMENTTEST_BIN) $(MODEMV2PARSERTEST_BIN) $(RK3506JTEST_BIN) $(ARTERYTEST_BIN)
@@ -175,7 +176,7 @@ $(HOST_BUILD_DIR) $(UNIT_BIN_DIR) $(REGRESSION_BIN_DIR) $(PERF_BIN_DIR) $(HOST_T
 
 $(UI_SMOKE_BIN): $(TEST_UI_DIR)/smoke.cpp | $(HOST_TEST_DIR)/ui
 	x86_64-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -municode -mwindows -static \
-		-static-libgcc -static-libstdc++ -o $@ $< -lcomctl32 -lshell32 -luser32 -lkernel32
+		-static-libgcc -static-libstdc++ -o $@ $< -lcomctl32 -lshell32 -luser32 -lkernel32 -lgdi32
 
 $(HOST_BUILD_DIR)/archive_reader_miniz.o: $(CORE_DIR)/archive_reader.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) $(MINIZ_DEF) -c $< -o $@
@@ -282,7 +283,7 @@ check-full: check
 	python3 sim/mutate.py
 
 ui-smoke: windows-x64 $(UI_SMOKE_BIN)
-	WINEPREFIX=$(abspath $(BUILD_ROOT)/wine-smoke) xvfb-run -a wine $(UI_SMOKE_BIN) \
+	WINEPREFIX=$(UI_WINEPREFIX) xvfb-run -a wine $(UI_SMOKE_BIN) \
 		$(abspath $(BUILD_ROOT)/x64/$(EXE_NAME)) $(abspath samples/rtms_eg25/dial_20260630_000026.log)
 
 clean:

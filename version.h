@@ -78,11 +78,14 @@
 //           失败回退、EG912恢复循环；旧候选OK不提升成严格验证或公网成功。
 //   1.11.11 跟进 artery 71fe1fa：按 MCM 卡态与应用态区分未插卡、SIM 锁定、
 //           其他未就绪和 SDK 查询失败；主机模拟补齐卡态字段。
+//   1.11.12 概览/诊断整页与卡片复制，简化页面文案；完整日期与自适应时间轴，
+//           缺失指标收拢、逐项采样时间悬停、长标题换行；修复导航焦点框和长页滚动，
+//           增加字体选择与持久化，保留指标推定时间标记。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 11
+#define DL_VER_PATCH 12
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

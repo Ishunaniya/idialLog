@@ -38,16 +38,16 @@ int main() {
     for (const LogLine* l : timeline) {
         auto it = byLine.find(l->lineNo);
         borrowed = borrowed && it != byLine.end() && it->second == l;
-        cells = cells && timelineCellText(*l, 0) == fmtTime(l->t, "MD") &&
+        cells = cells && timelineCellText(*l, 0) == fmtTime(l->t, "FULL") &&
                 timelineCellText(*l, 1) == l->tagText() &&
                 timelineCellText(*l, 2) == l->msg;
     }
     ok(borrowed, "时间线行全部借用筛选视图,不复制 LogLine");
-    ok(cells, "三列文本与旧 RenderTimeline 语义一致");
+    ok(cells, "时间线显示完整年月日，标签与消息保持原文");
 
     std::puts("== T2 指标虚拟列格式 ==");
     MetricRow m;
-    m.t = 1782758400; m.ch = "SIM"; m.cellId = "D17C148"; m.pci = 496; m.tac = 0x272D; m.tacDigits = 4;
+    m.t = mkEpoch(2026, 6, 30, 0, 0, 0); m.ch = "SIM"; m.cellId = "D17C148"; m.pci = 496; m.tac = 0x272D; m.tacDigits = 4;
     m.csqRaw = 20; m.csqVal = 20; m.tempMax = 60;
     m.consecFail = 0; m.rx = 100; m.drx = 5; m.rsrp = -104; m.rsrq = -10;
     m.snr10 = -25; m.rssiVal = -65; m.srvVal = 2; m.rat = "LTE";
@@ -55,7 +55,7 @@ int main() {
     m.atTelemetryTimeout = 1; m.atBasicProbe = 0; m.detailedAtTimeout = 1;
     m.detailedAtStage = "serving_cell";
     const std::string expected[kMetricColumnCount] = {
-        fmtTime(m.t, "MD"), "SIM", "D17C148", "496", "272D", "20", "60", "0", "100", "5",
+        "2026-06-30 00:00:00", "SIM", "D17C148", "496", "272D", "20", "60", "0", "100", "5",
         "-104", "-10", "-2.5", "-65", "2", "LTE", "0", "CMCC 46000",
         "较差 · RSRP/SNR", "是", "失败", "serving_cell"
     };
@@ -63,6 +63,18 @@ int main() {
     for (size_t i = 0; i < kMetricColumnCount; ++i)
         metricCells = metricCells && metricCellText(m, i) == expected[i];
     ok(metricCells, "22 列文本逐列精确一致（含 LTE 工程参考与 IMX AT 健康字段）");
+    m.inferredTime = true;
+    ok(metricCellText(m, 0) == "~2026-06-30 00:00:00" &&
+       metricCsvCellText(m, 0) == "=\"~2026-06-30 00:00:00\"", "推定年月日在指标表和 CSV 中保留 ~ 标记");
+    m.inferredTime = false;
+    LogLine estimated; estimated.t = m.t; estimated.ts = "~2026-06-30 00:00:00"; estimated.inferredTime = true;
+    ok(timelineCellText(estimated, 0) == "~2026-06-30 00:00:00", "时间线保留推定年份提示");
+    std::vector<LogLine> estimatedHeartbeat(1);
+    estimatedHeartbeat[0] = estimated; estimatedHeartbeat[0].setTag("HEARTBEAT");
+    estimatedHeartbeat[0].msg = "CH:SIM | CSQ:18";
+    auto estimatedMetrics = buildMetrics(estimatedHeartbeat);
+    ok(estimatedMetrics.size() == 1 && estimatedMetrics[0].inferredTime,
+       "心跳提取不会丢失原始行的推定时间标记");
     m.rsrp = 1; m.rsrq = 1; m.snr10 = 100000; m.rssiVal = 1;
     ok(metricCellText(m, 10) == "-" && metricCellText(m, 11) == "-" &&
        metricCellText(m, 12) == "-" && metricCellText(m, 13) == "-",

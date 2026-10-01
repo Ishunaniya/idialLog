@@ -12,6 +12,7 @@
 
 #include <windows.h>
 #include <commctrl.h>
+#include <commdlg.h>
 #include <shellapi.h>
 #include <windowsx.h>
 
@@ -76,6 +77,10 @@ using namespace dl;
 #define IDC_BOOKMARK_BASE 1080
 #define IDC_SEARCH_CLEAR 1110
 #define IDC_SEARCH_BASE 1120
+#define IDC_APPEARANCE 1135
+#define IDC_FONT_UI 1136
+#define IDC_FONT_LOG 1137
+#define IDC_FONT_RESET 1138
 
 namespace {
 
@@ -245,6 +250,14 @@ void SetMetricView(MetricViewMode mode) {
 LRESULT CALLBACK SplitterSubclass(HWND splitter, UINT message, WPARAM wparam, LPARAM lparam,
                                    UINT_PTR, DWORD_PTR role) {
     switch (message) {
+    case WM_ERASEBKGND: return 1;
+    case WM_PAINT: {
+        PAINTSTRUCT paint{}; HDC dc = BeginPaint(splitter, &paint);
+        RECT rect{}; GetClientRect(splitter, &rect); FillSolid(dc, rect, th::page);
+        const int center = (rect.left + rect.right) / 2;
+        RECT grip{center - S(24), rect.bottom / 2, center + S(24), rect.bottom / 2 + std::max(1, S(1))};
+        FillSolid(dc, grip, th::axis); EndPaint(splitter, &paint); return 0;
+    }
     case WM_SETCURSOR:
         SetCursor(LoadCursorW(nullptr, IDC_SIZENS)); return TRUE;
     case WM_LBUTTONDOWN:
@@ -335,14 +348,16 @@ HFONT CreateAppFont(int height, int weight, const wchar_t* face, DWORD pitch) {
 }
 
 void CreateFonts() {
-    App().hFontUI = CreateAppFont(-14, FW_NORMAL, L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
-    App().hFontMono = CreateAppFont(-13, FW_NORMAL, L"Consolas", FIXED_PITCH | FF_MODERN);
-    App().hFontTitle = CreateAppFont(-28, FW_SEMIBOLD, L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
-    App().hFontSmall = CreateAppFont(-12, FW_NORMAL, L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
-    App().hFontHero = CreateAppFont(-48, FW_SEMIBOLD, L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
-    App().hFontTileVal = CreateAppFont(-22, FW_SEMIBOLD, L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
-    App().hFontTileLbl = CreateAppFont(-13, FW_NORMAL, L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
-    App().hFontSect = CreateAppFont(-16, FW_SEMIBOLD, L"Microsoft YaHei UI", DEFAULT_PITCH | FF_DONTCARE);
+    const auto& settings = GetAppSettings();
+    const wchar_t* face = settings.uiFont.c_str();
+    App().hFontUI = CreateAppFont(-14, FW_NORMAL, face, DEFAULT_PITCH | FF_DONTCARE);
+    App().hFontMono = CreateAppFont(-13, FW_NORMAL, settings.logFont.c_str(), FIXED_PITCH | FF_MODERN);
+    App().hFontTitle = CreateAppFont(-28, FW_SEMIBOLD, face, DEFAULT_PITCH | FF_DONTCARE);
+    App().hFontSmall = CreateAppFont(-12, FW_NORMAL, face, DEFAULT_PITCH | FF_DONTCARE);
+    App().hFontHero = CreateAppFont(-48, FW_SEMIBOLD, face, DEFAULT_PITCH | FF_DONTCARE);
+    App().hFontTileVal = CreateAppFont(-22, FW_SEMIBOLD, face, DEFAULT_PITCH | FF_DONTCARE);
+    App().hFontTileLbl = CreateAppFont(-13, FW_NORMAL, face, DEFAULT_PITCH | FF_DONTCARE);
+    App().hFontSect = CreateAppFont(-16, FW_SEMIBOLD, face, DEFAULT_PITCH | FF_DONTCARE);
 }
 
 void CreateTableRowImageList() {
@@ -367,7 +382,13 @@ void ApplyFontsToControls() {
         SendMessageW(child, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontUI), TRUE);
     for (HWND control : {App().hTimeline, App().hOutage, App().hMetric, App().hTags,
                          App().hUnparsed, App().hRaw, App().hCells, App().hDetailText})
-        if (control) SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontMono), TRUE);
+        if (control) {
+            SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontMono), TRUE);
+            if (control != App().hDetailText) {
+                HWND header = ListView_GetHeader(control);
+                if (header) SendMessageW(header, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontUI), TRUE);
+            }
+        }
     if (App().hPageTitle)
         SendMessageW(App().hPageTitle, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontTitle), TRUE);
     if (App().hFileLbl)
@@ -380,6 +401,43 @@ void ApplyFontsToControls() {
 
 void DeleteFonts(const std::array<HFONT, 8>& fonts) {
     for (HFONT font : fonts) if (font) DeleteObject(font);
+}
+
+void ApplyAppearanceCommand(UINT command);
+
+void ShowAppearanceMenu() {
+    HMENU menu = CreatePopupMenu();
+    const auto& settings = GetAppSettings();
+    AppendMenuW(menu, MF_STRING, IDC_FONT_UI, (L"界面字体：" + MenuSafe(settings.uiFont) + L"…").c_str());
+    AppendMenuW(menu, MF_STRING, IDC_FONT_LOG, (L"日志字体：" + MenuSafe(settings.logFont) + L"…").c_str());
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, IDC_FONT_RESET, L"恢复默认字体");
+    RECT anchor{}; GetWindowRect(App().hAppearance, &anchor);
+    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTALIGN,
+                                        anchor.right, anchor.bottom, 0, App().hMain, nullptr);
+    DestroyMenu(menu);
+    if (command) ApplyAppearanceCommand(command);
+}
+
+void ApplyAppearanceCommand(UINT command) {
+    auto& preferences = MutableAppSettings();
+    if (command == IDC_FONT_RESET) {
+        preferences.uiFont = L"Microsoft YaHei UI"; preferences.logFont = L"Consolas";
+    } else {
+        LOGFONTW font{};
+        GetObjectW(command == IDC_FONT_UI ? App().hFontUI : App().hFontMono, sizeof(font), &font);
+        CHOOSEFONTW choice{}; choice.lStructSize = sizeof(choice); choice.hwndOwner = App().hMain;
+        choice.lpLogFont = &font;
+        choice.Flags = CF_SCREENFONTS | CF_INITTOLOGFONTSTRUCT | CF_NOSIZESEL | CF_NOSTYLESEL | CF_NOVERTFONTS;
+        if (command == IDC_FONT_LOG) choice.Flags |= CF_FIXEDPITCHONLY;
+        if (!ChooseFontW(&choice)) return;
+        (command == IDC_FONT_UI ? preferences.uiFont : preferences.logFont) = font.lfFaceName;
+    }
+    const std::array<HFONT, 8> old{App().hFontUI, App().hFontMono, App().hFontTitle, App().hFontSmall,
+                                  App().hFontHero, App().hFontTileVal, App().hFontTileLbl, App().hFontSect};
+    CreateFonts(); ApplyFontsToControls(); DeleteFonts(old);
+    SaveAppSettings(); Layout();
+    RedrawWindow(App().hMain, nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN);
 }
 
 RECT ContentRect(const RECT& client) {
@@ -466,14 +524,15 @@ void Layout() {
     auto command = [&](HWND button, int width) {
         right -= S(width); MoveIf(button, right, S(20), S(width), S(36)); right -= S(8);
     };
+    command(App().hAppearance, 46);
     command(App().hCloseLog, compactCommands ? 76 : 82);
     if (!narrowCommands) command(App().hBookmarks, compactCommands ? 78 : 90);
     command(App().hFilterToggle, compactCommands ? 72 : 82);
     if (!compactCommands) command(App().hPaste, 92);
     command(App().hOpen, compactCommands ? 106 : 122);
     command(App().hExport, compactCommands ? 82 : 92);
-    MoveIf(App().hPageTitle, contentLeft + S(24), S(12), std::max(S(140), right - contentLeft - S(32)), S(38));
-    MoveIf(App().hFileLbl, contentLeft + S(25), S(51), std::max(S(140), right - contentLeft - S(33)), S(20));
+    MoveIf(App().hPageTitle, contentLeft + S(24), S(12), std::max(S(32), right - contentLeft - S(32)), S(38));
+    MoveIf(App().hFileLbl, contentLeft + S(25), S(51), contentWidth - S(50), S(20));
 
     LayoutFilterPanel(contentLeft, contentWidth);
     RECT content = ContentRect(client);
@@ -503,7 +562,7 @@ void Layout() {
                width, g_detailHeight - S(36));
     }
 
-    int dashHeight = std::min(S(336), pageHeight - S(90));
+    int dashHeight = std::min(S(360), pageHeight - S(90));
     dashHeight = std::max(S(130), dashHeight);
     MoveIf(App().hDash, content.left, content.top, width, dashHeight);
     MoveIf(App().hSummary, content.left, content.top + dashHeight, width, pageHeight - dashHeight);
@@ -512,7 +571,6 @@ void Layout() {
         MoveIf(page, content.left, content.top, width, pageHeight);
 
     const int toolbarHeight = S(38), splitterHeight = S(7);
-    MoveIf(App().hMetricToolbar, content.left, content.top, width, toolbarHeight);
     int buttonRight = content.right - S(8);
     auto viewButton = [&](HWND button, int logicalWidth) {
         buttonRight -= S(logicalWidth);
@@ -522,6 +580,8 @@ void Layout() {
     viewButton(App().hMetricViewTable, 74);
     viewButton(App().hMetricViewSplit, 62);
     viewButton(App().hMetricViewChart, 62);
+    MoveIf(App().hMetricToolbar, content.left, content.top,
+           std::max(1, buttonRight - static_cast<int>(content.left)), toolbarHeight);
     const int metricTop = content.top + toolbarHeight;
     const int metricAreaHeight = std::max(S(80), pageHeight - toolbarHeight);
     if (g_metricViewMode == MetricViewMode::Chart) {
@@ -539,8 +599,8 @@ void Layout() {
         ShowWindow(App().hMetric, CurrentPage() == 4 ? SW_SHOW : SW_HIDE);
         ShowWindow(App().hMetricSplitter, CurrentPage() == 4 ? SW_SHOW : SW_HIDE);
         const int usableHeight = std::max(2, metricAreaHeight - splitterHeight);
-        const int minimumChart = std::min(S(180), std::max(1, usableHeight / 2));
-        const int minimumTable = std::min(S(110), std::max(1, usableHeight / 3));
+        const int minimumChart = std::min(PreferredChartHeight(), std::max(1, usableHeight - S(90)));
+        const int minimumTable = std::min(S(90), std::max(1, usableHeight / 3));
         if (g_metricSplitY <= 0) g_metricSplitY = usableHeight * 62 / 100;
         g_metricSplitY = std::max(minimumChart,
             std::min(g_metricSplitY, usableHeight - minimumTable));
@@ -620,11 +680,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().hFileLbl = CreateControl(L"STATIC",
             L"未加载日志 · 可拖入文件，或从剪贴板直接分析",
             SS_LEFTNOWORDWRAP | SS_ENDELLIPSIS, IDC_FILELBL, App().hFontSmall);
-        App().hOpen = CreateButton(L"＋ 打开日志 ▾", IDC_OPEN, ModernButtonKind::Primary);
+        App().hOpen = CreateButton(L"打开日志 ▾", IDC_OPEN, ModernButtonKind::Primary);
         App().hPaste = CreateButton(L"粘贴日志", IDC_PASTE, ModernButtonKind::Neutral);
         App().hFilterToggle = CreateButton(L"筛选", IDC_FILTER, ModernButtonKind::Neutral);
         App().hCloseLog = CreateButton(L"关闭日志", IDC_CLOSELOG, ModernButtonKind::Danger);
         App().hBookmarks = CreateButton(L"书签", IDC_BOOKMARKS, ModernButtonKind::Neutral);
+        App().hAppearance = CreateButton(L"字体", IDC_APPEARANCE, ModernButtonKind::Neutral);
         EnableWindow(App().hBookmarks, FALSE);
         App().hExport = CreateButton(L"导出 ▾", IDC_EXPORT, ModernButtonKind::Neutral);
 
@@ -659,9 +720,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                                           reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_FINDINGS)),
                                           GetModuleHandleW(nullptr), nullptr);
         App().hUnparsed = CreateList(IDC_UNPARSED, {{L"原始行号", 90}, {L"未识别的原文", 960}});
-        App().hTimeline = CreateList(IDC_TIMELINE, {{L"时间", 140}, {L"标签", 90}, {L"消息", 820}}, true);
-        App().hOutage = CreateList(IDC_OUTAGE, {{L"#", 44}, {L"开始", 160}, {L"恢复", 160}, {L"时长", 90}, {L"依据", 140}});
-        App().hMetric = CreateList(IDC_METRIC, {{L"时间", 140}, {L"CH", 82},
+        App().hTimeline = CreateList(IDC_TIMELINE, {{L"时间", 186}, {L"标签", 90}, {L"消息", 820}}, true);
+        App().hOutage = CreateList(IDC_OUTAGE, {{L"#", 44}, {L"开始", 186}, {L"恢复", 186}, {L"时长", 90}, {L"依据", 140}});
+        App().hMetric = CreateList(IDC_METRIC, {{L"时间", 186}, {L"CH", 82},
             {L"小区 ID", 105}, {L"PCI", 58}, {L"TAC", 70}, {L"CSQ", 58}, {L"Tmax", 58},
             {L"ConsecFail", 86}, {L"RX_PKT", 105}, {L"ΔRX", 76}, {L"RSRP", 68}, {L"RSRQ", 68},
             {L"SNR(dB)", 78}, {L"RSSI", 68}, {L"SRV", 52}, {L"RAT", 76}, {L"DENY", 58}, {L"OPER", 145},
@@ -680,8 +741,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                           App().hUnparsed, App().hRaw, App().hCells})
             ConfigurePageList(list);
 
-        App().hMetricToolbar = CreateControl(L"STATIC", L"显示方式  ·  拖动分隔条调整图表与表格",
-            SS_LEFT | SS_CENTERIMAGE, 0, App().hFontSmall, false);
+        App().hMetricToolbar = CreateControl(L"STATIC", L"单击图表定位采样 · 拖动分隔条调整高度",
+            SS_LEFT | SS_CENTERIMAGE | SS_ENDELLIPSIS, 0, App().hFontSmall, false);
         App().hMetricViewChart = CreateButton(L"图表", IDC_METRIC_VIEW_CHART,
                                                ModernButtonKind::Neutral, false);
         App().hMetricViewSplit = CreateButton(L"分屏", IDC_METRIC_VIEW_SPLIT,
@@ -772,6 +833,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         const int id = LOWORD(wparam), code = HIWORD(wparam);
         if (code == EN_CHANGE) ScheduleFilterRefresh(reinterpret_cast<HWND>(lparam));
         switch (id) {
+        case IDC_APPEARANCE: ShowAppearanceMenu(); return 0;
+        case IDC_FONT_UI: case IDC_FONT_LOG: case IDC_FONT_RESET: ApplyAppearanceCommand(id); return 0;
         case IDC_OPEN: ShowOpenMenu(); return 0;
         case IDC_PASTE: DoPaste(); return 0;
         case IDC_BOOKMARKS: ShowBookmarksMenu(); return 0;
@@ -893,7 +956,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
     MSG message{};
     while (GetMessageW(&message, nullptr, 0, 0) > 0) {
         if (message.message == WM_KEYDOWN && (GetKeyState(VK_CONTROL) & 0x8000)) {
-            if (message.wParam == 'C' && CopySelectedPageRows()) continue;
+            if (message.wParam == 'C') {
+                HWND focus = GetFocus();
+                const bool editing = focus == App().hTagBox || focus == App().hGrepBox ||
+                    focus == App().hSinceBox || focus == App().hUntilBox || focus == App().hDetailText;
+                if (!editing && (CopyOverviewPage(CurrentPage()) || CopySelectedPageRows())) continue;
+            }
             if (message.wParam == 'O') { DoOpen(); continue; }
             if (message.wParam == 'F') { FocusGlobalSearch(); continue; }
             if (message.wParam == 'B') { ToggleCurrentRawBookmark(); continue; }

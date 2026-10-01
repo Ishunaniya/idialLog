@@ -9,6 +9,13 @@ namespace dl {
 
 using ChartPoint = std::pair<long long, int>; // 时间戳秒,指标原值
 using ChartSeries = std::vector<ChartPoint>;
+using ChartGap = std::pair<long long, long long>;
+// 在排序后的真实采样上识别空缺；绘图不得跨越这些区间插值连线。
+std::vector<ChartGap> chartSampleGaps(const ChartSeries& series, long long maxInterval);
+
+// 按标签宽度与时间跨度选择秒/分钟/小时/天刻度，保留首尾时间。
+std::vector<long long> chartTimeTicks(long long start, long long end,
+                                     size_t pixelWidth, size_t labelWidth);
 
 // 按时间稳定排序；相同时间戳保持原始先后，悬停语义与旧线性扫描一致。
 void sortChartSeriesByTime(ChartSeries& series);

@@ -18,6 +18,24 @@ static bool contains(const ChartSeries& series, ChartPoint point) {
 }
 
 int main() {
+    std::puts("== T0 自适应时间轴 ==");
+    ok(chartTimeTicks(100, 175, 600, 120) == std::vector<long long>({100, 120, 135, 150, 175}),
+       "75 秒日志具有秒级刻度并保留起止时间");
+    ok(chartTimeTicks(86370, 86550, 600, 120) == std::vector<long long>({86370, 86460, 86550}),
+       "跨午夜的三分钟日志刻度精确且不会拥挤");
+    ok(chartTimeTicks(0, 259200, 600, 120) == std::vector<long long>({0, 86400, 172800, 259200}),
+       "多日日志按天标注，不受旧 24 小时步长上限限制");
+    ok(chartTimeTicks(42, 42, 600, 120) == std::vector<long long>({42}), "单秒采样保留唯一时间");
+    ok(chartTimeTicks(100, 175, 80, 120) == std::vector<long long>({100, 175}), "窄图仅保留首尾");
+    ok(chartTimeTicks(100, 175, 0, 120).empty() && chartTimeTicks(175, 100, 600, 120).empty(),
+       "无空间和倒置范围不生成无效刻度");
+    auto extremes = chartTimeTicks(LLONG_MIN, LLONG_MAX, 600, 120);
+    ok(!extremes.empty() && extremes.front() == LLONG_MIN && extremes.back() == LLONG_MAX &&
+       extremes.size() <= 7 && std::is_sorted(extremes.begin(), extremes.end()), "极端时间范围不溢出或无限循环");
+    ok(chartSampleGaps({{0, 1}, {600, 2}, {1201, 3}, {1201, 4}, {1801, 5}}, 600) ==
+       std::vector<ChartGap>({{600, 1201}}), "仅超过 10 分钟的真实采样空缺断线，边界/重复时间不误断");
+    ok(chartSampleGaps({{LLONG_MIN, 1}, {LLONG_MAX, 2}}, 600) ==
+       std::vector<ChartGap>({{LLONG_MIN, LLONG_MAX}}), "跨时基极大空缺仍可识别，不发生溢出");
     std::puts("== T1 时间排序与二分悬停 ==");
     ChartSeries unordered{{30, 3}, {20, 2}, {10, 1}, {20, 4}};
     sortChartSeriesByTime(unordered);

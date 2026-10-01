@@ -25,6 +25,20 @@ void WriteDword(HKEY key, const wchar_t* name, DWORD value) {
     RegSetValueExW(key, name, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value));
 }
 
+std::wstring ReadFont(HKEY key, const wchar_t* name, const std::wstring& fallback) {
+    wchar_t face[LF_FACESIZE]{};
+    DWORD type = 0, bytes = sizeof(face);
+    if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<BYTE*>(face), &bytes) != ERROR_SUCCESS ||
+        type != REG_SZ || bytes < sizeof(wchar_t) || bytes > sizeof(face) ||
+        bytes % sizeof(wchar_t) || face[bytes / sizeof(wchar_t) - 1] != L'\0' || !face[0]) return fallback;
+    return face;
+}
+
+void WriteFont(HKEY key, const wchar_t* name, const std::wstring& face) {
+    RegSetValueExW(key, name, 0, REG_SZ, reinterpret_cast<const BYTE*>(face.c_str()),
+                   static_cast<DWORD>((face.size() + 1) * sizeof(wchar_t)));
+}
+
 std::vector<std::wstring> ReadMultiString(HKEY key, const wchar_t* name, size_t limit) {
     std::vector<std::wstring> result;
     DWORD type = 0, bytes = 0;
@@ -61,6 +75,8 @@ void LoadAppSettings() {
     g_settings = AppSettings{};
     HKEY key = nullptr;
     if (RegOpenKeyExW(HKEY_CURRENT_USER, kSettingsKey, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS) return;
+    g_settings.uiFont = ReadFont(key, L"UiFont", g_settings.uiFont);
+    g_settings.logFont = ReadFont(key, L"LogFont", g_settings.logFont);
 
     // 筛选是一次分析的临时范围，跨会话恢复会把新日志静默筛成空页，故不再读取旧值。
     g_settings.lastPage = static_cast<int>(ReadDword(key, L"LastPage", 0));
@@ -86,6 +102,8 @@ void SaveAppSettings() {
     if (RegCreateKeyExW(HKEY_CURRENT_USER, kSettingsKey, 0, nullptr, 0, KEY_SET_VALUE,
                         nullptr, &key, nullptr) != ERROR_SUCCESS) return;
     // 清理旧版本留下的值，避免用户升级后首开仍被隐藏筛选影响。
+    WriteFont(key, L"UiFont", g_settings.uiFont);
+    WriteFont(key, L"LogFont", g_settings.logFont);
     RegDeleteValueW(key, L"TagFilter");
     RegDeleteValueW(key, L"GrepFilter");
     RegDeleteValueW(key, L"SinceFilter");

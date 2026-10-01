@@ -28,7 +28,7 @@ void buildTimelineView(const LogView& lines, LogView& timeline) {
 
 std::string timelineCellText(const LogLine& line, size_t column) {
     switch (column) {
-    case 0: return fmtTime(line.t, "MD");
+    case 0: return line.inferredTime && !line.ts.empty() ? line.ts : fmtTime(line.t, "FULL");
     case 1: return line.tagText();
     // ListView 只会请求可见行，无需在模型层截断。保留完整消息才能让横向滚动、
     // 详情面板与复制操作拿到同一份原文，而不是复制界面上的省略版本。
@@ -39,7 +39,7 @@ std::string timelineCellText(const LogLine& line, size_t column) {
 
 std::string metricCellText(const MetricRow& m, size_t column) {
     switch (column) {
-    case 0:  return fmtTime(m.t, "MD");
+    case 0:  return (m.inferredTime ? "~" : "") + fmtTime(m.t, "FULL");
     case 1:  return m.ch.empty() ? "-" : m.ch;
     case 2:  return m.cellId.empty() ? "-" : m.cellId.str();
     case 3:  return m.pci < 0 ? "-" : std::to_string(m.pci);
@@ -157,7 +157,7 @@ static std::string csvSafeText(std::string value) {
 }
 
 std::string metricCsvCellText(const MetricRow& metric, size_t column) {
-    if (column == 0) return "=\"" + fmtTime(metric.t, "FULL") + "\"";
+    if (column == 0) return "=\"" + metricCellText(metric, 0) + "\"";
     std::string value = metricCellText(metric, column);
     if (column == 1 || column == 2 || column == 15 || column == 17 || column == 18)
         value = csvSafeText(std::move(value));

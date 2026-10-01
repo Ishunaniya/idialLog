@@ -10,5 +10,6 @@ LRESULT CALLBACK ChartProc(HWND window, UINT message, WPARAM wparam, LPARAM lpar
 void RenderMetrics();
 void ReleaseChartPageData();
 void SetChartFocusTime(long long time);
+int PreferredChartHeight();
 
 } // namespace dl
