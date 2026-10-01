@@ -39,11 +39,30 @@ int main() {
         auto it = byLine.find(l->lineNo);
         borrowed = borrowed && it != byLine.end() && it->second == l;
         cells = cells && timelineCellText(*l, 0) == fmtTime(l->t, "FULL") &&
-                timelineCellText(*l, 1) == l->tagText() &&
-                timelineCellText(*l, 2) == l->msg;
+                timelineCellText(*l, 2) == l->tagText() &&
+                timelineCellText(*l, 3) == l->msg;
     }
     ok(borrowed, "时间线行全部借用筛选视图,不复制 LogLine");
     ok(cells, "时间线显示完整年月日，标签与消息保持原文");
+    ok(audit.logOpened == 1 && !all.empty() && all.front()->lineNo == 2 &&
+       rawCellText(*all.front(), 0) == "2", "真机第 1 行为文件打开标记，原始行号保留第 2 行而不重新编号");
+    LogLine event;
+    event.setTag("RECOVERY L2"); event.msg = "AT+CFUN=0 rsp: OK";
+    ok(timelineCellText(event, 1) == "恢复动作", "恢复步骤不会标为已恢复联网");
+    event.msg = "Net Fail Duration: 60s";
+    ok(timelineCellText(event, 1) == "故障", "恢复标签中的故障信息优先显示故障");
+    event.msg = "Network Recovered in SDK phase";
+    ok(timelineCellText(event, 1) == "已恢复", "明确的 SDK 恢复日志单独标注已恢复");
+    event.msg = "AT command timed out"; event.setLevel("ERROR");
+    ok(timelineCellText(event, 1) == "错误", "错误级别优先于普通恢复步骤");
+    event.setLevel("INFO"); event.setTag("CFUN"); event.msg = "AT+CFUN=1";
+    ok(timelineCellText(event, 1) == "状态变化", "CFUN 标签本身不构成错误证据");
+    Outage status; status.recovered = true;
+    status.dur = 30; ok(outageStatusText(status) == "已恢复 · ≤30s", "30 秒恢复事件状态明确");
+    status.dur = 31; ok(outageStatusText(status) == "已恢复 · 31–60s", "31 秒进入第二显示档");
+    status.dur = 60; ok(outageStatusText(status) == "已恢复 · 31–60s", "60 秒仍在第二显示档");
+    status.dur = 61; ok(outageStatusText(status) == "已恢复 · >60s", "长事件仍明确显示已恢复");
+    status.recovered = false; ok(outageStatusText(status) == "未恢复", "未闭合事件单独显示未恢复");
 
     std::puts("== T2 指标虚拟列格式 ==");
     MetricRow m;
@@ -121,7 +140,7 @@ int main() {
 
     std::puts("== T3 边界与规模 ==");
     LogLine longLine; longLine.t = 0; longLine.msg.assign(250, 'x');
-    ok(timelineCellText(longLine, 2).size() == 250, "时间线保留完整消息供滚动、详情与复制");
+    ok(timelineCellText(longLine, 3).size() == 250, "时间线保留完整消息供滚动、详情与复制");
     ok(timelineCellText(longLine, kTimelineColumnCount).empty() &&
        metricCellText(m, kMetricColumnCount).empty(), "越界列返回空串");
     auto metrics = buildMetrics(all);

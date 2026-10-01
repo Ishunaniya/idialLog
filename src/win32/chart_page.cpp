@@ -67,6 +67,14 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return mode == 1 ? g_rsrq : g_rsrp;
     };
     if (msg == WM_ERASEBKGND) return 1;
+    if (msg == WM_SIZE) {
+        // 尺寸变化时旧画面可能被系统复制保留，必须重绘整张图而非仅新增区域。
+        g_chartHoverX = g_chartHoverY = -1;
+        for (RECT& rect : g_chartModeRects) rect = RECT{};
+        for (RECT& rect : g_chartPlotRects) rect = RECT{};
+        InvalidateRect(hwnd, nullptr, FALSE);
+        return 0;
+    }
     if (msg == WM_GETDLGCODE) return DLGC_WANTARROWS | DLGC_WANTCHARS;
     if (msg == WM_SETFOCUS || msg == WM_KILLFOCUS) {
         InvalidateRect(hwnd, nullptr, FALSE); return 0;
@@ -358,8 +366,8 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         DrawTextW(hdc, countText.c_str(), -1, &count, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     };
     title(top, L"CSQ · 0–31（99 未知）", g_csq.size(), false);
-    title(middle, g_chartDetail == 1 ? L"RSRQ · dB" : L"RSRP · dBm", detail.size(), true);
-    title(bottom, L"SNR · dB（模组上报值）", g_snr10.size(), false);
+    title(middle, g_chartDetail == 1 ? L"RSRQ · -25～0 dB" : L"RSRP · -140～-40 dBm", detail.size(), true);
+    title(bottom, L"SNR · -20～30 dB（模组上报值）", g_snr10.size(), false);
     if (!detail.empty()) {
         for (int mode = 0; mode < 2; ++mode) {
             RECT button{right - S(130) + mode * S(65), middle.top - S(25), right - S(70) + mode * S(65), middle.top - S(2)};

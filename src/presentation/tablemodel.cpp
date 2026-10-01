@@ -12,6 +12,45 @@
 
 namespace dl {
 
+LogEventKind logEventKind(const LogLine& line) {
+    const auto& message = line.msg;
+    const auto& tag = line.tagText();
+    auto has = [&](const char* text) { return message.find(text) != std::string::npos; };
+    if (isRecovered(message, nullptr) || has("Network Recovered")) return LogEventKind::Recovered;
+    if (isFaultStart(message) || has("_fault_") || has("Net Fail Duration")) return LogEventKind::Fault;
+    if (tag == "ERROR" || tag == "FATAL" ||
+        line.level == LEVEL_ERROR || line.level == LEVEL_FATAL || line.level == LEVEL_CRITICAL)
+        return LogEventKind::Error;
+    if (tag.compare(0, 8, "RECOVERY") == 0 || has("_recovery_")) return LogEventKind::RecoveryAction;
+    if (tag == "WARN" || tag == "WARNING" || tag == "ALARM" || tag == "SLOT" || tag == "OPER" ||
+        line.level == LEVEL_WARNING) return LogEventKind::Warning;
+    if (tag == "ROAMLINK" || tag == "CELL" || tag == "CELL CHANGE") return LogEventKind::Cell;
+    if (tag == "STATE" || tag == "CFUN") return LogEventKind::State;
+    if (tag == "SDK") return LogEventKind::Sdk;
+    return LogEventKind::Normal;
+}
+
+const char* logEventLabel(LogEventKind kind) {
+    switch (kind) {
+    case LogEventKind::Fault: return "故障";
+    case LogEventKind::Recovered: return "已恢复";
+    case LogEventKind::RecoveryAction: return "恢复动作";
+    case LogEventKind::Error: return "错误";
+    case LogEventKind::Warning: return "提醒";
+    case LogEventKind::State: return "状态变化";
+    case LogEventKind::Cell: return "小区/链路";
+    case LogEventKind::Sdk: return "SDK 事件";
+    default: return "常规";
+    }
+}
+
+std::string outageStatusText(const Outage& outage) {
+    if (!outage.recovered) return "未恢复";
+    if (outage.dur > 60) return "已恢复 · >60s";
+    if (outage.dur > 30) return "已恢复 · 31–60s";
+    return "已恢复 · ≤30s";
+}
+
 void buildTimelineView(const LogView& lines, LogView& timeline) {
     timeline.clear();
     // 事件通常远少于原始日志,不要为百万行稀疏时间线预留百万个指针。
@@ -29,10 +68,11 @@ void buildTimelineView(const LogView& lines, LogView& timeline) {
 std::string timelineCellText(const LogLine& line, size_t column) {
     switch (column) {
     case 0: return line.inferredTime && !line.ts.empty() ? line.ts : fmtTime(line.t, "FULL");
-    case 1: return line.tagText();
+    case 1: return logEventLabel(logEventKind(line));
+    case 2: return line.tagText();
     // ListView 只会请求可见行，无需在模型层截断。保留完整消息才能让横向滚动、
     // 详情面板与复制操作拿到同一份原文，而不是复制界面上的省略版本。
-    case 2: return line.msg;
+    case 3: return line.msg;
     default: return {};
     }
 }

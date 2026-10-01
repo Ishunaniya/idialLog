@@ -81,6 +81,7 @@ using namespace dl;
 #define IDC_FONT_UI 1136
 #define IDC_FONT_LOG 1137
 #define IDC_FONT_RESET 1138
+#define IDC_PAGE_HINT 1139
 
 namespace {
 
@@ -88,6 +89,8 @@ constexpr UINT_PTR kFilterTimer = 7;
 bool g_filtersExpanded = false;
 int g_headerHeight = 88;
 RECT g_filterPanel{};
+struct FilterFrame { HWND edit = nullptr; RECT rect{}; };
+std::array<FilterFrame, 4> g_filterFrames{};
 enum class MetricViewMode { Chart, Split, Table };
 MetricViewMode g_metricViewMode = MetricViewMode::Split;
 int g_metricSplitY = 0;
@@ -245,6 +248,7 @@ void SetMetricView(MetricViewMode mode) {
     g_metricViewMode = mode;
     UpdateMetricViewButtons();
     Layout();
+    RedrawWindow(App().hMain, nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 }
 
 LRESULT CALLBACK SplitterSubclass(HWND splitter, UINT message, WPARAM wparam, LPARAM lparam,
@@ -369,9 +373,8 @@ void CreateTableRowImageList() {
     }
     App().hTableRows = ImageList_Create(1, S(28), ILC_COLOR32 | ILC_MASK, 1, 1);
     if (!App().hTableRows) return;
-    HBITMAP pixel = CreateBitmap(1, S(28), 1, 1, nullptr);
-    ImageList_AddMasked(App().hTableRows, pixel, RGB(0, 0, 0));
-    DeleteObject(pixel);
+    // 只使用图像列表的高度撑开行距，不添加未初始化的占位位图。
+    // 非虚拟列表可能默认绘制第 0 张图片，原 1px 位图因此形成黑色竖线。
     for (HWND list : {App().hTimeline, App().hOutage, App().hMetric, App().hTags,
                       App().hUnparsed, App().hRaw, App().hCells})
         if (list) ListView_SetImageList(list, App().hTableRows, LVSIL_SMALL);
@@ -395,7 +398,7 @@ void ApplyFontsToControls() {
         SendMessageW(App().hFileLbl, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontSmall), TRUE);
     for (HWND label : {App().hTagLabel, App().hGrepLabel, App().hSinceLabel, App().hUntilLabel})
         if (label) SendMessageW(label, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontSmall), TRUE);
-    for (HWND label : {App().hMetricToolbar, App().hDetailLabel})
+    for (HWND label : {App().hMetricToolbar, App().hDetailLabel, App().hPageHint})
         if (label) SendMessageW(label, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontSmall), TRUE);
 }
 
@@ -449,6 +452,35 @@ void MoveIf(HWND window, int x, int y, int width, int height) {
     if (window) MoveWindow(window, x, y, std::max(1, width), std::max(1, height), TRUE);
 }
 
+void MoveFilterEdit(HWND edit, int x, int y, int width, int height) {
+    for (auto& frame : g_filterFrames) {
+        if (!frame.edit || frame.edit == edit) {
+            frame.edit = edit; frame.rect = RECT{x, y, x + width, y + height};
+            break;
+        }
+    }
+    HDC dc = GetDC(edit);
+    HGDIOBJ old = SelectObject(dc, App().hFontUI);
+    TEXTMETRICW metrics{}; GetTextMetricsW(dc, &metrics);
+    SelectObject(dc, old); ReleaseDC(edit, dc);
+    const int textHeight = std::clamp(static_cast<int>(metrics.tmHeight) + S(2), 1, height);
+    // 保持原生单行 EDIT 的输入、光标、选区和 IME 行为，编辑区放在外框中央。
+    MoveIf(edit, x, y + (height - textHeight) / 2, width, textHeight);
+    SendMessageW(edit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(S(9), S(9)));
+}
+
+LRESULT CALLBACK FilterEditSubclass(HWND edit, UINT message, WPARAM wparam, LPARAM lparam,
+                                    UINT_PTR, DWORD_PTR) {
+    if (message == WM_SETFOCUS || message == WM_KILLFOCUS) {
+        for (const auto& frame : g_filterFrames) if (frame.edit == edit) {
+            RECT rect = frame.rect; InflateRect(&rect, S(2), S(2));
+            InvalidateRect(App().hMain, &rect, FALSE);
+        }
+    }
+    if (message == WM_NCDESTROY) RemoveWindowSubclass(edit, FilterEditSubclass, 1);
+    return DefSubclassProc(edit, message, wparam, lparam);
+}
+
 void LayoutFilterPanel(int contentLeft, int contentWidth) {
     const int x = contentLeft + S(20);
     const int y = S(78);
@@ -475,7 +507,7 @@ void LayoutFilterPanel(int contentLeft, int contentWidth) {
             {App().hSinceLabel, App().hSinceBox, S(120)}, {App().hUntilLabel, App().hUntilBox, S(120)}};
         for (const auto& field : fields) {
             MoveIf(field.label, cursor, y + S(9), field.width, labelH);
-            MoveIf(field.edit, cursor, y + S(29), field.width, editH);
+            MoveFilterEdit(field.edit, cursor, y + S(29), field.width, editH);
             cursor += field.width + gap;
         }
         MoveIf(App().hApplyFilter, cursor, y + S(28), S(82), S(36)); cursor += S(82) + gap;
@@ -489,17 +521,17 @@ void LayoutFilterPanel(int contentLeft, int contentWidth) {
     const int tagW = std::max(S(120), inner * 35 / 100);
     int cursor = x + pad;
     MoveIf(App().hTagLabel, cursor, y + S(9), tagW, labelH);
-    MoveIf(App().hTagBox, cursor, y + S(29), tagW, editH); cursor += tagW + gap;
+    MoveFilterEdit(App().hTagBox, cursor, y + S(29), tagW, editH); cursor += tagW + gap;
     MoveIf(App().hGrepLabel, cursor, y + S(9), inner - tagW - gap, labelH);
-    MoveIf(App().hGrepBox, cursor, y + S(29), inner - tagW - gap, editH);
+    MoveFilterEdit(App().hGrepBox, cursor, y + S(29), inner - tagW - gap, editH);
 
     const int row2 = y + S(74);
     const int dateW = std::max(S(96), (inner - gap) / 2);
     cursor = x + pad;
     MoveIf(App().hSinceLabel, cursor, row2, dateW, labelH);
-    MoveIf(App().hSinceBox, cursor, row2 + S(20), dateW, editH); cursor += dateW + gap;
+    MoveFilterEdit(App().hSinceBox, cursor, row2 + S(20), dateW, editH); cursor += dateW + gap;
     MoveIf(App().hUntilLabel, cursor, row2, dateW, labelH);
-    MoveIf(App().hUntilBox, cursor, row2 + S(20), dateW, editH);
+    MoveFilterEdit(App().hUntilBox, cursor, row2 + S(20), dateW, editH);
     const int row3 = y + S(137);
     cursor = x + pad;
     MoveIf(App().hApplyFilter, cursor, row3, S(82), S(36)); cursor += S(82) + gap;
@@ -541,6 +573,8 @@ void Layout() {
     const int height = std::max(S(40), static_cast<int>(content.bottom - content.top));
 
     int pageHeight = height;
+    const int pageHintHeight = CurrentPage() == 2 || CurrentPage() == 3 || CurrentPage() == 6 ? S(30) : 0;
+    MoveIf(App().hPageHint, content.left, content.top, width, S(26));
     const bool detailPage = CurrentPage() == 2 || CurrentPage() == 4 || CurrentPage() == 6;
     if (PageDetailVisible() && detailPage) {
         const int minimumDetail = std::min(S(120), std::max(S(60), height / 3));
@@ -567,8 +601,10 @@ void Layout() {
     MoveIf(App().hDash, content.left, content.top, width, dashHeight);
     MoveIf(App().hSummary, content.left, content.top + dashHeight, width, pageHeight - dashHeight);
     for (HWND page : {App().hFindings, App().hTimeline, App().hOutage, App().hTags,
-                      App().hRaw, App().hUnparsed, App().hCells})
-        MoveIf(page, content.left, content.top, width, pageHeight);
+                      App().hRaw, App().hUnparsed, App().hCells}) {
+        const int offset = page == App().hTimeline || page == App().hOutage || page == App().hRaw ? pageHintHeight : 0;
+        MoveIf(page, content.left, content.top + offset, width, pageHeight - offset);
+    }
 
     const int toolbarHeight = S(38), splitterHeight = S(7);
     int buttonRight = content.right - S(8);
@@ -618,6 +654,7 @@ void PaintInputFrame(HDC dc, HWND edit) {
     if (!edit || !IsWindowVisible(edit)) return;
     RECT rect{}; GetWindowRect(edit, &rect);
     MapWindowPoints(nullptr, App().hMain, reinterpret_cast<POINT*>(&rect), 2);
+    for (const auto& frame : g_filterFrames) if (frame.edit == edit) { rect = frame.rect; break; }
     InflateRect(&rect, S(2), S(2));
     FillRound(dc, rect, S(7), th::surface, GetFocus() == edit ? th::accent : th::border);
 }
@@ -680,6 +717,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().hFileLbl = CreateControl(L"STATIC",
             L"未加载日志 · 可拖入文件，或从剪贴板直接分析",
             SS_LEFTNOWORDWRAP | SS_ENDELLIPSIS, IDC_FILELBL, App().hFontSmall);
+        App().hPageHint = CreateControl(L"STATIC", L"", SS_LEFT | SS_CENTERIMAGE | SS_ENDELLIPSIS,
+                                       IDC_PAGE_HINT, App().hFontSmall, false);
         App().hOpen = CreateButton(L"打开日志 ▾", IDC_OPEN, ModernButtonKind::Primary);
         App().hPaste = CreateButton(L"粘贴日志", IDC_PASTE, ModernButtonKind::Neutral);
         App().hFilterToggle = CreateButton(L"筛选", IDC_FILTER, ModernButtonKind::Neutral);
@@ -697,8 +736,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().hGrepBox = CreateControl(L"EDIT", L"", ES_AUTOHSCROLL, IDC_GREPBOX, App().hFontUI, false);
         App().hSinceBox = CreateControl(L"EDIT", L"", ES_AUTOHSCROLL, IDC_SINCEBOX, App().hFontUI, false);
         App().hUntilBox = CreateControl(L"EDIT", L"", ES_AUTOHSCROLL, IDC_UNTILBOX, App().hFontUI, false);
-        for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
+        for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox}) {
             SendMessageW(edit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(S(9), S(9)));
+            SetWindowSubclass(edit, FilterEditSubclass, 1, 0);
+        }
         SendMessageW(App().hTagBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"例如 MODEM"));
         SendMessageW(App().hGrepBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"Ctrl+F · 支持正则表达式"));
         SendMessageW(App().hSinceBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"HH:MM:SS"));
@@ -720,15 +761,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                                           reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_FINDINGS)),
                                           GetModuleHandleW(nullptr), nullptr);
         App().hUnparsed = CreateList(IDC_UNPARSED, {{L"原始行号", 90}, {L"未识别的原文", 960}});
-        App().hTimeline = CreateList(IDC_TIMELINE, {{L"时间", 186}, {L"标签", 90}, {L"消息", 820}}, true);
-        App().hOutage = CreateList(IDC_OUTAGE, {{L"#", 44}, {L"开始", 186}, {L"恢复", 186}, {L"时长", 90}, {L"依据", 140}});
+        App().hTimeline = CreateList(IDC_TIMELINE, {{L"时间", 186}, {L"事件", 100}, {L"标签", 126}, {L"消息", 820}}, true);
+        App().hOutage = CreateList(IDC_OUTAGE, {{L"#", 44}, {L"状态", 144}, {L"开始", 186}, {L"恢复", 186}, {L"时长", 90}, {L"依据", 160}});
         App().hMetric = CreateList(IDC_METRIC, {{L"时间", 186}, {L"CH", 82},
             {L"小区 ID", 105}, {L"PCI", 58}, {L"TAC", 70}, {L"CSQ", 58}, {L"Tmax", 58},
             {L"ConsecFail", 86}, {L"RX_PKT", 105}, {L"ΔRX", 76}, {L"RSRP", 68}, {L"RSRQ", 68},
             {L"SNR(dB)", 78}, {L"RSSI", 68}, {L"SRV", 52}, {L"RAT", 76}, {L"DENY", 58}, {L"OPER", 145},
             {L"LTE 工程参考", 155}, {L"AT遥测超时", 88}, {L"AT确认", 76}, {L"详细AT阶段", 112}}, true);
         App().hTags = CreateList(IDC_TAGS, {{L"标签", 150}, {L"次数", 80}, {L"占比", 600}});
-        App().hRaw = CreateList(IDC_RAW, {{L"行号", 82}, {L"时间", 166}, {L"级别", 82},
+        App().hRaw = CreateList(IDC_RAW, {{L"原始行号", 90}, {L"时间", 186}, {L"级别", 82},
             {L"标签", 118}, {L"原始消息", 900}}, true);
         App().hCells = CreateList(IDC_CELLS, {{L"小区 ID", 112}, {L"PCI", 58}, {L"TAC", 72},
             {L"样本", 66}, {L"占比(%)", 76}, {L"观测驻留", 92}, {L"平均 RSRP", 86},
@@ -782,6 +823,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
     }
     case WM_ERASEBKGND: return 1;
     case WM_PAINT: PaintShell(hwnd); return 0;
+    case WM_LBUTTONDOWN: {
+        if (g_filtersExpanded) {
+            POINT point{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+            for (const auto& frame : g_filterFrames) if (frame.edit && PtInRect(&frame.rect, point)) {
+                SetFocus(frame.edit); return 0;
+            }
+        }
+        break;
+    }
     case WM_SIZE: Layout(); return 0;
     case WM_APP_NAVIGATE: ShowPage(static_cast<int>(wparam)); return 0;
     case WM_APP_SHELL_LAYOUT: Layout(); return 0;

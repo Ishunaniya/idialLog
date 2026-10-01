@@ -234,7 +234,7 @@ static void diagnosisAndTimeline() {
     LogView view; for (const auto& line : cleanQueries.lines) view.push_back(&line);
     LogView timeline; buildTimelineView(view, timeline);
     check(timeline.size() == 1 && timeline[0]->tagText() == "INTERNET-READY" &&
-          timelineCellText(*timeline[0], 2).find("process_elapsed_ms=10000 boot_ms=20000") != std::string::npos,
+          timelineCellText(*timeline[0], 3).find("process_elapsed_ms=10000 boot_ms=20000") != std::string::npos,
           "真实时间线包含公网时序字段，成功逐次查询/HB30不淹没时间线");
     const auto* announcement = cleanQueries.finding("首次公网 PING 成功");
     check(announcement && announcement->ev[0].text.find("process_elapsed_ms=10000 boot_ms=20000") != std::string::npos,

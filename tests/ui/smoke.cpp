@@ -16,9 +16,15 @@
 namespace {
 
 std::wstring TextOf(HWND window) {
-    const int length = GetWindowTextLengthW(window);
+    // EDIT 的内容需要标准消息封送；其他控件直接读取窗口文字，避免为轮询
+    // 后台加载按钮而向目标 UI 线程同步发送消息。
+    wchar_t className[32]{}; GetClassNameW(window, className, 32);
+    const bool edit = _wcsicmp(className, L"EDIT") == 0;
+    const int length = edit ? static_cast<int>(SendMessageW(window, WM_GETTEXTLENGTH, 0, 0))
+                            : GetWindowTextLengthW(window);
     std::wstring text(static_cast<size_t>(length) + 1, L'\0');
-    const int copied = GetWindowTextW(window, &text[0], length + 1);
+    const int copied = edit ? static_cast<int>(SendMessageW(window, WM_GETTEXT, length + 1, reinterpret_cast<LPARAM>(&text[0])))
+                            : GetWindowTextW(window, &text[0], length + 1);
     text.resize(static_cast<size_t>(copied));
     return text;
 }
@@ -55,14 +61,16 @@ std::wstring ClipboardText() {
 }
 
 // 仅在显式指定目录时保存实际窗口截图，便于核验自绘文字与小窗口布局。
-void Capture(HWND window, const wchar_t* name) {
+void Capture(HWND window, const wchar_t* name, bool refresh = true) {
     wchar_t directory[MAX_PATH]{};
     if (!GetEnvironmentVariableW(L"DIALLOG_UI_CAPTURE", directory, MAX_PATH)) return;
     CreateDirectoryW(directory, nullptr);
     HWND notice = FindWindowW(L"dialModernNotice", nullptr);
     if (notice && GetWindow(notice, GW_OWNER) == window) SendMessageW(notice, WM_LBUTTONUP, 0, 0);
-    Sleep(100);
-    RedrawWindow(window, nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+    if (refresh) {
+        Sleep(100);
+        RedrawWindow(window, nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+    }
     RECT rect{}; GetWindowRect(window, &rect);
     const int width = rect.right - rect.left, height = rect.bottom - rect.top;
     HDC screen = GetWindowDC(window), memory = CreateCompatibleDC(screen);
@@ -265,7 +273,33 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
         SendMessageW(window, WM_APP + 41, page, 0);
         UpdateWindow(window);
         if (TextOf(GetDlgItem(window, 1024)) != titles[page]) return finish(10 + page);
+        if (page == 2 && Header_GetItemCount(ListView_GetHeader(GetDlgItem(window, 1012))) != 4)
+            return finish(52);
+        if (page == 3 && Header_GetItemCount(ListView_GetHeader(GetDlgItem(window, 1013))) != 6)
+            return finish(53);
+        if ((page == 2 || page == 3 || page == 6) && !IsWindowVisible(GetDlgItem(window, 1139)))
+            return finish(54);
+        if (page == 2 || page == 3 || page == 5 || page == 6)
+            Capture(window, page == 2 ? L"timeline-wide" : page == 3 ? L"outages-wide" :
+                            page == 5 ? L"tags-wide" : L"raw-wide");
     }
+
+    SendMessageW(window, WM_APP + 41, 2, 0);
+    HWND timeline = GetDlgItem(window, 1012);
+    RECT timelineHeader{}; POINT timelineOrigin{};
+    GetWindowRect(ListView_GetHeader(timeline), &timelineHeader); ClientToScreen(timeline, &timelineOrigin);
+    const int timelineRowY = timelineHeader.bottom - timelineOrigin.y + 10;
+    SendMessageW(timeline, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(24, timelineRowY));
+    SendMessageW(timeline, WM_LBUTTONUP, 0, MAKELPARAM(24, timelineRowY));
+    SendMessageW(timeline, WM_COPY, 0, 0);
+    if (ClipboardText() != L"2026-06-30 00:01:50\tSDK 事件\tSDK\tDataCall disconnected | profile=1 err=0x0\r\n")
+        return finish(58);
+    SendMessageW(timeline, WM_KEYDOWN, VK_RETURN, 0);
+    if (TextOf(GetDlgItem(window, 1112)).find(L"DataCall disconnected | profile=1 err=0x0") == std::wstring::npos) {
+        PrintWide("timeline-detail", TextOf(GetDlgItem(window, 1112)));
+        return finish(59);
+    }
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1111, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(window, 1111)));
 
     SendMessageW(window, WM_APP + 41, 0, 0);
     Capture(window, L"overview-wide");
@@ -327,6 +361,24 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     SendMessageW(window, WM_COMMAND, MAKEWPARAM(1048, BN_CLICKED),
                  reinterpret_cast<LPARAM>(splitMode));
     if (!IsWindowVisible(metrics) || !IsWindowVisible(chart)) return finish(36);
+    RECT splitChart{}; GetClientRect(chart, &splitChart);
+    const DWORD switchStart = GetTickCount();
+    for (int repeat = 0; repeat < 8; ++repeat) {
+        SendMessageW(window, WM_COMMAND, MAKEWPARAM(1047, BN_CLICKED), reinterpret_cast<LPARAM>(chartMode));
+        GetClientRect(chart, &chartRect);
+        if (chartRect.bottom <= splitChart.bottom || IsWindowVisible(metrics)) return finish(55);
+        if (repeat == 7) Capture(window, L"metrics-chart-immediate", false);
+        SendMessageW(window, WM_COMMAND, MAKEWPARAM(1048, BN_CLICKED), reinterpret_cast<LPARAM>(splitMode));
+        GetClientRect(chart, &chartRect);
+        if (chartRect.bottom != splitChart.bottom || !IsWindowVisible(metrics)) return finish(56);
+        if (repeat == 7) Capture(window, L"metrics-split-immediate", false);
+    }
+    PrintWide("chart-switch-16-total-ms", std::to_wstring(GetTickCount() - switchStart));
+    const int section = (chartRect.bottom - 77) / 3;
+    SendMessageW(chart, WM_LBUTTONDOWN, 0, MAKELPARAM(chartRect.right - 150, 26 + section + 11));
+    UpdateWindow(chart); Capture(window, L"metrics-rsrq");
+    SendMessageW(chart, WM_LBUTTONDOWN, 0, MAKELPARAM(chartRect.right - 215, 26 + section + 11));
+    UpdateWindow(chart);
 
     SendMessageW(window, WM_APP + 41, 6, 0);
     HWND raw = GetDlgItem(window, 1016);
@@ -345,6 +397,10 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     SendMessageW(raw, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(24, firstRowY));
     SendMessageW(raw, WM_LBUTTONUP, 0, MAKELPARAM(24, firstRowY));
     if (ListView_GetSelectedCount(raw) < 1) return finish(42);
+    SendMessageW(raw, WM_COPY, 0, 0);
+    const auto rawText = ClipboardText();
+    if (rawText.find(L"2\t2026-06-30 00:00:26\t") != 0 ||
+        rawText.find(L"1D8DE0D -> 1D8DE0B") == std::wstring::npos) return finish(57);
     SendMessageW(raw, WM_KEYDOWN, VK_RETURN, 0);
     HWND detail = GetDlgItem(window, 1112);
     if (!detail || !IsWindowVisible(detail) || SendMessageW(detail, WM_GETTEXTLENGTH, 0, 0) < 20) return finish(37);
@@ -388,7 +444,12 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     HWND closeButton = GetDlgItem(window, 1030);
     const DWORD cancelStart = GetTickCount();
     while (TextOf(closeButton) != L"取消加载" && GetTickCount() - cancelStart < 5000) Sleep(10);
-    if (TextOf(closeButton) != L"取消加载") { DeleteFileW(largeLog.c_str()); return finish(27); }
+    if (TextOf(closeButton) != L"取消加载") {
+        PrintWide("cancel-button", TextOf(closeButton));
+        PrintWide("load-label", TextOf(GetDlgItem(window, 1010)));
+        PrintWide("load-status", TextOf(GetDlgItem(window, 1011)));
+        DeleteFileW(largeLog.c_str()); return finish(27);
+    }
     SendMessageW(window, WM_COMMAND, MAKEWPARAM(1030, BN_CLICKED),
                  reinterpret_cast<LPARAM>(closeButton));
     const DWORD cancelWait = GetTickCount();

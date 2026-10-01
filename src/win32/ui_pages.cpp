@@ -29,7 +29,6 @@
 
 namespace dl {
 
-static std::vector<COLORREF> g_ogColors;
 static int g_curPage = 0;
 static bool g_pageDirty[9] = { true, true, true, true, true, true, true, true, true };
 static size_t g_rawTargetLine = 0;
@@ -124,6 +123,18 @@ static COLORREF RowColor(const LogLine& l) {
     return th::inkPri;
 }
 
+static COLORREF EventBackground(const LogLine& line, COLORREF normal) {
+    switch (logEventKind(line)) {
+    case LogEventKind::Fault: case LogEventKind::Error: return th::qualityPoor;
+    case LogEventKind::Recovered: case LogEventKind::RecoveryAction: return th::qualityExcellent;
+    case LogEventKind::Warning: return th::qualityFair;
+    case LogEventKind::State: return th::qualityGood;
+    case LogEventKind::Cell: return th::eventCell;
+    case LogEventKind::Sdk: return th::eventSdk;
+    default: return normal;
+    }
+}
+
 static void RenderTimeline() {
     buildTimelineView(App().document.filtered, App().document.timelineRows);
     ListView_SetItemCountEx(App().hTimeline, (int)App().document.timelineRows.size(),
@@ -133,7 +144,6 @@ static void RenderTimeline() {
 
 static void RenderOutages() {
     ListView_DeleteAllItems(App().hOutage);
-    g_ogColors.clear();
     g_outageOrder.resize(App().document.outages.size());
     for (std::size_t i = 0; i < g_outageOrder.size(); ++i) g_outageOrder[i] = i;
     if (g_outageSortColumn >= 0) {
@@ -142,9 +152,16 @@ static void RenderOutages() {
             const Outage& b = App().document.outages[right];
             long long av = 0, bv = 0;
             if (g_outageSortColumn == 0) { av = static_cast<long long>(left); bv = static_cast<long long>(right); }
-            else if (g_outageSortColumn == 1) { av = a.start; bv = b.start; }
-            else if (g_outageSortColumn == 2) { av = a.recovered ? a.end : LLONG_MAX; bv = b.recovered ? b.end : LLONG_MAX; }
-            else { av = a.recovered ? a.dur : LLONG_MAX; bv = b.recovered ? b.dur : LLONG_MAX; }
+            else if (g_outageSortColumn == 1) {
+                auto rank = [](const Outage& outage) {
+                    return !outage.recovered ? 0 : outage.dur > 60 ? 1 : outage.dur > 30 ? 2 : 3;
+                };
+                av = rank(a); bv = rank(b);
+            }
+            else if (g_outageSortColumn == 2) { av = a.start; bv = b.start; }
+            else if (g_outageSortColumn == 3) { av = a.recovered ? a.end : LLONG_MAX; bv = b.recovered ? b.end : LLONG_MAX; }
+            else if (g_outageSortColumn == 4) { av = a.recovered ? a.dur : LLONG_MAX; bv = b.recovered ? b.dur : LLONG_MAX; }
+            else { av = a.reportedDuration; bv = b.reportedDuration; }
             return g_outageSortAscending ? av < bv : av > bv;
         });
     }
@@ -152,17 +169,16 @@ static void RenderOutages() {
     for (std::size_t original : g_outageOrder) {
         const Outage& o = App().document.outages[original];
         LvAddRow(App().hOutage, row, FmtW(L"%d", static_cast<int>(original + 1)));
-        LvSet(App().hOutage, row, 1, U8ToW(fmtTime(o.start, "FULL")));
+        LvSet(App().hOutage, row, 1, U8ToW(outageStatusText(o)));
+        LvSet(App().hOutage, row, 2, U8ToW(fmtTime(o.start, "FULL")));
         if (o.recovered) {
-            LvSet(App().hOutage, row, 2, U8ToW(fmtTime(o.end, "FULL")));
-            LvSet(App().hOutage, row, 3, U8ToW(fmtDur(o.dur)));
-            LvSet(App().hOutage, row, 4, o.reportedDuration ? L"设备自报 Down 时长" : L"原始起止边沿");
-            g_ogColors.push_back(o.dur > 60 ? th::critical : (o.dur > 30 ? th::rowWarn : th::inkPri));
+            LvSet(App().hOutage, row, 3, U8ToW(fmtTime(o.end, "FULL")));
+            LvSet(App().hOutage, row, 4, U8ToW(fmtDur(o.dur)));
+            LvSet(App().hOutage, row, 5, o.reportedDuration ? L"设备自报 Down 时长" : L"原始起止边沿");
         } else {
-            LvSet(App().hOutage, row, 2, L"未恢复");
-            LvSet(App().hOutage, row, 3, L"?");
-            LvSet(App().hOutage, row, 4, L"尚未闭合");
-            g_ogColors.push_back(th::critical);
+            LvSet(App().hOutage, row, 3, L"未恢复");
+            LvSet(App().hOutage, row, 4, L"?");
+            LvSet(App().hOutage, row, 5, L"尚未闭合");
         }
         row++;
     }
@@ -457,7 +473,6 @@ void ReleaseLoadedData() {
     UpdateMetricFilterButton();
     ClearEvidenceBookmarks();
 
-    releaseVector(g_ogColors);
     ReleaseOverviewPageData();
     ReleaseChartPageData();
 }
@@ -490,6 +505,11 @@ void ShowPage(int page) {
     const wchar_t* titles[] = {L"概览", L"诊断结论", L"事件时间线", L"断网记录",
                                L"信号指标", L"标签统计", L"原始日志", L"未识别行", L"小区分析"};
     if (App().hPageTitle) SetWindowTextW(App().hPageTitle, titles[page]);
+    const wchar_t* hint = page == 2 ? L"按“事件”列区分故障、已恢复和恢复动作；整行浅色辅助识别。" :
+        page == 3 ? L"整行按时长分档：≤30s、31–60s、>60s；是否恢复以“状态”列为准。" :
+        L"保留原始文件行号；会话标记、空行单独统计，续行归入所属条目。";
+    SetWindowTextW(App().hPageHint, hint);
+    ShowWindow(App().hPageHint, page == 2 || page == 3 || page == 6 ? SW_SHOW : SW_HIDE);
     SetNavigationPage(page);
     RenderPage(page);   // 页仍隐藏时填充,减少 ListView 大批插入时的可见闪烁
     struct { HWND* h; int page; } items[] = {
@@ -631,7 +651,7 @@ static std::wstring DetailText(HWND list, int row) {
         }
         return output;
     }
-    const int messageColumn = list == App().hRaw ? 4 : 2;
+    const int messageColumn = list == App().hRaw ? 4 : 3;
     for (int column = 0; column < std::min(columns, messageColumn); ++column) {
         if (column) output += L"    ";
         output += ColumnTitle(list, column) + L"：" + U8ToW(PageCellText(list, row, column));
@@ -753,7 +773,7 @@ static void ShowPageContextMenu(HWND list, POINT screenPoint) {
 
     HMENU menu = CreatePopupMenu();
     const bool messageCell = (list == App().hRaw && column == 4) ||
-                             (list == App().hTimeline && column == 2);
+                             (list == App().hTimeline && column == 3);
     AppendMenuW(menu, MF_STRING, kCopyCellCommand,
                 messageCell ? L"复制完整消息" : L"复制单元格");
     const int selected = ListView_GetSelectedCount(list);
@@ -823,7 +843,9 @@ void FitPrimaryTableColumns(int contentWidth) {
         ListView_SetColumnWidth(list, lastColumn,
                                 std::max(S(minimum), contentWidth - fixed - scrollbar));
     };
-    fitLast(App().hTimeline, 2, 760);
+    fitLast(App().hTimeline, 3, 760);
+    fitLast(App().hOutage, 5, 160);
+    fitLast(App().hTags, 2, 240);
     fitLast(App().hRaw, 4, 820);
 }
 
@@ -986,15 +1008,18 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
         hdr->hwndFrom == App().hRaw) {
         if (draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) {
             const size_t row = static_cast<size_t>(draw->nmcd.dwItemSpec);
+            draw->clrText = th::inkPri;
+            draw->clrTextBk = (row & 1) ? th::zebra : th::surface;
             if (hdr->hwndFrom == App().hTimeline) {
                 if (row < App().document.timelineRows.size())
-                    draw->clrText = RowColor(*App().document.timelineRows[row]);
-            } else if (hdr->hwndFrom == App().hOutage && row < g_ogColors.size()) {
-                draw->clrText = g_ogColors[row];
+                    draw->clrTextBk = EventBackground(*App().document.timelineRows[row], draw->clrTextBk);
+            } else if (hdr->hwndFrom == App().hOutage && row < g_outageOrder.size()) {
+                const auto& outage = App().document.outages[g_outageOrder[row]];
+                draw->clrTextBk = !outage.recovered || outage.dur > 60 ? th::qualityPoor :
+                                  outage.dur > 30 ? th::qualityFair : th::qualityExcellent;
             } else if (hdr->hwndFrom == App().hRaw && row < RawRows().size()) {
                 draw->clrText = RowColor(*RawRows()[row]);
             }
-            draw->clrTextBk = (row & 1) ? th::zebra : th::surface;
         }
         result = CDRF_DODEFAULT;
         return true;

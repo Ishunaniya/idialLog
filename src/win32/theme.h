@@ -69,6 +69,8 @@ inline COLORREF qualityExcellent = HEX2RGB(0xe2f4e8);
 inline COLORREF qualityGood      = HEX2RGB(0xe4eefb);
 inline COLORREF qualityFair      = HEX2RGB(0xfff3d6);
 inline COLORREF qualityPoor      = HEX2RGB(0xf9e3e3);
+inline COLORREF eventCell        = HEX2RGB(0xe3f3ef);
+inline COLORREF eventSdk         = HEX2RGB(0xefeafb);
 
 // ---- 时间线行着色(小字号,需 WCAG≥4.5,与图表/仪表盘的大元素色解耦)----
 // 序列色(good/s1_blue/s5_aqua)是为大色块/大字设计的,直接做小字对比度不足
@@ -95,7 +97,7 @@ inline void ApplyPalette(bool useDark, bool useHighContrast = false) {
         s1_blue = s2_green = s3_magenta = s4_yellow = s5_aqua = s6_orange =
             s7_violet = s8_red = GetSysColor(COLOR_WINDOWTEXT);
         outageBand = cellStall = cellWeak = qualityExcellent = qualityGood =
-            qualityFair = qualityPoor = GetSysColor(COLOR_WINDOW);
+            qualityFair = qualityPoor = eventCell = eventSdk = GetSysColor(COLOR_WINDOW);
         rowRecovered = rowFault = rowRoamlink = rowState = rowSdk = rowWarn = rowErr =
             GetSysColor(COLOR_WINDOWTEXT);
         return;
@@ -114,6 +116,7 @@ inline void ApplyPalette(bool useDark, bool useHighContrast = false) {
         cellWeak = HEX2RGB(0xffeec8);
         qualityExcellent = HEX2RGB(0xe2f4e8); qualityGood = HEX2RGB(0xe4eefb);
         qualityFair = HEX2RGB(0xfff3d6); qualityPoor = HEX2RGB(0xf9e3e3);
+        eventCell = HEX2RGB(0xe3f3ef); eventSdk = HEX2RGB(0xefeafb);
         rowRecovered = HEX2RGB(0x0a7a32); rowFault = critical; rowRoamlink = HEX2RGB(0x147c5b);
         rowState = HEX2RGB(0x2369bd); rowSdk = HEX2RGB(0x5b49b7); rowWarn = HEX2RGB(0x836000);
         rowErr = critical;
@@ -132,6 +135,7 @@ inline void ApplyPalette(bool useDark, bool useHighContrast = false) {
     cellWeak = HEX2RGB(0x4a3c20);
     qualityExcellent = HEX2RGB(0x1c3b29); qualityGood = HEX2RGB(0x1d344e);
     qualityFair = HEX2RGB(0x463a20); qualityPoor = HEX2RGB(0x44282b);
+    eventCell = HEX2RGB(0x203c35); eventSdk = HEX2RGB(0x302b49);
     rowRecovered = HEX2RGB(0x67ce88); rowFault = critical; rowRoamlink = HEX2RGB(0x59c89d);
     rowState = HEX2RGB(0x75b5ff); rowSdk = HEX2RGB(0xad9eff); rowWarn = HEX2RGB(0xf0bd58);
     rowErr = critical;

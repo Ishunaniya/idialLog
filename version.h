@@ -81,11 +81,13 @@
 //   1.11.12 概览/诊断整页与卡片复制，简化页面文案；完整日期与自适应时间轴，
 //           缺失指标收拢、逐项采样时间悬停、长标题换行；修复导航焦点框和长页滚动，
 //           增加字体选择与持久化，保留指标推定时间标记。
+//   1.11.13 信号图范围标注与尺寸切换重绘；修复表格行高占位图的黑线，
+//           搜索输入垂直居中；时间线增加事件分类，断网表增加恢复状态与整行浅色。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 12
+#define DL_VER_PATCH 13
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)
