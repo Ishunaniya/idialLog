@@ -11,5 +11,6 @@ void RenderMetrics();
 void ReleaseChartPageData();
 void SetChartFocusTime(long long time);
 int PreferredChartHeight();
+bool CancelChartSelection();
 
 } // namespace dl

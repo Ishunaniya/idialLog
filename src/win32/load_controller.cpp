@@ -85,6 +85,7 @@ static int YearHintFromLabel(const std::wstring& label) {
 
 // 一份新输入默认必须以全量日志分析。筛选只属于当前文档，绝不让隐藏的旧条件影响新文档。
 static void ResetFiltersForNewInput() {
+    App().document.timeRange = DocumentState::TimeRange{};
     for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
         if (edit) SetWindowTextW(edit, L"");
     ClearMetricQuickFilters(false);
@@ -121,7 +122,9 @@ static void PresentAnalysis(bool bad) {
                    (int)App().document.audit.unparsed, App().document.audit.unparsedRatio() * 100.0,
                    (int)App().document.audit.nulBytes, (int)App().document.audit.nulLines);
     if (bad) st += L"   ·   ⚠ 正则非法,已忽略该条件";
+    if (HasAnalysisTimeFilter()) st += L"   ·   结论仅基于当前时间区间内证据";
     SetWindowTextW(App().hStatus, st.c_str());
+    UpdateAnalysisTimeRangeControls();
     if (bad && !g_regexWasBad)
         ShowModernNotice(L"正则表达式无效", L"已暂时忽略“消息正则”条件，其他筛选仍然生效。",
                          ModernNoticeKind::Warning, 6000);
@@ -134,6 +137,7 @@ void RefreshAll() {
     bool bad = false;
     App().document.filtered = applyFilterView(App().document.lines, WToU8(GetText(App().hTagBox)), WToU8(GetText(App().hGrepBox)),
                              WToU8(GetText(App().hSinceBox)), WToU8(GetText(App().hUntilBox)), &bad);
+    App().document.restrictToTimeRange(App().document.filtered);
     App().document.outages = collectOutages(App().document.filtered);
     App().document.metrics = buildMetrics(App().document.filtered);
     RebuildMetricQuickFilterView();
@@ -146,6 +150,59 @@ void RefreshAll() {
                                       App().document.audit, &App().document.cellAnalysis);
 
     PresentAnalysis(bad);
+}
+
+bool HasAnalysisTimeFilter() {
+    return App().document.timeRange.active || !GetText(App().hSinceBox).empty() || !GetText(App().hUntilBox).empty();
+}
+
+std::wstring AnalysisTimeRangeText() {
+    const auto& range = App().document.timeRange;
+    if (range.active)
+        return L"选区：" + U8ToW(fmtTime(range.start, "FULL")) + L" → " + U8ToW(fmtTime(range.end, "FULL"));
+    if (HasAnalysisTimeFilter())
+        return L"时间条件：" + GetText(App().hSinceBox) + L" → " + GetText(App().hUntilBox);
+    return L"时间范围：全范围";
+}
+
+std::wstring AnalysisScopedText(const std::string& text) {
+    std::wstring result = U8ToW(text);
+    if (!HasAnalysisTimeFilter()) return result;
+    const std::wstring original = L"全量日志历史汇总", replacement = L"当前区间汇总";
+    for (size_t position = 0; (position = result.find(original, position)) != std::wstring::npos;
+         position += replacement.size()) result.replace(position, original.size(), replacement);
+    return result;
+}
+
+void UpdateAnalysisTimeRangeControls() {
+    const auto& range = App().document.timeRange;
+    std::wstring label;
+    if (range.active) {
+        label = L"选区起点：" + U8ToW(fmtTime(range.start, "FULL")) + L"\r\n选区终点：" + U8ToW(fmtTime(range.end, "FULL"));
+    } else if (HasAnalysisTimeFilter()) {
+        label = AnalysisTimeRangeText() + L"\r\n区间结论仅使用区间内证据";
+    } else {
+        label = L"时间范围：全范围\r\n信号图横向拖动选区 · 恢复仅清除时间条件";
+    }
+    if (App().hTimeRangeLabel) SetWindowTextW(App().hTimeRangeLabel, label.c_str());
+    if (App().hTimeRangeReset) EnableWindow(App().hTimeRangeReset,
+        !App().document.lines.empty() && HasAnalysisTimeFilter());
+    if (App().hFilterToggle) SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
+}
+
+void SelectAnalysisTimeRange(long long start, long long end) {
+    if (App().document.lines.empty() || start == end) return;
+    if (PageDetailVisible()) ClosePageDetail();
+    App().document.selectTimeRange(start, end);
+    RefreshAll();
+}
+
+void RestoreAnalysisTimeRange() {
+    App().document.timeRange = DocumentState::TimeRange{};
+    for (HWND edit : {App().hSinceBox, App().hUntilBox})
+        if (edit) SetWindowTextW(edit, L"");
+    RefreshAll();
+    UpdateAnalysisTimeRangeControls();
 }
 
 // 载入的公共尾段:移动接管原始行,解析后立即释放,不让 raw 与后续分析结果长期共存。
@@ -793,6 +850,9 @@ void DoExportReport() {
                  now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond));
         add(); add(L"## 分析摘要"); add();
         add(FmtW(L"- 平台：%s", U8ToW(App().document.platform.name).c_str()));
+        add(L"- " + AnalysisTimeRangeText());
+        if (HasAnalysisTimeFilter())
+            add(L"- 运行结论按区间内证据重算；区间外起止边沿与启动可能缺失，请结合全范围复核。平台识别、解析审计和来源统计基于整份输入。");
         add(FmtW(L"- 日志：筛选后 %d / 解析 %d 行，日志打开 %d 次，有证据的进程启动 %d 次",
                  static_cast<int>(App().document.filtered.size()), static_cast<int>(App().document.lines.size()),
                  static_cast<int>(App().document.audit.logOpened),
@@ -883,8 +943,8 @@ void DoExportReport() {
             const auto& finding = App().document.findings[index];
             const wchar_t* level = finding.severity == 2 ? L"严重" : finding.severity == 1 ? L"告警" : L"信息";
             add(FmtW(L"### %d. [%s] %s", static_cast<int>(index + 1), level,
-                     U8ToW(finding.title).c_str())); add();
-            add(L"- 依据：" + U8ToW(finding.detail));
+                     AnalysisScopedText(finding.title).c_str())); add();
+            add(L"- 依据：" + AnalysisScopedText(finding.detail));
             add(L"- 建议：" + U8ToW(finding.advice));
             for (const auto& evidence : finding.ev)
                 add(FmtW(L"  - 第 %d 行 · %s · %s", static_cast<int>(evidence.lineNo),
@@ -987,6 +1047,7 @@ void DoExportHtml() {
         kpi("小区", std::to_string(App().document.cellAnalysis.cells.size()) + " 个");
         kpi("未识别", std::to_string(App().document.audit.unparsed) + " 行");
         kpi("文件损伤", std::to_string(App().document.audit.nulBytes) + " NUL 字节");
+        kpi("分析时间范围", WToU8(AnalysisTimeRangeText()));
         const AvailabilityStats availability = availabilityStats(App().document.filtered, App().document.outages);
         const DataCallStats calls = collectDataCallStats(App().document.filtered);
         if (availability.evidenceLimited()) kpi("业务可用率", "证据不足");
@@ -1007,7 +1068,8 @@ void DoExportHtml() {
                 oneDecimal(static_cast<int>(observation.coveragePercent * 10.0)) +
                 "%）；授时跳变切段 " + std::to_string(observation.clockDiscontinuities) +
                 " 处</p>" + (availability.evidenceLimited()
-                    ? "<p>" + escape(availabilityEvidenceNote(availability)) + "</p>" : "") + "</section>";
+                    ? "<p>" + escape(availabilityEvidenceNote(availability)) + "</p>" : "") +
+                (HasAnalysisTimeFilter() ? "<p>运行结论按区间内证据重算；区间外起止边沿与启动可能缺失，请结合全范围复核。平台识别、解析审计和来源统计基于整份输入。</p>" : "") + "</section>";
 
         ChartSeries csq, rsrp, rsrq, snr;
         csq.reserve(App().document.metrics.size()); rsrp.reserve(App().document.metrics.size());
@@ -1106,7 +1168,8 @@ void DoExportHtml() {
         for (std::size_t i = 0; i < App().document.outages.size(); ++i) {
             const Outage& outage = App().document.outages[i];
             html += "<tr><td>" + std::to_string(i + 1) + "</td><td>" + escape(fmtTime(outage.start, "FULL")) +
-                    "</td><td>" + (outage.recovered ? escape(fmtTime(outage.end, "FULL")) : "未恢复") +
+                    "</td><td>" + (outage.recovered ? escape(fmtTime(outage.end, "FULL")) :
+                                  HasAnalysisTimeFilter() ? "区间内未见恢复" : "未恢复") +
                     "</td><td>" + (outage.recovered ? escape(fmtDur(outage.dur)) : "-") +
                     "</td><td>" + std::to_string(outage.startLine) + " → " +
                     (outage.endLine ? std::to_string(outage.endLine) : "-") + "</td></tr>";
@@ -1115,7 +1178,7 @@ void DoExportHtml() {
         if (App().document.findings.empty()) html += "<p class=\"muted\">未形成有证据支撑的结论。</p>";
         for (const Finding& finding : App().document.findings) {
             html += "<article class=\"finding severity" + std::to_string(finding.severity) + "\"><h3>" +
-                    escape(finding.title) + "</h3><p><b>依据：</b>" + escape(finding.detail) +
+                    escape(WToU8(AnalysisScopedText(finding.title))) + "</h3><p><b>依据：</b>" + escape(WToU8(AnalysisScopedText(finding.detail))) +
                     "</p><p><b>建议：</b>" + escape(finding.advice) + "</p>";
             for (const Evidence& evidence : finding.ev)
                 html += "<p class=\"evidence\">第 " + std::to_string(evidence.lineNo) + " 行 · " +

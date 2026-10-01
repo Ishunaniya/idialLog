@@ -9,6 +9,15 @@
 
 namespace dl {
 
+long long chartTimeAtPixel(long long start, long long end, int left, int right, int pixel) {
+    if (end <= start || right <= left || pixel <= left) return start;
+    if (pixel >= right) return end;
+    const long double fraction = (static_cast<long double>(pixel) - left) /
+                                 (static_cast<long double>(right) - left);
+    const long double time = start + fraction * (static_cast<long double>(end) - start);
+    return static_cast<long long>(std::clamp(time, static_cast<long double>(start), static_cast<long double>(end)));
+}
+
 std::vector<long long> chartTimeTicks(long long start, long long end,
                                      size_t pixelWidth, size_t labelWidth) {
     if (!pixelWidth || end < start) return {};

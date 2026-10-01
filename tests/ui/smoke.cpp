@@ -279,6 +279,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
             return finish(53);
         if ((page == 2 || page == 3 || page == 6) && !IsWindowVisible(GetDlgItem(window, 1139)))
             return finish(54);
+        if (!IsWindowVisible(GetDlgItem(window, 1140)) || !IsWindowVisible(GetDlgItem(window, 1141)) ||
+            IsWindowEnabled(GetDlgItem(window, 1141))) return finish(60);
         if (page == 2 || page == 3 || page == 5 || page == 6)
             Capture(window, page == 2 ? L"timeline-wide" : page == 3 ? L"outages-wide" :
                             page == 5 ? L"tags-wide" : L"raw-wide");
@@ -380,6 +382,84 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     SendMessageW(chart, WM_LBUTTONDOWN, 0, MAKELPARAM(chartRect.right - 215, 26 + section + 11));
     UpdateWindow(chart);
 
+    // EG25 真机：按完整时间轴框选前约 34 分钟，包含前三次完整断网。
+    const int plotLeft = 58, plotY = 61;
+    const int fullMetricCount = ListView_GetItemCount(metrics);
+    SendMessageW(chart, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(plotLeft, plotY));
+    SendMessageW(chart, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(plotLeft + 40, plotY));
+    Capture(window, L"range-preview");
+    SendMessageW(chart, WM_LBUTTONUP, 0, MAKELPARAM(plotLeft + 40, plotY));
+    const int selectedMetricCount = ListView_GetItemCount(metrics);
+    if (!IsWindowEnabled(GetDlgItem(window, 1141)) || selectedMetricCount != 68 ||
+        !Contains(GetDlgItem(window, 1140), L"2026-06-30 00:00:26") ||
+        !Contains(GetDlgItem(window, 1140), L"2026-06-30 00:34:41"))
+        return finish(61);
+    PrintWide("selected-metric-count", std::to_wstring(selectedMetricCount));
+    Capture(window, L"range-selected");
+    SendMessageW(window, WM_APP + 41, 3, 0);
+    if (ListView_GetItemCount(GetDlgItem(window, 1013)) != 3) return finish(62);
+    SendMessageW(window, WM_APP + 41, 2, 0);
+    PrintWide("selected-timeline-count", std::to_wstring(ListView_GetItemCount(timeline)));
+    if (ListView_GetItemCount(timeline) != 64) return finish(70);
+    Capture(window, L"range-timeline");
+    SendMessageW(window, WM_APP + 41, 1, 0);
+    Capture(window, L"range-findings");
+    GetClientRect(findings, &findingsRect);
+    SendMessageW(findings, WM_LBUTTONUP, 0, MAKELPARAM(findingsRect.right - 100, 35));
+    if (ClipboardText().find(L"选区：2026-06-30 00:00:26") == std::wstring::npos ||
+        ClipboardText().find(L"平台识别与解析审计仍基于整份输入") == std::wstring::npos ||
+        ClipboardText().find(L"当前区间汇总") == std::wstring::npos ||
+        ClipboardText().find(L"全量日志历史汇总") != std::wstring::npos) return finish(63);
+    SendMessageW(window, WM_APP + 41, 4, 0); UpdateWindow(chart);
+
+    // 反向再框选到故障起点后、恢复前：不能把区间内未见恢复写成全局未恢复。
+    SendMessageW(chart, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(plotLeft + 150, plotY));
+    SendMessageW(chart, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(plotLeft, plotY));
+    SendMessageW(chart, WM_LBUTTONUP, 0, MAKELPARAM(plotLeft, plotY));
+    if (ListView_GetItemCount(metrics) != 13 || !Contains(GetDlgItem(window, 1140), L"2026-06-30 00:06:41")) return finish(64);
+    SendMessageW(window, WM_APP + 41, 3, 0);
+    HWND outages = GetDlgItem(window, 1013);
+    if (ListView_GetItemCount(outages) != 1) return finish(65);
+    RECT outageHeader{}; POINT outageOrigin{}; GetWindowRect(ListView_GetHeader(outages), &outageHeader);
+    ClientToScreen(outages, &outageOrigin);
+    const int outageRowY = outageHeader.bottom - outageOrigin.y + 10;
+    SendMessageW(outages, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(24, outageRowY));
+    SendMessageW(outages, WM_LBUTTONUP, 0, MAKELPARAM(24, outageRowY));
+    SendMessageW(outages, WM_COPY, 0, 0);
+    if (ClipboardText().find(L"区间内未见恢复") == std::wstring::npos) return finish(66);
+    Capture(window, L"range-outage-boundary");
+
+    // 恢复入口跨页面可用，恢复后所有指标和断网都回到原计数。
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1141, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(window, 1141)));
+    if (ListView_GetItemCount(outages) != 36 || IsWindowEnabled(GetDlgItem(window, 1141)) ||
+        !Contains(GetDlgItem(window, 1140), L"全范围")) return finish(67);
+    SendMessageW(window, WM_APP + 41, 4, 0); UpdateWindow(chart);
+    if (ListView_GetItemCount(metrics) != fullMetricCount) return finish(68);
+    SendMessageW(chart, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(plotLeft, plotY));
+    SendMessageW(chart, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(plotLeft + 40, plotY));
+    SendMessageW(chart, WM_KEYDOWN, VK_ESCAPE, 0);
+    SendMessageW(chart, WM_LBUTTONUP, 0, MAKELPARAM(plotLeft + 40, plotY));
+    if (IsWindowEnabled(GetDlgItem(window, 1141)) || ListView_GetItemCount(metrics) != fullMetricCount) return finish(69);
+
+    // 消息条件与图表选区独立，恢复全范围仅清除时间条件。
+    SetWindowTextW(GetDlgItem(window, 1007), L"SDK");
+    SetWindowTextW(GetDlgItem(window, 1008), L"00:00:00");
+    SetWindowTextW(GetDlgItem(window, 1009), L"00:35:00");
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1003, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(window, 1003)));
+    if (!Contains(GetDlgItem(window, 1140), L"时间条件") || !IsWindowEnabled(GetDlgItem(window, 1141))) return finish(71);
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1141, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(window, 1141)));
+    if (TextOf(GetDlgItem(window, 1007)) != L"SDK" || !TextOf(GetDlgItem(window, 1008)).empty() ||
+        !TextOf(GetDlgItem(window, 1009)).empty() || IsWindowEnabled(GetDlgItem(window, 1141))) return finish(72);
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1004, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(window, 1004)));
+    SetWindowTextW(GetDlgItem(window, 1008), L"12:00:00");
+    SetWindowTextW(GetDlgItem(window, 1009), L"12:01:00");
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1003, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(window, 1003)));
+    SendMessageW(window, WM_APP + 41, 6, 0);
+    if (ListView_GetItemCount(GetDlgItem(window, 1016)) != 0 || !IsWindowEnabled(GetDlgItem(window, 1141))) return finish(73);
+    Capture(window, L"range-empty");
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1141, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(window, 1141)));
+    if (ListView_GetItemCount(GetDlgItem(window, 1016)) != 2860) return finish(74);
+
     SendMessageW(window, WM_APP + 41, 6, 0);
     HWND raw = GetDlgItem(window, 1016);
     if (!raw) return finish(30);
@@ -436,6 +516,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (!ChooseTypeface(window, process.dwProcessId, true, L"Courier New")) return finish(49);
     Capture(window, L"fonts-selected");
 
+    // 取消另一份日志的加载应同时保留当前选区及其分析结果。
+    UpdateWindow(chart);
+    SendMessageW(chart, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(plotLeft, plotY));
+    SendMessageW(chart, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(plotLeft + 40, plotY));
+    SendMessageW(chart, WM_LBUTTONUP, 0, MAKELPARAM(plotLeft + 40, plotY));
+    if (!IsWindowEnabled(GetDlgItem(window, 1141))) return finish(75);
+    const std::wstring oldRangeLabel = TextOf(GetDlgItem(window, 1140));
+
     // 大日志后台任务应能立即取消，且不能覆盖已经成功加载的旧文档。
     const std::wstring oldLabel = TextOf(GetDlgItem(window, 1010));
     const int oldMetricCount = ListView_GetItemCount(metrics);
@@ -462,6 +550,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
         PrintWide("label after cancel", labelAfterCancel);
         return finish(29);
     }
+    if (TextOf(GetDlgItem(window, 1140)) != oldRangeLabel || !IsWindowEnabled(GetDlgItem(window, 1141))) return finish(76);
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1141, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(window, 1141)));
 
     // 展开筛选、应用一次搜索，并验证历史使用 REG_MULTI_SZ 落盘。
     SendMessageW(window, WM_COMMAND, MAKEWPARAM(1023, BN_CLICKED),
@@ -478,6 +568,29 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     const LONG history = RegQueryValueExW(key, L"SearchHistory", nullptr, &type, nullptr, &bytes);
     RegCloseKey(key);
     if (history != ERROR_SUCCESS || type != REG_MULTI_SZ || bytes <= 2 * sizeof(wchar_t)) return finish(24);
+
+    // 成功载入新文档则清除旧选区和条件；失败/取消上面已经验证为保留。
+    SetWindowTextW(GetDlgItem(window, 1008), L"00:00:00");
+    SetWindowTextW(GetDlgItem(window, 1009), L"00:10:00");
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1003, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(window, 1003)));
+    if (!IsWindowEnabled(GetDlgItem(window, 1141))) return finish(77);
+    // 初始成功载入已将样本放到最近文件首项；用实际菜单命令打开，避免
+    // 第二次跨进程合成 HDROP 的句柄封送影响“新文档重置”的断言。
+    SendMessageW(window, WM_COMMAND, MAKEWPARAM(1050, 0), 0);
+    if (!WaitForLoad(window, 180000)) return finish(77);
+    const DWORD reloadStart = GetTickCount();
+    while (GetTickCount() - reloadStart < 30000 &&
+           (IsWindowEnabled(GetDlgItem(window, 1141)) || !TextOf(GetDlgItem(window, 1007)).empty() ||
+            ListView_GetItemCount(metrics) != fullMetricCount)) Sleep(20);
+    if (IsWindowEnabled(GetDlgItem(window, 1141)) || !Contains(GetDlgItem(window, 1140), L"全范围") ||
+        !TextOf(GetDlgItem(window, 1007)).empty() || !TextOf(GetDlgItem(window, 1008)).empty() ||
+        !TextOf(GetDlgItem(window, 1009)).empty() || ListView_GetItemCount(metrics) != fullMetricCount) {
+        PrintWide("reload-range", TextOf(GetDlgItem(window, 1140)));
+        PrintWide("reload-label", TextOf(GetDlgItem(window, 1010)));
+        PrintWide("reload-grep", TextOf(GetDlgItem(window, 1007)));
+        PrintWide("reload-metric-count", std::to_wstring(ListView_GetItemCount(metrics)));
+        return finish(78);
+    }
 
     PostMessageW(window, WM_CLOSE, 0, 0);
     const DWORD wait = WaitForSingleObject(process.hProcess, 10000);

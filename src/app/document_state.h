@@ -18,6 +18,11 @@ struct SourceSummary {
 
 class DocumentState {
 public:
+    struct TimeRange {
+        bool active = false;
+        long long start = 0, end = 0;
+    } timeRange;
+
     std::vector<LogLine> lines;
     LogView filtered;                 // 借用 lines
     std::vector<std::string> sessions;
@@ -41,6 +46,9 @@ public:
     void release();
     // 后台线程构建完整文档后，在 UI 线程常数时间接管所有权。
     void swap(DocumentState& other) noexcept;
+    // 图表选区使用精确时间戳，不经过 HH:MM 输入框，保留跨日/跨年的日期。
+    void selectTimeRange(long long start, long long end);
+    void restrictToTimeRange(LogView& view) const;
 };
 
 } // namespace dl

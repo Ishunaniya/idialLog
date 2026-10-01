@@ -82,6 +82,8 @@ using namespace dl;
 #define IDC_FONT_LOG 1137
 #define IDC_FONT_RESET 1138
 #define IDC_PAGE_HINT 1139
+#define IDC_TIME_RANGE_LABEL 1140
+#define IDC_TIME_RANGE_RESET 1141
 
 namespace {
 
@@ -294,7 +296,7 @@ LRESULT CALLBACK SplitterSubclass(HWND splitter, UINT message, WPARAM wparam, LP
 }
 
 void UpdateFilterButton() {
-    int count = 0;
+    int count = App().document.timeRange.active ? 1 : 0;
     for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
         if (HasText(edit)) ++count;
     std::wstring label = L"筛选";
@@ -398,7 +400,7 @@ void ApplyFontsToControls() {
         SendMessageW(App().hFileLbl, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontSmall), TRUE);
     for (HWND label : {App().hTagLabel, App().hGrepLabel, App().hSinceLabel, App().hUntilLabel})
         if (label) SendMessageW(label, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontSmall), TRUE);
-    for (HWND label : {App().hMetricToolbar, App().hDetailLabel, App().hPageHint})
+    for (HWND label : {App().hMetricToolbar, App().hDetailLabel, App().hPageHint, App().hTimeRangeLabel})
         if (label) SendMessageW(label, WM_SETFONT, reinterpret_cast<WPARAM>(App().hFontSmall), TRUE);
 }
 
@@ -567,6 +569,11 @@ void Layout() {
     MoveIf(App().hFileLbl, contentLeft + S(25), S(51), contentWidth - S(50), S(20));
 
     LayoutFilterPanel(contentLeft, contentWidth);
+    const int rangeY = S(g_headerHeight);
+    MoveIf(App().hTimeRangeLabel, contentLeft + S(20), rangeY,
+           contentWidth - S(186), S(42));
+    MoveIf(App().hTimeRangeReset, client.right - S(150), rangeY + S(4), S(130), S(34));
+    g_headerHeight += 52;
     RECT content = ContentRect(client);
     g_lastContent = content;
     const int width = static_cast<int>(content.right - content.left);
@@ -635,8 +642,9 @@ void Layout() {
         ShowWindow(App().hMetric, CurrentPage() == 4 ? SW_SHOW : SW_HIDE);
         ShowWindow(App().hMetricSplitter, CurrentPage() == 4 ? SW_SHOW : SW_HIDE);
         const int usableHeight = std::max(2, metricAreaHeight - splitterHeight);
-        const int minimumChart = std::min(PreferredChartHeight(), std::max(1, usableHeight - S(90)));
-        const int minimumTable = std::min(S(90), std::max(1, usableHeight / 3));
+        const int minimumTable = std::min(std::max(1, usableHeight / 3),
+            usableHeight >= PreferredChartHeight() + S(90) ? S(90) : S(60));
+        const int minimumChart = std::min(PreferredChartHeight(), std::max(1, usableHeight - minimumTable));
         if (g_metricSplitY <= 0) g_metricSplitY = usableHeight * 62 / 100;
         g_metricSplitY = std::max(minimumChart,
             std::min(g_metricSplitY, usableHeight - minimumTable));
@@ -680,6 +688,8 @@ void PaintShell(HWND hwnd) {
 void ScheduleFilterRefresh(HWND source) {
     if (source != App().hTagBox && source != App().hGrepBox &&
         source != App().hSinceBox && source != App().hUntilBox) return;
+    if (source == App().hSinceBox || source == App().hUntilBox)
+        App().document.timeRange = DocumentState::TimeRange{};
     UpdateFilterButton();
     if (!App().document.lines.empty()) {
         KillTimer(App().hMain, kFilterTimer);
@@ -689,10 +699,13 @@ void ScheduleFilterRefresh(HWND source) {
 
 void ClearFilters(bool refresh) {
     KillTimer(App().hMain, kFilterTimer);
+    App().document.timeRange = DocumentState::TimeRange{};
     for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
         SetWindowTextW(edit, L"");
+    KillTimer(App().hMain, kFilterTimer);
     ClearMetricQuickFilters(false);
     UpdateFilterButton();
+    UpdateAnalysisTimeRangeControls();
     if (refresh) RefreshAll();
 }
 
@@ -719,6 +732,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
             SS_LEFTNOWORDWRAP | SS_ENDELLIPSIS, IDC_FILELBL, App().hFontSmall);
         App().hPageHint = CreateControl(L"STATIC", L"", SS_LEFT | SS_CENTERIMAGE | SS_ENDELLIPSIS,
                                        IDC_PAGE_HINT, App().hFontSmall, false);
+        App().hTimeRangeLabel = CreateControl(L"STATIC", L"", SS_LEFT | SS_NOPREFIX,
+                                             IDC_TIME_RANGE_LABEL, App().hFontSmall);
+        App().hTimeRangeReset = CreateButton(L"恢复全范围", IDC_TIME_RANGE_RESET, ModernButtonKind::Neutral);
         App().hOpen = CreateButton(L"打开日志 ▾", IDC_OPEN, ModernButtonKind::Primary);
         App().hPaste = CreateButton(L"粘贴日志", IDC_PASTE, ModernButtonKind::Neutral);
         App().hFilterToggle = CreateButton(L"筛选", IDC_FILTER, ModernButtonKind::Neutral);
@@ -782,7 +798,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                           App().hUnparsed, App().hRaw, App().hCells})
             ConfigurePageList(list);
 
-        App().hMetricToolbar = CreateControl(L"STATIC", L"单击图表定位采样 · 拖动分隔条调整高度",
+        App().hMetricToolbar = CreateControl(L"STATIC", L"拖动图表选区 · 单击定位 · Esc 取消",
             SS_LEFT | SS_CENTERIMAGE | SS_ENDELLIPSIS, 0, App().hFontSmall, false);
         App().hMetricViewChart = CreateButton(L"图表", IDC_METRIC_VIEW_CHART,
                                                ModernButtonKind::Neutral, false);
@@ -819,6 +835,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         ShowPage(settings.lastPage);
         UpdateFilterButton();
         DragAcceptFiles(hwnd, TRUE);
+        UpdateAnalysisTimeRangeControls();
         return 0;
     }
     case WM_ERASEBKGND: return 1;
@@ -834,7 +851,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
     }
     case WM_SIZE: Layout(); return 0;
     case WM_APP_NAVIGATE: ShowPage(static_cast<int>(wparam)); return 0;
-    case WM_APP_SHELL_LAYOUT: Layout(); return 0;
+    case WM_APP_SHELL_LAYOUT: UpdateFilterButton(); Layout(); return 0;
     case WM_APP_LOAD_PROGRESS:
     case WM_APP_LOAD_COMPLETE:
         HandleLoadControllerMessage(message, wparam, lparam); return 0;
@@ -894,6 +911,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         case IDC_METRIC_VIEW_SPLIT: SetMetricView(MetricViewMode::Split); return 0;
         case IDC_METRIC_VIEW_TABLE: SetMetricView(MetricViewMode::Table); return 0;
         case IDC_DETAIL_CLOSE: ClosePageDetail(); return 0;
+        case IDC_TIME_RANGE_RESET:
+            RestoreAnalysisTimeRange(); KillTimer(hwnd, kFilterTimer); return 0;
         case IDC_FILTER:
             g_filtersExpanded = !g_filtersExpanded;
             SetFilterControlsVisible(g_filtersExpanded); UpdateFilterButton(); Layout();
@@ -1014,6 +1033,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
             }
             if (message.wParam == 'O') { DoOpen(); continue; }
             if (message.wParam == 'F') { FocusGlobalSearch(); continue; }
+            if (message.wParam == '0') {
+                RestoreAnalysisTimeRange(); KillTimer(window, kFilterTimer); continue;
+            }
             if (message.wParam == 'B') { ToggleCurrentRawBookmark(); continue; }
             if (message.wParam >= '1' && message.wParam <= '9') {
                 ShowPage(static_cast<int>(message.wParam - '1')); continue;
@@ -1037,6 +1059,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
             }
         }
         if (message.message == WM_KEYDOWN && message.wParam == VK_ESCAPE) {
+            if (CancelChartSelection()) continue;
             if (PageDetailVisible()) { ClosePageDetail(); continue; }
             if (g_filtersExpanded) {
                 g_filtersExpanded = false; SetFilterControlsVisible(false); UpdateFilterButton(); Layout(); continue;

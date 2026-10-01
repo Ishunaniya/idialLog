@@ -20,6 +20,7 @@
 #include "chartmodel.h"
 #include "log_analysis.h"
 #include "log_time.h"
+#include "load_controller.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "tablemodel.h"
@@ -143,6 +144,9 @@ static void RenderTimeline() {
 }
 
 static void RenderOutages() {
+    if (CurrentPage() == 3) SetWindowTextW(App().hPageHint, HasAnalysisTimeFilter() ?
+        L"仅显示区间内事件；起止边沿可能在区间外，请恢复全范围复核。" :
+        L"整行按时长分档：≤30s、31–60s、>60s；是否恢复以“状态”列为准。");
     ListView_DeleteAllItems(App().hOutage);
     g_outageOrder.resize(App().document.outages.size());
     for (std::size_t i = 0; i < g_outageOrder.size(); ++i) g_outageOrder[i] = i;
@@ -169,14 +173,15 @@ static void RenderOutages() {
     for (std::size_t original : g_outageOrder) {
         const Outage& o = App().document.outages[original];
         LvAddRow(App().hOutage, row, FmtW(L"%d", static_cast<int>(original + 1)));
-        LvSet(App().hOutage, row, 1, U8ToW(outageStatusText(o)));
+        const bool unseenRecovery = !o.recovered && HasAnalysisTimeFilter();
+        LvSet(App().hOutage, row, 1, unseenRecovery ? L"区间内未见恢复" : U8ToW(outageStatusText(o)));
         LvSet(App().hOutage, row, 2, U8ToW(fmtTime(o.start, "FULL")));
         if (o.recovered) {
             LvSet(App().hOutage, row, 3, U8ToW(fmtTime(o.end, "FULL")));
             LvSet(App().hOutage, row, 4, U8ToW(fmtDur(o.dur)));
             LvSet(App().hOutage, row, 5, o.reportedDuration ? L"设备自报 Down 时长" : L"原始起止边沿");
         } else {
-            LvSet(App().hOutage, row, 3, L"未恢复");
+            LvSet(App().hOutage, row, 3, unseenRecovery ? L"区间外待核对" : L"未恢复");
             LvSet(App().hOutage, row, 4, L"?");
             LvSet(App().hOutage, row, 5, L"尚未闭合");
         }
@@ -506,7 +511,8 @@ void ShowPage(int page) {
                                L"信号指标", L"标签统计", L"原始日志", L"未识别行", L"小区分析"};
     if (App().hPageTitle) SetWindowTextW(App().hPageTitle, titles[page]);
     const wchar_t* hint = page == 2 ? L"按“事件”列区分故障、已恢复和恢复动作；整行浅色辅助识别。" :
-        page == 3 ? L"整行按时长分档：≤30s、31–60s、>60s；是否恢复以“状态”列为准。" :
+        page == 3 ? (HasAnalysisTimeFilter() ? L"仅显示区间内事件；起止边沿可能在区间外，请恢复全范围复核。" :
+                     L"整行按时长分档：≤30s、31–60s、>60s；是否恢复以“状态”列为准。") :
         L"保留原始文件行号；会话标记、空行单独统计，续行归入所属条目。";
     SetWindowTextW(App().hPageHint, hint);
     ShowWindow(App().hPageHint, page == 2 || page == 3 || page == 6 ? SW_SHOW : SW_HIDE);

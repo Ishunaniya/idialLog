@@ -12,6 +12,7 @@ struct AppContext {
     HWND hMain = nullptr, hNav = nullptr, hStatus = nullptr;
     HWND hPageTitle = nullptr, hFileLbl = nullptr;
     HWND hPageHint = nullptr;
+    HWND hTimeRangeLabel = nullptr, hTimeRangeReset = nullptr;
     HWND hOpen = nullptr, hPaste = nullptr, hFilterToggle = nullptr, hCloseLog = nullptr;
     HWND hBookmarks = nullptr;
     HWND hAppearance = nullptr;

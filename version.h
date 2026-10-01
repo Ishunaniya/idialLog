@@ -83,11 +83,13 @@
 //           增加字体选择与持久化，保留指标推定时间标记。
 //   1.11.13 信号图范围标注与尺寸切换重绘；修复表格行高占位图的黑线，
 //           搜索输入垂直居中；时间线增加事件分类，断网表增加恢复状态与整行浅色。
+//   1.11.14 图表拖动选择精确时间区间，联动各页分析；跨页恢复全范围与 Ctrl+0，
+//           区间结论/复制/报告标注范围和边界，成功换日志清除选区，取消保留。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 13
+#define DL_VER_PATCH 14
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

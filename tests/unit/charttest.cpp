@@ -18,6 +18,17 @@ static bool contains(const ChartSeries& series, ChartPoint point) {
 }
 
 int main() {
+    std::puts("== 选区时间映射 ==");
+    ok(chartTimeAtPixel(100, 200, 50, 150, 75) == 125 &&
+       chartTimeAtPixel(100, 200, 50, 150, 125) == 175, "选区端点按可见轴精确映射，支持反向拖动");
+    ok(chartTimeAtPixel(86340, 86580, 0, 240, 120) == 86460, "跨午夜选区保留日期，不退回第一天的时分秒");
+    ok(chartTimeAtPixel(100, 200, 50, 150, -1) == 100 &&
+       chartTimeAtPixel(100, 200, 50, 150, 200) == 200, "拖出图表时钳制到轴端点");
+    ok(chartTimeAtPixel(42, 42, 0, 100, 50) == 42 &&
+       chartTimeAtPixel(42, 100, 50, 50, 50) == 42, "单秒与零宽度安全退化");
+    ok(chartTimeAtPixel(LLONG_MIN, LLONG_MAX, 0, 100, 0) == LLONG_MIN &&
+       chartTimeAtPixel(LLONG_MIN, LLONG_MAX, 0, 100, 100) == LLONG_MAX &&
+       chartTimeAtPixel(LLONG_MIN, LLONG_MAX, 0, 100, 50) == 0, "极端时间区间不溢出");
     std::puts("== T0 自适应时间轴 ==");
     ok(chartTimeTicks(100, 175, 600, 120) == std::vector<long long>({100, 120, 135, 150, 175}),
        "75 秒日志具有秒级刻度并保留起止时间");

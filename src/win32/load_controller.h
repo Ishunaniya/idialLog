@@ -12,6 +12,12 @@ constexpr UINT WM_APP_LOAD_PROGRESS = WM_APP + 61;
 constexpr UINT WM_APP_LOAD_COMPLETE = WM_APP + 62;
 
 void RefreshAll();
+void SelectAnalysisTimeRange(long long start, long long end);
+void RestoreAnalysisTimeRange();
+bool HasAnalysisTimeFilter();
+std::wstring AnalysisTimeRangeText();
+std::wstring AnalysisScopedText(const std::string& text);
+void UpdateAnalysisTimeRangeControls();
 void LoadFiles(const std::vector<std::wstring>& paths);
 void DoPaste();
 void DoOpen();

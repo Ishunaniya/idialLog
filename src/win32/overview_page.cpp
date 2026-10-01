@@ -15,6 +15,7 @@
 #include "app_context.h"
 #include "log_analysis.h"
 #include "log_time.h"
+#include "load_controller.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "signal_quality.h"
@@ -84,14 +85,16 @@ static void CopyNotice(const std::wstring& text) {
 }
 static std::wstring CardText(const SumCard& card) {
     std::wstring text = card.title + L"\r\n";
+    if (HasAnalysisTimeFilter()) text += AnalysisTimeRangeText() + L"\r\n";
     for (const auto& line : card.lines) text += line + L"\r\n";
     return text;
 }
 static std::wstring FindingText(size_t index) {
     const auto& finding = App().document.findings[index];
     std::wstring text = FmtW(L"%d. [%s] ", static_cast<int>(index + 1),
-        finding.severity == 2 ? L"严重" : finding.severity == 1 ? L"告警" : L"信息") + U8ToW(finding.title);
-    text += L"\r\n依据：" + U8ToW(finding.detail) + L"\r\n建议：" + U8ToW(finding.advice) + L"\r\n证据：\r\n";
+        finding.severity == 2 ? L"严重" : finding.severity == 1 ? L"告警" : L"信息") + AnalysisScopedText(finding.title);
+    if (HasAnalysisTimeFilter()) text += L"\r\n" + AnalysisTimeRangeText() + L"；仅按区间内运行证据判断，边界需结合全范围复核。";
+    text += L"\r\n依据：" + AnalysisScopedText(finding.detail) + L"\r\n建议：" + U8ToW(finding.advice) + L"\r\n证据：\r\n";
     for (const auto& item : finding.ev)
         text += FmtW(L"第 %d 行  ", static_cast<int>(item.lineNo)) + U8ToW(item.ts) + L"  " + U8ToW(item.text) + L"\r\n";
     return text;
@@ -99,6 +102,8 @@ static std::wstring FindingText(size_t index) {
 static std::wstring FindingsMetaText() {
     const auto& doc = App().document;
     std::wstring text = L"来源平台：" + U8ToW(doc.platform.name) + L"\r\n";
+    if (HasAnalysisTimeFilter()) text += AnalysisTimeRangeText() +
+        L"\r\n运行结论按区间内证据重算；平台识别与解析审计仍基于整份输入。起止边界请结合全范围复核。\r\n";
     text += FmtW(L"解析统计：已解析 %d 行，未识别 %d 行（%.2f%%），NUL %d 字节 / %d 行\r\n",
         static_cast<int>(doc.audit.parsed), static_cast<int>(doc.audit.unparsed), doc.audit.unparsedRatio() * 100.0,
         static_cast<int>(doc.audit.nulBytes), static_cast<int>(doc.audit.nulLines));
@@ -113,6 +118,7 @@ bool CopyOverviewPage(int page) {
     RenderPage(page);
     std::wstring text = page == 0 ? L"概览\r\n" : L"诊断结论\r\n";
     text += L"输入：" + GetText(App().hFileLbl) + L"\r\n";
+    text += AnalysisTimeRangeText() + L"\r\n";
     if (page == 0) {
         for (const auto& card : g_sumCards) text += L"\r\n" + CardText(card);
     } else {
@@ -591,11 +597,15 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         const std::wstring jumpTitle = jump ? FmtW(L"时钟跳变：第 %d 行 %s → %s", static_cast<int>(App().document.audit.jumpAtLine),
             U8ToW(fmtTime(App().document.audit.jumpFromT, "FULL")).c_str(), U8ToW(fmtTime(App().document.audit.jumpToT, "FULL")).c_str()) : L"";
         const std::wstring jumpDetail = L"跳变两侧分别计算观测区间，不跨时基配对。";
+        const std::wstring scope = HasAnalysisTimeFilter() ?
+            L"运行结论按当前时间区间内证据重算；区间外的故障起点、恢复或启动可能缺失，请结合全范围复核。平台识别与解析审计仍基于整份输入。" : L"";
         int h = CARD_PAD * 2 + measureMeta(platform) + measureMeta(coverage) +
-                (evidence.empty() ? 0 : measureMeta(evidence)) + (jump ? measureMeta(jumpTitle) + measureMeta(jumpDetail) : 0);
+                (evidence.empty() ? 0 : measureMeta(evidence)) + (jump ? measureMeta(jumpTitle) + measureMeta(jumpDetail) : 0) +
+                (scope.empty() ? 0 : measureMeta(scope));
         drawCard(y, h, th::inkMuted);
         int ty = y + CARD_PAD;
         ty += DrawWrapped(hdc, textX0, ty, textW, platform, App().hFontUI, th::inkPri);
+        if (!scope.empty()) ty += DrawWrapped(hdc, textX0, ty, textW, scope, App().hFontUI, th::inkSec);
         ty += DrawWrapped(hdc, textX0, ty, textW, coverage, App().hFontUI,
                           App().document.audit.unparsed == 0 && App().document.audit.nulBytes == 0
                               ? th::inkSec : th::rowWarn);
@@ -632,8 +642,8 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         COLORREF band = (f.severity == 2) ? th::rowFault : (f.severity == 1 ? th::rowWarn : th::rowState);
         const wchar_t* lv = (f.severity == 2) ? L"严重" : (f.severity == 1 ? L"告警" : L"信息");
         ++n;
-        std::wstring title = FmtW(L"%d. ", n) + U8ToW(f.title);
-        std::wstring detail = U8ToW(f.detail), advice = U8ToW(f.advice);
+        std::wstring title = FmtW(L"%d. ", n) + AnalysisScopedText(f.title);
+        std::wstring detail = AnalysisScopedText(f.detail), advice = U8ToW(f.advice);
         std::vector<std::wstring> evidence;
         evidence.reserve(f.ev.size());
         for (const auto& e : f.ev)
