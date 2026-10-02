@@ -122,6 +122,35 @@ HWND WaitForMain(DWORD processId, DWORD timeoutMs) {
     return nullptr;
 }
 
+bool AppearanceFitsNavigation(HWND window) {
+    HWND button=GetDlgItem(window,1135), navigation=GetDlgItem(window,1001);
+    RECT settings{}, sidebar{};
+    if (!button || !navigation || !IsWindowVisible(button) ||
+        !GetWindowRect(button,&settings) || !GetWindowRect(navigation,&sidebar)) return false;
+    POINT center{(settings.left+settings.right)/2,(settings.top+settings.bottom)/2};
+    return settings.left>sidebar.left && settings.right<sidebar.right &&
+        settings.top>sidebar.top+(sidebar.bottom-sidebar.top)/2 && settings.bottom<sidebar.bottom &&
+        WindowFromPoint(center)==button;
+}
+
+bool CheckAppearanceMenu(HWND window,DWORD processId,const wchar_t* captureName) {
+    PostMessageW(GetDlgItem(window,1135),BM_CLICK,0,0);
+    WindowSearch search{processId,nullptr,L"#32768"};
+    const DWORD start=GetTickCount();
+    while (!search.window && GetTickCount()-start<3000) {
+        EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&search));
+        if (!search.window) Sleep(25);
+    }
+    if (!search.window) return false;
+    RECT menu{}, button{};
+    GetWindowRect(search.window,&menu);GetWindowRect(GetDlgItem(window,1135),&button);
+    const bool above=menu.bottom<=button.top && menu.top>=0;
+    Capture(window,captureName);
+    Capture(search.window,(std::wstring(captureName)+L"-popup").c_str());
+    SendMessageW(window,WM_CANCELMODE,0,0);
+    return above;
+}
+
 bool ChooseTypeface(HWND window, DWORD processId, bool logFace, const wchar_t* name) {
     PostMessageW(window, WM_COMMAND, MAKEWPARAM(logFace ? 1137 : 1136, 0), 0);
     const DWORD start = GetTickCount();
@@ -266,10 +295,10 @@ int MultiSourceSmoke(const std::wstring& executable) {
     const std::wstring base=temporary;
     const std::wstring paths[]={base+L"_A.log",base+L"_B_现场.log"};
     const std::string input[]={
-        "[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | CSQ:18 | RSRP:-95\r\n"
+        "[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | CSQ:18 | RSRP:-95 | RSRQ:-8 SNR:120 RSSI:-65\r\n"
         "[2026-08-03 10:00:01] [SDK] Ping failed, fault timer started\r\n"
         "[2026-08-03 10:00:03] [SDK] Network recovered after 2s\r\n",
-        "[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | CSQ:8 | RSRP:-115 | OPER:现场\r\n"
+        "[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | CSQ:8 | RSRP:-115 | RSRQ:-19 SNR:-20 RSSI:-100 | OPER:现场\r\n"
         "[2026-08-03 10:00:02] [SDK] Ping failed, fault timer started\r\n"
         "[2026-08-03 10:00:09] [SDK] Network recovered after 7s\r\n"};
     for(int i=0;i<2;++i) {
@@ -316,7 +345,21 @@ int MultiSourceSmoke(const std::wstring& executable) {
     if(ListView_GetItemCount(metrics)!=0) return finish(110);
     SendMessageW(window,WM_COMMAND,1141,0);
     if(ListView_GetItemCount(metrics)!=1 || !Contains(GetDlgItem(window,1010),L"_B_现场.log")) return finish(111);
+    SetWindowPos(window,nullptr,0,0,1280,850,SWP_NOMOVE|SWP_NOZORDER);
+    HWND signalChart=GetDlgItem(window,1017);
+    RedrawWindow(signalChart,nullptr,nullptr,RDW_INVALIDATE|RDW_UPDATENOW);
+    RECT signalRect{};GetClientRect(signalChart,&signalRect);
+    const int signalSection=(signalRect.bottom-77)/3;
+    SendMessageW(signalChart,WM_LBUTTONDOWN,0,MAKELPARAM(signalRect.right-150,26+signalSection+11));
+    if(!Contains(signalChart,L"RSSI") || !Contains(signalChart,L"1 点")) {
+        PrintWide("rssi-chart-label",TextOf(signalChart));Capture(window,L"rssi-switch-failure");return finish(125);
+    }
+    SendMessageW(signalChart,WM_MOUSEMOVE,0,MAKELPARAM(signalRect.right/2,26+signalSection+45));
+    Capture(window,L"rssi-reported-hover");
+    SendMessageW(signalChart,WM_LBUTTONUP,0,0);
     SendMessageW(window,WM_COMMAND,1171,0);
+    if(!Contains(signalChart,L"RSSI") || !Contains(signalChart,L"1 points") ||
+       !Contains(GetDlgItem(window,1135),L"Language / Fonts")) return finish(126);
     SendMessageW(window,WM_COMMAND,33000,0);
     WindowSearch search{process.dwProcessId,nullptr,L"dialSourceComparison"};EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&search));
     if(!search.window || SendDlgItemMessageW(search.window,1160,CB_GETCOUNT,0,0)!=2) return finish(112);
@@ -340,7 +383,8 @@ int MultiSourceSmoke(const std::wstring& executable) {
     if(html.find("lang=\"en-US\"")==std::string::npos || html.find("_B_现场.log")==std::string::npos || html.find("检查天线")!=std::string::npos) return finish(117);
     if(!ExportTo(window,process.dwProcessId,1045,base+L".csv")) return finish(118);
     const auto csv=ReadBytes(base+L".csv");
-    if(csv.find("detailed_at_stage")==std::string::npos || csv.find("现场")==std::string::npos || csv.find("-115")==std::string::npos) return finish(119);
+    if(csv.find("detailed_at_stage")==std::string::npos || csv.find("现场")==std::string::npos ||
+       csv.find("-115")==std::string::npos || csv.find("-100")==std::string::npos) return finish(119);
     // Exercise the real DPI message with its rectangle in the target process.
     // An owned comparison must not keep the font that the main window deletes.
     SendMessageW(window,WM_COMMAND,33000,0);
@@ -424,6 +468,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (Contains(GetDlgItem(window, 1010), L"未加载")) return finish(3);
     SetWindowPos(window, nullptr, 0, 0, 1280, 800, SWP_NOZORDER);
     UpdateWindow(window);
+    if (!AppearanceFitsNavigation(window)) return finish(130);
+    if (!CheckAppearanceMenu(window,process.dwProcessId,L"appearance-menu-wide")) return finish(131);
 
     const wchar_t* titles[] = {L"概览", L"诊断结论", L"事件时间线", L"断网记录",
                                L"信号指标", L"标签统计", L"原始日志", L"未识别行", L"小区分析"};
@@ -488,6 +534,25 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (findingsText.find(L"诊断结论") != 0 || findingsText.find(L"来源平台：") == std::wstring::npos ||
         findingsText.find(L"依据：") == std::wstring::npos || findingsText.find(L"建议：") == std::wstring::npos ||
         findingsText.find(L"第 ") == std::wstring::npos) return finish(45);
+    SCROLLINFO compactFindingsRange{};compactFindingsRange.cbSize=sizeof(compactFindingsRange);compactFindingsRange.fMask=SIF_RANGE;
+    const bool haveCompactRange=GetScrollInfo(findings,SB_VERT,&compactFindingsRange)!=FALSE;
+    SendMessageW(findings,WM_LBUTTONUP,0,MAKELPARAM(findingsRect.right-210,35));
+    Capture(window,L"findings-expanded");
+    SCROLLINFO expandedFindingsRange=compactFindingsRange;
+    const bool haveExpandedRange=GetScrollInfo(findings,SB_VERT,&expandedFindingsRange)!=FALSE;
+    const bool readableRanges=haveCompactRange && haveExpandedRange &&
+        compactFindingsRange.nMax>0 && expandedFindingsRange.nMax>0;
+    if(!readableRanges) PrintWide("finding-scroll-range",L"Cross-process range unavailable; expansion is checked in captures.");
+    SendMessageW(findings,WM_LBUTTONUP,0,MAKELPARAM(findingsRect.right-100,35));
+    // Wine may reject GetScrollInfo on another process's custom window.
+    // Full-copy equality remains mandatory; captured expanded content is reviewed.
+    if(ClipboardText()!=findingsText || (readableRanges &&
+        expandedFindingsRange.nMax<=compactFindingsRange.nMax)) {
+        PrintWide("finding-expand-ranges",std::to_wstring(compactFindingsRange.nMax)+L" -> "+std::to_wstring(expandedFindingsRange.nMax));
+        PrintWide("finding-copy-before",findingsText);PrintWide("finding-copy-after",ClipboardText());return finish(127);
+    }
+    SendMessageW(findings,WM_LBUTTONUP,0,MAKELPARAM(findingsRect.right-210,35));
+    Capture(window,L"findings-compact-restored");
 
     SendMessageW(window, WM_APP + 41, 4, 0);
     Capture(window, L"metrics-wide");
@@ -535,9 +600,11 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     }
     PrintWide("chart-switch-16-total-ms", std::to_wstring(GetTickCount() - switchStart));
     const int section = (chartRect.bottom - 77) / 3;
-    SendMessageW(chart, WM_LBUTTONDOWN, 0, MAKELPARAM(chartRect.right - 150, 26 + section + 11));
-    UpdateWindow(chart); Capture(window, L"metrics-rsrq");
     SendMessageW(chart, WM_LBUTTONDOWN, 0, MAKELPARAM(chartRect.right - 215, 26 + section + 11));
+    if(!Contains(chart,L"RSRQ")) return finish(128);
+    UpdateWindow(chart); Capture(window, L"metrics-rsrq");
+    SendMessageW(chart, WM_LBUTTONDOWN, 0, MAKELPARAM(chartRect.right - 280, 26 + section + 11));
+    if(!Contains(chart,L"RSRP")) return finish(129);
     UpdateWindow(chart);
 
     // EG25 真机：按完整时间轴框选前约 34 分钟，包含前三次完整断网。
@@ -669,6 +736,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     // 顶部/时间轴/页脚占 77px，每个图区至少留 70px（含标题）。
     if (chartRect.bottom < 77 + 3 * 70) return finish(50);
     if (!GetDlgItem(window, 1135) || !IsWindowVisible(GetDlgItem(window, 1135))) return finish(47);
+    if (!AppearanceFitsNavigation(window)) return finish(132);
+    if (!CheckAppearanceMenu(window,process.dwProcessId,L"appearance-menu-narrow")) return finish(133);
 
     // Font enumeration is tested separately when a shared Wine host is memory constrained.
     wchar_t skipFontDialogs[2]{};
@@ -795,6 +864,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (ClipboardText().find(L"Outages 36")==std::wstring::npos || ClipboardText().find(L"1359 samples")==std::wstring::npos) return finish(84);
     Capture(window,L"english-overview");
     SetWindowPos(window,nullptr,0,0,860,640,SWP_NOMOVE|SWP_NOZORDER);
+    if (!AppearanceFitsNavigation(window) ||
+        !CheckAppearanceMenu(window,process.dwProcessId,L"appearance-menu-english-narrow")) return finish(134);
     Capture(window,L"english-overview-narrow");
     SendMessageW(window,WM_APP+41,4,0);Capture(window,L"english-metrics-narrow");
     SendMessageW(window,WM_COMMAND,33000,0);

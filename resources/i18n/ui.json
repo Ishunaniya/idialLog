@@ -856,8 +856,8 @@
   },
   {
     "id": "ui_0171",
-    "zh": "字体",
-    "en": "Aa"
+    "zh": "语言 / 字体 ▾",
+    "en": "Language / Fonts ▾"
   },
   {
     "id": "ui_0172",
@@ -2693,5 +2693,45 @@
     "id": "ui_0539",
     "zh": "当前来源历史汇总",
     "en": "Current-source history summary"
+  },
+  {
+    "id": "ui_0540",
+    "zh": "RSSI · dBm（原始上报）",
+    "en": "RSSI · dBm (reported)"
+  },
+  {
+    "id": "ui_0541",
+    "zh": "展开全部",
+    "en": "Expand all"
+  },
+  {
+    "id": "ui_0542",
+    "zh": "精简显示",
+    "en": "Compact view"
+  },
+  {
+    "id": "ui_0543",
+    "zh": "展开详情 · %d 条证据",
+    "en": "Details · %d evidence rows"
+  },
+  {
+    "id": "ui_0544",
+    "zh": "收起详情",
+    "en": "Hide details"
+  },
+  {
+    "id": "ui_0545",
+    "zh": "依据（预览）",
+    "en": "Basis (preview)"
+  },
+  {
+    "id": "ui_0546",
+    "zh": "建议（预览）",
+    "en": "Advice (preview)"
+  },
+  {
+    "id": "ui_0547",
+    "zh": "信号趋势 · 详情：%s · %d 点",
+    "en": "Signal trends · Detail: %s · %d points"
   }
 ]

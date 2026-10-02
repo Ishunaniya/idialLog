@@ -1,5 +1,6 @@
 #include "text_catalog.h"
 #include "columnmodel.h"
+#include "findingmodel.h"
 #include "logmodel.h"
 #include <cstdio>
 #include <string>
@@ -19,6 +20,15 @@ int main() {
        rendered.find("Weak signal")!=std::string::npos && rendered.find("3")!=std::string::npos &&
        rendered.find("4")!=std::string::npos && rendered.find("弱信号")==std::string::npos,"finding parameters preserved");
     ok(original=="全量日志历史汇总:断网根因分类:弱信号 3 次 / 共 4 次","presentation leaves diagnosis unchanged");
+    const auto compactTitle=findingDisplayTitle(rendered);
+    ok(compactTitle.find("Weak signal")!=std::string::npos && compactTitle.find("根因")==std::string::npos &&
+       compactTitle.find("Full-input")==std::string::npos,"compact English title translates before removing scope");
+    for(auto scope : {TextId::ui_0015,TextId::ui_0539}) {
+        const auto scoped=findingScopedText(original,scope);
+        ok(scoped.find(UiText8(scope))==0 && scoped.find("根因")==std::string::npos &&
+           scoped.find("Weak signal")!=std::string::npos && findingDisplayTitle(scoped).find(UiText8(scope))==std::string::npos,
+           "range/source English titles retain complete classification translation");
+    }
     ok(GeneratedText("已恢复 · >60s")=="Recovered · >60s","generated table labels");
     ok(GeneratedText("RSRP=-115dBm")=="RSRP=-115dBm","units and numbers unchanged");
     ok(RelocalizeUiText(L"信号指标")==L"Signal metrics","controls relocalize");
@@ -30,6 +40,11 @@ int main() {
     }
     ok(metricColumnMask(MetricColumnPreset::AtHealth)==(1u|(1u<<19)|(1u<<20)|(1u<<21)),"AT task preset exact fields");
     ok(metricColumnMask(MetricColumnPreset::All)==kAllMetricColumns,"full export model retains 22 fields");
+    ok(findingPreview("短句，保留数字 27/36。",100)=="短句，保留数字 27/36。","short finding preview is literal");
+    ok(findingPreview("样本记录。后续【推断】尚待核验。",5)=="【推断】样本记录。 …","truncated preview preserves late inference label and UTF-8");
+    ok(findingPreview("Observed 27/36. [Inference] Check device identity.",14)=="[Inference]Observed 27/36 …","English preview retains inference beyond cut");
+    ok(findingDisplayTitle(original)=="断网根因分类:弱信号 3 次 / 共 4 次" &&
+       findingDisplayTitle("弱信号 27/36")=="弱信号 27/36","display title removes only repeated scope, retains classification/count");
     SetEnglish(true);
     int sampleFiles=0, sampleFindings=0;
     for (const auto& entry : std::filesystem::recursive_directory_iterator("samples")) {

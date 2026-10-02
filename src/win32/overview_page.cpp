@@ -8,6 +8,7 @@
 #include <climits>
 #include <cstring>
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,6 +25,7 @@
 #include "ui_pages.h"
 #include "win_text.h"
 #include "text_catalog.h"
+#include "findingmodel.h"
 
 namespace dl {
 
@@ -37,6 +39,11 @@ static std::vector<SumCard> g_sumCards;
 struct CopyHit { RECT rect{}; std::wstring text; };
 static std::vector<CopyHit> g_summaryCopyHits, g_findingCopyHits;
 static RECT g_dashCopyRect{}, g_findCopyRect{}, g_dashTileRects[4]{};
+static RECT g_findExpandAllRect{};
+struct FindingExpandHit { RECT rect{}; std::size_t index = 0; };
+static std::vector<FindingExpandHit> g_findingExpandHits;
+static std::set<std::size_t> g_expandedFindings;
+static bool g_expandAllFindings = false;
 struct DashboardStats {
     long long start = 0, end = 0, total = 0, longest = 0, csqSum = 0;
     int buckets[4]{}, csqCount = 0, csqMin = 9999, csqMax = -1;
@@ -433,6 +440,15 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     if (msg == WM_LBUTTONUP) {
         POINT point{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+        if (PtInRect(&g_findExpandAllRect,point)) {
+            g_expandAllFindings=!g_expandAllFindings; g_expandedFindings.clear();
+            g_findScroll=0; InvalidateRect(hwnd,nullptr,FALSE); return 0;
+        }
+        for(const auto& hit : g_findingExpandHits) if(PtInRect(&hit.rect,point)) {
+            if(g_expandedFindings.count(hit.index)) g_expandedFindings.erase(hit.index);
+            else g_expandedFindings.insert(hit.index);
+            InvalidateRect(hwnd,nullptr,FALSE); return 0;
+        }
         if (const EvidenceHit* hit = EvidenceAt(point)) { JumpToRawLine(hit->lineNo); return 0; }
     }
     if (msg == WM_CONTEXTMENU) {
@@ -524,6 +540,7 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     g_evidenceHits.clear();
     g_findingCopyHits.clear();
     g_findCopyRect = RECT{};
+    g_findingExpandHits.clear(); g_findExpandAllRect=RECT{};
 
     if (App().document.lines.empty()) {
         DrawPageEmpty(hdc, rc, UiText(TextId::ui_0222),
@@ -572,6 +589,9 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                   App().hFontSmall, th::inkMuted);
         g_findCopyRect = RECT{M + cardW - S(144), y + S(12), M + cardW - S(18), y + S(40)};
         DrawPill(hdc, g_findCopyRect.left, g_findCopyRect.top, UiText(TextId::ui_0405), th::accentSoft, th::accent);
+        g_findExpandAllRect=RECT{M+cardW-S(268),y+S(12),M+cardW-S(152),y+S(40)};
+        DrawPill(hdc,g_findExpandAllRect.left,g_findExpandAllRect.top,
+            UiText(g_expandAllFindings?TextId::ui_0542:TextId::ui_0541),th::accentSoft,th::accent);
         DrawText_(hdc, textX0 + S(140), y + S(40), FmtW(UiText(TextId::ui_0406), severe, warning, info), App().hFontSmall, th::inkSec);
         y += h + GAP;
     }
@@ -586,7 +606,7 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             App().document.audit.unparsed == 0 && App().document.audit.nulBytes == 0
                 ? UiText(TextId::ui_0409) : UiText(TextId::ui_0410));
         std::wstring evidence;
-        if (App().document.platform.evidenceLine)
+        if (g_expandAllFindings && App().document.platform.evidenceLine)
             evidence = FmtW(UiText(TextId::ui_0411), (int)App().document.platform.evidenceLine) +
                        U8ToW(App().document.platform.evidence);
         auto measureMeta = [&](const std::wstring& text) {
@@ -646,11 +666,15 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         COLORREF band = (f.severity == 2) ? th::rowFault : (f.severity == 1 ? th::rowWarn : th::rowState);
         const wchar_t* lv = (f.severity == 2) ? UiText(TextId::ui_0115) : (f.severity == 1 ? UiText(TextId::ui_0116) : UiText(TextId::ui_0117));
         ++n;
-        std::wstring title = FmtW(L"%d. ", n) + AnalysisScopedText(f.title);
-        std::wstring detail = AnalysisScopedText(f.detail), advice = U8ToW(GeneratedText(f.advice));
+        const bool expanded=g_expandAllFindings!=static_cast<bool>(g_expandedFindings.count(n-1));
+        std::wstring title = FmtW(L"%d. ", n) + U8ToW(findingDisplayTitle(WToU8(AnalysisScopedText(f.title))));
+        const std::string detailText=WToU8(AnalysisScopedText(f.detail));
+        const std::string adviceText=GeneratedText(f.advice);
+        std::wstring detail=U8ToW(expanded?detailText:findingPreview(detailText,IsEnglish()?320:110));
+        std::wstring advice=U8ToW(expanded?adviceText:findingPreview(adviceText,IsEnglish()?240:85));
         std::vector<std::wstring> evidence;
         evidence.reserve(f.ev.size());
-        for (const auto& e : f.ev)
+        if(expanded) for (const auto& e : f.ev)
             evidence.push_back(FmtW(UiText(TextId::ui_0417), (int)e.lineNo) + U8ToW(e.ts) + L"  " + U8ToW(e.text));
 
         // —— 测量 pass:算这张卡多高(不画,只用 DT_CALCRECT)——
@@ -674,8 +698,9 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         h += titleH + S(8);                     // 标题
         h += lblH + measureWrap(detail, App().hFontUI) + SEC;   // 依据
         h += lblH + measureWrap(advice, App().hFontUI) + SEC;   // 建议
-        h += lblH;
+        if(expanded) h += lblH;
         for (const auto& line : evidence) h += measureWrap(line, App().hFontMono, textW - S(8)) + S(5);
+        h += S(32);
         h += CARD_PAD;                          // 底内边距
 
         // —— 画 pass:白底卡 + 色带,再叠字 ——
@@ -688,11 +713,11 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         DrawPill(hdc, M + cardW - S(120), ty, UiText(TextId::ui_0418), th::accentSoft, th::accent);
         g_findingCopyHits.push_back(CopyHit{RECT{M, y, M + cardW, y + h}, FindingText(n - 1)});
         ty += titleH + S(8);
-        DrawText_(hdc, textX0, ty, UiText(TextId::ui_0192), App().hFontUI, th::inkMuted); ty += lblH;
+        DrawText_(hdc, textX0, ty, UiText(expanded?TextId::ui_0192:TextId::ui_0545), App().hFontUI, th::inkMuted); ty += lblH;
         ty += DrawWrapped(hdc, textX0, ty, textW, detail, App().hFontUI, th::inkPri) + SEC;
-        DrawText_(hdc, textX0, ty, UiText(TextId::ui_0419), App().hFontUI, th::inkMuted); ty += lblH;
+        DrawText_(hdc, textX0, ty, UiText(expanded?TextId::ui_0419:TextId::ui_0546), App().hFontUI, th::inkMuted); ty += lblH;
         ty += DrawWrapped(hdc, textX0, ty, textW, advice, App().hFontUI, th::inkSec) + SEC;
-        DrawText_(hdc, textX0, ty, UiText(TextId::ui_0420), App().hFontUI, th::inkMuted); ty += lblH;
+        if(expanded) {DrawText_(hdc, textX0, ty, UiText(TextId::ui_0420), App().hFontUI, th::inkMuted); ty += lblH;}
         for (size_t evidenceIndex = 0; evidenceIndex < evidence.size(); ++evidenceIndex) {
             const int evidenceH = DrawWrapped(hdc, textX0 + S(8), ty, textW - S(8),
                                               evidence[evidenceIndex], App().hFontMono, th::accent);
@@ -701,6 +726,11 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 f.ev[evidenceIndex].lineNo, evidence[evidenceIndex]});
             ty += evidenceH + S(5);
         }
+        const auto toggleText=expanded?std::wstring(UiText(TextId::ui_0544)):
+            FmtW(UiText(TextId::ui_0543),static_cast<int>(f.ev.size()));
+        RECT toggle{textX0,ty,textX0+TextW_(hdc,toggleText,App().hFontSmall)+S(24),ty+S(27)};
+        DrawPill(hdc,toggle.left,toggle.top,toggleText,th::accentSoft,th::accent);
+        g_findingExpandHits.push_back(FindingExpandHit{toggle,static_cast<std::size_t>(n-1)});
         y += h + GAP;
     }
 
@@ -1112,6 +1142,8 @@ void RenderSummary() {
 
 void RenderFindings() {
     g_findingCopyHits.clear(); g_evidenceHits.clear();
+    g_findingExpandHits.clear(); g_findExpandAllRect=RECT{};
+    g_expandedFindings.clear();
     g_findScroll = 0;
     if (App().hFindings) {
         SetScrollPos(App().hFindings, SB_VERT, 0, TRUE);
@@ -1125,6 +1157,8 @@ void ReleaseOverviewPageData() {
     releaseVector(g_sumCards);
     releaseVector(g_summaryCopyHits);
     releaseVector(g_findingCopyHits);
+    releaseVector(g_findingExpandHits); g_expandedFindings.clear();g_expandAllFindings=false;
+    g_findExpandAllRect=RECT{};
     releaseVector(g_evidenceHits);
     g_dashCopyRect = g_findCopyRect = RECT{};
     for (RECT& rect : g_dashTileRects) rect = RECT{};

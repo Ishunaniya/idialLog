@@ -30,6 +30,7 @@
 #include "win_file_io.h"
 #include "win_text.h"
 #include "text_catalog.h"
+#include "findingmodel.h"
 
 namespace dl {
 
@@ -184,15 +185,10 @@ std::wstring AnalysisTimeRangeText() {
 }
 
 std::wstring AnalysisScopedText(const std::string& text) {
-    std::wstring result = U8ToW(text);
     const bool independent = App().document.sources.size() > 1 &&
         App().document.sourceMode == DocumentState::SourceMode::Independent;
     if (!HasAnalysisTimeFilter() && !independent) return U8ToW(GeneratedText(text));
-    const std::wstring original = L"全量日志历史汇总";
-    const std::wstring replacement = HasAnalysisTimeFilter() ? UiText(TextId::ui_0015) : UiText(TextId::ui_0539);
-    for (size_t position = 0; (position = result.find(original, position)) != std::wstring::npos;
-         position += replacement.size()) result.replace(position, original.size(), replacement);
-    return U8ToW(GeneratedText(WToU8(result)));
+    return U8ToW(findingScopedText(text,HasAnalysisTimeFilter()?TextId::ui_0015:TextId::ui_0539));
 }
 
 void UpdateAnalysisTimeRangeControls() {

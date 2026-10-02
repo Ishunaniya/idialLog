@@ -43,8 +43,15 @@ std::wstring g_busyStatus;
 
 struct NavItem { int page; const wchar_t* text; const wchar_t* detail; int y; };
 
+bool CompactNavigation() {
+    RECT client{}; GetClientRect(g_navigation, &client);
+    return client.bottom < S(700);
+}
+
+int NavigationRowHeight() { return CompactNavigation() ? 32 : 44; }
+
 std::array<NavItem, 9> NavItems() {
-    return {{{0, UiText(TextId::ui_0164), UiText(TextId::ui_0221), 112},
+    std::array<NavItem, 9> items{{{0, UiText(TextId::ui_0164), UiText(TextId::ui_0221), 112},
              {1, UiText(TextId::ui_0222), UiText(TextId::ui_0223), 160},
              {3, UiText(TextId::ui_0224), UiText(TextId::ui_0225), 208},
              {8, UiText(TextId::ui_0226), UiText(TextId::ui_0227), 256},
@@ -53,6 +60,11 @@ std::array<NavItem, 9> NavItems() {
              {5, UiText(TextId::ui_0232), UiText(TextId::ui_0233), 450},
              {6, UiText(TextId::ui_0234), UiText(TextId::ui_0235), 498},
              {7, UiText(TextId::ui_0236), UiText(TextId::ui_0237), 546}}};
+    if (CompactNavigation()) {
+        const int positions[]{104,140,176,212,286,322,358,394,430};
+        for (std::size_t i=0;i<items.size();++i) items[i].y=positions[i];
+    }
+    return items;
 }
 
 COLORREF NavIconColor(int page) {
@@ -131,12 +143,14 @@ std::wstring BadgeForPage(int page) {
 
 int HitNavigationPage(int y) {
     for (const auto& item : NavItems())
-        if (y >= S(item.y) && y < S(item.y + 44)) return item.page;
+        if (y >= S(item.y) && y < S(item.y + NavigationRowHeight())) return item.page;
     return -1;
 }
 
 LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
     switch (message) {
+    case WM_SIZE:
+        InvalidateRect(hwnd, nullptr, FALSE); return 0;
     case WM_GETDLGCODE: return DLGC_WANTARROWS | DLGC_WANTCHARS;
     case WM_SETFOCUS:
         g_navigationKeyboardFocus = true;
@@ -195,11 +209,13 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
 
         RECT group1{S(20), S(78), client.right - S(16), S(101)};
         DrawTextAt(dc, UiText(TextId::ui_0239), group1, App().hFontUI, th::inkPri);
-        RECT group2{S(20), S(320), client.right - S(16), S(343)};
+        const bool compact=CompactNavigation();
+        const int group2Y=compact?252:320;
+        RECT group2{S(20), S(group2Y), client.right - S(16), S(group2Y+23)};
         DrawTextAt(dc, UiText(TextId::ui_0240), group2, App().hFontUI, th::inkPri);
 
         for (const auto& item : NavItems()) {
-            RECT row{S(10), S(item.y), client.right - S(10), S(item.y + 44)};
+            RECT row{S(10), S(item.y), client.right - S(10), S(item.y + NavigationRowHeight())};
             const bool selected = item.page == g_selectedPage;
             const bool hovered = item.page == g_hoverPage;
             if (selected || hovered)
@@ -209,17 +225,18 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
                 RECT mark{row.left, row.top + S(8), row.left + S(3), row.bottom - S(8)};
                 FillRound(dc, mark, S(2), th::accent, th::accent);
             }
-            RECT iconChip{S(17), row.top + S(8), S(45), row.top + S(36)};
+            const int iconOffset=compact?2:8;
+            RECT iconChip{S(17), row.top + S(iconOffset), S(45), row.top + S(iconOffset+28)};
             FillRound(dc, iconChip, S(8), selected ? th::surface : th::accentSoft,
                       selected ? th::accent : th::border);
-            DrawNavIcon(dc, item.page, S(21), S(item.y + 12),
+            DrawNavIcon(dc, item.page, S(21), S(item.y + iconOffset + 4),
                         selected ? th::accent : NavIconColor(item.page));
-            RECT label{S(56), row.top + S(2), client.right - S(44), row.top + S(24)};
+            RECT label{S(56), row.top + S(compact?4:2), client.right - S(44), row.top + S(compact?28:24)};
             DrawTextAt(dc, item.text, label, App().hFontUI,
                        selected && th::highContrast ? th::onAccent : (selected ? th::inkPri : th::inkSec));
             RECT detail{S(56), row.top + S(21), client.right - S(18), row.bottom - S(1)};
-            DrawTextAt(dc, item.detail, detail, App().hFontSmall,
-                       selected && th::highContrast ? th::onAccent : th::inkMuted);
+            if (!compact) DrawTextAt(dc, item.detail, detail, App().hFontSmall,
+                                    selected && th::highContrast ? th::onAccent : th::inkMuted);
             std::wstring badge = BadgeForPage(item.page);
             if (!badge.empty()) {
                 RECT br{client.right - S(46), row.top + S(7), client.right - S(18), row.top + S(25)};
@@ -239,13 +256,15 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
             }
         }
 
-        // 最小高度下优先保证第九个导航项完整可见，不让版本脚注与其重叠。
-        if (client.bottom >= S(650)) {
+        // Footer settings and version remain visible in both navigation layouts.
+        if (client.bottom >= S(520)) {
             RECT version{S(20), client.bottom - S(42), client.right - S(12), client.bottom - S(16)};
             DrawTextAt(dc, (std::wstring(L"v" DL_VER_WSTR) + UiText(TextId::ui_0241)).c_str(), version, App().hFontSmall, th::inkMuted);
         }
         HPEN sep = CreatePen(PS_SOLID, 1, th::border);
         HGDIOBJ old = SelectObject(dc, sep);
+        MoveToEx(dc, S(20), client.bottom - S(96), nullptr);
+        LineTo(dc, client.right - S(20), client.bottom - S(96));
         MoveToEx(dc, client.right - 1, 0, nullptr); LineTo(dc, client.right - 1, client.bottom);
         SelectObject(dc, old); DeleteObject(sep);
         EndPaint(hwnd, &ps);
@@ -400,7 +419,7 @@ bool RegisterModernShellClasses(HINSTANCE instance) {
 }
 
 HWND CreateModernNavigation(HWND parent, int id) {
-    g_navigation = CreateWindowExW(0, kNavigationClass, UiText(TextId::ui_0242), WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+    g_navigation = CreateWindowExW(0, kNavigationClass, UiText(TextId::ui_0242), WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_CLIPSIBLINGS,
                                    0, 0, 10, 10, parent, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
                                    GetModuleHandleW(nullptr), nullptr);
     return g_navigation;

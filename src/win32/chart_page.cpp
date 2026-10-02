@@ -2,8 +2,10 @@
 #include "chart_page.h"
 
 #include <commctrl.h>
+#include <gdiplus.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdlib>
 #include <initializer_list>
 #include <limits>
@@ -17,6 +19,7 @@
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "signal_quality.h"
+#include "signal_chart.h"
 #include "theme.h"
 #include "win_text.h"
 #include "text_catalog.h"
@@ -26,18 +29,20 @@ namespace dl {
 static ChartSeries g_csq;   // 供图表
 static ChartSeries g_rsrp;  // LTE 详情图:RSRP dBm
 static ChartSeries g_rsrq;  // LTE 详情图:RSRQ dB
+static ChartSeries g_rssi;  // Actual reported RSSI; never derived from CSQ.
+static std::pair<int,int> g_rssiBounds{-120,-20};
 static ChartSeries g_snr10; // 独立 SNR 图:SDK 原值(0.1dB)
-static std::vector<ChartGap> g_csqGaps, g_rsrpGaps, g_rsrqGaps, g_snrGaps;
+static std::vector<ChartGap> g_csqGaps, g_rsrpGaps, g_rsrqGaps, g_rssiGaps, g_snrGaps;
 // 图表绘制缓存:按当前窗口像素宽度对完整序列做峰谷降采样。鼠标每移动 1px 都会
 // 触发 WM_PAINT,缓存让这些重绘只消费数千点,不再反复扫描/绘制近十万点。
 static ChartSeries g_chartCsqDraw, g_chartDetailDraw, g_chartSnrDraw;
 static unsigned long long g_chartDataRevision = 1, g_chartCacheRevision = 0;
 static int g_chartCacheWidth = -1, g_chartCacheDetail = -1;
 static long long g_chartCacheT0 = 0, g_chartCacheT1 = 0;
-static int  g_chartDetail    = 0;                     // 0=RSRP 1=RSRQ；SNR 固定独立显示
+static int  g_chartDetail    = 0;                     // 0=RSRP 1=RSRQ 2=RSSI
 static int  g_chartHoverX   = -1;                     // 悬停 X(客户区),-1=未悬停
 static int  g_chartHoverY   = -1;
-static RECT g_chartModeRects[2]{};
+static RECT g_chartModeRects[3]{};
 static long long g_chartFocusTime = LLONG_MIN;
 static long long g_chartVisibleT0 = 0, g_chartVisibleT1 = 0;
 static int g_chartPlotLeft = 0, g_chartPlotRight = 0;
@@ -49,13 +54,57 @@ static bool g_selectingTime = false;
 static int g_selectionStartX = 0, g_selectionEndX = 0;
 static long long g_selectionT0 = 0, g_selectionT1 = 0;
 
+struct CurveRasterKey {
+    unsigned long long revision = 0;
+    int width = 0, height = 0, dpi = 0, detail = 0, lo = 0, hi = 0;
+    long long start = 0, end = 0;
+    std::array<COLORREF,8> palette{};
+    bool operator==(const CurveRasterKey& other) const {
+        return revision==other.revision && width==other.width && height==other.height &&
+            dpi==other.dpi && detail==other.detail && lo==other.lo && hi==other.hi &&
+            start==other.start && end==other.end && palette==other.palette;
+    }
+};
+struct CurveRaster {
+    HBITMAP bitmap = nullptr;
+    CurveRasterKey key{};
+    unsigned long long used = 0;
+    CurveRaster() = default;
+    CurveRaster(const CurveRaster&) = delete;
+    CurveRaster& operator=(const CurveRaster&) = delete;
+    void clear() { if(bitmap) DeleteObject(bitmap); bitmap=nullptr; used=0; }
+    ~CurveRaster() { clear(); }
+};
+// Two geometries per plot retain chart/split views. Only the plot rectangle is
+// cached; labels, focus, time selection and hover remain live.
+static std::array<std::array<CurveRaster,2>,3> g_curveRasters;
+static unsigned long long g_curveRasterUse = 0;
+
+static void ClearCurveRasters() {
+    for(auto& plot : g_curveRasters) for(auto& raster : plot) raster.clear();
+    g_curveRasterUse=0;
+}
+
 struct ChartGuide {
     int value;
     const wchar_t* label;
     COLORREF color;
 };
 
+struct ChartDrawingRuntime {
+    ULONG_PTR token = 0;
+    ChartDrawingRuntime() { Gdiplus::GdiplusStartupInput input; if(Gdiplus::GdiplusStartup(&token,&input,nullptr)!=Gdiplus::Ok) token=0; }
+    ~ChartDrawingRuntime() { if(token) Gdiplus::GdiplusShutdown(token); }
+};
+
+static void UpdateChartAccessibleLabel() {
+    const wchar_t* name=g_chartDetail==2?L"RSSI":g_chartDetail==1?L"RSRQ":L"RSRP";
+    const auto count=g_chartDetail==2?g_rssi.size():g_chartDetail==1?g_rsrq.size():g_rsrp.size();
+    if(App().hChart) SetWindowTextW(App().hChart,FmtW(UiText(TextId::ui_0547),name,static_cast<int>(count)).c_str());
+}
+
 static void ResetChartSampleCache() {
+    ClearCurveRasters();
     if (++g_chartDataRevision == 0) g_chartDataRevision = 1; // 无符号回绕防御
     g_chartCacheRevision = 0;
     g_chartCacheWidth = g_chartCacheDetail = -1;
@@ -69,7 +118,7 @@ static void ResetChartSampleCache() {
 
 LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     auto detailSeries = [](int mode) -> const ChartSeries& {
-        return mode == 1 ? g_rsrq : g_rsrp;
+        return mode == 2 ? g_rssi : mode == 1 ? g_rsrq : g_rsrp;
     };
     if (msg == WM_ERASEBKGND) return 1;
     if (msg == WM_SIZE) {
@@ -101,9 +150,9 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         SetFocus(hwnd);
         POINT point{static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp))};
         bool changedMode = false;
-        for (int mode = 0; mode < 2; ++mode) {
+        for (int mode = 0; mode < 3; ++mode) {
             if (PtInRect(&g_chartModeRects[mode], point) && !detailSeries(mode).empty()) {
-                g_chartDetail = mode; changedMode = true; break;
+                g_chartDetail = mode; changedMode = true; UpdateChartAccessibleLabel(); break;
             }
         }
         bool overPlot = false;
@@ -198,9 +247,8 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     SetBkMode(hdc, TRANSPARENT);
 
     const auto& detail = detailSeries(g_chartDetail);
-    const wchar_t* detailName = g_chartDetail == 1 ? L"RSRQ" : L"RSRP";
-    const int detailLo = g_chartDetail == 1 ? -25 : -140;
-    const int detailHi = g_chartDetail == 1 ?   0 :  -40;
+    const int detailLo = g_chartDetail == 2 ? g_rssiBounds.first : g_chartDetail == 1 ? -25 : -140;
+    const int detailHi = g_chartDetail == 2 ? g_rssiBounds.second : g_chartDetail == 1 ?   0 :  -40;
 
     for (RECT& rect : g_chartModeRects) rect = RECT{};
     for (RECT& rect : g_chartPlotRects) rect = RECT{};
@@ -265,7 +313,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     auto plotRect = [&](bool present) {
         if (!present) return RECT{};
         const int y = S(26) + slot++ * section;
-        return RECT{left, y + S(25), right, y + section - S(10)};
+        return RECT{left, y + S(22), right, y + section - S(5)};
     };
     RECT top = plotRect(!g_csq.empty()), middle = plotRect(!detail.empty()), bottom = plotRect(!g_snr10.empty());
     g_chartPlotRects[0] = top; g_chartPlotRects[1] = middle; g_chartPlotRects[2] = bottom;
@@ -310,7 +358,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         if (series.empty()) return;
         auto Y = [&](int v) {
             int c = std::max(lo, std::min(hi, v));
-            return pr.bottom - (int)((double)(c - lo) / (hi - lo) * (pr.bottom - pr.top));
+            return pr.bottom - (int)(((double)c - lo) / ((double)hi - lo) * (pr.bottom - pr.top));
         };
         if (g_selectingTime && std::abs(g_selectionEndX - g_selectionStartX) >= S(6)) {
             RECT selection{std::min(g_selectionStartX, g_selectionEndX), pr.top,
@@ -324,7 +372,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         SetTextColor(hdc, th::inkMuted);
         const int intervals = pr.bottom - pr.top < S(100) ? 2 : 4;
         for (int i = 0; i <= intervals; ++i) {
-            int val = hi - (hi - lo) * i / intervals;
+            int val = static_cast<int>(hi - (static_cast<long long>(hi) - lo) * i / intervals);
             int y = Y(val);
             MoveToEx(hdc, pr.left, y, nullptr); LineTo(hdc, pr.right, y);
             std::wstring lb = scaled10 ? FmtW(L"%.1f", val / 10.0) : FmtW(L"%d", val);
@@ -347,7 +395,58 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             SelectObject(hdc, oldPen); DeleteObject(thresholdPen);
         }
 
-        if (!series.empty()) {
+        const CurveRasterKey rasterKey{g_chartDataRevision,static_cast<int>(pr.right-pr.left+1),
+            static_cast<int>(pr.bottom-pr.top+1),App().dpi,g_chartDetail,lo,hi,t0,t1,
+            {th::surface,th::outageBand,th::grid,th::axis,th::warning,th::accent,th::good,color}};
+        auto& rasters=g_curveRasters[&series==&g_chartCsqDraw?0:&series==&g_chartSnrDraw?2:1];
+        CurveRaster* cached=nullptr;
+        if(!g_selectingTime) for(auto& raster : rasters)
+            if(raster.bitmap && raster.key==rasterKey) {cached=&raster;break;}
+        bool reused=false;
+        if(cached) {
+            HDC source=CreateCompatibleDC(hdc);
+            if(source) {
+                HGDIOBJ previous=SelectObject(source,cached->bitmap);
+                reused=BitBlt(hdc,pr.left,pr.top,rasterKey.width,rasterKey.height,source,0,0,SRCCOPY)!=FALSE;
+                SelectObject(source,previous);DeleteDC(source);
+                cached->used=++g_curveRasterUse;
+            }
+        }
+        static ChartDrawingRuntime drawing;
+        if (!reused && !series.empty() && drawing.token) {
+            Gdiplus::Graphics graphics(hdc);
+            graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+            graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+            graphics.SetClip(Gdiplus::Rect(pr.left,pr.top,pr.right-pr.left+1,pr.bottom-pr.top+1));
+            const Gdiplus::Color ink(255,GetRValue(color),GetGValue(color),GetBValue(color));
+            Gdiplus::Pen pen(ink,std::max(1.5f,App().dpi/96.0f*1.5f));
+            pen.SetLineJoin(Gdiplus::LineJoinRound);
+            Gdiplus::SolidBrush dots(ink);
+            std::vector<Gdiplus::PointF> segment;
+            auto flush = [&] {
+                if(segment.size()>1) graphics.DrawLines(&pen,segment.data(),static_cast<INT>(segment.size()));
+                segment.clear();
+            };
+            long long previousTime=0;
+            for(const auto& point : series) {
+                const auto gap=std::lower_bound(gaps.begin(),gaps.end(),previousTime,
+                    [](const ChartGap& item,long long time) {return item.first<time;});
+                const bool start=segment.empty() || (gap!=gaps.end() && gap->first<point.first);
+                if(start) flush();
+                const float x=static_cast<float>(left+(static_cast<double>(point.first-t0)/total)*(right-left));
+                const float y=static_cast<float>(pr.bottom-((static_cast<double>(std::clamp(point.second,lo,hi))-lo)/
+                    (static_cast<double>(hi)-lo))*(pr.bottom-pr.top));
+                segment.emplace_back(x,y);
+                if(start || series.size()<=60) {
+                    // A sole sample often lies on the time-axis border; make
+                    // its real position visible without shifting its time.
+                    const float radius=std::max(1.5f,App().dpi/96.0f*(series.size()==1?4.0f:1.8f));
+                    graphics.FillEllipse(&dots,x-radius,y-radius,2*radius,2*radius);
+                }
+                previousTime=point.first;
+            }
+            flush();
+        } else if (!reused && !series.empty()) {
             HPEN dataPen = CreatePen(PS_SOLID, 2, color);
             oldPen = SelectObject(hdc, dataPen);
             HBRUSH dots = CreateSolidBrush(color);
@@ -368,6 +467,22 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 LineTo(hdc, X(series[0].first) + 1, Y(series[0].second));
             SelectObject(hdc, oldDotBrush); DeleteObject(dots);
             SelectObject(hdc, oldPen); DeleteObject(dataPen);
+        }
+
+        if(!reused && !g_selectingTime) {
+            HDC target=CreateCompatibleDC(hdc);
+            HBITMAP image=target?CreateCompatibleBitmap(hdc,rasterKey.width,rasterKey.height):nullptr;
+            if(image) {
+                HGDIOBJ previous=SelectObject(target,image);
+                const bool saved=BitBlt(target,0,0,rasterKey.width,rasterKey.height,hdc,pr.left,pr.top,SRCCOPY)!=FALSE;
+                SelectObject(target,previous);
+                if(saved) {
+                    CurveRaster* slot=&rasters[0];
+                    if(slot->bitmap && (!rasters[1].bitmap || rasters[1].used<slot->used)) slot=&rasters[1];
+                    slot->clear();slot->bitmap=image;slot->key=rasterKey;slot->used=++g_curveRasterUse;
+                } else DeleteObject(image);
+            }
+            if(target) DeleteDC(target);
         }
 
         // 标签按“优秀→良好→一般”纵向排列；颜色线段与图内分界线一一对应。
@@ -404,7 +519,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     auto title = [&](const RECT& plot, const std::wstring& text, size_t samples, bool detailPlot) {
         if (plot.right <= plot.left) return;
         SelectObject(hdc, App().hFontUI); SetTextColor(hdc, th::inkPri);
-        RECT label{plot.left, plot.top - S(25), plot.right - (detailPlot ? S(140) : 0), plot.top - S(2)};
+        RECT label{plot.left, plot.top - S(22), plot.right - (detailPlot ? S(205) : 0), plot.top - S(2)};
         DrawTextW(hdc, text.c_str(), -1, &label, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
         SelectObject(hdc, App().hFontSmall); SetTextColor(hdc, th::inkMuted);
         RECT count{plot.right + S(6), label.top, canvasRight, label.bottom};
@@ -412,16 +527,16 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         DrawTextW(hdc, countText.c_str(), -1, &count, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     };
     title(top, UiText(TextId::ui_0339), g_csq.size(), false);
-    title(middle, g_chartDetail == 1 ? L"RSRQ · -25～0 dB" : L"RSRP · -140～-40 dBm", detail.size(), true);
+    title(middle, g_chartDetail == 2 ? UiText(TextId::ui_0540) : g_chartDetail == 1 ? L"RSRQ · -25～0 dB" : L"RSRP · -140～-40 dBm", detail.size(), true);
     title(bottom, UiText(TextId::ui_0340), g_snr10.size(), false);
     if (!detail.empty()) {
-        for (int mode = 0; mode < 2; ++mode) {
-            RECT button{right - S(130) + mode * S(65), middle.top - S(25), right - S(70) + mode * S(65), middle.top - S(2)};
+        for (int mode = 0; mode < 3; ++mode) {
+            RECT button{right - S(195) + mode * S(65), middle.top - S(22), right - S(135) + mode * S(65), middle.top - S(2)};
             g_chartModeRects[mode] = button;
             const bool selected = mode == g_chartDetail, enabled = !detailSeries(mode).empty();
             FillRound(hdc, button, S(9), selected ? th::accentSoft : th::surface, selected ? th::accent : th::border);
             SelectObject(hdc, App().hFontSmall); SetTextColor(hdc, enabled ? th::inkPri : th::inkMuted);
-            DrawTextW(hdc, mode == 1 ? L"RSRQ" : L"RSRP", -1, &button, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            DrawTextW(hdc, mode == 2 ? L"RSSI" : mode == 1 ? L"RSRQ" : L"RSRP", -1, &button, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         }
     }
     SelectObject(hdc, oldFont);
@@ -432,10 +547,12 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         drawPlot(middle, g_chartDetailDraw, g_rsrpGaps, detailLo, detailHi, th::s7_violet,
                  {{kRsrpFair, UiText(TextId::ui_0344), th::warning}, {kRsrpGood, UiText(TextId::ui_0345), th::accent},
                   {kRsrpExcellent, UiText(TextId::ui_0346), th::good}}, false);
-    else
+    else if (g_chartDetail == 1)
         drawPlot(middle, g_chartDetailDraw, g_rsrqGaps, detailLo, detailHi, th::s7_violet,
                  {{kRsrqFair, UiText(TextId::ui_0347), th::warning}, {kRsrqGood, UiText(TextId::ui_0348), th::accent},
                   {kRsrqExcellent, UiText(TextId::ui_0349), th::good}}, false);
+    else
+        drawPlot(middle,g_chartDetailDraw,g_rssiGaps,detailLo,detailHi,th::s6_orange,{},false);
     drawPlot(bottom, g_chartSnrDraw, g_snrGaps, -200, 300, th::s5_aqua,
              {{kSnrFair10, UiText(TextId::ui_0350), th::warning}, {kSnrGood10, UiText(TextId::ui_0351), th::accent},
               {kSnrExcellent10, UiText(TextId::ui_0343), th::good}}, true);
@@ -518,14 +635,16 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         auto addValue = [&](const ChartSeries& series, const wchar_t* name, bool decimal, const wchar_t* unit) {
             long long distance = LLONG_MAX;
             const auto* point = nearestChartPoint(series, markT, &distance);
-            if (!point) return;
             info += L"\n" + std::wstring(name) + L"  ";
-            if (distance > 600) info += UiText(TextId::ui_0356);
+            if (!point) info += UiText(TextId::ui_0289);
+            else if (distance > 600) info += UiText(TextId::ui_0356);
             else info += (decimal ? FmtW(L"%.1f", point->second / 10.0) : FmtW(L"%d", point->second)) +
                 L" " + unit + L"  ·  " + U8ToW(fmtTime(point->first, "FULL"));
         };
         addValue(g_csq, L"CSQ", false, L"");
-        addValue(detail, detailName, false, g_chartDetail == 1 ? L"dB" : L"dBm");
+        addValue(g_rsrp, L"RSRP", false, L"dBm");
+        addValue(g_rsrq, L"RSRQ", false, L"dB");
+        addValue(g_rssi, L"RSSI", false, L"dBm");
         addValue(g_snr10, L"SNR", true, L"dB");
         const int width = std::min(S(410), static_cast<int>(rc.right) - S(16));
         RECT measure{0, 0, width - S(20), 10000};
@@ -591,19 +710,24 @@ void RenderMetrics() {
     sortChartSeriesByTime(g_rsrp);
     sortChartSeriesByTime(g_rsrq);
     sortChartSeriesByTime(g_snr10);
+    g_rssi = reportedRssiSeries(App().document.metricView);
+    g_rssiBounds = rssiDisplayBounds(g_rssi);
     g_csqGaps = chartSampleGaps(g_csq, 600);
     g_rsrpGaps = chartSampleGaps(g_rsrp, 600);
     g_rsrqGaps = chartSampleGaps(g_rsrq, 600);
     g_snrGaps = chartSampleGaps(g_snr10, 600);
+    g_rssiGaps = chartSampleGaps(g_rssi, 600);
     ResetChartSampleCache();
     ListView_SetItemCountEx(App().hMetric, (int)App().document.metricView.size(),
                             LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
     InvalidateRect(App().hMetric, nullptr, TRUE);
-    const bool detailEmpty = g_chartDetail == 0 ? g_rsrp.empty() : g_rsrq.empty();
+    const bool detailEmpty = g_chartDetail == 2 ? g_rssi.empty() : g_chartDetail == 0 ? g_rsrp.empty() : g_rsrq.empty();
     if (detailEmpty) {
         if (!g_rsrp.empty()) g_chartDetail = 0;
         else if (!g_rsrq.empty()) g_chartDetail = 1;
+        else if (!g_rssi.empty()) g_chartDetail = 2;
     }
+    UpdateChartAccessibleLabel();
     InvalidateRect(App().hChart, nullptr, TRUE);
 }
 
@@ -613,8 +737,11 @@ void ReleaseChartPageData() {
     releaseVector(g_csq);
     releaseVector(g_rsrp);
     releaseVector(g_rsrq);
+    releaseVector(g_rssi);
+    g_rssiBounds={-120,-20};
     releaseVector(g_snr10);
     releaseVector(g_csqGaps); releaseVector(g_rsrpGaps); releaseVector(g_rsrqGaps); releaseVector(g_snrGaps);
+    releaseVector(g_rssiGaps);
     g_latestCellId.clear();
     g_visibleCellCount = 0;
     g_chartHasInferredTime = false;
@@ -645,9 +772,9 @@ bool CancelChartSelection() {
 }
 
 int PreferredChartHeight() {
-    const bool haveDetail = !g_rsrp.empty() || !g_rsrq.empty();
+    const bool haveDetail = !g_rsrp.empty() || !g_rsrq.empty() || !g_rssi.empty();
     const int plots = (!g_csq.empty() ? 1 : 0) + (haveDetail ? 1 : 0) + (!g_snr10.empty() ? 1 : 0);
-    return S(77 + std::max(1, plots) * 84);
+    return S(77 + std::max(1, plots) * 104);
 }
 
 } // namespace dl

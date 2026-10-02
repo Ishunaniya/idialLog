@@ -87,11 +87,13 @@
 //           区间结论/复制/报告标注范围和边界，成功换日志清除选区，取消保留。
 //   1.11.15 多日志默认独立查看与来源对照，人工指定同设备续接；指标列任务预设，
 //           中英文界面、诊断、复制与报告切换，保留日志原文及独立字体设置。
+//   1.11.16 明确语言/字体入口，诊断原文预览与完整展开；新增实际 RSSI 趋势，
+//           抗锯齿直线绘图和分屏自动比例，保留原始采样与完整复制/报告。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 11
-#define DL_VER_PATCH 15
+#define DL_VER_PATCH 16
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

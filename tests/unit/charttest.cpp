@@ -1,5 +1,6 @@
 // charttest.cpp — 图表时间排序、峰谷降采样与二分悬停回归。
 #include "chartmodel.h"
+#include "signal_chart.h"
 
 #include <algorithm>
 #include <climits>
@@ -18,6 +19,13 @@ static bool contains(const ChartSeries& series, ChartPoint point) {
 }
 
 int main() {
+    std::puts("== 原始 RSSI 信号图 ==");
+    MetricRow a,b,c; a.t=30;a.csqVal=18; b.t=10;b.rssiVal=-100;c.t=20;c.rssiVal=-65;
+    const auto rssi=reportedRssiSeries({&a,&b,&c});
+    ok(rssi==ChartSeries({{10,-100},{20,-65}}),"RSSI 使用上报值与原时间排序，CSQ 单独存在不产生 RSSI");
+    ok(rssiDisplayBounds(rssi)==std::pair<int,int>{-120,-20},"RSSI 默认显示轴覆盖真实样本，不混入质量阈值");
+    ok(rssiDisplayBounds({{10,-155},{20,-10}})==std::pair<int,int>{-160,-5},"RSSI 超出默认范围时扩展坐标轴，不裁掉极值");
+    ok(rssiDisplayBounds({{10,INT_MIN}}).first==INT_MIN,"极端负 RSSI 轴边界不会溢出");
     std::puts("== 选区时间映射 ==");
     ok(chartTimeAtPixel(100, 200, 50, 150, 75) == 125 &&
        chartTimeAtPixel(100, 200, 50, 150, 125) == 175, "选区端点按可见轴精确映射，支持反向拖动");

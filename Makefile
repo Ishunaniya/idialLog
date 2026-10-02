@@ -62,7 +62,7 @@ TARGET   ?= $(BUILD_DIR)/$(EXE_NAME)
 CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -municode \
             -finput-charset=UTF-8 -fexec-charset=UTF-8 -fwide-exec-charset=UTF-16LE
 LDFLAGS  := -mwindows -municode -static -static-libgcc -static-libstdc++ -s
-LIBS     := -lcomctl32 -lgdi32 -lcomdlg32 -lshell32 -ldwmapi -luxtheme -ladvapi32 -luser32 -lkernel32
+LIBS     := -lcomctl32 -lgdiplus -lgdi32 -lcomdlg32 -lshell32 -ldwmapi -luxtheme -ladvapi32 -luser32 -lkernel32
 
 MINIZ_DEF := -DDL_HAVE_MINIZ
 MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME

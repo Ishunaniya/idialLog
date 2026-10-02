@@ -104,6 +104,7 @@ std::array<FilterFrame, 4> g_filterFrames{};
 enum class MetricViewMode { Chart, Split, Table };
 MetricViewMode g_metricViewMode = MetricViewMode::Split;
 int g_metricSplitY = 0;
+bool g_metricSplitUserSized = false;
 int g_detailHeight = 0;
 bool g_dragMetricSplitter = false, g_dragDetailSplitter = false;
 RECT g_lastContent{};
@@ -281,9 +282,10 @@ LRESULT CALLBACK SplitterSubclass(HWND splitter, UINT message, WPARAM wparam, LP
         if (GetCapture() == splitter && (g_dragMetricSplitter || g_dragDetailSplitter)) {
             POINT point{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
             MapWindowPoints(splitter, App().hMain, &point, 1);
-            if (g_dragMetricSplitter)
+            if (g_dragMetricSplitter) {
+                g_metricSplitUserSized = true;
                 g_metricSplitY = point.y - g_lastContent.top - S(38);
-            else
+            } else
                 g_detailHeight = g_lastContent.bottom - point.y - S(7);
             Layout();
         }
@@ -455,17 +457,17 @@ void ApplyLanguage(bool english) {
 void ShowAppearanceMenu() {
     HMENU menu = CreatePopupMenu();
     const auto& settings = GetAppSettings();
+    const UINT availability=LoadInProgress()?MF_DISABLED:0;
+    AppendMenuW(menu, MF_STRING | availability | (!settings.english?MF_CHECKED:0), IDC_LANGUAGE_ZH, L"中文（简体）");
+    AppendMenuW(menu, MF_STRING | availability | (settings.english?MF_CHECKED:0), IDC_LANGUAGE_EN, L"English");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, IDC_FONT_UI, (UiText(TextId::ui_0161) + MenuSafe(settings.uiFont) + L"…").c_str());
     AppendMenuW(menu, MF_STRING, IDC_FONT_LOG, (UiText(TextId::ui_0162) + MenuSafe(settings.logFont) + L"…").c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, IDC_FONT_RESET, UiText(TextId::ui_0163));
-    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    const UINT availability=LoadInProgress()?MF_DISABLED:0;
-    AppendMenuW(menu, MF_STRING | availability | (!settings.english?MF_CHECKED:0), IDC_LANGUAGE_ZH, L"中文（简体）");
-    AppendMenuW(menu, MF_STRING | availability | (settings.english?MF_CHECKED:0), IDC_LANGUAGE_EN, L"English");
     RECT anchor{}; GetWindowRect(App().hAppearance, &anchor);
-    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTALIGN,
-                                        anchor.right, anchor.bottom, 0, App().hMain, nullptr);
+    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_BOTTOMALIGN,
+                                        anchor.left, anchor.top - S(4), 0, App().hMain, nullptr);
     DestroyMenu(menu);
     if (command==IDC_LANGUAGE_ZH || command==IDC_LANGUAGE_EN) ApplyLanguage(command==IDC_LANGUAGE_EN);
     else if (command) ApplyAppearanceCommand(command);
@@ -606,7 +608,6 @@ void Layout() {
     auto command = [&](HWND button, int width) {
         right -= S(width); MoveIf(button, right, S(20), S(width), S(36)); right -= S(8);
     };
-    command(App().hAppearance, 46);
     command(App().hCloseLog, compactCommands ? 76 : 82);
     if (!narrowCommands) command(App().hBookmarks, compactCommands ? 78 : 90);
     command(App().hFilterToggle, compactCommands ? 72 : 82);
@@ -614,6 +615,8 @@ void Layout() {
     command(App().hOpen, compactCommands ? 106 : 122);
     command(App().hExport, compactCommands ? 82 : 92);
     MoveIf(App().hPageTitle, contentLeft + S(24), S(12), std::max(S(32), right - contentLeft - S(32)), S(38));
+    MoveIf(App().hAppearance, S(20), client.bottom - S(84), navW - S(40), S(36));
+    SetWindowPos(App().hAppearance, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     MoveIf(App().hFileLbl, contentLeft + S(25), S(51), contentWidth - S(50), S(20));
 
     LayoutFilterPanel(contentLeft, contentWidth);
@@ -693,9 +696,9 @@ void Layout() {
         ShowWindow(App().hMetricSplitter, CurrentPage() == 4 ? SW_SHOW : SW_HIDE);
         const int usableHeight = std::max(2, metricAreaHeight - splitterHeight);
         const int minimumTable = std::min(std::max(1, usableHeight / 3),
-            usableHeight >= PreferredChartHeight() + S(90) ? S(90) : S(60));
+            usableHeight >= S(390) ? S(100) : S(60));
         const int minimumChart = std::min(PreferredChartHeight(), std::max(1, usableHeight - minimumTable));
-        if (g_metricSplitY <= 0) g_metricSplitY = usableHeight * 62 / 100;
+        if (!g_metricSplitUserSized || g_metricSplitY <= 0) g_metricSplitY = usableHeight * 72 / 100;
         g_metricSplitY = std::max(minimumChart,
             std::min(g_metricSplitY, usableHeight - minimumTable));
         MoveIf(App().hChart, content.left, metricTop, width, g_metricSplitY);
