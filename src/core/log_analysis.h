@@ -11,6 +11,7 @@ namespace dl {
 std::map<std::string, std::string> hbFields(const std::string& msg);
 // 平台识别(基于已解析行的实证特征)
 PlatformInfo detectPlatform(const std::vector<LogLine>& lines);
+PlatformInfo detectPlatform(const LogView& lines);
 
 // ---- 分析 ----
 ArteryDiagnostics collectArteryDiagnostics(const std::vector<LogLine>& lines);

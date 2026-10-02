@@ -25,11 +25,13 @@
 #include "app_settings.h"
 #include "app_context.h"
 #include "load_controller.h"
+#include "source_workspace.h"
 #include "modern_shell.h"
 #include "theme.h"
 #include "ui_pages.h"
 #include "version.h"
 #include "win_text.h"
+#include "text_catalog.h"
 
 using namespace dl;
 
@@ -84,10 +86,16 @@ using namespace dl;
 #define IDC_PAGE_HINT 1139
 #define IDC_TIME_RANGE_LABEL 1140
 #define IDC_TIME_RANGE_RESET 1141
+#define IDC_METRIC_COLUMNS 1142
+#define IDC_SOURCES 1143
+#define IDC_LANGUAGE_ZH 1170
+#define IDC_LANGUAGE_EN 1171
 
 namespace {
 
 constexpr UINT_PTR kFilterTimer = 7;
+constexpr UINT kRefreshFilterButton = WM_APP + 43;
+bool g_filterButtonRefreshPending = false;
 bool g_filtersExpanded = false;
 int g_headerHeight = 88;
 RECT g_filterPanel{};
@@ -117,7 +125,7 @@ void OpenRecent(size_t index) {
     const std::wstring path = files[index];
     if (GetFileAttributesW(path.c_str()) == INVALID_FILE_ATTRIBUTES) {
         RemoveRecentFile(path);
-        ShowModernNotice(L"最近文件已不存在", L"已从最近列表移除，请重新选择文件。",
+        ShowModernNotice(UiText(TextId::ui_0144), UiText(TextId::ui_0145),
                          ModernNoticeKind::Warning, 6000);
         return;
     }
@@ -127,17 +135,17 @@ void OpenRecent(size_t index) {
 void ShowOpenMenu() {
     HMENU menu = CreatePopupMenu();
     if (!menu) { DoOpen(); return; }
-    AppendMenuW(menu, MF_STRING, IDC_OPEN_PICK, L"选择文件…\tCtrl+O");
+    AppendMenuW(menu, MF_STRING, IDC_OPEN_PICK, UiText(TextId::ui_0146));
     const auto& recent = GetAppSettings().recentFiles;
     if (!recent.empty()) {
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(menu, MF_STRING | MF_DISABLED, 0, L"最近打开");
+        AppendMenuW(menu, MF_STRING | MF_DISABLED, 0, UiText(TextId::ui_0147));
         for (size_t index = 0; index < recent.size(); ++index) {
             std::wstring label = std::to_wstring(index + 1) + L"  " + MenuSafe(recent[index]);
             AppendMenuW(menu, MF_STRING, IDC_RECENT_BASE + static_cast<UINT>(index), label.c_str());
         }
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(menu, MF_STRING, IDC_RECENT_CLEAR, L"清除最近记录");
+        AppendMenuW(menu, MF_STRING, IDC_RECENT_CLEAR, UiText(TextId::ui_0148));
     }
     RECT button{}; GetWindowRect(App().hOpen, &button);
     const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
@@ -146,7 +154,7 @@ void ShowOpenMenu() {
     if (command == IDC_OPEN_PICK) DoOpen();
     else if (command == IDC_RECENT_CLEAR) {
         ClearRecentFiles();
-        ShowModernNotice(L"最近记录已清除", L"不会删除任何日志文件。", ModernNoticeKind::Success);
+        ShowModernNotice(UiText(TextId::ui_0149), UiText(TextId::ui_0150), ModernNoticeKind::Success);
     } else if (command >= IDC_RECENT_BASE && command < IDC_RECENT_BASE + 5) {
         OpenRecent(command - IDC_RECENT_BASE);
     }
@@ -155,7 +163,7 @@ void ShowOpenMenu() {
 void ShowSearchHistoryMenu() {
     const auto& history = GetAppSettings().searchHistory;
     if (history.empty()) {
-        ShowModernNotice(L"还没有搜索历史", L"输入消息正则并点击“应用”后会自动记录。",
+        ShowModernNotice(UiText(TextId::ui_0151), UiText(TextId::ui_0152),
                          ModernNoticeKind::Info);
         return;
     }
@@ -163,14 +171,14 @@ void ShowSearchHistoryMenu() {
     for (size_t index = 0; index < history.size(); ++index)
         AppendMenuW(menu, MF_STRING, IDC_SEARCH_BASE + static_cast<UINT>(index), MenuSafe(history[index]).c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, IDC_SEARCH_CLEAR, L"清除搜索历史");
+    AppendMenuW(menu, MF_STRING, IDC_SEARCH_CLEAR, UiText(TextId::ui_0153));
     RECT button{}; GetWindowRect(App().hSearchHistory, &button);
     const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
                                         button.left, button.bottom + S(4), 0, App().hMain, nullptr);
     DestroyMenu(menu);
     if (command == IDC_SEARCH_CLEAR) {
         ClearSearchHistory();
-        ShowModernNotice(L"搜索历史已清除", L"当前筛选条件不会改变。", ModernNoticeKind::Success);
+        ShowModernNotice(UiText(TextId::ui_0154), UiText(TextId::ui_0155), ModernNoticeKind::Success);
     } else if (command >= IDC_SEARCH_BASE && command < IDC_SEARCH_BASE + history.size()) {
         SetWindowTextW(App().hGrepBox, history[command - IDC_SEARCH_BASE].c_str());
         KillTimer(App().hMain, kFilterTimer);
@@ -184,11 +192,11 @@ void ShowBookmarksMenu() {
     if (bookmarks.empty()) return;
     HMENU menu = CreatePopupMenu();
     for (size_t index = 0; index < bookmarks.size(); ++index) {
-        std::wstring label = FmtW(L"第 %d 行  ", static_cast<int>(bookmarks[index].lineNo)) + bookmarks[index].text;
+        std::wstring label = FmtW(UiText(TextId::ui_0156), static_cast<int>(bookmarks[index].lineNo)) + bookmarks[index].text;
         AppendMenuW(menu, MF_STRING, IDC_BOOKMARK_BASE + static_cast<UINT>(index), MenuSafe(label).c_str());
     }
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, IDC_BOOKMARK_CLEAR, L"清空证据书签");
+    AppendMenuW(menu, MF_STRING, IDC_BOOKMARK_CLEAR, UiText(TextId::ui_0157));
     RECT button{}; GetWindowRect(App().hBookmarks, &button);
     const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
                                         button.left, button.bottom + S(4), 0, App().hMain, nullptr);
@@ -200,16 +208,14 @@ void ShowBookmarksMenu() {
 
 void ShowExportMenu() {
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING, IDC_EXPORT_REPORT, L"诊断报告（Markdown）…");
-    AppendMenuW(menu, MF_STRING, IDC_EXPORT_HTML, L"可视化报告（单文件 HTML）…");
-    AppendMenuW(menu, MF_STRING, IDC_EXPORT_CSV, L"信号指标（CSV）…");
+    AppendMenuW(menu, MF_STRING, IDC_EXPORT_REPORT, UiText(TextId::ui_0158));
+    AppendMenuW(menu, MF_STRING, IDC_EXPORT_HTML, UiText(TextId::ui_0159));
+    AppendMenuW(menu, MF_STRING, IDC_EXPORT_CSV, UiText(TextId::ui_0160));
     RECT button{}; GetWindowRect(App().hExport, &button);
     const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTALIGN | TPM_TOPALIGN,
                                         button.right, button.bottom + S(4), 0, App().hMain, nullptr);
     DestroyMenu(menu);
-    if (command == IDC_EXPORT_REPORT) DoExportReport();
-    else if (command == IDC_EXPORT_HTML) DoExportHtml();
-    else if (command == IDC_EXPORT_CSV) DoExportCsv();
+    if (command) SendMessageW(App().hMain,WM_COMMAND,command,0);
 }
 
 void FocusGlobalSearch() {
@@ -299,7 +305,7 @@ void UpdateFilterButton() {
     int count = App().document.timeRange.active ? 1 : 0;
     for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
         if (HasText(edit)) ++count;
-    std::wstring label = L"筛选";
+    std::wstring label = UiText(TextId::ui_0000);
     if (count) label += L" (" + std::to_wstring(count) + L")";
     SetWindowTextW(App().hFilterToggle, label.c_str());
     SetModernButtonActive(App().hFilterToggle, g_filtersExpanded || count > 0);
@@ -410,21 +416,63 @@ void DeleteFonts(const std::array<HFONT, 8>& fonts) {
 
 void ApplyAppearanceCommand(UINT command);
 
+BOOL CALLBACK RelocalizeControl(HWND child, LPARAM) {
+        wchar_t cls[64]{}; GetClassNameW(child,cls,64);
+        if (lstrcmpiW(cls,L"BUTTON")==0 || lstrcmpiW(cls,L"STATIC")==0)
+            SetWindowTextW(child,RelocalizeUiText(GetText(child)).c_str());
+        if (lstrcmpiW(cls,WC_LISTVIEWW)==0) {
+            const int count=Header_GetItemCount(ListView_GetHeader(child));
+            for(int column=0;column<count;++column) {
+                wchar_t text[256]{};LVCOLUMNW item{};item.mask=LVCF_TEXT;item.pszText=text;item.cchTextMax=256;
+                ListView_GetColumn(child,column,&item);
+                const std::wstring translated=RelocalizeUiText(text);
+                item.pszText=const_cast<wchar_t*>(translated.c_str());ListView_SetColumn(child,column,&item);
+            }
+        }
+        return TRUE;
+}
+
+void ApplyLanguage(bool english) {
+    if (LoadInProgress()) return;
+    CloseSourceComparison(); ClosePageDetail();
+    MutableAppSettings().english = english; SetEnglish(english); SaveAppSettings();
+    EnumChildWindows(App().hMain, RelocalizeControl, 0);
+    SendMessageW(App().hTagBox,EM_SETCUEBANNER,TRUE,reinterpret_cast<LPARAM>(UiText(TextId::ui_0177)));
+    SendMessageW(App().hGrepBox,EM_SETCUEBANNER,TRUE,reinterpret_cast<LPARAM>(UiText(TextId::ui_0178)));
+    SetWindowTextW(App().hMain,(std::wstring(DL_APP_NAME_W L" v" DL_VER_WSTR)+UiText(TextId::ui_0220)).c_str());
+    if (!App().document.lines.empty()) {
+        const auto& doc=App().document;
+        SetWindowTextW(App().hFileLbl,(AnalysisSourceText()+FmtW(UiText(TextId::ui_0018),
+            static_cast<int>(doc.lines.size()),static_cast<int>(doc.sessions.size()),
+            U8ToW(GeneratedText(doc.platform.name)).c_str())).c_str());
+    }
+    MarkAllPagesDirty(); RebuildMetricQuickFilterView(); RefreshBookmarkButton(); RefreshPresentation();
+    ShowPage(CurrentPage()); UpdateFilterButton(); ApplyMetricColumnSettings(); Layout();
+    RedrawWindow(App().hMain,nullptr,nullptr,RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+}
+
+
 void ShowAppearanceMenu() {
     HMENU menu = CreatePopupMenu();
     const auto& settings = GetAppSettings();
-    AppendMenuW(menu, MF_STRING, IDC_FONT_UI, (L"界面字体：" + MenuSafe(settings.uiFont) + L"…").c_str());
-    AppendMenuW(menu, MF_STRING, IDC_FONT_LOG, (L"日志字体：" + MenuSafe(settings.logFont) + L"…").c_str());
+    AppendMenuW(menu, MF_STRING, IDC_FONT_UI, (UiText(TextId::ui_0161) + MenuSafe(settings.uiFont) + L"…").c_str());
+    AppendMenuW(menu, MF_STRING, IDC_FONT_LOG, (UiText(TextId::ui_0162) + MenuSafe(settings.logFont) + L"…").c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, IDC_FONT_RESET, L"恢复默认字体");
+    AppendMenuW(menu, MF_STRING, IDC_FONT_RESET, UiText(TextId::ui_0163));
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    const UINT availability=LoadInProgress()?MF_DISABLED:0;
+    AppendMenuW(menu, MF_STRING | availability | (!settings.english?MF_CHECKED:0), IDC_LANGUAGE_ZH, L"中文（简体）");
+    AppendMenuW(menu, MF_STRING | availability | (settings.english?MF_CHECKED:0), IDC_LANGUAGE_EN, L"English");
     RECT anchor{}; GetWindowRect(App().hAppearance, &anchor);
     const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTALIGN,
                                         anchor.right, anchor.bottom, 0, App().hMain, nullptr);
     DestroyMenu(menu);
-    if (command) ApplyAppearanceCommand(command);
+    if (command==IDC_LANGUAGE_ZH || command==IDC_LANGUAGE_EN) ApplyLanguage(command==IDC_LANGUAGE_EN);
+    else if (command) ApplyAppearanceCommand(command);
 }
 
 void ApplyAppearanceCommand(UINT command) {
+    CloseSourceComparison();
     auto& preferences = MutableAppSettings();
     if (command == IDC_FONT_RESET) {
         preferences.uiFont = L"Microsoft YaHei UI"; preferences.logFont = L"Consolas";
@@ -570,8 +618,9 @@ void Layout() {
 
     LayoutFilterPanel(contentLeft, contentWidth);
     const int rangeY = S(g_headerHeight);
-    MoveIf(App().hTimeRangeLabel, contentLeft + S(20), rangeY,
-           contentWidth - S(186), S(42));
+    MoveIf(App().hSources, contentLeft + S(20), rangeY + S(4), S(112), S(34));
+    MoveIf(App().hTimeRangeLabel, contentLeft + S(142), rangeY,
+           contentWidth - S(308), S(42));
     MoveIf(App().hTimeRangeReset, client.right - S(150), rangeY + S(4), S(130), S(34));
     g_headerHeight += 52;
     RECT content = ContentRect(client);
@@ -623,6 +672,7 @@ void Layout() {
     viewButton(App().hMetricViewTable, 74);
     viewButton(App().hMetricViewSplit, 62);
     viewButton(App().hMetricViewChart, 62);
+    viewButton(App().hMetricColumns, 78);
     MoveIf(App().hMetricToolbar, content.left, content.top,
            std::max(1, buttonRight - static_cast<int>(content.left)), toolbarHeight);
     const int metricTop = content.top + toolbarHeight;
@@ -690,7 +740,10 @@ void ScheduleFilterRefresh(HWND source) {
         source != App().hSinceBox && source != App().hUntilBox) return;
     if (source == App().hSinceBox || source == App().hUntilBox)
         App().document.timeRange = DocumentState::TimeRange{};
-    UpdateFilterButton();
+    // EN_CHANGE can arrive inside EDIT's WM_SETTEXT. Read the four edit controls
+    // after that notification returns, and coalesce a batch of cleared fields.
+    if (!g_filterButtonRefreshPending)
+        g_filterButtonRefreshPending = PostMessageW(App().hMain,kRefreshFilterButton,0,0)!=FALSE;
     if (!App().document.lines.empty()) {
         KillTimer(App().hMain, kFilterTimer);
         SetTimer(App().hMain, kFilterTimer, 450, nullptr);
@@ -725,29 +778,30 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         CreateTableRowImageList();
 
         App().hNav = CreateModernNavigation(hwnd, IDC_NAV);
-        App().hPageTitle = CreateControl(L"STATIC", L"概览", SS_LEFT | SS_ENDELLIPSIS,
+        App().hPageTitle = CreateControl(L"STATIC", UiText(TextId::ui_0164), SS_LEFT | SS_ENDELLIPSIS,
                                          IDC_PAGETITLE, App().hFontTitle);
         App().hFileLbl = CreateControl(L"STATIC",
-            L"未加载日志 · 可拖入文件，或从剪贴板直接分析",
+            UiText(TextId::ui_0165),
             SS_LEFTNOWORDWRAP | SS_ENDELLIPSIS, IDC_FILELBL, App().hFontSmall);
         App().hPageHint = CreateControl(L"STATIC", L"", SS_LEFT | SS_CENTERIMAGE | SS_ENDELLIPSIS,
                                        IDC_PAGE_HINT, App().hFontSmall, false);
+        App().hSources = CreateButton(UiText(TextId::ui_0166), IDC_SOURCES, ModernButtonKind::Neutral);
         App().hTimeRangeLabel = CreateControl(L"STATIC", L"", SS_LEFT | SS_NOPREFIX,
                                              IDC_TIME_RANGE_LABEL, App().hFontSmall);
-        App().hTimeRangeReset = CreateButton(L"恢复全范围", IDC_TIME_RANGE_RESET, ModernButtonKind::Neutral);
-        App().hOpen = CreateButton(L"打开日志 ▾", IDC_OPEN, ModernButtonKind::Primary);
-        App().hPaste = CreateButton(L"粘贴日志", IDC_PASTE, ModernButtonKind::Neutral);
-        App().hFilterToggle = CreateButton(L"筛选", IDC_FILTER, ModernButtonKind::Neutral);
-        App().hCloseLog = CreateButton(L"关闭日志", IDC_CLOSELOG, ModernButtonKind::Danger);
-        App().hBookmarks = CreateButton(L"书签", IDC_BOOKMARKS, ModernButtonKind::Neutral);
-        App().hAppearance = CreateButton(L"字体", IDC_APPEARANCE, ModernButtonKind::Neutral);
+        App().hTimeRangeReset = CreateButton(UiText(TextId::ui_0167), IDC_TIME_RANGE_RESET, ModernButtonKind::Neutral);
+        App().hOpen = CreateButton(UiText(TextId::ui_0168), IDC_OPEN, ModernButtonKind::Primary);
+        App().hPaste = CreateButton(UiText(TextId::ui_0169), IDC_PASTE, ModernButtonKind::Neutral);
+        App().hFilterToggle = CreateButton(UiText(TextId::ui_0000), IDC_FILTER, ModernButtonKind::Neutral);
+        App().hCloseLog = CreateButton(UiText(TextId::ui_0054), IDC_CLOSELOG, ModernButtonKind::Danger);
+        App().hBookmarks = CreateButton(UiText(TextId::ui_0170), IDC_BOOKMARKS, ModernButtonKind::Neutral);
+        App().hAppearance = CreateButton(UiText(TextId::ui_0171), IDC_APPEARANCE, ModernButtonKind::Neutral);
         EnableWindow(App().hBookmarks, FALSE);
-        App().hExport = CreateButton(L"导出 ▾", IDC_EXPORT, ModernButtonKind::Neutral);
+        App().hExport = CreateButton(UiText(TextId::ui_0172), IDC_EXPORT, ModernButtonKind::Neutral);
 
-        App().hTagLabel = CreateControl(L"STATIC", L"标签", SS_LEFT, 0, App().hFontSmall, false);
-        App().hGrepLabel = CreateControl(L"STATIC", L"搜索消息（正则）", SS_LEFT, 0, App().hFontSmall, false);
-        App().hSinceLabel = CreateControl(L"STATIC", L"起始时间", SS_LEFT, 0, App().hFontSmall, false);
-        App().hUntilLabel = CreateControl(L"STATIC", L"结束时间", SS_LEFT, 0, App().hFontSmall, false);
+        App().hTagLabel = CreateControl(L"STATIC", UiText(TextId::ui_0173), SS_LEFT, 0, App().hFontSmall, false);
+        App().hGrepLabel = CreateControl(L"STATIC", UiText(TextId::ui_0174), SS_LEFT, 0, App().hFontSmall, false);
+        App().hSinceLabel = CreateControl(L"STATIC", UiText(TextId::ui_0175), SS_LEFT, 0, App().hFontSmall, false);
+        App().hUntilLabel = CreateControl(L"STATIC", UiText(TextId::ui_0176), SS_LEFT, 0, App().hFontSmall, false);
         App().hTagBox = CreateControl(L"EDIT", L"", ES_AUTOHSCROLL, IDC_TAGBOX, App().hFontUI, false);
         App().hGrepBox = CreateControl(L"EDIT", L"", ES_AUTOHSCROLL, IDC_GREPBOX, App().hFontUI, false);
         App().hSinceBox = CreateControl(L"EDIT", L"", ES_AUTOHSCROLL, IDC_SINCEBOX, App().hFontUI, false);
@@ -756,14 +810,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
             SendMessageW(edit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(S(9), S(9)));
             SetWindowSubclass(edit, FilterEditSubclass, 1, 0);
         }
-        SendMessageW(App().hTagBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"例如 MODEM"));
-        SendMessageW(App().hGrepBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"Ctrl+F · 支持正则表达式"));
+        SendMessageW(App().hTagBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(UiText(TextId::ui_0177)));
+        SendMessageW(App().hGrepBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(UiText(TextId::ui_0178)));
         SendMessageW(App().hSinceBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"HH:MM:SS"));
         SendMessageW(App().hUntilBox, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"HH:MM:SS"));
-        App().hApplyFilter = CreateButton(L"应用", IDC_APPLY, ModernButtonKind::Primary, false);
-        App().hClearFilter = CreateButton(L"清空", IDC_CLEAR, ModernButtonKind::Neutral, false);
-        App().hSearchHistory = CreateButton(L"历史 ▾", IDC_SEARCH_HISTORY, ModernButtonKind::Neutral, false);
-        App().hMetricFilter = CreateButton(L"指标筛选 ▾", IDC_METRIC_FILTER, ModernButtonKind::Neutral, false);
+        App().hApplyFilter = CreateButton(UiText(TextId::ui_0179), IDC_APPLY, ModernButtonKind::Primary, false);
+        App().hClearFilter = CreateButton(UiText(TextId::ui_0180), IDC_CLEAR, ModernButtonKind::Neutral, false);
+        App().hSearchHistory = CreateButton(UiText(TextId::ui_0181), IDC_SEARCH_HISTORY, ModernButtonKind::Neutral, false);
+        App().hMetricFilter = CreateButton(UiText(TextId::ui_0182), IDC_METRIC_FILTER, ModernButtonKind::Neutral, false);
 
         App().hDash = CreateWindowExW(0, L"dialDashCls", L"", WS_CHILD, 0, 0, 10, 10, hwnd,
                                       reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_DASH)),
@@ -776,21 +830,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                                           0, 0, 10, 10, hwnd,
                                           reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_FINDINGS)),
                                           GetModuleHandleW(nullptr), nullptr);
-        App().hUnparsed = CreateList(IDC_UNPARSED, {{L"原始行号", 90}, {L"未识别的原文", 960}});
-        App().hTimeline = CreateList(IDC_TIMELINE, {{L"时间", 186}, {L"事件", 100}, {L"标签", 126}, {L"消息", 820}}, true);
-        App().hOutage = CreateList(IDC_OUTAGE, {{L"#", 44}, {L"状态", 144}, {L"开始", 186}, {L"恢复", 186}, {L"时长", 90}, {L"依据", 160}});
-        App().hMetric = CreateList(IDC_METRIC, {{L"时间", 186}, {L"CH", 82},
-            {L"小区 ID", 105}, {L"PCI", 58}, {L"TAC", 70}, {L"CSQ", 58}, {L"Tmax", 58},
+        App().hUnparsed = CreateList(IDC_UNPARSED, {{UiText(TextId::ui_0183), 90}, {UiText(TextId::ui_0184), 960}});
+        App().hTimeline = CreateList(IDC_TIMELINE, {{UiText(TextId::ui_0185), 186}, {UiText(TextId::ui_0186), 100}, {UiText(TextId::ui_0173), 126}, {UiText(TextId::ui_0187), 820}}, true);
+        App().hOutage = CreateList(IDC_OUTAGE, {{L"#", 44}, {UiText(TextId::ui_0188), 144}, {UiText(TextId::ui_0189), 186}, {UiText(TextId::ui_0190), 186}, {UiText(TextId::ui_0191), 90}, {UiText(TextId::ui_0192), 160}});
+        App().hMetric = CreateList(IDC_METRIC, {{UiText(TextId::ui_0185), 186}, {L"CH", 82},
+            {UiText(TextId::ui_0193), 105}, {L"PCI", 58}, {L"TAC", 70}, {L"CSQ", 58}, {L"Tmax", 58},
             {L"ConsecFail", 86}, {L"RX_PKT", 105}, {L"ΔRX", 76}, {L"RSRP", 68}, {L"RSRQ", 68},
             {L"SNR(dB)", 78}, {L"RSSI", 68}, {L"SRV", 52}, {L"RAT", 76}, {L"DENY", 58}, {L"OPER", 145},
-            {L"LTE 工程参考", 155}, {L"AT遥测超时", 88}, {L"AT确认", 76}, {L"详细AT阶段", 112}}, true);
-        App().hTags = CreateList(IDC_TAGS, {{L"标签", 150}, {L"次数", 80}, {L"占比", 600}});
-        App().hRaw = CreateList(IDC_RAW, {{L"原始行号", 90}, {L"时间", 186}, {L"级别", 82},
-            {L"标签", 118}, {L"原始消息", 900}}, true);
-        App().hCells = CreateList(IDC_CELLS, {{L"小区 ID", 112}, {L"PCI", 58}, {L"TAC", 72},
-            {L"样本", 66}, {L"占比(%)", 76}, {L"观测驻留", 92}, {L"平均 RSRP", 86},
-            {L"最低 RSRP", 86}, {L"平均 RSRQ", 86}, {L"平均 SNR", 82}, {L"平均 CSQ", 78},
-            {L"切入", 58}, {L"切出", 58}, {L"断网关联", 82}, {L"质量判断", 100}}, true);
+            {UiText(TextId::ui_0194), 155}, {UiText(TextId::ui_0195), 88}, {UiText(TextId::ui_0196), 76}, {UiText(TextId::ui_0197), 112}}, true);
+        App().hTags = CreateList(IDC_TAGS, {{UiText(TextId::ui_0173), 150}, {UiText(TextId::ui_0198), 80}, {UiText(TextId::ui_0199), 600}});
+        App().hRaw = CreateList(IDC_RAW, {{UiText(TextId::ui_0183), 90}, {UiText(TextId::ui_0185), 186}, {UiText(TextId::ui_0200), 82},
+            {UiText(TextId::ui_0173), 118}, {UiText(TextId::ui_0201), 900}}, true);
+        App().hCells = CreateList(IDC_CELLS, {{UiText(TextId::ui_0193), 112}, {L"PCI", 58}, {L"TAC", 72},
+            {UiText(TextId::ui_0202), 66}, {UiText(TextId::ui_0203), 76}, {UiText(TextId::ui_0204), 92}, {UiText(TextId::ui_0205), 86},
+            {UiText(TextId::ui_0206), 86}, {UiText(TextId::ui_0207), 86}, {UiText(TextId::ui_0208), 82}, {UiText(TextId::ui_0209), 78},
+            {UiText(TextId::ui_0210), 58}, {UiText(TextId::ui_0211), 58}, {UiText(TextId::ui_0212), 82}, {UiText(TextId::ui_0213), 100}}, true);
         App().hChart = CreateWindowExW(0, L"dialChartCls", L"", WS_CHILD | WS_TABSTOP, 0, 0, 10, 10, hwnd,
                                        reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_CHART)),
                                        GetModuleHandleW(nullptr), nullptr);
@@ -798,13 +852,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                           App().hUnparsed, App().hRaw, App().hCells})
             ConfigurePageList(list);
 
-        App().hMetricToolbar = CreateControl(L"STATIC", L"拖动图表选区 · 单击定位 · Esc 取消",
+        App().hMetricToolbar = CreateControl(L"STATIC", UiText(TextId::ui_0214),
             SS_LEFT | SS_CENTERIMAGE | SS_ENDELLIPSIS, 0, App().hFontSmall, false);
-        App().hMetricViewChart = CreateButton(L"图表", IDC_METRIC_VIEW_CHART,
+        App().hMetricColumns = CreateButton(UiText(TextId::ui_0215), IDC_METRIC_COLUMNS, ModernButtonKind::Neutral, false);
+        ApplyMetricColumnSettings();
+        App().hMetricViewChart = CreateButton(UiText(TextId::ui_0216), IDC_METRIC_VIEW_CHART,
                                                ModernButtonKind::Neutral, false);
-        App().hMetricViewSplit = CreateButton(L"分屏", IDC_METRIC_VIEW_SPLIT,
+        App().hMetricViewSplit = CreateButton(UiText(TextId::ui_0217), IDC_METRIC_VIEW_SPLIT,
                                                ModernButtonKind::Neutral, false);
-        App().hMetricViewTable = CreateButton(L"表格全页", IDC_METRIC_VIEW_TABLE,
+        App().hMetricViewTable = CreateButton(UiText(TextId::ui_0218), IDC_METRIC_VIEW_TABLE,
                                                ModernButtonKind::Neutral, false);
         App().hMetricSplitter = CreateControl(L"STATIC", L"", SS_NOTIFY | SS_ETCHEDHORZ,
                                                0, App().hFontUI, false);
@@ -812,7 +868,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                                                0, App().hFontUI, false);
         SetWindowSubclass(App().hMetricSplitter, SplitterSubclass, 1, 1);
         SetWindowSubclass(App().hDetailSplitter, SplitterSubclass, 1, 2);
-        App().hDetailLabel = CreateControl(L"STATIC", L"完整内容", SS_LEFT | SS_CENTERIMAGE,
+        App().hDetailLabel = CreateControl(L"STATIC", UiText(TextId::ui_0219), SS_LEFT | SS_CENTERIMAGE,
                                             0, App().hFontSmall, false);
         App().hDetailClose = CreateButton(L"×", IDC_DETAIL_CLOSE, ModernButtonKind::Neutral, false);
         App().hDetailText = CreateControl(L"EDIT", L"",
@@ -851,6 +907,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
     }
     case WM_SIZE: Layout(); return 0;
     case WM_APP_NAVIGATE: ShowPage(static_cast<int>(wparam)); return 0;
+    case kRefreshFilterButton:
+        g_filterButtonRefreshPending = false; UpdateFilterButton(); return 0;
     case WM_APP_SHELL_LAYOUT: UpdateFilterButton(); Layout(); return 0;
     case WM_APP_LOAD_PROGRESS:
     case WM_APP_LOAD_COMPLETE:
@@ -866,6 +924,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
     case WM_SETTINGCHANGE:
         ApplyModernTheme(hwnd); return 0;
     case WM_DPICHANGED: {
+        // The owned comparison uses the shared UI font; release its controls
+        // before replacing that font, just as for an explicit font change.
+        CloseSourceComparison();
         App().dpi = HIWORD(wparam);
         std::array<HFONT, 8> old{App().hFontUI, App().hFontMono, App().hFontTitle, App().hFontSmall,
                                  App().hFontHero, App().hFontTileVal, App().hFontTileLbl, App().hFontSect};
@@ -898,14 +959,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         break;
     case WM_COMMAND: {
         const int id = LOWORD(wparam), code = HIWORD(wparam);
+        if (ApplyMetricColumnCommand(id) || HandleSourceCommand(id)) return 0;
         if (code == EN_CHANGE) ScheduleFilterRefresh(reinterpret_cast<HWND>(lparam));
         switch (id) {
+        case IDC_LANGUAGE_ZH: case IDC_LANGUAGE_EN: ApplyLanguage(id==IDC_LANGUAGE_EN); return 0;
         case IDC_APPEARANCE: ShowAppearanceMenu(); return 0;
         case IDC_FONT_UI: case IDC_FONT_LOG: case IDC_FONT_RESET: ApplyAppearanceCommand(id); return 0;
         case IDC_OPEN: ShowOpenMenu(); return 0;
+        case IDC_OPEN_PICK: DoOpen(); return 0;
         case IDC_PASTE: DoPaste(); return 0;
         case IDC_BOOKMARKS: ShowBookmarksMenu(); return 0;
         case IDC_SEARCH_HISTORY: ShowSearchHistoryMenu(); return 0;
+        case IDC_SOURCES: ShowSourceMenu(App().hSources); return 0;
+        case IDC_METRIC_COLUMNS: ShowMetricColumnMenu(App().hMetricColumns); return 0;
         case IDC_METRIC_FILTER: ShowMetricQuickFilterMenu(App().hMetricFilter); return 0;
         case IDC_METRIC_VIEW_CHART: SetMetricView(MetricViewMode::Chart); return 0;
         case IDC_METRIC_VIEW_SPLIT: SetMetricView(MetricViewMode::Split); return 0;
@@ -921,12 +987,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         case IDC_APPLY:
             KillTimer(hwnd, kFilterTimer); RememberSearchQuery(GetText(App().hGrepBox)); RefreshAll(); return 0;
         case IDC_EXPORT: ShowExportMenu(); return 0;
+        case IDC_EXPORT_REPORT: DoExportReport(); return 0;
+        case IDC_EXPORT_HTML: DoExportHtml(); return 0;
+        case IDC_EXPORT_CSV: DoExportCsv(); return 0;
         case IDC_CLEAR: ClearFilters(true); return 0;
         case IDC_CLOSELOG:
             if (ConsumeLoadActionClick()) return 0;
             ReleaseLoadedData(); ClearFilters(false); MarkAllPagesDirty(); RenderPage(CurrentPage());
-            SetWindowTextW(App().hFileLbl, L"未加载日志 · 可拖入文件，或从剪贴板直接分析");
-            SetWindowTextW(App().hStatus, L"尚未加载日志。"); RefreshNavigation(); return 0;
+            SetWindowTextW(App().hFileLbl, UiText(TextId::ui_0165));
+            SetWindowTextW(App().hStatus, UiText(TextId::ui_0011)); RefreshNavigation(); return 0;
         }
         if (id >= IDC_RECENT_BASE && id < IDC_RECENT_BASE + 5) {
             OpenRecent(static_cast<size_t>(id - IDC_RECENT_BASE)); return 0;
@@ -987,7 +1056,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
     RegisterClassExW(&mainClass);
 
     HWND window = CreateWindowExW(WS_EX_ACCEPTFILES, L"dialLogMainCls",
-        DL_APP_NAME_W L" v" DL_VER_WSTR L" — 拨号日志分析",
+        (std::wstring(DL_APP_NAME_W L" v" DL_VER_WSTR) + UiText(TextId::ui_0220)).c_str(),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 1280, 820,
         nullptr, nullptr, instance, nullptr);
     if (!window) return 1;
@@ -1024,11 +1093,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
 
     MSG message{};
     while (GetMessageW(&message, nullptr, 0, 0) > 0) {
+        if (RouteSourceComparisonMessage(message)) continue;
         if (message.message == WM_KEYDOWN && (GetKeyState(VK_CONTROL) & 0x8000)) {
             if (message.wParam == 'C') {
                 HWND focus = GetFocus();
                 const bool editing = focus == App().hTagBox || focus == App().hGrepBox ||
                     focus == App().hSinceBox || focus == App().hUntilBox || focus == App().hDetailText;
+                if (SourceComparisonActive()) { CopySourceComparison(); continue; }
                 if (!editing && (CopyOverviewPage(CurrentPage()) || CopySelectedPageRows())) continue;
             }
             if (message.wParam == 'O') { DoOpen(); continue; }

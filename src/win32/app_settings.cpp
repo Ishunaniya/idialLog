@@ -1,5 +1,6 @@
 // app_settings.cpp — 使用 HKCU 保存界面状态；不在便携目录旁写入配置文件
 #include "app_settings.h"
+#include "text_catalog.h"
 
 #include <algorithm>
 #include <cwchar>
@@ -73,10 +74,16 @@ bool SamePath(const std::wstring& left, const std::wstring& right) {
 
 void LoadAppSettings() {
     g_settings = AppSettings{};
+    SetEnglish(false);
     HKEY key = nullptr;
     if (RegOpenKeyExW(HKEY_CURRENT_USER, kSettingsKey, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS) return;
     g_settings.uiFont = ReadFont(key, L"UiFont", g_settings.uiFont);
     g_settings.logFont = ReadFont(key, L"LogFont", g_settings.logFont);
+
+    g_settings.english = ReadDword(key, L"English", 0) == 1;
+    SetEnglish(g_settings.english);
+    g_settings.metricColumns = ReadDword(key, L"MetricColumns", (1u << 22) - 1) & ((1u << 22) - 1);
+    g_settings.metricColumns |= 1u; // Timestamp is mandatory.
 
     // 筛选是一次分析的临时范围，跨会话恢复会把新日志静默筛成空页，故不再读取旧值。
     g_settings.lastPage = static_cast<int>(ReadDword(key, L"LastPage", 0));
@@ -104,6 +111,8 @@ void SaveAppSettings() {
     // 清理旧版本留下的值，避免用户升级后首开仍被隐藏筛选影响。
     WriteFont(key, L"UiFont", g_settings.uiFont);
     WriteFont(key, L"LogFont", g_settings.logFont);
+    WriteDword(key, L"English", g_settings.english ? 1 : 0);
+    WriteDword(key, L"MetricColumns", g_settings.metricColumns);
     RegDeleteValueW(key, L"TagFilter");
     RegDeleteValueW(key, L"GrepFilter");
     RegDeleteValueW(key, L"SinceFilter");

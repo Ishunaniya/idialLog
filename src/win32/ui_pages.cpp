@@ -21,12 +21,16 @@
 #include "log_analysis.h"
 #include "log_time.h"
 #include "load_controller.h"
+#include "source_workspace.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "tablemodel.h"
+#include "columnmodel.h"
+#include "app_settings.h"
 #include "signal_quality.h"
 #include "theme.h"
 #include "win_text.h"
+#include "text_catalog.h"
 
 namespace dl {
 
@@ -57,9 +61,9 @@ struct MetricQuickFilter {
 };
 static MetricQuickFilter g_metricFilter;
 
-static void RefreshBookmarkButton() {
+void RefreshBookmarkButton() {
     if (!App().hBookmarks) return;
-    std::wstring label = L"书签";
+    std::wstring label = UiText(TextId::ui_0170);
     if (!g_bookmarks.empty()) label += L" (" + std::to_wstring(g_bookmarks.size()) + L")";
     SetWindowTextW(App().hBookmarks, label.c_str());
     EnableWindow(App().hBookmarks, !g_bookmarks.empty());
@@ -145,8 +149,8 @@ static void RenderTimeline() {
 
 static void RenderOutages() {
     if (CurrentPage() == 3) SetWindowTextW(App().hPageHint, HasAnalysisTimeFilter() ?
-        L"仅显示区间内事件；起止边沿可能在区间外，请恢复全范围复核。" :
-        L"整行按时长分档：≤30s、31–60s、>60s；是否恢复以“状态”列为准。");
+        UiText(TextId::ui_0275) :
+        UiText(TextId::ui_0276));
     ListView_DeleteAllItems(App().hOutage);
     g_outageOrder.resize(App().document.outages.size());
     for (std::size_t i = 0; i < g_outageOrder.size(); ++i) g_outageOrder[i] = i;
@@ -174,16 +178,16 @@ static void RenderOutages() {
         const Outage& o = App().document.outages[original];
         LvAddRow(App().hOutage, row, FmtW(L"%d", static_cast<int>(original + 1)));
         const bool unseenRecovery = !o.recovered && HasAnalysisTimeFilter();
-        LvSet(App().hOutage, row, 1, unseenRecovery ? L"区间内未见恢复" : U8ToW(outageStatusText(o)));
+        LvSet(App().hOutage, row, 1, unseenRecovery ? UiText(TextId::ui_0251) : U8ToW(GeneratedText(outageStatusText(o))));
         LvSet(App().hOutage, row, 2, U8ToW(fmtTime(o.start, "FULL")));
         if (o.recovered) {
             LvSet(App().hOutage, row, 3, U8ToW(fmtTime(o.end, "FULL")));
             LvSet(App().hOutage, row, 4, U8ToW(fmtDur(o.dur)));
-            LvSet(App().hOutage, row, 5, o.reportedDuration ? L"设备自报 Down 时长" : L"原始起止边沿");
+            LvSet(App().hOutage, row, 5, o.reportedDuration ? UiText(TextId::ui_0486) : UiText(TextId::ui_0277));
         } else {
-            LvSet(App().hOutage, row, 3, unseenRecovery ? L"区间外待核对" : L"未恢复");
+            LvSet(App().hOutage, row, 3, unseenRecovery ? UiText(TextId::ui_0278) : UiText(TextId::ui_0279));
             LvSet(App().hOutage, row, 4, L"?");
-            LvSet(App().hOutage, row, 5, L"尚未闭合");
+            LvSet(App().hOutage, row, 5, UiText(TextId::ui_0280));
         }
         row++;
     }
@@ -194,7 +198,7 @@ static void RenderTags() {
     std::map<std::string, int> tc;
     for (const LogLine* l : App().document.filtered) {
         const std::string& tag = l->tagText();
-        tc[tag.empty() ? "(无标签)" : tag]++;
+        tc[tag.empty() ? UiText8(TextId::ui_0537) : tag]++;
     }
     int mx = 1;
     for (auto& kv : tc) mx = std::max(mx, kv.second);
@@ -291,8 +295,8 @@ static void UpdateMetricFilterButton() {
     if (!App().hMetricFilter) return;
     int count = !g_metricFilter.cell.empty() + !g_metricFilter.rat.empty() +
                 !g_metricFilter.ch.empty() + g_metricFilter.hasDeny;
-    std::wstring text = L"指标筛选 ▾";
-    if (count) text = L"指标筛选 (" + std::to_wstring(count) + L") ▾";
+    std::wstring text = UiText(TextId::ui_0182);
+    if (count) text = UiText(TextId::ui_0281) + std::to_wstring(count) + L") ▾";
     SetWindowTextW(App().hMetricFilter, text.c_str());
     SetModernButtonActive(App().hMetricFilter, count > 0);
 }
@@ -353,6 +357,43 @@ void RebuildMetricQuickFilterView() {
     UpdateMetricFilterButton();
 }
 
+void ApplyMetricColumnSettings() {
+    const unsigned mask = GetAppSettings().metricColumns | 1u;
+    for (int column = 0; column < 22; ++column)
+        ListView_SetColumnWidth(App().hMetric, column, (mask & (1u << column)) ? S(kMetricColumnWidths[column]) : 0);
+    InvalidateRect(App().hMetric, nullptr, TRUE);
+}
+
+void ShowMetricColumnMenu(HWND anchor) {
+    HMENU menu = CreatePopupMenu();
+    const wchar_t* names[] = {UiText(TextId::ui_0282), UiText(TextId::ui_0283), UiText(TextId::ui_0284), UiText(TextId::ui_0285), UiText(TextId::ui_0286), UiText(TextId::ui_0287)};
+    const unsigned mask = GetAppSettings().metricColumns;
+    for (int i = 0; i < 6; ++i)
+        AppendMenuW(menu, MF_STRING | (mask == metricColumnMask(static_cast<MetricColumnPreset>(i)) ? MF_CHECKED : 0),
+                    32000 + i, names[i]);
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING | MF_DISABLED, 0, UiText(TextId::ui_0288));
+    for (int column = 1; column < 22; ++column) {
+        wchar_t text[128]{}; LVCOLUMNW item{}; item.mask = LVCF_TEXT; item.pszText = text; item.cchTextMax = 128;
+        ListView_GetColumn(App().hMetric, column, &item);
+        AppendMenuW(menu, MF_STRING | ((mask & (1u << column)) ? MF_CHECKED : 0), 32100 + column, text);
+    }
+    RECT rect{}; GetWindowRect(anchor, &rect);
+    const auto command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTALIGN, rect.right, rect.bottom,
+                                        0, App().hMain, nullptr);
+    DestroyMenu(menu);
+    ApplyMetricColumnCommand(command);
+}
+
+bool ApplyMetricColumnCommand(UINT command) {
+    if (command >= 32000 && command < 32006)
+        MutableAppSettings().metricColumns = metricColumnMask(static_cast<MetricColumnPreset>(command - 32000));
+    else if (command > 32100 && command < 32122)
+        MutableAppSettings().metricColumns ^= 1u << (command - 32100);
+    else return false;
+    SaveAppSettings(); ApplyMetricColumnSettings(); return true;
+}
+
 void ClearMetricQuickFilters(bool refresh) {
     g_metricFilter = MetricQuickFilter{};
     RebuildMetricQuickFilterView();
@@ -384,7 +425,7 @@ void ShowMetricQuickFilterMenu(HWND anchor) {
         for (std::size_t i = 0; i < count; ++i)
             AppendMenuW(target, MF_STRING | (values[i] == selected ? MF_CHECKED : 0), base + i,
                         U8ToW(values[i]).c_str());
-        if (values.empty()) AppendMenuW(target, MF_STRING | MF_DISABLED, 0, L"暂无数据");
+        if (values.empty()) AppendMenuW(target, MF_STRING | MF_DISABLED, 0, UiText(TextId::ui_0289));
     };
     appendStrings(cellMenu, cells, 30100, g_metricFilter.cell);
     appendStrings(ratMenu, rats, 30200, g_metricFilter.rat);
@@ -392,13 +433,13 @@ void ShowMetricQuickFilterMenu(HWND anchor) {
     for (std::size_t i = 0; i < denies.size() && i < 80; ++i)
         AppendMenuW(denyMenu, MF_STRING | (g_metricFilter.hasDeny && denies[i] == g_metricFilter.deny ? MF_CHECKED : 0),
                     30400 + i, std::to_wstring(denies[i]).c_str());
-    if (denies.empty()) AppendMenuW(denyMenu, MF_STRING | MF_DISABLED, 0, L"暂无数据");
+    if (denies.empty()) AppendMenuW(denyMenu, MF_STRING | MF_DISABLED, 0, UiText(TextId::ui_0289));
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(cellMenu), L"Cell ID");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(ratMenu), L"RAT");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(channelMenu), L"CH");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(denyMenu), L"DENY");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, 30000, L"清空指标快捷筛选");
+    AppendMenuW(menu, MF_STRING, 30000, UiText(TextId::ui_0290));
     RECT rect{}; GetWindowRect(anchor, &rect);
     const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
                                         rect.left, rect.bottom + S(4), 0, App().hMain, nullptr);
@@ -473,7 +514,9 @@ void ReleaseLoadedData() {
     if (App().hTags)     ListView_DeleteAllItems(App().hTags);
     if (App().hUnparsed) ListView_DeleteAllItems(App().hUnparsed);
 
+    CloseSourceComparison();
     App().document.release();
+    UpdateSourceControls();
     g_metricFilter = MetricQuickFilter{};
     UpdateMetricFilterButton();
     ClearEvidenceBookmarks();
@@ -507,13 +550,13 @@ void ShowPage(int page) {
                        page == 6 ? App().hRaw : nullptr;
     if (PageDetailVisible() && PageDetailOwner() != detailOwner) ClosePageDetail();
     g_curPage = page;
-    const wchar_t* titles[] = {L"概览", L"诊断结论", L"事件时间线", L"断网记录",
-                               L"信号指标", L"标签统计", L"原始日志", L"未识别行", L"小区分析"};
+    const wchar_t* titles[] = {UiText(TextId::ui_0164), UiText(TextId::ui_0222), UiText(TextId::ui_0228), UiText(TextId::ui_0224),
+                               UiText(TextId::ui_0230), UiText(TextId::ui_0232), UiText(TextId::ui_0234), UiText(TextId::ui_0236), UiText(TextId::ui_0226)};
     if (App().hPageTitle) SetWindowTextW(App().hPageTitle, titles[page]);
-    const wchar_t* hint = page == 2 ? L"按“事件”列区分故障、已恢复和恢复动作；整行浅色辅助识别。" :
-        page == 3 ? (HasAnalysisTimeFilter() ? L"仅显示区间内事件；起止边沿可能在区间外，请恢复全范围复核。" :
-                     L"整行按时长分档：≤30s、31–60s、>60s；是否恢复以“状态”列为准。") :
-        L"保留原始文件行号；会话标记、空行单独统计，续行归入所属条目。";
+    const wchar_t* hint = page == 2 ? UiText(TextId::ui_0291) :
+        page == 3 ? (HasAnalysisTimeFilter() ? UiText(TextId::ui_0275) :
+                     UiText(TextId::ui_0276)) :
+        UiText(TextId::ui_0292);
     SetWindowTextW(App().hPageHint, hint);
     ShowWindow(App().hPageHint, page == 2 || page == 3 || page == 6 ? SW_SHOW : SW_HIDE);
     SetNavigationPage(page);
@@ -538,7 +581,7 @@ void ShowPage(int page) {
     }
     const bool metrics = page == 4;
     for (HWND control : {App().hMetricToolbar, App().hMetricViewChart,
-                         App().hMetricViewSplit, App().hMetricViewTable})
+                         App().hMetricViewSplit, App().hMetricViewTable, App().hMetricColumns})
         if (control) ShowWindow(control, metrics ? SW_SHOW : SW_HIDE);
     ShowWindow(App().hExport, SW_SHOW);
     SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
@@ -554,7 +597,7 @@ void JumpToRawLine(size_t lineNo) {
     const auto found = std::find_if(App().document.lines.begin(), App().document.lines.end(),
         [lineNo](const LogLine& line) { return line.lineNo == lineNo; });
     if (found == App().document.lines.end()) {
-        ShowModernNotice(L"无法定位该证据", L"对应原始行未被解析，可在“未识别行”页面复核。",
+        ShowModernNotice(UiText(TextId::ui_0293), UiText(TextId::ui_0294),
                          ModernNoticeKind::Warning);
         return;
     }
@@ -562,8 +605,8 @@ void JumpToRawLine(size_t lineNo) {
     g_pageDirty[6] = true;
     ShowPage(6);
     SetFocus(App().hRaw);
-    ShowModernNotice(L"已定位原始证据",
-                     FmtW(L"第 %d 行已选中；按 Ctrl+C 可直接复制。", static_cast<int>(lineNo)).c_str(),
+    ShowModernNotice(UiText(TextId::ui_0295),
+                     FmtW(UiText(TextId::ui_0296), static_cast<int>(lineNo)).c_str(),
                      ModernNoticeKind::Info, 4500);
 }
 
@@ -589,7 +632,7 @@ bool ToggleCurrentRawBookmark() {
             g_rawTargetLine = RawRows()[row]->lineNo;
     }
     if (!g_rawTargetLine) {
-        ShowModernNotice(L"没有可标记的原始行", L"先选择或从诊断证据定位一行，再按 Ctrl+B 添加书签。",
+        ShowModernNotice(UiText(TextId::ui_0297), UiText(TextId::ui_0298),
                          ModernNoticeKind::Info);
         return false;
     }
@@ -598,8 +641,8 @@ bool ToggleCurrentRawBookmark() {
     if (found == App().document.lines.end()) return false;
     std::wstring text = U8ToW(found->ts + " [" + found->tagText() + "] " + found->msg);
     const bool added = ToggleEvidenceBookmark(g_rawTargetLine, text);
-    ShowModernNotice(added ? L"证据书签已添加" : L"证据书签已移除",
-                     FmtW(L"原始第 %d 行", static_cast<int>(g_rawTargetLine)).c_str(),
+    ShowModernNotice(added ? UiText(TextId::ui_0299) : UiText(TextId::ui_0300),
+                     FmtW(UiText(TextId::ui_0301), static_cast<int>(g_rawTargetLine)).c_str(),
                      added ? ModernNoticeKind::Success : ModernNoticeKind::Info);
     return added;
 }
@@ -625,13 +668,15 @@ static std::string PageCellText(HWND list, int row, int column) {
     if (row < 0 || column < 0) return {};
     const std::size_t index = static_cast<std::size_t>(row);
     if (list == App().hMetric && index < App().document.metricView.size())
-        return metricCellText(*App().document.metricView[index], static_cast<std::size_t>(column));
+        return column == 18 || column == 19 || column == 20 || column == 21 ?
+            GeneratedText(metricCellText(*App().document.metricView[index], static_cast<std::size_t>(column))) :
+            metricCellText(*App().document.metricView[index], static_cast<std::size_t>(column));
     if (list == App().hRaw && index < RawRows().size())
         return rawCellText(*RawRows()[index], static_cast<std::size_t>(column));
     if (list == App().hCells && index < g_cellRows.size())
-        return cellSummaryCellText(*g_cellRows[index], static_cast<std::size_t>(column));
+        return column == 14 ? GeneratedText(cellSummaryCellText(*g_cellRows[index], 14)) : cellSummaryCellText(*g_cellRows[index], static_cast<std::size_t>(column));
     if (list == App().hTimeline && index < App().document.timelineRows.size())
-        return timelineCellText(*App().document.timelineRows[index], static_cast<std::size_t>(column));
+        return column == 1 ? GeneratedText(timelineCellText(*App().document.timelineRows[index], 1)) : timelineCellText(*App().document.timelineRows[index], static_cast<std::size_t>(column));
     std::vector<wchar_t> value(8192, L'\0');
     ListView_GetItemText(list, row, column, value.data(), static_cast<int>(value.size()));
     return WToU8(value.data());
@@ -642,7 +687,7 @@ static std::wstring ColumnTitle(HWND list, int column) {
     wchar_t text[128]{};
     HDITEMW item{};
     item.mask = HDI_TEXT; item.pszText = text; item.cchTextMax = 128;
-    return header && Header_GetItem(header, column, &item) ? text : L"字段";
+    return header && Header_GetItem(header, column, &item) ? text : UiText(TextId::ui_0302);
 }
 
 static std::wstring DetailText(HWND list, int row) {
@@ -671,10 +716,10 @@ static void ShowPageDetail(HWND list, int row, bool focus = true) {
     if (!SupportsFullDetail(list) || row < 0 || !App().hDetailText) return;
     g_detailOwner = list;
     g_detailRow = row;
-    const wchar_t* page = list == App().hRaw ? L"原始日志" :
-                          list == App().hTimeline ? L"事件时间线" : L"信号指标";
-    std::wstring label = std::wstring(page) + L" · 第 " + std::to_wstring(row + 1) +
-                         L" 行完整内容（可选中文字复制）";
+    const wchar_t* page = list == App().hRaw ? UiText(TextId::ui_0234) :
+                          list == App().hTimeline ? UiText(TextId::ui_0228) : UiText(TextId::ui_0230);
+    std::wstring label = std::wstring(page) + UiText(TextId::ui_0303) + std::to_wstring(row + 1) +
+                         UiText(TextId::ui_0304);
     SetWindowTextW(App().hDetailLabel, label.c_str());
     const std::wstring text = DetailText(list, row);
     SetWindowTextW(App().hDetailText, text.c_str());
@@ -737,7 +782,7 @@ static bool CopySelectedRows(HWND list) {
     if (!copied) return false;
     const bool success = CopyTextToClipboard(output);
     if (success)
-        ShowModernNotice(L"已复制所选行", FmtW(L"共 %d 行，使用制表符分列。", copied).c_str(),
+        ShowModernNotice(UiText(TextId::ui_0305), FmtW(UiText(TextId::ui_0306), copied).c_str(),
                          ModernNoticeKind::Success, 3000);
     return success;
 }
@@ -781,24 +826,24 @@ static void ShowPageContextMenu(HWND list, POINT screenPoint) {
     const bool messageCell = (list == App().hRaw && column == 4) ||
                              (list == App().hTimeline && column == 3);
     AppendMenuW(menu, MF_STRING, kCopyCellCommand,
-                messageCell ? L"复制完整消息" : L"复制单元格");
+                messageCell ? UiText(TextId::ui_0307) : UiText(TextId::ui_0308));
     const int selected = ListView_GetSelectedCount(list);
     AppendMenuW(menu, MF_STRING, kCopyRowsCommand,
-                selected > 1 ? L"复制所选行（TSV）" : L"复制整行（TSV）");
+                selected > 1 ? UiText(TextId::ui_0309) : UiText(TextId::ui_0310));
     if (SupportsFullDetail(list)) {
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(menu, MF_STRING, kShowDetailCommand, L"查看完整内容\tEnter");
+        AppendMenuW(menu, MF_STRING, kShowDetailCommand, UiText(TextId::ui_0311));
     }
     if (list == App().hMetric || list == App().hTimeline)
-        AppendMenuW(menu, MF_STRING, kJumpRawCommand, L"定位到原始日志");
+        AppendMenuW(menu, MF_STRING, kJumpRawCommand, UiText(TextId::ui_0312));
     if (list == App().hRaw)
-        AppendMenuW(menu, MF_STRING, kBookmarkCommand, L"添加/移除证据书签\tCtrl+B");
+        AppendMenuW(menu, MF_STRING, kBookmarkCommand, UiText(TextId::ui_0313));
     const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
                                         screenPoint.x, screenPoint.y, 0, App().hMain, nullptr);
     DestroyMenu(menu);
     if (command == kCopyCellCommand) {
         if (CopyTextToClipboard(U8ToW(PageCellText(list, row, column))))
-            ShowModernNotice(L"已复制完整内容", ColumnTitle(list, column).c_str(),
+            ShowModernNotice(UiText(TextId::ui_0314), ColumnTitle(list, column).c_str(),
                              ModernNoticeKind::Success, 2500);
     } else if (command == kCopyRowsCommand) {
         CopySelectedRows(list);
@@ -857,24 +902,24 @@ void FitPrimaryTableColumns(int contentWidth) {
 
 static void DrawListEmptyState(HWND list, HDC dc) {
     const bool loaded = !App().document.lines.empty();
-    const wchar_t* title = loaded ? L"当前范围内没有数据" : L"还没有加载日志";
-    const wchar_t* detail = loaded ? L"调整筛选条件，或切换到其他页面查看。"
-                                    : L"拖入日志文件，或使用右上角“打开日志”。";
+    const wchar_t* title = loaded ? UiText(TextId::ui_0315) : UiText(TextId::ui_0316);
+    const wchar_t* detail = loaded ? UiText(TextId::ui_0317)
+                                    : UiText(TextId::ui_0318);
     bool success = false;
     if (list == App().hOutage && loaded) {
-        title = L"没有发现断网记录"; detail = L"当前筛选范围内未检测到完整的断网事件。"; success = true;
+        title = UiText(TextId::ui_0319); detail = UiText(TextId::ui_0320); success = true;
     } else if (list == App().hMetric && loaded) {
-        title = L"没有信号指标"; detail = L"当前日志中没有可绘制的心跳或信号采样。";
+        title = UiText(TextId::ui_0321); detail = UiText(TextId::ui_0322);
     } else if (list == App().hTimeline && loaded) {
-        title = L"没有关键事件"; detail = L"当前范围内没有状态迁移、切换或恢复事件。"; success = true;
+        title = UiText(TextId::ui_0323); detail = UiText(TextId::ui_0324); success = true;
     } else if (list == App().hTags && loaded) {
-        title = L"没有标签统计"; detail = L"当前筛选结果为空，请尝试清空筛选条件。";
+        title = UiText(TextId::ui_0325); detail = UiText(TextId::ui_0326);
     } else if (list == App().hUnparsed && loaded) {
-        title = L"全部日志均已识别"; detail = L"解析覆盖完整，没有需要人工复核的原始行。"; success = true;
+        title = UiText(TextId::ui_0327); detail = UiText(TextId::ui_0328); success = true;
     } else if (list == App().hCells && loaded) {
-        title = L"没有小区画像"; detail = L"当前日志未提供 Cell ID，无法按小区聚合信号质量。";
+        title = UiText(TextId::ui_0329); detail = UiText(TextId::ui_0330);
     } else if (list == App().hRaw && loaded) {
-        title = L"筛选结果为空"; detail = L"清空筛选条件即可恢复全部原始日志。";
+        title = UiText(TextId::ui_0331); detail = UiText(TextId::ui_0332);
     }
 
     RECT client{}; GetClientRect(list, &client);
@@ -984,6 +1029,9 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
                        col < kCellColumnCount) {
                 text = cellSummaryCellText(*g_cellRows[row], col);
             }
+            if ((hdr->hwndFrom==App().hTimeline && col==1) ||
+                (hdr->hwndFrom==App().hMetric && col>=18) ||
+                (hdr->hwndFrom==App().hCells && col==14)) text=GeneratedText(text);
             const std::wstring wide = U8ToW(text);
             lstrcpynW(di->item.pszText, wide.c_str(), di->item.cchTextMax);
         }

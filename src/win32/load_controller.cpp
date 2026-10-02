@@ -1,5 +1,6 @@
 // load_controller.cpp — 日志来源加载、筛选刷新和导出协调
 #include "load_controller.h"
+#include "source_workspace.h"
 
 #include <windows.h>
 #include <commdlg.h>
@@ -28,6 +29,7 @@
 #include "ui_pages.h"
 #include "win_file_io.h"
 #include "win_text.h"
+#include "text_catalog.h"
 
 namespace dl {
 
@@ -90,7 +92,7 @@ static void ResetFiltersForNewInput() {
         if (edit) SetWindowTextW(edit, L"");
     ClearMetricQuickFilters(false);
     if (App().hFilterToggle) {
-        SetWindowTextW(App().hFilterToggle, L"筛选");
+        SetWindowTextW(App().hFilterToggle, UiText(TextId::ui_0000));
         SetModernButtonActive(App().hFilterToggle, false);
     }
 }
@@ -101,48 +103,64 @@ static void PresentAnalysis(bool bad) {
     MarkAllPagesDirty();
     RenderPage(CurrentPage());
 
-    std::wstring st = FmtW(L"  筛选后 %d / 共 %d 行   ·   断网 %d 次   ·   启动证据 %d",
+    std::wstring st = FmtW(UiText(TextId::ui_0001),
                            (int)App().document.filtered.size(), (int)App().document.lines.size(),
                            (int)App().document.outages.size(), (int)App().document.sessions.size());
-    st += L"   ·   平台: " + U8ToW(App().document.platform.name);
+    st += UiText(TextId::ui_0002) + U8ToW(GeneratedText(App().document.platform.name));
     const MetricRow* latestCell = nullptr;
     for (const MetricRow& metric : App().document.metrics)
         if (!metric.cellId.empty() && (!latestCell || metric.t > latestCell->t ||
             (metric.t == latestCell->t && metric.lineNo > latestCell->lineNo))) latestCell = &metric;
     if (latestCell)
-        st += FmtW(L"   ·   最近小区 ID: %s（共 %d 个）",
+        st += FmtW(UiText(TextId::ui_0003),
                    U8ToW(latestCell->cellId.str()).c_str(),
                    static_cast<int>(App().document.cellAnalysis.cells.size()));
     else
-        st += L"   ·   小区 ID: 日志未提供";
+        st += UiText(TextId::ui_0004);
     if (App().document.audit.unparsed == 0 && App().document.audit.nulBytes == 0)
-        st += L"   ·   未识别 0 行、NUL 0 字节";
+        st += UiText(TextId::ui_0005);
     else
-        st += FmtW(L"   ·   ⚠ 未识别 %d 行(%.2f%%)，NUL %d 字节/%d 行(见审计页)",
+        st += FmtW(UiText(TextId::ui_0006),
                    (int)App().document.audit.unparsed, App().document.audit.unparsedRatio() * 100.0,
                    (int)App().document.audit.nulBytes, (int)App().document.audit.nulLines);
-    if (bad) st += L"   ·   ⚠ 正则非法,已忽略该条件";
-    if (HasAnalysisTimeFilter()) st += L"   ·   结论仅基于当前时间区间内证据";
+    if (bad) st += UiText(TextId::ui_0007);
+    if (HasAnalysisTimeFilter()) st += UiText(TextId::ui_0008);
     SetWindowTextW(App().hStatus, st.c_str());
     UpdateAnalysisTimeRangeControls();
+    UpdateSourceControls();
     if (bad && !g_regexWasBad)
-        ShowModernNotice(L"正则表达式无效", L"已暂时忽略“消息正则”条件，其他筛选仍然生效。",
+        ShowModernNotice(UiText(TextId::ui_0009), UiText(TextId::ui_0010),
                          ModernNoticeKind::Warning, 6000);
     g_regexWasBad = bad;
 }
 
+void RefreshPresentation() { PresentAnalysis(g_regexWasBad); }
+
 void RefreshAll() {
-    if (App().document.lines.empty()) { SetWindowTextW(App().hStatus, L"尚未加载日志。"); return; }
+    CloseSourceComparison();
+    if (App().document.lines.empty() && App().document.sources.empty()) { SetWindowTextW(App().hStatus, UiText(TextId::ui_0011)); return; }
     ResetVirtualTables();
     bool bad = false;
     App().document.filtered = applyFilterView(App().document.lines, WToU8(GetText(App().hTagBox)), WToU8(GetText(App().hGrepBox)),
                              WToU8(GetText(App().hSinceBox)), WToU8(GetText(App().hUntilBox)), &bad);
     App().document.restrictToTimeRange(App().document.filtered);
+    if (App().document.sources.size() > 1 || !App().document.comparisons.empty())
+        App().document.rebuildComparisons(App().document.filtered);
+    if (App().document.sourceMode == DocumentState::SourceMode::Independent)
+        App().document.restrictToSource(App().document.filtered, App().document.selectedSource);
     App().document.outages = collectOutages(App().document.filtered);
     App().document.metrics = buildMetrics(App().document.filtered);
     RebuildMetricQuickFilterView();
     App().document.cellAnalysis = analyzeCells(App().document.filtered, App().document.metrics,
                                                App().document.outages);
+
+    if (App().document.sources.size() > 1) {
+        LogView sourceRows; sourceRows.reserve(App().document.lines.size());
+        for (const auto& line : App().document.lines) sourceRows.push_back(&line);
+        if (App().document.sourceMode == DocumentState::SourceMode::Independent)
+            App().document.restrictToSource(sourceRows, App().document.selectedSource);
+        App().document.platform = detectPlatform(sourceRows);
+    }
 
     // 结论基于**筛选后**的视图,与各页展示保持一致
     App().document.findings = analyze(App().document.filtered, App().document.outages,
@@ -159,30 +177,33 @@ bool HasAnalysisTimeFilter() {
 std::wstring AnalysisTimeRangeText() {
     const auto& range = App().document.timeRange;
     if (range.active)
-        return L"选区：" + U8ToW(fmtTime(range.start, "FULL")) + L" → " + U8ToW(fmtTime(range.end, "FULL"));
+        return UiText(TextId::ui_0012) + U8ToW(fmtTime(range.start, "FULL")) + L" → " + U8ToW(fmtTime(range.end, "FULL"));
     if (HasAnalysisTimeFilter())
-        return L"时间条件：" + GetText(App().hSinceBox) + L" → " + GetText(App().hUntilBox);
-    return L"时间范围：全范围";
+        return UiText(TextId::ui_0472) + GetText(App().hSinceBox) + L" → " + GetText(App().hUntilBox);
+    return UiText(TextId::ui_0013);
 }
 
 std::wstring AnalysisScopedText(const std::string& text) {
     std::wstring result = U8ToW(text);
-    if (!HasAnalysisTimeFilter()) return result;
-    const std::wstring original = L"全量日志历史汇总", replacement = L"当前区间汇总";
+    const bool independent = App().document.sources.size() > 1 &&
+        App().document.sourceMode == DocumentState::SourceMode::Independent;
+    if (!HasAnalysisTimeFilter() && !independent) return U8ToW(GeneratedText(text));
+    const std::wstring original = L"全量日志历史汇总";
+    const std::wstring replacement = HasAnalysisTimeFilter() ? UiText(TextId::ui_0015) : UiText(TextId::ui_0539);
     for (size_t position = 0; (position = result.find(original, position)) != std::wstring::npos;
          position += replacement.size()) result.replace(position, original.size(), replacement);
-    return result;
+    return U8ToW(GeneratedText(WToU8(result)));
 }
 
 void UpdateAnalysisTimeRangeControls() {
     const auto& range = App().document.timeRange;
     std::wstring label;
     if (range.active) {
-        label = L"选区起点：" + U8ToW(fmtTime(range.start, "FULL")) + L"\r\n选区终点：" + U8ToW(fmtTime(range.end, "FULL"));
+        label = UiText(TextId::ui_0016) + U8ToW(fmtTime(range.start, "FULL")) + UiText(TextId::ui_0473) + U8ToW(fmtTime(range.end, "FULL"));
     } else if (HasAnalysisTimeFilter()) {
-        label = AnalysisTimeRangeText() + L"\r\n区间结论仅使用区间内证据";
+        label = AnalysisTimeRangeText() + UiText(TextId::ui_0474);
     } else {
-        label = L"时间范围：全范围\r\n信号图横向拖动选区 · 恢复仅清除时间条件";
+        label = UiText(TextId::ui_0017);
     }
     if (App().hTimeRangeLabel) SetWindowTextW(App().hTimeRangeLabel, label.c_str());
     if (App().hTimeRangeReset) EnableWindow(App().hTimeRangeReset,
@@ -214,10 +235,12 @@ static void LoadRawLines(std::vector<std::string> raw, const std::wstring& srcLa
     ReleaseLoadedData();
     parseLines(raw, App().document.lines, App().document.sessions, &App().document.audit, fileBoundaries);
     releaseVector(raw);
+    SourceSummary pastedSource; pastedSource.label = srcLabel; pastedSource.last = App().document.lines.size();
+    App().document.sources.push_back(std::move(pastedSource));
     App().document.platform = detectPlatform(App().document.lines);   // 平台识别用全量行(不受筛选影响)
     std::wstring lbl = srcLabel;
-    lbl += FmtW(L"   (%d 行, %d 个启动证据, %s)", (int)App().document.lines.size(), (int)App().document.sessions.size(),
-                U8ToW(App().document.platform.name).c_str());
+    lbl += FmtW(UiText(TextId::ui_0018), (int)App().document.lines.size(), (int)App().document.sessions.size(),
+                U8ToW(GeneratedText(App().document.platform.name)).c_str());
     SetWindowTextW(App().hFileLbl, lbl.c_str());
     RefreshAll();
 }
@@ -254,7 +277,7 @@ static bool ObserveRead(void* context, size_t done, size_t total) {
 
 static void AddLoadProblem(std::wstring& text, const std::wstring& path, const std::wstring& reason) {
     if (!text.empty()) text += L"\n";
-    text += L"• " + FileNameOf(path) + L"：" + (reason.empty() ? L"未知错误" : reason);
+    text += L"• " + FileNameOf(path) + L"：" + (reason.empty() ? UiText(TextId::ui_0019) : reason);
 }
 
 static void DeliverLoadResult(HWND owner, std::unique_ptr<LoadResult>& result) {
@@ -306,11 +329,11 @@ static DWORD WINAPI LoadWorker(void* parameter) {
                     nullptr, readErr);
                 if (loaded && source.probe.empty()) {
                     loaded = false;
-                    readErr = L"文件为空";
+                    readErr = UiText(TextId::ui_0020);
                 }
                 if (loaded && source.textBytes > kMaxBatchTextBytes - batchTextBytes) {
                     loaded = false;
-                    readErr = L"本次选择的日志文本总量超过 512 MiB";
+                    readErr = UiText(TextId::ui_0021);
                 }
                 if (loaded) {
                     batchTextBytes += source.textBytes;
@@ -326,7 +349,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
                                         &progress, ObserveRead);
                 if (loaded && subTextBytes > kMaxBatchTextBytes - batchTextBytes) {
                     loaded = false;
-                    readErr = L"本次选择的展开后日志文本总量超过 512 MiB";
+                    readErr = UiText(TextId::ui_0022);
                 }
                 if (loaded) {
                     batchTextBytes += subTextBytes;
@@ -342,7 +365,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
             }
         } catch (const std::bad_alloc&) {
             loaded = false;
-            readErr = L"内存不足,无法读取、展开或切分日志";
+            readErr = UiText(TextId::ui_0023);
         }
         if (!loaded) {
             if (LoadCancelled()) { result->cancelled = true; break; }
@@ -353,10 +376,10 @@ static DWORD WINAPI LoadWorker(void* parameter) {
     }
     if (result->cancelled) { DeliverLoadResult(request->owner, result); return 0; }
     if (sources.empty()) {
-        result->error = sourceProblems.empty() ? L"没有可读取的日志来源。" : sourceProblems;
+        result->error = sourceProblems.empty() ? UiText(TextId::ui_0024) : sourceProblems;
         DeliverLoadResult(request->owner, result); return 0;
     }
-    if (!sourceProblems.empty()) result->warning = L"部分文件未载入：\n" + sourceProblems;
+    if (!sourceProblems.empty()) result->warning = UiText(TextId::ui_0025) + sourceProblems;
     PostLoadProgress(request->owner, 28, 1);
 
     std::vector<std::vector<std::string>> probes;
@@ -376,10 +399,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
             size_t slash = full.find_last_of(L"\\/");
             names += L"\n  · " + (slash == std::wstring::npos ? full : full.substr(slash + 1));
         }
-        std::wstring msg = FmtW(L"检测到 %d 份日志时钟未同步(时间戳落在 1970 年),\n"
-                               L"与其余 %d 份墙钟日志不在同一时间坐标系。\n\n"
-                               L"已从本次合并中排除以下未同步日志,仅用墙钟日志出结论:%s\n\n"
-                               L"如需查看未同步日志,请单独拖入分析。",
+        std::wstring msg = FmtW(UiText(TextId::ui_0480),
                                (int)mix.unsyncedIdx.size(), (int)mix.wallIdx.size(), names.c_str());
         if (!result->warning.empty()) result->warning += L"\n\n";
         result->warning += msg;
@@ -393,10 +413,10 @@ static DWORD WINAPI LoadWorker(void* parameter) {
         }
         sources.swap(keptSources);
         probes.swap(keptProbes);
-        excludedNote = FmtW(L",已排除 %d 份未同步日志", (int)mix.unsyncedIdx.size());
+        excludedNote = FmtW(UiText(TextId::ui_0030), (int)mix.unsyncedIdx.size());
     }
     if (sources.empty()) {
-        result->error = L"时基检查后没有可分析的日志。";
+        result->error = UiText(TextId::ui_0031);
         DeliverLoadResult(request->owner, result); return 0;
     }
 
@@ -433,7 +453,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
     try {
         StreamingLogParser parser(result->document.lines, result->document.sessions, reserveHint);
         for (size_t orderIndex = 0; orderIndex < ord.size(); ++orderIndex) {
-            if (LoadCancelled()) { parseOk = false; parseErr = L"操作已取消"; break; }
+            if (LoadCancelled()) { parseOk = false; parseErr = UiText(TextId::ui_0032); break; }
             const size_t i = ord[orderIndex];
             LoadSource& source = sources[i];
             parser.beginFile(YearHintFromLabel(source.label));
@@ -453,7 +473,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
             } else {
                 for (size_t lineIndex = 0; lineIndex < source.lines.size(); ++lineIndex) {
                     if ((lineIndex & 4095U) == 0 && LoadCancelled()) {
-                        parseOk = false; parseErr = L"操作已取消"; break;
+                        parseOk = false; parseErr = UiText(TextId::ui_0032); break;
                     }
                     parser.pushLine(std::move(source.lines[lineIndex]));
                 }
@@ -466,7 +486,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
         if (parseOk) parser.finish(&result->document.audit);
     } catch (const std::bad_alloc&) {
         parseOk = false;
-        parseErr = L"内存不足,无法解析所选日志";
+        parseErr = UiText(TextId::ui_0033);
     }
     if (!parseOk) {
         result->cancelled = LoadCancelled();
@@ -478,6 +498,13 @@ static DWORD WINAPI LoadWorker(void* parameter) {
     result->document.platform = detectPlatform(result->document.lines);
     result->document.filtered = applyFilterView(result->document.lines, request->tag, request->grep,
                                                  request->since, request->until, &result->badRegex);
+    for (const auto& range : ranges) {
+        SourceSummary summary; summary.label = range.label;
+        summary.first = range.first; summary.last = range.last;
+        result->document.sources.push_back(std::move(summary));
+    }
+    if (ranges.size() > 1) result->document.rebuildComparisons(result->document.filtered);
+    result->document.restrictToSource(result->document.filtered, 0);
     result->document.outages = collectOutages(result->document.filtered);
     result->document.metrics = buildMetrics(result->document.filtered);
     result->document.metricView.reserve(result->document.metrics.size());
@@ -495,7 +522,8 @@ static DWORD WINAPI LoadWorker(void* parameter) {
     }
 
     // 多文件不只“拼在一起”，同时保留每份来源的可比较摘要，供概览和报告使用。
-    for (const auto& range : ranges) {
+    for (size_t sourceIndex = 0; sourceIndex < ranges.size(); ++sourceIndex) {
+        const auto& range = ranges[sourceIndex];
         if (LoadCancelled()) {
             result->cancelled = true;
             DeliverLoadResult(request->owner, result); return 0;
@@ -506,8 +534,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
             view.push_back(&result->document.lines[index]);
         auto metrics = buildMetrics(view);
         auto outages = collectOutages(view);
-        SourceSummary summary;
-        summary.label = range.label;
+        SourceSummary& summary = result->document.sources[sourceIndex];
         summary.parsedLines = view.size();
         summary.metricRows = metrics.size();
         summary.outages = outages.size();
@@ -517,7 +544,6 @@ static DWORD WINAPI LoadWorker(void* parameter) {
             summary.averageRsrp = static_cast<int>(rsrpTotal / static_cast<long long>(rsrpCount));
             summary.hasAverageRsrp = true;
         }
-        result->document.sources.push_back(std::move(summary));
     }
 
     std::wstring lbl;
@@ -525,12 +551,12 @@ static DWORD WINAPI LoadWorker(void* parameter) {
         lbl = sources[0].label + excludedNote;   // 排除后只剩一份时,仍要带上排除提示
     } else {
         // 多文件必须让人看见到底按什么顺序拼的 —— 否则重排是隐形的,出了错也无从察觉
-        lbl = FmtW(L"%d 个文件合并", (int)sources.size());
-        lbl += reordered ? L"(已按时间重排)" : L"(拖入顺序已是时间顺序)";
-        if (noTs > 0) lbl += FmtW(L",其中 %d 份扫不到时间戳→拼在最后", noTs);
+        lbl = FmtW(UiText(TextId::ui_0034), (int)sources.size());
+        lbl += reordered ? UiText(TextId::ui_0035) : UiText(TextId::ui_0036);
+        if (noTs > 0) lbl += FmtW(UiText(TextId::ui_0037), noTs);
         lbl += excludedNote;
     }
-    lbl += FmtW(L"   (%d 行, %d 个启动证据, %s)", (int)result->document.lines.size(),
+    lbl += FmtW(UiText(TextId::ui_0018), (int)result->document.lines.size(),
                 (int)result->document.sessions.size(), U8ToW(result->document.platform.name).c_str());
     result->label = std::move(lbl);
     result->success = true;
@@ -538,10 +564,10 @@ static DWORD WINAPI LoadWorker(void* parameter) {
 
     DeliverLoadResult(request->owner, result);
     } catch (const std::bad_alloc&) {
-        result->error = L"内存不足，后台加载未完成；当前分析结果保持不变。";
+        result->error = UiText(TextId::ui_0038);
         DeliverLoadResult(request->owner, result);
     } catch (...) {
-        result->error = L"后台加载遇到未预期错误；当前分析结果保持不变。";
+        result->error = UiText(TextId::ui_0039);
         DeliverLoadResult(request->owner, result);
     }
     return 0;
@@ -550,13 +576,13 @@ static DWORD WINAPI LoadWorker(void* parameter) {
 void LoadFiles(const std::vector<std::wstring>& paths) {
     if (paths.empty()) return;
     if (LoadInProgress()) {
-        ShowModernNotice(L"日志正在加载", L"可点击“取消加载”，再选择另一批日志。",
+        ShowModernNotice(UiText(TextId::ui_0040), UiText(TextId::ui_0041),
                          ModernNoticeKind::Info);
         return;
     }
     std::unique_ptr<LoadRequest> request(new (std::nothrow) LoadRequest);
     if (!request) {
-        MessageBoxW(App().hMain, L"内存不足，无法创建加载任务。", L"错误", MB_ICONERROR);
+        MessageBoxW(App().hMain, UiText(TextId::ui_0042), UiText(TextId::ui_0043), MB_ICONERROR);
         return;
     }
     request->owner = App().hMain;
@@ -573,12 +599,12 @@ void LoadFiles(const std::vector<std::wstring>& paths) {
     g_loadThread = CreateThread(nullptr, 0, LoadWorker, request.get(), 0, nullptr);
     if (!g_loadThread) {
         InterlockedExchange(&g_loadActive, 0);
-        MessageBoxW(App().hMain, L"无法启动后台加载线程。", L"错误", MB_ICONERROR);
+        MessageBoxW(App().hMain, UiText(TextId::ui_0044), UiText(TextId::ui_0043), MB_ICONERROR);
         return;
     }
     request.release();
-    SetWindowTextW(App().hCloseLog, L"取消加载");
-    SetShellBusy(true, L"正在检查日志来源… 0%");
+    SetWindowTextW(App().hCloseLog, UiText(TextId::ui_0045));
+    SetShellBusy(true, UiText(TextId::ui_0046));
     SetShellProgress(0);
 }
 
@@ -589,9 +615,9 @@ bool LoadInProgress() {
 void CancelLoad() {
     if (!LoadInProgress()) return;
     InterlockedExchange(&g_loadCancel, 1);
-    SetWindowTextW(App().hCloseLog, L"正在取消…");
+    SetWindowTextW(App().hCloseLog, UiText(TextId::ui_0047));
     EnableWindow(App().hCloseLog, FALSE);
-    SetShellProgress(0, L"正在取消加载；当前分析结果会保留…");
+    SetShellProgress(0, UiText(TextId::ui_0048));
 }
 
 bool ConsumeLoadActionClick() {
@@ -609,9 +635,9 @@ bool HandleLoadControllerMessage(UINT message, WPARAM wparam, LPARAM lparam) {
         if (!LoadInProgress() || LoadCancelled()) return true;
         const int percent = static_cast<int>(wparam);
         const int stage = static_cast<int>(lparam);
-        const wchar_t* name = stage == 0 ? L"检查与展开" : stage == 1 ? L"校验时间轴" :
-                              stage == 2 ? L"解析日志" : L"生成分析";
-        const std::wstring text = FmtW(L"正在%s… %d%%   ·   可点击“取消加载”保留当前结果", name, percent);
+        const wchar_t* name = stage == 0 ? UiText(TextId::ui_0049) : stage == 1 ? UiText(TextId::ui_0050) :
+                              stage == 2 ? UiText(TextId::ui_0051) : UiText(TextId::ui_0052);
+        const std::wstring text = FmtW(UiText(TextId::ui_0053), name, percent);
         SetShellProgress(percent, text.c_str());
         return true;
     }
@@ -625,21 +651,21 @@ bool HandleLoadControllerMessage(UINT message, WPARAM wparam, LPARAM lparam) {
     InterlockedExchange(&g_loadActive, 0);
     g_loadCompletedAt = GetTickCount();
     SetShellBusy(false);
-    SetWindowTextW(App().hCloseLog, L"关闭日志");
+    SetWindowTextW(App().hCloseLog, UiText(TextId::ui_0054));
     EnableWindow(App().hCloseLog, TRUE);
 
     if (!result) {
-        MessageBoxW(App().hMain, L"后台加载时内存不足，当前分析结果未改变。", L"加载失败", MB_ICONERROR);
+        MessageBoxW(App().hMain, UiText(TextId::ui_0055), UiText(TextId::ui_0056), MB_ICONERROR);
         return true;
     }
     if (result->cancelled || cancelRequested) {
-        ShowModernNotice(L"已取消加载", L"当前日志与分析结果保持不变。", ModernNoticeKind::Info);
+        ShowModernNotice(UiText(TextId::ui_0057), UiText(TextId::ui_0058), ModernNoticeKind::Info);
         return true;
     }
     if (!result->success) {
         MessageBoxW(App().hMain,
-                    (result->error.empty() ? L"日志加载失败，当前分析结果未改变。" : result->error.c_str()),
-                    L"加载失败", MB_ICONERROR);
+                    (result->error.empty() ? UiText(TextId::ui_0059) : result->error.c_str()),
+                    UiText(TextId::ui_0056), MB_ICONERROR);
         return true;
     }
 
@@ -649,13 +675,14 @@ bool HandleLoadControllerMessage(UINT message, WPARAM wparam, LPARAM lparam) {
     ResetFiltersForNewInput();
     RebuildMetricQuickFilterView();
     SetWindowTextW(App().hFileLbl, result->label.c_str());
-    PresentAnalysis(result->badRegex);
+    if (App().document.sources.size() > 1) RefreshAll();
+    else PresentAnalysis(result->badRegex);
     RememberRecentFiles(result->openedPaths);
     RefreshNavigation();
     if (!result->warning.empty())
-        MessageBoxW(App().hMain, result->warning.c_str(), L"日志已载入（有提示）", MB_ICONWARNING | MB_OK);
+        MessageBoxW(App().hMain, result->warning.c_str(), UiText(TextId::ui_0060), MB_ICONWARNING | MB_OK);
     else
-        ShowModernNotice(L"日志分析完成", result->label.c_str(), ModernNoticeKind::Success, 5000);
+        ShowModernNotice(UiText(TextId::ui_0061), result->label.c_str(), ModernNoticeKind::Success, 5000);
     return true;
 }
 
@@ -676,17 +703,17 @@ void ShutdownLoadController() {
 // 从剪贴板粘贴日志文本分析(SSH 里 cat 日志后直接选中复制的场景,手上没有文件)
 void DoPaste() {
     if (LoadInProgress()) {
-        ShowModernNotice(L"日志正在加载", L"请先取消当前加载任务。", ModernNoticeKind::Info);
+        ShowModernNotice(UiText(TextId::ui_0040), UiText(TextId::ui_0062), ModernNoticeKind::Info);
         return;
     }
     if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) {
-        ShowModernNotice(L"剪贴板里没有文本",
-                         L"请先复制日志内容，再使用“粘贴日志”或 Ctrl+V。",
+        ShowModernNotice(UiText(TextId::ui_0063),
+                         UiText(TextId::ui_0064),
                          ModernNoticeKind::Info);
         return;
     }
     if (!OpenClipboard(App().hMain)) {
-        ShowModernNotice(L"暂时无法读取剪贴板", L"剪贴板可能正被其他程序占用，请稍后重试。",
+        ShowModernNotice(UiText(TextId::ui_0065), UiText(TextId::ui_0066),
                          ModernNoticeKind::Error, 6000);
         return;
     }
@@ -701,21 +728,21 @@ void DoPaste() {
     }
     CloseClipboard();
     if (clipboardOom) {
-        MessageBoxW(App().hMain, L"内存不足,无法复制剪贴板文本。", L"错误", MB_ICONERROR);
+        MessageBoxW(App().hMain, UiText(TextId::ui_0067), UiText(TextId::ui_0043), MB_ICONERROR);
         return;
     }
     if (w.empty()) {
-        ShowModernNotice(L"剪贴板文本为空", L"复制包含时间戳的日志内容后再试。",
+        ShowModernNotice(UiText(TextId::ui_0068), UiText(TextId::ui_0069),
                          ModernNoticeKind::Info);
         return;
     }
     // UTF-16 转 UTF-8 最坏每个码点 4 字节,在转换前即执行与文件相同的 512MiB 上限。
     if (w.size() > (size_t)kMaxInputBytes / 4) {
-        MessageBoxW(App().hMain, L"剪贴板文本超过 512 MiB 输入限制。", L"内容过大", MB_ICONWARNING);
+        MessageBoxW(App().hMain, UiText(TextId::ui_0070), UiText(TextId::ui_0071), MB_ICONWARNING);
         return;
     }
 
-    BusyScope busy(L"正在分析剪贴板日志…");
+    BusyScope busy(UiText(TextId::ui_0072));
 
     // 按行切分(兼容 \r\n / \n / \r 三种换行);与文件读取共用纯 C++ 实现。
     std::vector<std::string> raw;
@@ -723,34 +750,34 @@ void DoPaste() {
         std::string u8 = WToU8(w);
         dl::splitTextLines(std::move(u8), raw);
     } catch (const std::bad_alloc&) {
-        MessageBoxW(App().hMain, L"内存不足,无法分析剪贴板文本。", L"错误", MB_ICONERROR);
+        MessageBoxW(App().hMain, UiText(TextId::ui_0073), UiText(TextId::ui_0043), MB_ICONERROR);
         return;
     }
 
-    std::wstring pasteLabel = FmtW(L"[剪贴板粘贴 %d 行]", (int)raw.size());
+    std::wstring pasteLabel = FmtW(UiText(TextId::ui_0074), (int)raw.size());
     LoadRawLines(std::move(raw), pasteLabel);
 
     // 粘贴的往往是片段,若一行都没认出来,直接把原因摆出来(而不是让用户对着空界面猜)
     if (App().document.lines.empty()) {
-        ShowModernNotice(L"没有识别出日志行",
-                         L"请确认复制内容带有行首时间戳；可在“未识别行”页面查看原文。",
+        ShowModernNotice(UiText(TextId::ui_0075),
+                         UiText(TextId::ui_0076),
                          ModernNoticeKind::Warning, 8000);
     }
 }
 
 void DoOpen() {
     if (LoadInProgress()) {
-        ShowModernNotice(L"日志正在加载", L"请先取消当前加载任务。", ModernNoticeKind::Info);
+        ShowModernNotice(UiText(TextId::ui_0040), UiText(TextId::ui_0062), ModernNoticeKind::Info);
         return;
     }
     std::vector<wchar_t> buf(32768, 0);
     OPENFILENAMEW ofn{};
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = App().hMain;
-    ofn.lpstrFilter = L"日志与压缩包 (*.log;*.txt;*.zip;*.gz)\0*.log;*.txt;*.zip;*.gz;*.tar.gz\0所有文件 (*.*)\0*.*\0\0";
+    ofn.lpstrFilter = UiText(TextId::ui_0077);
     ofn.lpstrFile = buf.data();
     ofn.nMaxFile = (DWORD)buf.size();
-    ofn.lpstrTitle = L"选择 dial 日志(可多选,将合并分析)";
+    ofn.lpstrTitle = UiText(TextId::ui_0078);
     ofn.Flags = OFN_EXPLORER | OFN_ALLOWMULTISELECT | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
     if (!GetOpenFileNameW(&ofn)) return;
 
@@ -771,7 +798,7 @@ void DoOpen() {
 
 void DoExportCsv() {
     if (App().document.metrics.empty()) {
-        ShowModernNotice(L"没有可导出的指标", L"加载包含心跳或信号采样的日志后再导出。",
+        ShowModernNotice(UiText(TextId::ui_0079), UiText(TextId::ui_0080),
                          ModernNoticeKind::Info);
         return;
     }
@@ -801,33 +828,33 @@ void DoExportCsv() {
             for (size_t column = 0; column < kMetricColumnCount; ++column) {
                 // 程序生成的时间公式保留完整年月日；CH/Cell/RAT/OPER 等日志文本列会先
                 // 中和 =,+,-,@ 前缀，避免导入电子表格后被当作公式执行。
-                out += csv(metricCsvCellText(m, column));
+                out += csv(column >= 18 ? GeneratedText(metricCsvCellText(m, column)) : metricCsvCellText(m, column));
                 out += (column + 1 == kMetricColumnCount) ? "\r\n" : ",";
             }
         }
     } catch (const std::bad_alloc&) {
-        MessageBoxW(App().hMain, L"内存不足,无法生成 CSV。", L"错误", MB_ICONERROR);
+        MessageBoxW(App().hMain, UiText(TextId::ui_0081), UiText(TextId::ui_0043), MB_ICONERROR);
         return;
     }
     std::wstring writeErr;
     if (!WriteFileBytesAtomic(file, out, writeErr)) {
-        MessageBoxW(App().hMain, writeErr.c_str(), L"导出失败", MB_ICONERROR);
+        MessageBoxW(App().hMain, writeErr.c_str(), UiText(TextId::ui_0082), MB_ICONERROR);
         return;
     }
-    SetWindowTextW(App().hStatus, (std::wstring(L"已导出 ") + file).c_str());
-    ShowModernNotice(L"CSV 导出完成", file, ModernNoticeKind::Success, 6000);
+    SetWindowTextW(App().hStatus, (std::wstring(UiText(TextId::ui_0083)) + file).c_str());
+    ShowModernNotice(UiText(TextId::ui_0084), file, ModernNoticeKind::Success, 6000);
 }
 
 void DoExportReport() {
     if (App().document.lines.empty()) {
-        ShowModernNotice(L"没有可导出的报告", L"请先加载并分析日志。", ModernNoticeKind::Info);
+        ShowModernNotice(UiText(TextId::ui_0085), UiText(TextId::ui_0086), ModernNoticeKind::Info);
         return;
     }
     wchar_t file[MAX_PATH] = L"diallog_report.md";
     OPENFILENAMEW ofn{};
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = App().hMain;
-    ofn.lpstrFilter = L"Markdown (*.md)\0*.md\0文本文件 (*.txt)\0*.txt\0\0";
+    ofn.lpstrFilter = UiText(TextId::ui_0087);
     ofn.lpstrFile = file;
     ofn.nMaxFile = MAX_PATH;
     ofn.lpstrDefExt = L"md";
@@ -845,15 +872,16 @@ void DoExportReport() {
     auto add = [&](const std::wstring& line = L"") { out += WToU8(line); out += "\r\n"; };
     try {
         SYSTEMTIME now{}; GetLocalTime(&now);
-        add(L"# dialLog 诊断报告"); add();
-        add(FmtW(L"> 生成时间：%04d-%02d-%02d %02d:%02d:%02d  ·  本地离线分析",
+        add(UiText(TextId::ui_0088)); add();
+        add(FmtW(UiText(TextId::ui_0089),
                  now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond));
-        add(); add(L"## 分析摘要"); add();
-        add(FmtW(L"- 平台：%s", U8ToW(App().document.platform.name).c_str()));
+        add(); add(UiText(TextId::ui_0090)); add();
+        add(FmtW(UiText(TextId::ui_0091), U8ToW(GeneratedText(App().document.platform.name)).c_str()));
         add(L"- " + AnalysisTimeRangeText());
+        add(L"- " + AnalysisSourceText());
         if (HasAnalysisTimeFilter())
-            add(L"- 运行结论按区间内证据重算；区间外起止边沿与启动可能缺失，请结合全范围复核。平台识别、解析审计和来源统计基于整份输入。");
-        add(FmtW(L"- 日志：筛选后 %d / 解析 %d 行，日志打开 %d 次，有证据的进程启动 %d 次",
+            add(UiText(TextId::ui_0092));
+        add(FmtW(UiText(TextId::ui_0093),
                  static_cast<int>(App().document.filtered.size()), static_cast<int>(App().document.lines.size()),
                  static_cast<int>(App().document.audit.logOpened),
                  static_cast<int>(App().document.sessions.size())));
@@ -864,15 +892,15 @@ void DoExportReport() {
                 firstTime = std::min(firstTime, line.t);
                 lastTime = std::max(lastTime, line.t);
             }
-            add(FmtW(L"- 日志时间：%s → %s", U8ToW(fmtTime(firstTime, "FULL")).c_str(),
+            add(FmtW(UiText(TextId::ui_0094), U8ToW(fmtTime(firstTime, "FULL")).c_str(),
                      U8ToW(fmtTime(lastTime, "FULL")).c_str()));
             const ObservationStats observation = observationStats(App().document.lines);
-            add(FmtW(L"- 观测覆盖：实际 %s / 日历跨度 %s（%.2f%%）；授时跳变切段 %d 处",
+            add(FmtW(UiText(TextId::ui_0475),
                      U8ToW(fmtDur(observation.observedSpan)).c_str(),
                      U8ToW(fmtDur(observation.calendarSpan)).c_str(), observation.coveragePercent,
                      static_cast<int>(observation.clockDiscontinuities)));
         }
-        add(FmtW(L"- 断网：%d 次；解析遗漏：%d 行（%.2f%%）；NUL：%d 字节/%d 行",
+        add(FmtW(UiText(TextId::ui_0095),
                  static_cast<int>(App().document.outages.size()), static_cast<int>(App().document.audit.unparsed),
                  App().document.audit.unparsedRatio() * 100.0,
                  static_cast<int>(App().document.audit.nulBytes),
@@ -881,23 +909,23 @@ void DoExportReport() {
         const AvailabilityStats availability = availabilityStats(App().document.filtered, App().document.outages);
         const DataCallStats calls = collectDataCallStats(App().document.filtered);
         if (availability.evidenceLimited()) {
-            add(L"- 业务可用率：证据不足");
-            add(L"- " + U8ToW(availabilityEvidenceNote(availability)));
+            add(UiText(TextId::ui_0096));
+            add(L"- " + U8ToW(GeneratedText(availabilityEvidenceNote(availability))));
         }
         if (availability.runtimeValid())
-            add(FmtW(L"- 首次联网后运行期可用率%s：%.3f%%",
-                     availability.evidenceLimited() ? L"（仅已识别事件口径）" : L"",
+            add(FmtW(UiText(TextId::ui_0097),
+                     availability.evidenceLimited() ? UiText(TextId::ui_0098) : L"",
                      availability.runtimePercent()));
         if (availability.fullValid())
-            add(FmtW(L"- 全程服务可达率%s：%.3f%%",
-                     availability.evidenceLimited() ? L"（仅已识别事件口径）" : L"",
+            add(FmtW(UiText(TextId::ui_0099),
+                     availability.evidenceLimited() ? UiText(TextId::ui_0098) : L"",
                      availability.fullPercent()));
-        add(FmtW(L"- DataCall 断开：%d 次（APP_STOP %d / SDK_URC %d / 旧格式未归因 %d）",
+        add(FmtW(UiText(TextId::ui_0100),
                  (int)calls.disconnected, (int)calls.appStop, (int)calls.sdkUrc, (int)calls.legacy));
 
         if (App().document.sources.size() > 1) {
-            add(); add(L"## 多日志对比"); add();
-            add(L"| 来源 | 解析行 | 断网 | 指标样本 | 平均 RSRP |");
+            add(); add(UiText(TextId::ui_0101)); add();
+            add(UiText(TextId::ui_0102));
             add(L"|---|---:|---:|---:|---:|");
             for (const auto& source : App().document.sources)
                 add(FmtW(L"| %s | %d | %d | %d | %s |", mdSafe(source.label).c_str(),
@@ -915,20 +943,20 @@ void DoExportReport() {
                 snrMin = std::min(snrMin, metric.snr10); snrMax = std::max(snrMax, metric.snr10);
             }
         }
-        add(); add(L"## 信号与小区"); add();
-        add(FmtW(L"- 指标样本：%d；识别小区：%d",
+        add(); add(UiText(TextId::ui_0103)); add();
+        add(FmtW(UiText(TextId::ui_0104),
                  static_cast<int>(App().document.metrics.size()), static_cast<int>(cells.size())));
-        add(L"- LTE 工程参考分档：仅适用于 RAT=LTE（RAT 缺失按兼容的 LTE 日志处理）；不是 3GPP 或运营商统一故障等级");
-        add(L"- 综合等级：取 CSQ、RSRP、RSRQ、SNR 中最弱一项，是本软件的保守提示策略");
-        add(L"- CSQ：0–9 较差 / 10–14 一般 / 15–19 良好 / 20–31 优秀（99 未知）");
-        add(L"- RSRP：<-100 较差 / -100~-91 一般 / -90~-81 良好 / ≥-80 dBm 优秀");
-        add(L"- RSRQ：<-20 较差 / -20~-16 一般 / -15~-11 良好 / ≥-10 dB 优秀");
-        add(L"- SNR：≤0 较差 / 0.1~12.9 一般 / 13~19.9 良好 / ≥20 dB 优秀（模组上报值，不等同于所有制式的标准化 SINR）");
+        add(UiText(TextId::ui_0105));
+        add(UiText(TextId::ui_0106));
+        add(UiText(TextId::ui_0107));
+        add(UiText(TextId::ui_0108));
+        add(UiText(TextId::ui_0109));
+        add(UiText(TextId::ui_0110));
         if (snrCount)
-            add(FmtW(L"- SNR：最低 %.1f / 平均 %.1f / 最高 %.1f dB（%d 个样本）",
+            add(FmtW(UiText(TextId::ui_0111),
                      snrMin / 10.0, snrTotal / (10.0 * snrCount), snrMax / 10.0, snrCount));
         if (!cells.empty()) {
-            add(); add(L"| Cell ID | 样本数 |"); add(L"|---|---:|");
+            add(); add(UiText(TextId::ui_0112)); add(L"|---|---:|");
             std::vector<std::pair<std::string, int>> ranked(cells.begin(), cells.end());
             std::sort(ranked.begin(), ranked.end(), [](const auto& left, const auto& right) {
                 return left.second > right.second;
@@ -937,43 +965,43 @@ void DoExportReport() {
                 add(FmtW(L"| %s | %d |", U8ToW(cell.first).c_str(), cell.second));
         }
 
-        add(); add(L"## 诊断结论"); add();
-        if (App().document.findings.empty()) add(L"未形成有证据支撑的结论。");
+        add(); add(UiText(TextId::ui_0113)); add();
+        if (App().document.findings.empty()) add(UiText(TextId::ui_0114));
         for (size_t index = 0; index < App().document.findings.size(); ++index) {
             const auto& finding = App().document.findings[index];
-            const wchar_t* level = finding.severity == 2 ? L"严重" : finding.severity == 1 ? L"告警" : L"信息";
+            const wchar_t* level = finding.severity == 2 ? UiText(TextId::ui_0115) : finding.severity == 1 ? UiText(TextId::ui_0116) : UiText(TextId::ui_0117);
             add(FmtW(L"### %d. [%s] %s", static_cast<int>(index + 1), level,
                      AnalysisScopedText(finding.title).c_str())); add();
-            add(L"- 依据：" + AnalysisScopedText(finding.detail));
-            add(L"- 建议：" + U8ToW(finding.advice));
+            add(UiText(TextId::ui_0118) + AnalysisScopedText(finding.detail));
+            add(UiText(TextId::ui_0119) + U8ToW(GeneratedText(finding.advice)));
             for (const auto& evidence : finding.ev)
-                add(FmtW(L"  - 第 %d 行 · %s · %s", static_cast<int>(evidence.lineNo),
+                add(FmtW(UiText(TextId::ui_0120), static_cast<int>(evidence.lineNo),
                          U8ToW(evidence.ts).c_str(), U8ToW(evidence.text).c_str()));
             add();
         }
 
         if (!EvidenceBookmarks().empty()) {
-            add(L"## 人工证据书签"); add();
+            add(UiText(TextId::ui_0121)); add();
             for (const auto& bookmark : EvidenceBookmarks())
-                add(FmtW(L"- 第 %d 行 · %s", static_cast<int>(bookmark.lineNo), bookmark.text.c_str()));
+                add(FmtW(UiText(TextId::ui_0122), static_cast<int>(bookmark.lineNo), bookmark.text.c_str()));
         }
     } catch (const std::bad_alloc&) {
-        MessageBoxW(App().hMain, L"内存不足，无法生成诊断报告。", L"错误", MB_ICONERROR);
+        MessageBoxW(App().hMain, UiText(TextId::ui_0123), UiText(TextId::ui_0043), MB_ICONERROR);
         return;
     }
 
     std::wstring writeErr;
     if (!WriteFileBytesAtomic(file, out, writeErr)) {
-        MessageBoxW(App().hMain, writeErr.c_str(), L"导出失败", MB_ICONERROR);
+        MessageBoxW(App().hMain, writeErr.c_str(), UiText(TextId::ui_0082), MB_ICONERROR);
         return;
     }
-    SetWindowTextW(App().hStatus, (std::wstring(L"已导出诊断报告 ") + file).c_str());
-    ShowModernNotice(L"诊断报告导出完成", file, ModernNoticeKind::Success, 6000);
+    SetWindowTextW(App().hStatus, (std::wstring(UiText(TextId::ui_0124)) + file).c_str());
+    ShowModernNotice(UiText(TextId::ui_0125), file, ModernNoticeKind::Success, 6000);
 }
 
 void DoExportHtml() {
     if (App().document.lines.empty()) {
-        ShowModernNotice(L"没有可导出的报告", L"请先加载并分析日志。", ModernNoticeKind::Info);
+        ShowModernNotice(UiText(TextId::ui_0085), UiText(TextId::ui_0086), ModernNoticeKind::Info);
         return;
     }
     wchar_t file[MAX_PATH] = L"diallog_visual_report.html";
@@ -984,7 +1012,7 @@ void DoExportHtml() {
     ofn.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT;
     if (!GetSaveFileNameW(&ofn)) return;
 
-    BusyScope busy(L"正在生成单文件可视化报告…");
+    BusyScope busy(UiText(TextId::ui_0126));
     auto escape = [](const std::string& value) {
         std::string output; output.reserve(value.size() + value.size() / 8);
         for (char ch : value) {
@@ -1014,62 +1042,45 @@ void DoExportHtml() {
         std::snprintf(generated, sizeof(generated), "%04u-%02u-%02u %02u:%02u:%02u",
                       now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond);
 
-        html = "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\">"
-               "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-               "<title>dialLog 可视化诊断报告</title><style>"
-               ":root{color-scheme:light dark;--bg:#f5f7fa;--card:#fff;--ink:#161a21;--muted:#596579;"
-               "--line:#dce2ea;--accent:#1769d2;--bad:#c93c43;--warn:#9a6700;--soft:#eaf2ff}"
-               "*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "
-               "system-ui,-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}.wrap{max-width:1240px;margin:auto;padding:32px}"
-               "header,.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:18px}"
-               "h1{margin:0 0 6px;font-size:30px}h2{font-size:20px;margin:0 0 16px}.muted{color:var(--muted)}"
-               ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.kpi{padding:16px;background:var(--soft);border-radius:12px}"
-               ".kpi b{display:block;font-size:24px}.charts{display:grid;gap:16px}svg{width:100%;height:auto;background:var(--card);border-radius:10px}"
-               "table{border-collapse:collapse;width:100%;display:block;overflow:auto}th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;white-space:nowrap}"
-               "th{position:sticky;top:0;background:var(--card)}.severity2{border-left:5px solid var(--bad)}.severity1{border-left:5px solid var(--warn)}"
-               ".finding{padding:14px 16px;margin:10px 0;background:var(--soft);border-radius:10px}.finding h3{margin:0 0 8px}.evidence{font-family:ui-monospace,Consolas,monospace;white-space:normal}"
-               "@media(prefers-color-scheme:dark){:root{--bg:#111419;--card:#1c2026;--ink:#f3f5f8;--muted:#aeb8c7;--line:#38414d;--accent:#65a7f3;--bad:#f06c73;--warn:#f0b945;--soft:#19324f}}"
-               "@media(forced-colors:active){*{forced-color-adjust:auto}.kpi,.finding{border:1px solid CanvasText}}"
-               "@media(max-width:700px){.wrap{padding:14px}header,.card{padding:16px;border-radius:10px}h1{font-size:24px}}"
-               "@media print{body{background:white}.wrap{max-width:none;padding:0}.card,header{break-inside:avoid;box-shadow:none}}"
-               "</style></head><body><main class=\"wrap\"><header><h1>dialLog 可视化诊断报告</h1><div class=\"muted\">生成于 " +
-               std::string(generated) + " · 本地离线分析 · 单文件可归档</div></header>";
+        html = UiText8(TextId::ui_0489) +
+               std::string(generated) + UiText8(TextId::ui_0490);
 
-        html += "<section class=\"card\"><h2>分析摘要</h2><div class=\"grid\">";
+        html += UiText8(TextId::ui_0491);
         auto kpi = [&](const char* label, const std::string& value) {
             html += "<div class=\"kpi\"><span class=\"muted\">" + std::string(label) +
                     "</span><b>" + escape(value) + "</b></div>";
         };
-        kpi("平台", App().document.platform.name);
-        kpi("解析行", std::to_string(App().document.lines.size()));
-        kpi("筛选后", std::to_string(App().document.filtered.size()));
-        kpi("断网", std::to_string(App().document.outages.size()) + " 次");
-        kpi("小区", std::to_string(App().document.cellAnalysis.cells.size()) + " 个");
-        kpi("未识别", std::to_string(App().document.audit.unparsed) + " 行");
-        kpi("文件损伤", std::to_string(App().document.audit.nulBytes) + " NUL 字节");
-        kpi("分析时间范围", WToU8(AnalysisTimeRangeText()));
+        kpi(UiText8(TextId::ui_0492), GeneratedText(App().document.platform.name));
+        kpi(UiText8(TextId::ui_0493), std::to_string(App().document.lines.size()));
+        kpi(UiText8(TextId::ui_0494), std::to_string(App().document.filtered.size()));
+        kpi(UiText8(TextId::ui_0485), std::to_string(App().document.outages.size()) + UiText8(TextId::ui_0495));
+        kpi(UiText8(TextId::ui_0496), std::to_string(App().document.cellAnalysis.cells.size()) + UiText8(TextId::ui_0497));
+        kpi(UiText8(TextId::ui_0498), std::to_string(App().document.audit.unparsed) + UiText8(TextId::ui_0499));
+        kpi(UiText8(TextId::ui_0500), std::to_string(App().document.audit.nulBytes) + UiText8(TextId::ui_0501));
+        kpi(UiText8(TextId::ui_0502), WToU8(AnalysisTimeRangeText()));
+        kpi(UiText8(TextId::ui_0244), WToU8(AnalysisSourceText()));
         const AvailabilityStats availability = availabilityStats(App().document.filtered, App().document.outages);
         const DataCallStats calls = collectDataCallStats(App().document.filtered);
-        if (availability.evidenceLimited()) kpi("业务可用率", "证据不足");
+        if (availability.evidenceLimited()) kpi(UiText8(TextId::ui_0503), UiText8(TextId::ui_0380));
         if (availability.runtimeValid())
-            kpi(availability.evidenceLimited() ? "运行期可用率（仅已识别事件）" : "运行期可用率",
+            kpi(availability.evidenceLimited() ? UiText8(TextId::ui_0504) : UiText8(TextId::ui_0253),
                 WToU8(FmtW(L"%.3f%%", availability.runtimePercent())));
         if (availability.fullValid())
-            kpi(availability.evidenceLimited() ? "全程可达率（仅已识别事件）" : "全程可达率",
+            kpi(availability.evidenceLimited() ? UiText8(TextId::ui_0505) : UiText8(TextId::ui_0506),
                 WToU8(FmtW(L"%.3f%%", availability.fullPercent())));
-        kpi("DataCall 断开", std::to_string(calls.disconnected) + " 次（APP_STOP " +
+        kpi(UiText8(TextId::ui_0507), std::to_string(calls.disconnected) + UiText8(TextId::ui_0508) +
             std::to_string(calls.appStop) + " / SDK_URC " + std::to_string(calls.sdkUrc) +
-            " / 旧格式未归因 " + std::to_string(calls.legacy) + "）");
+            UiText8(TextId::ui_0509) + std::to_string(calls.legacy) + "）");
         const ObservationStats observation = observationStats(App().document.lines);
-        html += "</div><p class=\"muted\">日志时间：" + escape(fmtTime(firstTime, "FULL")) + " → " +
-                escape(fmtTime(lastTime, "FULL")) + "；实际观测 " +
-                escape(fmtDur(observation.observedSpan)) + " / 日历跨度 " +
-                escape(fmtDur(observation.calendarSpan)) + "（覆盖 " +
+        html += UiText8(TextId::ui_0510) + escape(fmtTime(firstTime, "FULL")) + " → " +
+                escape(fmtTime(lastTime, "FULL")) + UiText8(TextId::ui_0511) +
+                escape(fmtDur(observation.observedSpan)) + UiText8(TextId::ui_0512) +
+                escape(fmtDur(observation.calendarSpan)) + UiText8(TextId::ui_0513) +
                 oneDecimal(static_cast<int>(observation.coveragePercent * 10.0)) +
-                "%）；授时跳变切段 " + std::to_string(observation.clockDiscontinuities) +
-                " 处</p>" + (availability.evidenceLimited()
-                    ? "<p>" + escape(availabilityEvidenceNote(availability)) + "</p>" : "") +
-                (HasAnalysisTimeFilter() ? "<p>运行结论按区间内证据重算；区间外起止边沿与启动可能缺失，请结合全范围复核。平台识别、解析审计和来源统计基于整份输入。</p>" : "") + "</section>";
+                UiText8(TextId::ui_0514) + std::to_string(observation.clockDiscontinuities) +
+                UiText8(TextId::ui_0515) + (availability.evidenceLimited()
+                    ? "<p>" + escape(GeneratedText(availabilityEvidenceNote(availability))) + "</p>" : "") +
+                (HasAnalysisTimeFilter() ? UiText8(TextId::ui_0516) : "") + "</section>";
 
         ChartSeries csq, rsrp, rsrq, snr;
         csq.reserve(App().document.metrics.size()); rsrp.reserve(App().document.metrics.size());
@@ -1086,7 +1097,7 @@ void DoExportHtml() {
         auto svg = [&](const char* title, const ChartSeries& input, int low, int high,
                        const char* color, bool scaled10,
                        std::initializer_list<std::pair<int, const char*>> guides) {
-            if (input.empty()) return std::string("<p class=\"muted\">暂无 ") + title + " 样本。</p>";
+            if (input.empty()) return std::string(UiText8(TextId::ui_0517)) + title + UiText8(TextId::ui_0518);
             const long long t0 = input.front().first, t1 = input.back().first;
             ChartSeries points; downsampleChartSeries(input, t0, t1, 920, points);
             auto x = [&](long long time) { return 55 + int(double(time - t0) / std::max(1LL, t1 - t0) * 920); };
@@ -1095,7 +1106,7 @@ void DoExportHtml() {
                 return 215 - int(double(value - low) / std::max(1, high - low) * 170);
             };
             std::string output = "<svg viewBox=\"0 0 1000 250\" role=\"img\" aria-label=\"" +
-                escape(title) + " 趋势图\"><text x=\"55\" y=\"24\" fill=\"currentColor\" font-size=\"17\" font-weight=\"600\">" +
+                escape(title) + UiText8(TextId::ui_0519) +
                 escape(title) + "</text>";
             for (int grid = 0; grid < 4; ++grid) {
                 const int value = high - (high - low) * grid / 3, gy = y(value);
@@ -1131,77 +1142,74 @@ void DoExportHtml() {
                       escape(fmtTime(t1, "FULL")) + "</text></svg>";
             return output;
         };
-        html += "<section class=\"card\"><h2>LTE 信号趋势与工程参考线</h2>"
-                "<p class=\"muted\">仅适用于 RAT=LTE（RAT 缺失按兼容的 LTE 日志处理）；分档不是 3GPP 或运营商统一故障等级。"
-                "综合等级取四项中的最弱项；SNR 为模组上报值，不等同于所有制式的标准化 SINR。</p>"
-                "<div class=\"charts\">" +
-                svg("CSQ 信号强度", csq, 0, 31, "#2a78d6", false,
-                    {{kCsqFair, "≥10 一般"}, {kCsqGood, "≥15 良好"},
-                     {kCsqExcellent, "≥20 优秀"}}) +
-                svg("RSRP 覆盖质量 (dBm)", rsrp, -140, -40, "#6656c9", false,
-                    {{kRsrpFair, "≥-100 一般"}, {kRsrpGood, "≥-90 良好"},
-                     {kRsrpExcellent, "≥-80 优秀"}}) +
-                svg("RSRQ 覆盖质量 (dB)", rsrq, -25, 0, "#eb6834", false,
-                    {{kRsrqFair, "≥-20 一般"}, {kRsrqGood, "≥-15 良好"},
-                     {kRsrqExcellent, "≥-10 优秀"}}) +
-                svg("SNR 信噪比 (dB)", snr, -200, 300, "#1baf7a", true,
-                    {{kSnrFair10, ">0 一般"}, {kSnrGood10, "≥13 良好"},
-                     {kSnrExcellent10, "≥20 优秀"}}) +
+        html += UiText8(TextId::ui_0520) +
+                svg(UiText8(TextId::ui_0521), csq, 0, 31, "#2a78d6", false,
+                    {{kCsqFair, UiText8(TextId::ui_0341)}, {kCsqGood, UiText8(TextId::ui_0342)},
+                     {kCsqExcellent, UiText8(TextId::ui_0343)}}) +
+                svg(UiText8(TextId::ui_0522), rsrp, -140, -40, "#6656c9", false,
+                    {{kRsrpFair, UiText8(TextId::ui_0344)}, {kRsrpGood, UiText8(TextId::ui_0345)},
+                     {kRsrpExcellent, UiText8(TextId::ui_0346)}}) +
+                svg(UiText8(TextId::ui_0523), rsrq, -25, 0, "#eb6834", false,
+                    {{kRsrqFair, UiText8(TextId::ui_0347)}, {kRsrqGood, UiText8(TextId::ui_0348)},
+                     {kRsrqExcellent, UiText8(TextId::ui_0349)}}) +
+                svg(UiText8(TextId::ui_0524), snr, -200, 300, "#1baf7a", true,
+                    {{kSnrFair10, UiText8(TextId::ui_0350)}, {kSnrGood10, UiText8(TextId::ui_0351)},
+                     {kSnrExcellent10, UiText8(TextId::ui_0343)}}) +
                 "</div></section>";
 
-        html += "<section class=\"card\"><h2>小区质量画像</h2><table><thead><tr>"
-                "<th>Cell ID</th><th>PCI</th><th>TAC</th><th>样本</th><th>占比%</th><th>观测驻留</th>"
-                "<th>平均RSRP</th><th>最低RSRP</th><th>平均RSRQ</th><th>平均SNR</th><th>平均CSQ</th>"
-                "<th>切入/切出</th><th>断网关联</th><th>判断</th></tr></thead><tbody>";
+        html += UiText8(TextId::ui_0525);
         for (const CellSummary& cell : App().document.cellAnalysis.cells) {
             html += "<tr>";
             for (std::size_t column = 0; column <= 10; ++column)
                 html += "<td>" + escape(cellSummaryCellText(cell, column)) + "</td>";
             html += "<td>" + std::to_string(cell.switchesIn) + "/" + std::to_string(cell.switchesOut) +
                     "</td><td>" + std::to_string(cell.outageStarts) + "</td><td>" +
-                    escape(cellSummaryCellText(cell, 14)) + "</td></tr>";
+                    escape(GeneratedText(cellSummaryCellText(cell, 14))) + "</td></tr>";
         }
-        html += "</tbody></table><p class=\"muted\">断网关联：同一日志来源中，断网前 10 分钟内最近的小区样本；相关不等同因果。"
-                "观测驻留只累计相邻且间隔不超过 10 分钟的同小区样本。</p></section>";
+        html += UiText8(TextId::ui_0526);
 
-        html += "<section class=\"card\"><h2>断网记录</h2><table><thead><tr><th>#</th><th>开始</th><th>恢复</th><th>时长</th><th>证据行</th></tr></thead><tbody>";
+        html += UiText8(TextId::ui_0527);
         for (std::size_t i = 0; i < App().document.outages.size(); ++i) {
             const Outage& outage = App().document.outages[i];
             html += "<tr><td>" + std::to_string(i + 1) + "</td><td>" + escape(fmtTime(outage.start, "FULL")) +
                     "</td><td>" + (outage.recovered ? escape(fmtTime(outage.end, "FULL")) :
-                                  HasAnalysisTimeFilter() ? "区间内未见恢复" : "未恢复") +
+                                  HasAnalysisTimeFilter() ? UiText8(TextId::ui_0251) : UiText8(TextId::ui_0279)) +
                     "</td><td>" + (outage.recovered ? escape(fmtDur(outage.dur)) : "-") +
                     "</td><td>" + std::to_string(outage.startLine) + " → " +
                     (outage.endLine ? std::to_string(outage.endLine) : "-") + "</td></tr>";
         }
-        html += "</tbody></table></section><section class=\"card\"><h2>诊断结论与证据</h2>";
-        if (App().document.findings.empty()) html += "<p class=\"muted\">未形成有证据支撑的结论。</p>";
+        html += UiText8(TextId::ui_0528);
+        if (App().document.findings.empty()) html += UiText8(TextId::ui_0529);
         for (const Finding& finding : App().document.findings) {
             html += "<article class=\"finding severity" + std::to_string(finding.severity) + "\"><h3>" +
-                    escape(WToU8(AnalysisScopedText(finding.title))) + "</h3><p><b>依据：</b>" + escape(WToU8(AnalysisScopedText(finding.detail))) +
-                    "</p><p><b>建议：</b>" + escape(finding.advice) + "</p>";
+                    escape(WToU8(AnalysisScopedText(finding.title))) + UiText8(TextId::ui_0530) + escape(WToU8(AnalysisScopedText(finding.detail))) +
+                    UiText8(TextId::ui_0531) + escape(GeneratedText(finding.advice)) + "</p>";
             for (const Evidence& evidence : finding.ev)
-                html += "<p class=\"evidence\">第 " + std::to_string(evidence.lineNo) + " 行 · " +
+                html += UiText8(TextId::ui_0532) + std::to_string(evidence.lineNo) + UiText8(TextId::ui_0533) +
                         escape(evidence.ts) + " · " + escape(evidence.text) + "</p>";
             html += "</article>";
         }
         if (!EvidenceBookmarks().empty()) {
-            html += "<h2>人工证据书签</h2><ul>";
+            html += UiText8(TextId::ui_0534);
             for (const EvidenceBookmark& bookmark : EvidenceBookmarks())
-                html += "<li class=\"evidence\">第 " + std::to_string(bookmark.lineNo) + " 行 · " +
+                html += UiText8(TextId::ui_0535) + std::to_string(bookmark.lineNo) + UiText8(TextId::ui_0533) +
                         escape(WToU8(bookmark.text)) + "</li>";
             html += "</ul>";
         }
-        html += "</section><footer class=\"muted\">由 dialLog 本地离线生成；报告不加载外部字体、脚本或网络资源。</footer></main></body></html>";
+        html += UiText8(TextId::ui_0536);
     } catch (const std::bad_alloc&) {
-        MessageBoxW(App().hMain, L"内存不足，无法生成 HTML 报告。", L"错误", MB_ICONERROR); return;
+        MessageBoxW(App().hMain, UiText(TextId::ui_0127), UiText(TextId::ui_0043), MB_ICONERROR); return;
+    }
+    if (IsEnglish()) {
+        const auto language=html.find("lang=\"zh-CN\"");
+        if (language!=std::string::npos) html.replace(language,12,"lang=\"en-US\"");
     }
     std::wstring writeError;
     if (!WriteFileBytesAtomic(file, html, writeError)) {
-        MessageBoxW(App().hMain, writeError.c_str(), L"导出失败", MB_ICONERROR); return;
+        MessageBoxW(App().hMain, writeError.c_str(), UiText(TextId::ui_0082), MB_ICONERROR); return;
     }
-    SetWindowTextW(App().hStatus, (std::wstring(L"已导出可视化报告 ") + file).c_str());
-    ShowModernNotice(L"HTML 可视化报告导出完成", file, ModernNoticeKind::Success, 6000);
+    SetWindowTextW(App().hStatus, (std::wstring(UiText(TextId::ui_0128)) + file).c_str());
+    ShowModernNotice(UiText(TextId::ui_0129), file, ModernNoticeKind::Success, 6000);
 }
 
 

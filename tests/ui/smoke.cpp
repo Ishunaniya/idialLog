@@ -105,7 +105,7 @@ BOOL CALLBACK FindProcessWindow(HWND window, LPARAM parameter) {
     auto& search = *reinterpret_cast<WindowSearch*>(parameter);
     DWORD processId = 0; GetWindowThreadProcessId(window, &processId);
     wchar_t className[64]{}; GetClassNameW(window, className, 64);
-    if (processId == search.processId && std::wstring(className) == search.className) {
+    if (processId == search.processId && std::wstring(className) == search.className && IsWindowVisible(window)) {
         search.window = window; return FALSE;
     }
     return TRUE;
@@ -198,19 +198,174 @@ std::wstring CreateLargeLog() {
     return path;
 }
 
-bool DropFile(HWND window, const std::wstring& path) {
-    struct DropFilesHeader { DWORD pFiles; POINT point; BOOL nonClient; BOOL wide; };
-    const size_t bytes = sizeof(DropFilesHeader) + (path.size() + 2) * sizeof(wchar_t);
-    HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, bytes);
-    if (!memory) return false;
-    auto* drop = static_cast<DropFilesHeader*>(GlobalLock(memory));
-    if (!drop) { GlobalFree(memory); return false; }
-    drop->pFiles = sizeof(DropFilesHeader); drop->wide = TRUE;
-    auto* name = reinterpret_cast<wchar_t*>(reinterpret_cast<BYTE*>(drop) + drop->pFiles);
-    memcpy(name, path.c_str(), (path.size() + 1) * sizeof(wchar_t));
-    GlobalUnlock(memory);
-    SendMessageW(window, WM_DROPFILES, reinterpret_cast<WPARAM>(memory), 0);
-    return true; // 接收方 DragFinish 负责释放 HDROP。
+std::string ReadBytes(const std::wstring& path) {
+    HANDLE file=CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_EXISTING,0,nullptr);
+    if(file==INVALID_HANDLE_VALUE) return {};
+    DWORD size=GetFileSize(file,nullptr),read=0;
+    std::string data(size,'\0');
+    if(size) ReadFile(file,&data[0],size,&read,nullptr);
+    CloseHandle(file);data.resize(read);return data;
+}
+
+BOOL CALLBACK FindFilenameControl(HWND child,LPARAM parameter) {
+    const int id=GetDlgCtrlID(child);
+    if(id==0x480 || id==0x47c) {
+        *reinterpret_cast<HWND*>(parameter)=child;return FALSE;
+    }
+    return TRUE;
+}
+
+HWND FilenameControl(HWND dialog) {
+    HWND control=nullptr;
+    EnumChildWindows(dialog,FindFilenameControl,reinterpret_cast<LPARAM>(&control));
+    return control;
+}
+
+bool ChooseFile(HWND window,DWORD processId,int command,const std::wstring& path) {
+    PostMessageW(window,WM_COMMAND,command,0);
+    HWND dialog=nullptr;
+    const DWORD start=GetTickCount();
+    while(!dialog && GetTickCount()-start<15000) {
+        WindowSearch search{processId,nullptr,L"#32770"};
+        EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&search));
+        if(search.window && FilenameControl(search.window)) dialog=search.window;
+        if(!dialog) Sleep(50);
+    }
+    if(!dialog) {PrintWide("export-dialog-missing",path);return false;}
+    // Explorer dialogs may pump messages while their initial shell folder is still being built.
+    Sleep(750);
+    HWND filename=FilenameControl(dialog);
+    SetWindowTextW(filename,path.c_str());
+    SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(GetDlgCtrlID(filename),CBN_EDITCHANGE),reinterpret_cast<LPARAM>(filename));
+    Capture(dialog,command==1040?L"open-cancellation-file-dialog":L"english-export-dialog");
+    SendMessageW(GetDlgItem(dialog,IDOK),BM_CLICK,0,0);
+    const DWORD closing=GetTickCount();
+    while(IsWindow(dialog) && GetTickCount()-closing<10000) Sleep(50);
+    if(IsWindow(dialog)) {
+        Capture(dialog,L"file-dialog-did-not-close");
+        PrintWide("file-dialog-did-not-close",TextOf(filename));
+        PostMessageW(dialog,WM_COMMAND,IDCANCEL,0);return false;
+    }
+    return true;
+}
+
+bool ExportTo(HWND window,DWORD processId,int command,const std::wstring& path) {
+    if(!ChooseFile(window,processId,command,path)) return false;
+    const DWORD wait=GetTickCount();
+    while(GetTickCount()-wait<15000) {
+        if(!ReadBytes(path).empty()) return true;
+        Sleep(50);
+    }
+    PrintWide("export-file-missing",path);return false;
+}
+
+int MultiSourceSmoke(const std::wstring& executable) {
+    wchar_t directory[MAX_PATH]{},temporary[MAX_PATH]{};
+    if(!GetTempPathW(MAX_PATH,directory) || !GetTempFileNameW(directory,L"dls",0,temporary)) return 100;
+    DeleteFileW(temporary);
+    const std::wstring base=temporary;
+    const std::wstring paths[]={base+L"_A.log",base+L"_B_现场.log"};
+    const std::string input[]={
+        "[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | CSQ:18 | RSRP:-95\r\n"
+        "[2026-08-03 10:00:01] [SDK] Ping failed, fault timer started\r\n"
+        "[2026-08-03 10:00:03] [SDK] Network recovered after 2s\r\n",
+        "[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | CSQ:8 | RSRP:-115 | OPER:现场\r\n"
+        "[2026-08-03 10:00:02] [SDK] Ping failed, fault timer started\r\n"
+        "[2026-08-03 10:00:09] [SDK] Network recovered after 7s\r\n"};
+    for(int i=0;i<2;++i) {
+        HANDLE file=CreateFileW(paths[i].c_str(),GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,0,nullptr);
+        if(file==INVALID_HANDLE_VALUE) return 101;
+        DWORD written=0;WriteFile(file,input[i].data(),static_cast<DWORD>(input[i].size()),&written,nullptr);CloseHandle(file);
+        if(written!=input[i].size()) return 102;
+    }
+    std::wstring command=L"\""+executable+L"\" --tab=4 \""+paths[0]+L"\" \""+paths[1]+L"\"";
+    std::vector<wchar_t> mutableCommand(command.begin(),command.end());mutableCommand.push_back(0);
+    STARTUPINFOW startup{};startup.cb=sizeof(startup);PROCESS_INFORMATION process{};
+    if(!CreateProcessW(nullptr,mutableCommand.data(),nullptr,nullptr,FALSE,0,nullptr,nullptr,&startup,&process)) return 103;
+    CloseHandle(process.hThread);
+    HWND window=WaitForMain(process.dwProcessId,90000);
+    auto finish=[&](int code) {
+        if(window && IsWindow(window)) PostMessageW(window,WM_CLOSE,0,0);
+        if(WaitForSingleObject(process.hProcess,10000)!=WAIT_OBJECT_0) TerminateProcess(process.hProcess,code);
+        CloseHandle(process.hProcess);
+        for(const auto& path:paths) DeleteFileW(path.c_str());
+        for(const wchar_t* extension:{L".md",L".html",L".csv"}) DeleteFileW((base+extension).c_str());
+        return code;
+    };
+    if(!window || !WaitForLoad(window,90000)) return finish(104);
+    HWND metrics=GetDlgItem(window,1014);
+    if(ListView_GetItemCount(metrics)!=1 || !Contains(GetDlgItem(window,1010),L"_A.log")) return finish(105);
+    SendMessageW(window,WM_COMMAND,34001,0);
+    if(ListView_GetItemCount(metrics)!=1 || !Contains(GetDlgItem(window,1010),L"_B_现场.log")) return finish(106);
+    SendMessageW(window,WM_APP+41,6,0);
+    HWND raw=GetDlgItem(window,1016);
+    if(ListView_GetItemCount(raw)!=3) return finish(107);
+    RECT header{};POINT origin{};GetWindowRect(ListView_GetHeader(raw),&header);ClientToScreen(raw,&origin);
+    const int rowY=header.bottom-origin.y+10;
+    SendMessageW(raw,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(24,rowY));SendMessageW(raw,WM_LBUTTONUP,0,MAKELPARAM(24,rowY));
+    SendMessageW(raw,WM_COPY,0,0);
+    if(ClipboardText().find(L"4\t2026-08-03 10:00:00")==std::wstring::npos || ClipboardText().find(L"OPER:现场")==std::wstring::npos) {
+        PrintWide("source-B-raw-copy",ClipboardText());return finish(108);
+    }
+    SendMessageW(window,WM_COMMAND,33001,0);
+    SendMessageW(window,WM_APP+41,4,0);
+    if(ListView_GetItemCount(metrics)!=2) return finish(109);
+    SendMessageW(window,WM_COMMAND,34001,0);
+    SetWindowTextW(GetDlgItem(window,1008),L"10:00:01");SetWindowTextW(GetDlgItem(window,1009),L"10:00:03");
+    SendMessageW(window,WM_COMMAND,1003,0);
+    if(ListView_GetItemCount(metrics)!=0) return finish(110);
+    SendMessageW(window,WM_COMMAND,1141,0);
+    if(ListView_GetItemCount(metrics)!=1 || !Contains(GetDlgItem(window,1010),L"_B_现场.log")) return finish(111);
+    SendMessageW(window,WM_COMMAND,1171,0);
+    SendMessageW(window,WM_COMMAND,33000,0);
+    WindowSearch search{process.dwProcessId,nullptr,L"dialSourceComparison"};EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&search));
+    if(!search.window || SendDlgItemMessageW(search.window,1160,CB_GETCOUNT,0,0)!=2) return finish(112);
+    SendMessageW(search.window,WM_COMMAND,1166,0);
+    const auto comparison=ClipboardText();
+    if(comparison.find(L"-95 / -95 / -95")==std::wstring::npos || comparison.find(L"-115 / -115 / -115")==std::wstring::npos ||
+       comparison.find(L"18 / 18 / 18")==std::wstring::npos || comparison.find(L"8 / 8 / 8")==std::wstring::npos) {
+        PrintWide("source-comparison-copy",comparison);return finish(113);
+    }
+    Capture(search.window,L"english-two-source-comparison");SendMessageW(search.window,WM_CLOSE,0,0);
+    Capture(window,L"english-two-source-metrics");
+    SendMessageW(window,WM_COMMAND,32004,0);
+    if(!ExportTo(window,process.dwProcessId,1044,base+L".md")) return finish(114);
+    const auto markdown=ReadBytes(base+L".md");
+    if(markdown.find("Advice:")==std::string::npos || markdown.find("检查天线")!=std::string::npos ||
+       markdown.find("_B_现场.log")==std::string::npos || markdown.find("Current-source history summary")==std::string::npos) {
+        PrintWide("markdown-export-failure",L"Advice/source scope/original source name");return finish(115);
+    }
+    if(!ExportTo(window,process.dwProcessId,1046,base+L".html")) return finish(116);
+    const auto html=ReadBytes(base+L".html");
+    if(html.find("lang=\"en-US\"")==std::string::npos || html.find("_B_现场.log")==std::string::npos || html.find("检查天线")!=std::string::npos) return finish(117);
+    if(!ExportTo(window,process.dwProcessId,1045,base+L".csv")) return finish(118);
+    const auto csv=ReadBytes(base+L".csv");
+    if(csv.find("detailed_at_stage")==std::string::npos || csv.find("现场")==std::string::npos || csv.find("-115")==std::string::npos) return finish(119);
+    // Exercise the real DPI message with its rectangle in the target process.
+    // An owned comparison must not keep the font that the main window deletes.
+    SendMessageW(window,WM_COMMAND,33000,0);
+    search.window=nullptr;EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&search));
+    if(!search.window) return finish(120);
+    RECT suggested{};GetWindowRect(window,&suggested);
+    void* remoteRect=VirtualAllocEx(process.hProcess,nullptr,sizeof(suggested),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE);
+    SIZE_T copied=0;
+    if(!remoteRect || !WriteProcessMemory(process.hProcess,remoteRect,&suggested,sizeof(suggested),&copied) || copied!=sizeof(suggested)) {
+        if(remoteRect) VirtualFreeEx(process.hProcess,remoteRect,0,MEM_RELEASE);
+        return finish(121);
+    }
+    const HWND oldComparison=search.window;
+    SendMessageW(window,WM_DPICHANGED,MAKEWPARAM(144,144),reinterpret_cast<LPARAM>(remoteRect));
+    VirtualFreeEx(process.hProcess,remoteRect,0,MEM_RELEASE);
+    if(IsWindow(oldComparison) || ListView_GetItemCount(metrics)!=1 || !Contains(GetDlgItem(window,1010),L"_B_现场.log")) return finish(122);
+    SendMessageW(window,WM_COMMAND,33000,0);
+    search.window=nullptr;EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&search));
+    if(!search.window) return finish(123);
+    SendMessageW(search.window,WM_COMMAND,1166,0);
+    if(ClipboardText()!=comparison) return finish(124);
+    Capture(search.window,L"english-source-comparison-after-dpi");
+    SendMessageW(search.window,WM_CLOSE,0,0);
+    SendMessageW(window,WM_COMMAND,1170,0);SendMessageW(window,WM_COMMAND,32005,0);
+    return finish(0);
 }
 
 } // namespace
@@ -228,14 +383,17 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
             RegSetValueExW(settings, name, 0, REG_SZ,
                            reinterpret_cast<const BYTE*>(stale), sizeof(stale));
         const wchar_t interfaceFace[] = L"Microsoft YaHei UI", logFace[] = L"Consolas";
-        const DWORD filtersExpanded = 1;
+        const DWORD filtersExpanded = 1, english = 0, metricColumns = (1u << 22) - 1;
+        RegSetValueExW(settings,L"English",0,REG_DWORD,reinterpret_cast<const BYTE*>(&english),sizeof(english));
+        RegSetValueExW(settings,L"MetricColumns",0,REG_DWORD,reinterpret_cast<const BYTE*>(&metricColumns),sizeof(metricColumns));
         RegSetValueExW(settings, L"FiltersExpanded", 0, REG_DWORD,
                        reinterpret_cast<const BYTE*>(&filtersExpanded), sizeof(filtersExpanded));
         RegSetValueExW(settings, L"UiFont", 0, REG_SZ, reinterpret_cast<const BYTE*>(interfaceFace), sizeof(interfaceFace));
         RegSetValueExW(settings, L"LogFont", 0, REG_SZ, reinterpret_cast<const BYTE*>(logFace), sizeof(logFace));
         RegCloseKey(settings);
     }
-    std::wstring command = L"\"" + std::wstring(argv[1]) + L"\" \"" + argv[2] + L"\"";
+    const std::wstring executable=argv[1];
+    std::wstring command = L"\"" + executable + L"\" \"" + argv[2] + L"\"";
     LocalFree(argv);
     std::vector<wchar_t> mutableCommand(command.begin(), command.end());
     mutableCommand.push_back(L'\0');
@@ -246,8 +404,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
                         nullptr, nullptr, &startup, &process)) return 91;
     CloseHandle(process.hThread);
 
-    HWND window = WaitForMain(process.dwProcessId, 30000);
-    if (!window) { TerminateProcess(process.hProcess, 92); CloseHandle(process.hProcess); return 1; }
+    HWND window = WaitForMain(process.dwProcessId, 90000);
+    if (!window) { DWORD startCode=0; GetExitCodeProcess(process.hProcess,&startCode); PrintWide("startup-exit-code",std::to_wstring(startCode)); TerminateProcess(process.hProcess, 92); CloseHandle(process.hProcess); return 1; }
     auto finish = [&](int code) {
         if (IsWindow(window)) PostMessageW(window, WM_CLOSE, 0, 0);
         if (WaitForSingleObject(process.hProcess, 5000) != WAIT_OBJECT_0) {
@@ -264,7 +422,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
         return finish(2);
     }
     if (Contains(GetDlgItem(window, 1010), L"未加载")) return finish(3);
-    SetWindowPos(window, nullptr, 0, 0, 1280, 800, SWP_NOMOVE | SWP_NOZORDER);
+    SetWindowPos(window, nullptr, 0, 0, 1280, 800, SWP_NOZORDER);
     UpdateWindow(window);
 
     const wchar_t* titles[] = {L"概览", L"诊断结论", L"事件时间线", L"断网记录",
@@ -407,7 +565,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     GetClientRect(findings, &findingsRect);
     SendMessageW(findings, WM_LBUTTONUP, 0, MAKELPARAM(findingsRect.right - 100, 35));
     if (ClipboardText().find(L"选区：2026-06-30 00:00:26") == std::wstring::npos ||
-        ClipboardText().find(L"平台识别与解析审计仍基于整份输入") == std::wstring::npos ||
+        ClipboardText().find(L"解析审计基于整份输入") == std::wstring::npos ||
         ClipboardText().find(L"当前区间汇总") == std::wstring::npos ||
         ClipboardText().find(L"全量日志历史汇总") != std::wstring::npos) return finish(63);
     SendMessageW(window, WM_APP + 41, 4, 0); UpdateWindow(chart);
@@ -512,9 +670,13 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (chartRect.bottom < 77 + 3 * 70) return finish(50);
     if (!GetDlgItem(window, 1135) || !IsWindowVisible(GetDlgItem(window, 1135))) return finish(47);
 
-    if (!ChooseTypeface(window, process.dwProcessId, false, L"Arial")) return finish(48);
-    if (!ChooseTypeface(window, process.dwProcessId, true, L"Courier New")) return finish(49);
-    Capture(window, L"fonts-selected");
+    // Font enumeration is tested separately when a shared Wine host is memory constrained.
+    wchar_t skipFontDialogs[2]{};
+    if (!GetEnvironmentVariableW(L"DIALLOG_UI_SKIP_FONT_DIALOGS",skipFontDialogs,2)) {
+        if (!ChooseTypeface(window, process.dwProcessId, false, L"Arial")) return finish(48);
+        if (!ChooseTypeface(window, process.dwProcessId, true, L"Courier New")) return finish(49);
+        Capture(window, L"fonts-selected");
+    }
 
     // 取消另一份日志的加载应同时保留当前选区及其分析结果。
     UpdateWindow(chart);
@@ -528,7 +690,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     const std::wstring oldLabel = TextOf(GetDlgItem(window, 1010));
     const int oldMetricCount = ListView_GetItemCount(metrics);
     const std::wstring largeLog = CreateLargeLog();
-    if (largeLog.empty() || !DropFile(window, largeLog)) return finish(26);
+    if (largeLog.empty() || !ChooseFile(window,process.dwProcessId,1040,largeLog)) return finish(26);
     HWND closeButton = GetDlgItem(window, 1030);
     const DWORD cancelStart = GetTickCount();
     while (TextOf(closeButton) != L"取消加载" && GetTickCount() - cancelStart < 5000) Sleep(10);
@@ -580,8 +742,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (!WaitForLoad(window, 180000)) return finish(77);
     const DWORD reloadStart = GetTickCount();
     while (GetTickCount() - reloadStart < 30000 &&
-           (IsWindowEnabled(GetDlgItem(window, 1141)) || !TextOf(GetDlgItem(window, 1007)).empty() ||
-            ListView_GetItemCount(metrics) != fullMetricCount)) Sleep(20);
+           (IsWindowEnabled(GetDlgItem(window, 1141)) || ListView_GetItemCount(metrics) != fullMetricCount ||
+            !TextOf(GetDlgItem(window, 1007)).empty())) Sleep(20);
     if (IsWindowEnabled(GetDlgItem(window, 1141)) || !Contains(GetDlgItem(window, 1140), L"全范围") ||
         !TextOf(GetDlgItem(window, 1007)).empty() || !TextOf(GetDlgItem(window, 1008)).empty() ||
         !TextOf(GetDlgItem(window, 1009)).empty() || ListView_GetItemCount(metrics) != fullMetricCount) {
@@ -592,10 +754,74 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
         return finish(78);
     }
 
+    SetWindowPos(window,nullptr,0,0,1280,800,SWP_NOMOVE|SWP_NOZORDER);
+    SendMessageW(window,WM_APP+41,4,0);
+    SendMessageW(window,WM_COMMAND,32004,0);
+    if (ListView_GetColumnWidth(metrics,0)<=0 || ListView_GetColumnWidth(metrics,5)!=0 ||
+        ListView_GetColumnWidth(metrics,19)<=0 || Header_GetItemCount(ListView_GetHeader(metrics))!=22 ||
+        ListView_GetItemCount(metrics)!=fullMetricCount) return finish(79);
+    RECT metricHeader{};POINT metricOrigin{};GetWindowRect(ListView_GetHeader(metrics),&metricHeader);ClientToScreen(metrics,&metricOrigin);
+    const int metricRowY=metricHeader.bottom-metricOrigin.y+10;
+    SendMessageW(metrics,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(24,metricRowY));
+    SendMessageW(metrics,WM_LBUTTONUP,0,MAKELPARAM(24,metricRowY));
+    SendMessageW(metrics,WM_KEYDOWN,VK_RETURN,0);
+    if (!Contains(GetDlgItem(window,1112),L"CSQ") || !Contains(GetDlgItem(window,1112),L"RSRP")) return finish(80);
+    Capture(window,L"columns-at-health");
+    SendMessageW(window,WM_COMMAND,1111,0);
+    SendMessageW(window,WM_COMMAND,32000,0); Capture(window,L"columns-common");
+    SendMessageW(window,WM_COMMAND,32005,0);
+    SetWindowTextW(GetDlgItem(window,1008),L"00:00:00");SetWindowTextW(GetDlgItem(window,1009),L"00:35:00");
+    SendMessageW(window,WM_COMMAND,1003,0);
+    const int chineseRangeCount=ListView_GetItemCount(metrics);
+    SendMessageW(window,WM_COMMAND,1171,0);
+    if (!Contains(GetDlgItem(window,1024),L"Signal metrics") || !Contains(GetDlgItem(window,1141),L"Reset range") ||
+        !Contains(GetDlgItem(window,1140),L"Time conditions") || ListView_GetItemCount(metrics)!=chineseRangeCount) return finish(81);
+    Capture(window,L"english-metrics-range");
+    SendMessageW(window,WM_COMMAND,1141,0);
+    if (ListView_GetItemCount(metrics)!=fullMetricCount) return finish(82);
+    SendMessageW(window,WM_APP+41,1,0);
+    Capture(window,L"english-findings");
+    RECT englishFindingRect{};GetClientRect(GetDlgItem(window,1019),&englishFindingRect);
+    SendMessageW(GetDlgItem(window,1019),WM_LBUTTONUP,0,MAKELPARAM(englishFindingRect.right-100,35));
+    const auto englishFindings=ClipboardText();
+    if (englishFindings.find(L"Basis:")==std::wstring::npos || englishFindings.find(L"Advice:")==std::wstring::npos ||
+        englishFindings.find(L"Weak signal")==std::wstring::npos || englishFindings.find(L"CH:ROAMLINK")==std::wstring::npos ||
+        englishFindings.find(L"全量日志历史汇总")!=std::wstring::npos) {PrintWide("english-findings",englishFindings);return finish(83);}
+    Capture(window,L"english-findings");
+    SendMessageW(window,WM_APP+41,0,0);
+    Capture(window,L"english-overview");
+    RECT englishDashRect{};GetClientRect(GetDlgItem(window,1022),&englishDashRect);
+    SendMessageW(GetDlgItem(window,1022),WM_LBUTTONUP,0,MAKELPARAM(englishDashRect.right-95,24));
+    if (ClipboardText().find(L"Outages 36")==std::wstring::npos || ClipboardText().find(L"1359 samples")==std::wstring::npos) return finish(84);
+    Capture(window,L"english-overview");
+    SetWindowPos(window,nullptr,0,0,860,640,SWP_NOMOVE|SWP_NOZORDER);
+    Capture(window,L"english-overview-narrow");
+    SendMessageW(window,WM_APP+41,4,0);Capture(window,L"english-metrics-narrow");
+    SendMessageW(window,WM_COMMAND,33000,0);
+    WindowSearch comparisonSearch{process.dwProcessId,nullptr,L"dialSourceComparison"};
+    EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&comparisonSearch));
+    if (!comparisonSearch.window || ListView_GetItemCount(GetDlgItem(comparisonSearch.window,1162))!=16) return finish(85);
+    Capture(comparisonSearch.window,L"english-source-comparison");
+    SendMessageW(comparisonSearch.window,WM_CLOSE,0,0);
+    // A single-source comparison also needs fresh statistics when its time range changes.
+    SetWindowTextW(GetDlgItem(window,1008),L"00:00:00");SetWindowTextW(GetDlgItem(window,1009),L"00:34:41");
+    SendMessageW(window,WM_COMMAND,1003,0);
+    SendMessageW(window,WM_COMMAND,33000,0);
+    comparisonSearch.window=nullptr;EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&comparisonSearch));
+    if(!comparisonSearch.window) return finish(87);
+    SendMessageW(comparisonSearch.window,WM_COMMAND,1166,0);
+    if(ClipboardText().find(L"Metric samples\t68\t68\r\n")==std::wstring::npos) {
+        PrintWide("single-source-range-comparison",ClipboardText());return finish(88);
+    }
+    SendMessageW(comparisonSearch.window,WM_CLOSE,0,0);
+    SendMessageW(window,WM_COMMAND,1141,0);
+    SendMessageW(window,WM_COMMAND,1170,0);
+    if (!Contains(GetDlgItem(window,1024),L"信号指标") || ListView_GetItemCount(metrics)!=fullMetricCount) return finish(86);
+
     PostMessageW(window, WM_CLOSE, 0, 0);
     const DWORD wait = WaitForSingleObject(process.hProcess, 10000);
     DWORD exitCode = 1;
     GetExitCodeProcess(process.hProcess, &exitCode);
     CloseHandle(process.hProcess);
-    return wait == WAIT_OBJECT_0 && exitCode == 0 ? 0 : 25;
+    return wait == WAIT_OBJECT_0 && exitCode == 0 ? MultiSourceSmoke(executable) : 25;
 }

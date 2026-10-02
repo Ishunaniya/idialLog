@@ -18,6 +18,8 @@ struct AppSettings {
     std::wstring sinceFilter;
     std::wstring untilFilter;
     WINDOWPLACEMENT placement{};
+    unsigned metricColumns = (1u << 22) - 1;
+    bool english = false;
     int lastPage = 0;
     bool filtersExpanded = false;
     bool hasPlacement = false;

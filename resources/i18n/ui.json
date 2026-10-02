@@ -1,0 +1,2697 @@
+[
+  {
+    "id": "ui_0000",
+    "zh": "筛选",
+    "en": "Filter"
+  },
+  {
+    "id": "ui_0001",
+    "zh": "  筛选后 %d / 共 %d 行   ·   断网 %d 次   ·   启动证据 %d",
+    "en": "  Filtered %d / total %d rows   ·   Outages %d   ·   Startup evidence %d"
+  },
+  {
+    "id": "ui_0002",
+    "zh": "   ·   平台: ",
+    "en": "   ·   Platform: "
+  },
+  {
+    "id": "ui_0003",
+    "zh": "   ·   最近小区 ID: %s（共 %d 个）",
+    "en": "   ·   Latest Cell ID: %s (%d cells)"
+  },
+  {
+    "id": "ui_0004",
+    "zh": "   ·   小区 ID: 日志未提供",
+    "en": "   ·   Cell ID: unavailable"
+  },
+  {
+    "id": "ui_0005",
+    "zh": "   ·   未识别 0 行、NUL 0 字节",
+    "en": "   ·   Unparsed 0 rows, NUL 0 bytes"
+  },
+  {
+    "id": "ui_0006",
+    "zh": "   ·   ⚠ 未识别 %d 行(%.2f%%)，NUL %d 字节/%d 行(见审计页)",
+    "en": "   ·   ⚠ Unparsed %d rows (%.2f%%), NUL %d bytes / %d rows (see audit)"
+  },
+  {
+    "id": "ui_0007",
+    "zh": "   ·   ⚠ 正则非法,已忽略该条件",
+    "en": "   ·   ⚠ Invalid regex ignored"
+  },
+  {
+    "id": "ui_0008",
+    "zh": "   ·   结论仅基于当前时间区间内证据",
+    "en": "   ·   Findings use evidence within the selected time range"
+  },
+  {
+    "id": "ui_0009",
+    "zh": "正则表达式无效",
+    "en": "Invalid regular expression"
+  },
+  {
+    "id": "ui_0010",
+    "zh": "已暂时忽略“消息正则”条件，其他筛选仍然生效。",
+    "en": "The message regex was ignored. Other filters still apply."
+  },
+  {
+    "id": "ui_0011",
+    "zh": "尚未加载日志。",
+    "en": "No log loaded."
+  },
+  {
+    "id": "ui_0012",
+    "zh": "选区：",
+    "en": "Selection: "
+  },
+  {
+    "id": "ui_0013",
+    "zh": "时间范围：全范围",
+    "en": "Time range: full"
+  },
+  {
+    "id": "ui_0014",
+    "zh": "全量日志历史汇总",
+    "en": "Full-input history summary"
+  },
+  {
+    "id": "ui_0015",
+    "zh": "当前区间汇总",
+    "en": "Selected-range summary"
+  },
+  {
+    "id": "ui_0016",
+    "zh": "选区起点：",
+    "en": "Selection start: "
+  },
+  {
+    "id": "ui_0017",
+    "zh": "时间范围：全范围\r\n信号图横向拖动选区 · 恢复仅清除时间条件",
+    "en": "Time range: full\r\nDrag chart to select · Reset clears time"
+  },
+  {
+    "id": "ui_0018",
+    "zh": "   (%d 行, %d 个启动证据, %s)",
+    "en": "   (%d rows, %d startup evidence, %s)"
+  },
+  {
+    "id": "ui_0019",
+    "zh": "未知错误",
+    "en": "Unknown error"
+  },
+  {
+    "id": "ui_0020",
+    "zh": "文件为空",
+    "en": "Empty file"
+  },
+  {
+    "id": "ui_0021",
+    "zh": "本次选择的日志文本总量超过 512 MiB",
+    "en": "Selected log text exceeds 512 MiB"
+  },
+  {
+    "id": "ui_0022",
+    "zh": "本次选择的展开后日志文本总量超过 512 MiB",
+    "en": "Expanded log text exceeds 512 MiB"
+  },
+  {
+    "id": "ui_0023",
+    "zh": "内存不足,无法读取、展开或切分日志",
+    "en": "Not enough memory to read, expand or split logs"
+  },
+  {
+    "id": "ui_0024",
+    "zh": "没有可读取的日志来源。",
+    "en": "No readable log sources."
+  },
+  {
+    "id": "ui_0025",
+    "zh": "部分文件未载入：\n",
+    "en": "Some files were not loaded:\n"
+  },
+  {
+    "id": "ui_0026",
+    "zh": "检测到 %d 份日志时钟未同步(时间戳落在 1970 年),\n",
+    "en": "%d logs have unsynchronized clocks (timestamps in 1970).\n"
+  },
+  {
+    "id": "ui_0027",
+    "zh": "与其余 %d 份墙钟日志不在同一时间坐标系。\n\n",
+    "en": "Their time base differs from the other %d wall-clock logs.\n\n"
+  },
+  {
+    "id": "ui_0028",
+    "zh": "已从本次合并中排除以下未同步日志,仅用墙钟日志出结论:%s\n\n",
+    "en": "These unsynchronized logs were excluded; findings use wall-clock logs only:%s\n\n"
+  },
+  {
+    "id": "ui_0029",
+    "zh": "如需查看未同步日志,请单独拖入分析。",
+    "en": "Open unsynchronized logs separately to analyze them."
+  },
+  {
+    "id": "ui_0030",
+    "zh": ",已排除 %d 份未同步日志",
+    "en": ", excluded %d unsynchronized logs"
+  },
+  {
+    "id": "ui_0031",
+    "zh": "时基检查后没有可分析的日志。",
+    "en": "No logs remain after the time-base check."
+  },
+  {
+    "id": "ui_0032",
+    "zh": "操作已取消",
+    "en": "Cancelled"
+  },
+  {
+    "id": "ui_0033",
+    "zh": "内存不足,无法解析所选日志",
+    "en": "Not enough memory to parse the selected logs"
+  },
+  {
+    "id": "ui_0034",
+    "zh": "%d 个文件合并",
+    "en": "%d files combined"
+  },
+  {
+    "id": "ui_0035",
+    "zh": "(已按时间重排)",
+    "en": "(sorted by time)"
+  },
+  {
+    "id": "ui_0036",
+    "zh": "(拖入顺序已是时间顺序)",
+    "en": "(input order is chronological)"
+  },
+  {
+    "id": "ui_0037",
+    "zh": ",其中 %d 份扫不到时间戳→拼在最后",
+    "en": ", %d files without timestamps appended last"
+  },
+  {
+    "id": "ui_0038",
+    "zh": "内存不足，后台加载未完成；当前分析结果保持不变。",
+    "en": "Not enough memory to finish loading. The current analysis is retained."
+  },
+  {
+    "id": "ui_0039",
+    "zh": "后台加载遇到未预期错误；当前分析结果保持不变。",
+    "en": "Unexpected loading error. The current analysis is retained."
+  },
+  {
+    "id": "ui_0040",
+    "zh": "日志正在加载",
+    "en": "Loading logs"
+  },
+  {
+    "id": "ui_0041",
+    "zh": "可点击“取消加载”，再选择另一批日志。",
+    "en": "Cancel loading before selecting another set of logs."
+  },
+  {
+    "id": "ui_0042",
+    "zh": "内存不足，无法创建加载任务。",
+    "en": "Not enough memory to create the loading task."
+  },
+  {
+    "id": "ui_0043",
+    "zh": "错误",
+    "en": "Error"
+  },
+  {
+    "id": "ui_0044",
+    "zh": "无法启动后台加载线程。",
+    "en": "Unable to start the background loading thread."
+  },
+  {
+    "id": "ui_0045",
+    "zh": "取消加载",
+    "en": "Cancel load"
+  },
+  {
+    "id": "ui_0046",
+    "zh": "正在检查日志来源… 0%",
+    "en": "Checking log sources… 0%"
+  },
+  {
+    "id": "ui_0047",
+    "zh": "正在取消…",
+    "en": "Cancelling…"
+  },
+  {
+    "id": "ui_0048",
+    "zh": "正在取消加载；当前分析结果会保留…",
+    "en": "Cancelling loading; retaining the current analysis…"
+  },
+  {
+    "id": "ui_0049",
+    "zh": "检查与展开",
+    "en": "Check and expand"
+  },
+  {
+    "id": "ui_0050",
+    "zh": "校验时间轴",
+    "en": "Validate time axis"
+  },
+  {
+    "id": "ui_0051",
+    "zh": "解析日志",
+    "en": "Parse logs"
+  },
+  {
+    "id": "ui_0052",
+    "zh": "生成分析",
+    "en": "Build analysis"
+  },
+  {
+    "id": "ui_0053",
+    "zh": "正在%s… %d%%   ·   可点击“取消加载”保留当前结果",
+    "en": "%s… %d%%   ·   Cancel load to retain the current analysis"
+  },
+  {
+    "id": "ui_0054",
+    "zh": "关闭日志",
+    "en": "Close log"
+  },
+  {
+    "id": "ui_0055",
+    "zh": "后台加载时内存不足，当前分析结果未改变。",
+    "en": "Not enough memory while loading. The current analysis is retained."
+  },
+  {
+    "id": "ui_0056",
+    "zh": "加载失败",
+    "en": "Loading failed"
+  },
+  {
+    "id": "ui_0057",
+    "zh": "已取消加载",
+    "en": "Loading cancelled"
+  },
+  {
+    "id": "ui_0058",
+    "zh": "当前日志与分析结果保持不变。",
+    "en": "The current log and analysis are retained."
+  },
+  {
+    "id": "ui_0059",
+    "zh": "日志加载失败，当前分析结果未改变。",
+    "en": "Loading failed. The current analysis is retained."
+  },
+  {
+    "id": "ui_0060",
+    "zh": "日志已载入（有提示）",
+    "en": "Logs loaded with notices"
+  },
+  {
+    "id": "ui_0061",
+    "zh": "日志分析完成",
+    "en": "Log analysis complete"
+  },
+  {
+    "id": "ui_0062",
+    "zh": "请先取消当前加载任务。",
+    "en": "Cancel the current loading task first."
+  },
+  {
+    "id": "ui_0063",
+    "zh": "剪贴板里没有文本",
+    "en": "No clipboard text"
+  },
+  {
+    "id": "ui_0064",
+    "zh": "请先复制日志内容，再使用“粘贴日志”或 Ctrl+V。",
+    "en": "Copy log text, then use Paste log or Ctrl+V."
+  },
+  {
+    "id": "ui_0065",
+    "zh": "暂时无法读取剪贴板",
+    "en": "Cannot read the clipboard"
+  },
+  {
+    "id": "ui_0066",
+    "zh": "剪贴板可能正被其他程序占用，请稍后重试。",
+    "en": "Another program may be using the clipboard. Try again."
+  },
+  {
+    "id": "ui_0067",
+    "zh": "内存不足,无法复制剪贴板文本。",
+    "en": "Not enough memory to copy clipboard text."
+  },
+  {
+    "id": "ui_0068",
+    "zh": "剪贴板文本为空",
+    "en": "Clipboard text is empty"
+  },
+  {
+    "id": "ui_0069",
+    "zh": "复制包含时间戳的日志内容后再试。",
+    "en": "Copy log text containing timestamps and try again."
+  },
+  {
+    "id": "ui_0070",
+    "zh": "剪贴板文本超过 512 MiB 输入限制。",
+    "en": "Clipboard text exceeds the 512 MiB input limit."
+  },
+  {
+    "id": "ui_0071",
+    "zh": "内容过大",
+    "en": "Input too large"
+  },
+  {
+    "id": "ui_0072",
+    "zh": "正在分析剪贴板日志…",
+    "en": "Analyzing clipboard logs…"
+  },
+  {
+    "id": "ui_0073",
+    "zh": "内存不足,无法分析剪贴板文本。",
+    "en": "Not enough memory to analyze clipboard text."
+  },
+  {
+    "id": "ui_0074",
+    "zh": "[剪贴板粘贴 %d 行]",
+    "en": "[Clipboard: %d rows]"
+  },
+  {
+    "id": "ui_0075",
+    "zh": "没有识别出日志行",
+    "en": "No log rows recognized"
+  },
+  {
+    "id": "ui_0076",
+    "zh": "请确认复制内容带有行首时间戳；可在“未识别行”页面查看原文。",
+    "en": "Check for timestamps at the start of each row. See Unparsed rows for the original text."
+  },
+  {
+    "id": "ui_0077",
+    "zh": "日志与压缩包 (*.log;*.txt;*.zip;*.gz)\u0000*.log;*.txt;*.zip;*.gz;*.tar.gz\u0000所有文件 (*.*)\u0000*.*\u0000\u0000",
+    "en": "Logs and archives (*.log;*.txt;*.zip;*.gz)\u0000*.log;*.txt;*.zip;*.gz;*.tar.gz\u0000All files (*.*)\u0000*.*\u0000\u0000"
+  },
+  {
+    "id": "ui_0078",
+    "zh": "选择 dial 日志(可多选,将合并分析)",
+    "en": "Select dial logs (multiple files supported)"
+  },
+  {
+    "id": "ui_0079",
+    "zh": "没有可导出的指标",
+    "en": "No metrics to export"
+  },
+  {
+    "id": "ui_0080",
+    "zh": "加载包含心跳或信号采样的日志后再导出。",
+    "en": "Load logs containing heartbeat or signal samples first."
+  },
+  {
+    "id": "ui_0081",
+    "zh": "内存不足,无法生成 CSV。",
+    "en": "Not enough memory to generate CSV."
+  },
+  {
+    "id": "ui_0082",
+    "zh": "导出失败",
+    "en": "Export failed"
+  },
+  {
+    "id": "ui_0083",
+    "zh": "已导出 ",
+    "en": "Exported "
+  },
+  {
+    "id": "ui_0084",
+    "zh": "CSV 导出完成",
+    "en": "CSV export complete"
+  },
+  {
+    "id": "ui_0085",
+    "zh": "没有可导出的报告",
+    "en": "No report to export"
+  },
+  {
+    "id": "ui_0086",
+    "zh": "请先加载并分析日志。",
+    "en": "Load and analyze logs first."
+  },
+  {
+    "id": "ui_0087",
+    "zh": "Markdown (*.md)\u0000*.md\u0000文本文件 (*.txt)\u0000*.txt\u0000\u0000",
+    "en": "Markdown (*.md)\u0000*.md\u0000Text files (*.txt)\u0000*.txt\u0000\u0000"
+  },
+  {
+    "id": "ui_0088",
+    "zh": "# dialLog 诊断报告",
+    "en": "# dialLog diagnostic report"
+  },
+  {
+    "id": "ui_0089",
+    "zh": "> 生成时间：%04d-%02d-%02d %02d:%02d:%02d  ·  本地离线分析",
+    "en": "> Generated: %04d-%02d-%02d %02d:%02d:%02d  ·  Local offline analysis"
+  },
+  {
+    "id": "ui_0090",
+    "zh": "## 分析摘要",
+    "en": "## Analysis summary"
+  },
+  {
+    "id": "ui_0091",
+    "zh": "- 平台：%s",
+    "en": "- Platform: %s"
+  },
+  {
+    "id": "ui_0092",
+    "zh": "- 运行结论按区间内证据重算；区间外起止边沿与启动可能缺失，请结合全范围复核。平台识别基于当前来源；解析审计和来源统计基于整份输入。",
+    "en": "- Runtime findings use selected-range evidence. Fault, recovery or startup boundaries may lie outside this range; review the full range. Parse audit and source statistics cover the whole input."
+  },
+  {
+    "id": "ui_0093",
+    "zh": "- 日志：筛选后 %d / 解析 %d 行，日志打开 %d 次，有证据的进程启动 %d 次",
+    "en": "- Logs: %d filtered / %d parsed rows, %d log-open markers, %d evidenced process starts"
+  },
+  {
+    "id": "ui_0094",
+    "zh": "- 日志时间：%s → %s",
+    "en": "- Log time: %s → %s"
+  },
+  {
+    "id": "ui_0095",
+    "zh": "- 断网：%d 次；解析遗漏：%d 行（%.2f%%）；NUL：%d 字节/%d 行",
+    "en": "- Outages: %d; unparsed: %d rows (%.2f%%); NUL: %d bytes / %d rows"
+  },
+  {
+    "id": "ui_0096",
+    "zh": "- 业务可用率：证据不足",
+    "en": "- Service availability: insufficient evidence"
+  },
+  {
+    "id": "ui_0097",
+    "zh": "- 首次联网后运行期可用率%s：%.3f%%",
+    "en": "- Runtime availability after first connection%s: %.3f%%"
+  },
+  {
+    "id": "ui_0098",
+    "zh": "（仅已识别事件口径）",
+    "en": " (recognized events only)"
+  },
+  {
+    "id": "ui_0099",
+    "zh": "- 全程服务可达率%s：%.3f%%",
+    "en": "- Full-period service reachability%s: %.3f%%"
+  },
+  {
+    "id": "ui_0100",
+    "zh": "- DataCall 断开：%d 次（APP_STOP %d / SDK_URC %d / 旧格式未归因 %d）",
+    "en": "- DataCall disconnects: %d (APP_STOP %d / SDK_URC %d / unattributed legacy %d)"
+  },
+  {
+    "id": "ui_0101",
+    "zh": "## 多日志对比",
+    "en": "## Source comparison"
+  },
+  {
+    "id": "ui_0102",
+    "zh": "| 来源 | 解析行 | 断网 | 指标样本 | 平均 RSRP |",
+    "en": "| Source | Parsed rows | Outages | Metric samples | Mean RSRP |"
+  },
+  {
+    "id": "ui_0103",
+    "zh": "## 信号与小区",
+    "en": "## Signal and cells"
+  },
+  {
+    "id": "ui_0104",
+    "zh": "- 指标样本：%d；识别小区：%d",
+    "en": "- Metric samples: %d; identified cells: %d"
+  },
+  {
+    "id": "ui_0105",
+    "zh": "- LTE 工程参考分档：仅适用于 RAT=LTE（RAT 缺失按兼容的 LTE 日志处理）；不是 3GPP 或运营商统一故障等级",
+    "en": "- LTE engineering reference only: RAT=LTE (missing RAT follows compatible LTE logs); these are not universal 3GPP or operator fault grades"
+  },
+  {
+    "id": "ui_0106",
+    "zh": "- 综合等级：取 CSQ、RSRP、RSRQ、SNR 中最弱一项，是本软件的保守提示策略",
+    "en": "- Overall grade: the weakest of CSQ, RSRP, RSRQ and SNR; a conservative application policy"
+  },
+  {
+    "id": "ui_0107",
+    "zh": "- CSQ：0–9 较差 / 10–14 一般 / 15–19 良好 / 20–31 优秀（99 未知）",
+    "en": "- CSQ: 0–9 poor / 10–14 fair / 15–19 good / 20–31 excellent (99 unknown)"
+  },
+  {
+    "id": "ui_0108",
+    "zh": "- RSRP：<-100 较差 / -100~-91 一般 / -90~-81 良好 / ≥-80 dBm 优秀",
+    "en": "- RSRP: <-100 poor / -100~-91 fair / -90~-81 good / ≥-80 dBm excellent"
+  },
+  {
+    "id": "ui_0109",
+    "zh": "- RSRQ：<-20 较差 / -20~-16 一般 / -15~-11 良好 / ≥-10 dB 优秀",
+    "en": "- RSRQ: <-20 poor / -20~-16 fair / -15~-11 good / ≥-10 dB excellent"
+  },
+  {
+    "id": "ui_0110",
+    "zh": "- SNR：≤0 较差 / 0.1~12.9 一般 / 13~19.9 良好 / ≥20 dB 优秀（模组上报值，不等同于所有制式的标准化 SINR）",
+    "en": "- SNR: ≤0 poor / 0.1~12.9 fair / 13~19.9 good / ≥20 dB excellent (module-reported; not standardized SINR across all radio technologies)"
+  },
+  {
+    "id": "ui_0111",
+    "zh": "- SNR：最低 %.1f / 平均 %.1f / 最高 %.1f dB（%d 个样本）",
+    "en": "- SNR: min %.1f / mean %.1f / max %.1f dB (%d samples)"
+  },
+  {
+    "id": "ui_0112",
+    "zh": "| Cell ID | 样本数 |",
+    "en": "| Cell ID | Samples |"
+  },
+  {
+    "id": "ui_0113",
+    "zh": "## 诊断结论",
+    "en": "## Findings"
+  },
+  {
+    "id": "ui_0114",
+    "zh": "未形成有证据支撑的结论。",
+    "en": "No evidence-supported findings."
+  },
+  {
+    "id": "ui_0115",
+    "zh": "严重",
+    "en": "Critical"
+  },
+  {
+    "id": "ui_0116",
+    "zh": "告警",
+    "en": "Warning"
+  },
+  {
+    "id": "ui_0117",
+    "zh": "信息",
+    "en": "Info"
+  },
+  {
+    "id": "ui_0118",
+    "zh": "- 依据：",
+    "en": "- Basis: "
+  },
+  {
+    "id": "ui_0119",
+    "zh": "- 建议：",
+    "en": "- Advice: "
+  },
+  {
+    "id": "ui_0120",
+    "zh": "  - 第 %d 行 · %s · %s",
+    "en": "  - Row %d · %s · %s"
+  },
+  {
+    "id": "ui_0121",
+    "zh": "## 人工证据书签",
+    "en": "## Manual evidence bookmarks"
+  },
+  {
+    "id": "ui_0122",
+    "zh": "- 第 %d 行 · %s",
+    "en": "- Row %d · %s"
+  },
+  {
+    "id": "ui_0123",
+    "zh": "内存不足，无法生成诊断报告。",
+    "en": "Not enough memory to generate the diagnostic report."
+  },
+  {
+    "id": "ui_0124",
+    "zh": "已导出诊断报告 ",
+    "en": "Diagnostic report exported: "
+  },
+  {
+    "id": "ui_0125",
+    "zh": "诊断报告导出完成",
+    "en": "Diagnostic report export complete"
+  },
+  {
+    "id": "ui_0126",
+    "zh": "正在生成单文件可视化报告…",
+    "en": "Generating a self-contained visual report…"
+  },
+  {
+    "id": "ui_0127",
+    "zh": "内存不足，无法生成 HTML 报告。",
+    "en": "Not enough memory to generate the HTML report."
+  },
+  {
+    "id": "ui_0128",
+    "zh": "已导出可视化报告 ",
+    "en": "Visual report exported: "
+  },
+  {
+    "id": "ui_0129",
+    "zh": "HTML 可视化报告导出完成",
+    "en": "HTML report export complete"
+  },
+  {
+    "id": "ui_0130",
+    "zh": "无法打开文件",
+    "en": "Cannot open file"
+  },
+  {
+    "id": "ui_0131",
+    "zh": "无法取得文件大小",
+    "en": "Cannot obtain file size"
+  },
+  {
+    "id": "ui_0132",
+    "zh": "文件超过 512 MiB 输入限制",
+    "en": "File exceeds the 512 MiB input limit"
+  },
+  {
+    "id": "ui_0133",
+    "zh": "内存不足,无法读取文件",
+    "en": "Not enough memory to read the file"
+  },
+  {
+    "id": "ui_0134",
+    "zh": "文件读取不完整",
+    "en": "Incomplete file read"
+  },
+  {
+    "id": "ui_0135",
+    "zh": "内存不足,无法建立读取缓冲",
+    "en": "Not enough memory to allocate the read buffer"
+  },
+  {
+    "id": "ui_0136",
+    "zh": "目标目录路径过长",
+    "en": "Destination directory path is too long"
+  },
+  {
+    "id": "ui_0137",
+    "zh": "无法在目标目录创建临时文件 (Windows 错误 %lu)",
+    "en": "Cannot create a temporary file in the destination directory (Windows error %lu)"
+  },
+  {
+    "id": "ui_0138",
+    "zh": "无法打开临时文件 (Windows 错误 %lu)",
+    "en": "Cannot open the temporary file (Windows error %lu)"
+  },
+  {
+    "id": "ui_0139",
+    "zh": "文件写入未完成 (Windows 错误 %lu),原文件未修改",
+    "en": "File write incomplete (Windows error %lu); original file retained"
+  },
+  {
+    "id": "ui_0140",
+    "zh": "无法用完整内容替换目标文件 (Windows 错误 %lu),原文件未修改",
+    "en": "Cannot replace the destination with complete contents (Windows error %lu); original file retained"
+  },
+  {
+    "id": "ui_0141",
+    "zh": "压缩包展开后的日志文本超过 512 MiB",
+    "en": "Expanded archive log text exceeds 512 MiB"
+  },
+  {
+    "id": "ui_0142",
+    "zh": "压缩包内没有非空日志",
+    "en": "No nonempty logs in the archive"
+  },
+  {
+    "id": "ui_0143",
+    "zh": "压缩包读取失败: ",
+    "en": "Archive read failed: "
+  },
+  {
+    "id": "ui_0144",
+    "zh": "最近文件已不存在",
+    "en": "Recent file no longer exists"
+  },
+  {
+    "id": "ui_0145",
+    "zh": "已从最近列表移除，请重新选择文件。",
+    "en": "Removed from recent files. Select the file again."
+  },
+  {
+    "id": "ui_0146",
+    "zh": "选择文件…\tCtrl+O",
+    "en": "Choose files…\tCtrl+O"
+  },
+  {
+    "id": "ui_0147",
+    "zh": "最近打开",
+    "en": "Recent files"
+  },
+  {
+    "id": "ui_0148",
+    "zh": "清除最近记录",
+    "en": "Clear recent files"
+  },
+  {
+    "id": "ui_0149",
+    "zh": "最近记录已清除",
+    "en": "Recent files cleared"
+  },
+  {
+    "id": "ui_0150",
+    "zh": "不会删除任何日志文件。",
+    "en": "Log files are retained."
+  },
+  {
+    "id": "ui_0151",
+    "zh": "还没有搜索历史",
+    "en": "No search history yet"
+  },
+  {
+    "id": "ui_0152",
+    "zh": "输入消息正则并点击“应用”后会自动记录。",
+    "en": "Enter a message regex and click Apply to save it."
+  },
+  {
+    "id": "ui_0153",
+    "zh": "清除搜索历史",
+    "en": "Clear search history"
+  },
+  {
+    "id": "ui_0154",
+    "zh": "搜索历史已清除",
+    "en": "Search history cleared"
+  },
+  {
+    "id": "ui_0155",
+    "zh": "当前筛选条件不会改变。",
+    "en": "The current filter conditions are retained."
+  },
+  {
+    "id": "ui_0156",
+    "zh": "第 %d 行  ",
+    "en": "Row %d  "
+  },
+  {
+    "id": "ui_0157",
+    "zh": "清空证据书签",
+    "en": "Clear evidence bookmarks"
+  },
+  {
+    "id": "ui_0158",
+    "zh": "诊断报告（Markdown）…",
+    "en": "Diagnostic report (Markdown)…"
+  },
+  {
+    "id": "ui_0159",
+    "zh": "可视化报告（单文件 HTML）…",
+    "en": "Visual report (self-contained HTML)…"
+  },
+  {
+    "id": "ui_0160",
+    "zh": "信号指标（CSV）…",
+    "en": "Signal metrics (CSV)…"
+  },
+  {
+    "id": "ui_0161",
+    "zh": "界面字体：",
+    "en": "UI font: "
+  },
+  {
+    "id": "ui_0162",
+    "zh": "日志字体：",
+    "en": "Log font: "
+  },
+  {
+    "id": "ui_0163",
+    "zh": "恢复默认字体",
+    "en": "Reset fonts"
+  },
+  {
+    "id": "ui_0164",
+    "zh": "概览",
+    "en": "Overview"
+  },
+  {
+    "id": "ui_0165",
+    "zh": "未加载日志 · 可拖入文件，或从剪贴板直接分析",
+    "en": "No log loaded · Drop files or analyze clipboard text"
+  },
+  {
+    "id": "ui_0166",
+    "zh": "来源 ▾",
+    "en": "Sources ▾"
+  },
+  {
+    "id": "ui_0167",
+    "zh": "恢复全范围",
+    "en": "Reset range"
+  },
+  {
+    "id": "ui_0168",
+    "zh": "打开日志 ▾",
+    "en": "Open logs ▾"
+  },
+  {
+    "id": "ui_0169",
+    "zh": "粘贴日志",
+    "en": "Paste log"
+  },
+  {
+    "id": "ui_0170",
+    "zh": "书签",
+    "en": "Bookmarks"
+  },
+  {
+    "id": "ui_0171",
+    "zh": "字体",
+    "en": "Aa"
+  },
+  {
+    "id": "ui_0172",
+    "zh": "导出 ▾",
+    "en": "Export ▾"
+  },
+  {
+    "id": "ui_0173",
+    "zh": "标签",
+    "en": "Tag"
+  },
+  {
+    "id": "ui_0174",
+    "zh": "搜索消息（正则）",
+    "en": "Search message (regex)"
+  },
+  {
+    "id": "ui_0175",
+    "zh": "起始时间",
+    "en": "Start time"
+  },
+  {
+    "id": "ui_0176",
+    "zh": "结束时间",
+    "en": "End time"
+  },
+  {
+    "id": "ui_0177",
+    "zh": "例如 MODEM",
+    "en": "e.g. MODEM"
+  },
+  {
+    "id": "ui_0178",
+    "zh": "Ctrl+F · 支持正则表达式",
+    "en": "Ctrl+F · Regular expressions supported"
+  },
+  {
+    "id": "ui_0179",
+    "zh": "应用",
+    "en": "Apply"
+  },
+  {
+    "id": "ui_0180",
+    "zh": "清空",
+    "en": "Clear"
+  },
+  {
+    "id": "ui_0181",
+    "zh": "历史 ▾",
+    "en": "History ▾"
+  },
+  {
+    "id": "ui_0182",
+    "zh": "指标筛选 ▾",
+    "en": "Metrics ▾"
+  },
+  {
+    "id": "ui_0183",
+    "zh": "原始行号",
+    "en": "Original row"
+  },
+  {
+    "id": "ui_0184",
+    "zh": "未识别的原文",
+    "en": "Unparsed original text"
+  },
+  {
+    "id": "ui_0185",
+    "zh": "时间",
+    "en": "Time"
+  },
+  {
+    "id": "ui_0186",
+    "zh": "事件",
+    "en": "Event"
+  },
+  {
+    "id": "ui_0187",
+    "zh": "消息",
+    "en": "Message"
+  },
+  {
+    "id": "ui_0188",
+    "zh": "状态",
+    "en": "Status"
+  },
+  {
+    "id": "ui_0189",
+    "zh": "开始",
+    "en": "Start"
+  },
+  {
+    "id": "ui_0190",
+    "zh": "恢复",
+    "en": "Recovery"
+  },
+  {
+    "id": "ui_0191",
+    "zh": "时长",
+    "en": "Duration"
+  },
+  {
+    "id": "ui_0192",
+    "zh": "依据",
+    "en": "Basis"
+  },
+  {
+    "id": "ui_0193",
+    "zh": "小区 ID",
+    "en": "Cell ID"
+  },
+  {
+    "id": "ui_0194",
+    "zh": "LTE 工程参考",
+    "en": "LTE reference"
+  },
+  {
+    "id": "ui_0195",
+    "zh": "AT遥测超时",
+    "en": "AT telemetry timeout"
+  },
+  {
+    "id": "ui_0196",
+    "zh": "AT确认",
+    "en": "AT probe"
+  },
+  {
+    "id": "ui_0197",
+    "zh": "详细AT阶段",
+    "en": "Detailed AT stage"
+  },
+  {
+    "id": "ui_0198",
+    "zh": "次数",
+    "en": "Count"
+  },
+  {
+    "id": "ui_0199",
+    "zh": "占比",
+    "en": "Share"
+  },
+  {
+    "id": "ui_0200",
+    "zh": "级别",
+    "en": "Level"
+  },
+  {
+    "id": "ui_0201",
+    "zh": "原始消息",
+    "en": "Original message"
+  },
+  {
+    "id": "ui_0202",
+    "zh": "样本",
+    "en": "Samples"
+  },
+  {
+    "id": "ui_0203",
+    "zh": "占比(%)",
+    "en": "Share (%)"
+  },
+  {
+    "id": "ui_0204",
+    "zh": "观测驻留",
+    "en": "Observed dwell"
+  },
+  {
+    "id": "ui_0205",
+    "zh": "平均 RSRP",
+    "en": "Mean RSRP"
+  },
+  {
+    "id": "ui_0206",
+    "zh": "最低 RSRP",
+    "en": "Min RSRP"
+  },
+  {
+    "id": "ui_0207",
+    "zh": "平均 RSRQ",
+    "en": "Mean RSRQ"
+  },
+  {
+    "id": "ui_0208",
+    "zh": "平均 SNR",
+    "en": "Mean SNR"
+  },
+  {
+    "id": "ui_0209",
+    "zh": "平均 CSQ",
+    "en": "Mean CSQ"
+  },
+  {
+    "id": "ui_0210",
+    "zh": "切入",
+    "en": "Entries"
+  },
+  {
+    "id": "ui_0211",
+    "zh": "切出",
+    "en": "Exits"
+  },
+  {
+    "id": "ui_0212",
+    "zh": "断网关联",
+    "en": "Outage association"
+  },
+  {
+    "id": "ui_0213",
+    "zh": "质量判断",
+    "en": "Quality"
+  },
+  {
+    "id": "ui_0214",
+    "zh": "拖动图表选区 · 单击定位 · Esc 取消",
+    "en": "Drag to select · Click to locate · Esc to cancel"
+  },
+  {
+    "id": "ui_0215",
+    "zh": "显示列 ▾",
+    "en": "Columns ▾"
+  },
+  {
+    "id": "ui_0216",
+    "zh": "图表",
+    "en": "Chart"
+  },
+  {
+    "id": "ui_0217",
+    "zh": "分屏",
+    "en": "Split"
+  },
+  {
+    "id": "ui_0218",
+    "zh": "表格全页",
+    "en": "Table"
+  },
+  {
+    "id": "ui_0219",
+    "zh": "完整内容",
+    "en": "Full content"
+  },
+  {
+    "id": "ui_0220",
+    "zh": " — 拨号日志分析",
+    "en": " — Dial log analysis"
+  },
+  {
+    "id": "ui_0221",
+    "zh": "可用率、断网与信号统计",
+    "en": "Availability, outages and signal"
+  },
+  {
+    "id": "ui_0222",
+    "zh": "诊断结论",
+    "en": "Findings"
+  },
+  {
+    "id": "ui_0223",
+    "zh": "根因、建议与证据",
+    "en": "Causes, advice and evidence"
+  },
+  {
+    "id": "ui_0224",
+    "zh": "断网记录",
+    "en": "Outages"
+  },
+  {
+    "id": "ui_0225",
+    "zh": "中断、恢复与时长",
+    "en": "Interruptions, recovery and duration"
+  },
+  {
+    "id": "ui_0226",
+    "zh": "小区分析",
+    "en": "Cell analysis"
+  },
+  {
+    "id": "ui_0227",
+    "zh": "质量、切换与断网关联",
+    "en": "Quality, transitions and outages"
+  },
+  {
+    "id": "ui_0228",
+    "zh": "事件时间线",
+    "en": "Event timeline"
+  },
+  {
+    "id": "ui_0229",
+    "zh": "状态变化与恢复动作",
+    "en": "State changes and recovery actions"
+  },
+  {
+    "id": "ui_0230",
+    "zh": "信号指标",
+    "en": "Signal metrics"
+  },
+  {
+    "id": "ui_0231",
+    "zh": "小区、射频与数据面",
+    "en": "Cells, radio and data plane"
+  },
+  {
+    "id": "ui_0232",
+    "zh": "标签统计",
+    "en": "Tag statistics"
+  },
+  {
+    "id": "ui_0233",
+    "zh": "消息来源与分布",
+    "en": "Message tags and distribution"
+  },
+  {
+    "id": "ui_0234",
+    "zh": "原始日志",
+    "en": "Raw logs"
+  },
+  {
+    "id": "ui_0235",
+    "zh": "逐行定位与复制",
+    "en": "Locate and copy original rows"
+  },
+  {
+    "id": "ui_0236",
+    "zh": "未识别行",
+    "en": "Unparsed rows"
+  },
+  {
+    "id": "ui_0237",
+    "zh": "解析覆盖与审计",
+    "en": "Parse coverage and audit"
+  },
+  {
+    "id": "ui_0238",
+    "zh": "日志诊断工作台",
+    "en": "Log diagnostics"
+  },
+  {
+    "id": "ui_0239",
+    "zh": "工作台",
+    "en": "Workspace"
+  },
+  {
+    "id": "ui_0240",
+    "zh": "数据",
+    "en": "Data"
+  },
+  {
+    "id": "ui_0241",
+    "zh": "  ·  本地离线分析",
+    "en": "  ·  Local offline analysis"
+  },
+  {
+    "id": "ui_0242",
+    "zh": "主导航",
+    "en": "Main navigation"
+  },
+  {
+    "id": "ui_0243",
+    "zh": "就绪。拖入日志文件，或使用“打开日志”。",
+    "en": "Ready. Drop log files or use Open logs."
+  },
+  {
+    "id": "ui_0244",
+    "zh": "来源",
+    "en": "Source"
+  },
+  {
+    "id": "ui_0245",
+    "zh": "观测起点",
+    "en": "Observed start"
+  },
+  {
+    "id": "ui_0246",
+    "zh": "观测终点",
+    "en": "Observed end"
+  },
+  {
+    "id": "ui_0247",
+    "zh": "实际观测时长",
+    "en": "Actual observed duration"
+  },
+  {
+    "id": "ui_0248",
+    "zh": "筛选后行数",
+    "en": "Filtered rows"
+  },
+  {
+    "id": "ui_0249",
+    "zh": "指标样本",
+    "en": "Metric samples"
+  },
+  {
+    "id": "ui_0250",
+    "zh": "断网次数",
+    "en": "Outage count"
+  },
+  {
+    "id": "ui_0251",
+    "zh": "区间内未见恢复",
+    "en": "No recovery seen in range"
+  },
+  {
+    "id": "ui_0252",
+    "zh": "累计断网时长",
+    "en": "Total outage duration"
+  },
+  {
+    "id": "ui_0253",
+    "zh": "运行期可用率",
+    "en": "Runtime availability"
+  },
+  {
+    "id": "ui_0254",
+    "zh": "全程服务可达率",
+    "en": "Full-period reachability"
+  },
+  {
+    "id": "ui_0255",
+    "zh": "最长首次联网等待",
+    "en": "Longest initial connection wait"
+  },
+  {
+    "id": "ui_0256",
+    "zh": "RSRP 平均 / 最低 / 最高",
+    "en": "RSRP mean / min / max"
+  },
+  {
+    "id": "ui_0257",
+    "zh": "RSRP 有效样本",
+    "en": "Valid RSRP samples"
+  },
+  {
+    "id": "ui_0258",
+    "zh": "CSQ 平均 / 最低 / 最高",
+    "en": "CSQ mean / min / max"
+  },
+  {
+    "id": "ui_0259",
+    "zh": "CSQ 有效样本",
+    "en": "Valid CSQ samples"
+  },
+  {
+    "id": "ui_0260",
+    "zh": "（证据有限）",
+    "en": " (limited evidence)"
+  },
+  {
+    "id": "ui_0261",
+    "zh": "按当前时间与标签/消息条件对照；文件名代表来源，设备身份需人工核实。不同观测窗口的百分比不可直接排名。",
+    "en": "Compare under current time/tag/message filters. File names identify sources; device identity needs verification. Percentages from different observation windows do not establish a ranking."
+  },
+  {
+    "id": "ui_0262",
+    "zh": "查看 A",
+    "en": "View A"
+  },
+  {
+    "id": "ui_0263",
+    "zh": "查看 B",
+    "en": "View B"
+  },
+  {
+    "id": "ui_0264",
+    "zh": "指标",
+    "en": "Metric"
+  },
+  {
+    "id": "ui_0265",
+    "zh": "来源 A",
+    "en": "Source A"
+  },
+  {
+    "id": "ui_0266",
+    "zh": "来源 B",
+    "en": "Source B"
+  },
+  {
+    "id": "ui_0267",
+    "zh": "来源对照",
+    "en": "Source comparison"
+  },
+  {
+    "id": "ui_0268",
+    "zh": "来源：当前输入",
+    "en": "Source: current input"
+  },
+  {
+    "id": "ui_0269",
+    "zh": "来源关系：同设备续接（人工指定）",
+    "en": "Source relationship: same-device continuation (manually specified)"
+  },
+  {
+    "id": "ui_0270",
+    "zh": "独立来源：",
+    "en": "Independent source: "
+  },
+  {
+    "id": "ui_0271",
+    "zh": "来源 / 对照 ▾",
+    "en": "Sources ▾"
+  },
+  {
+    "id": "ui_0272",
+    "zh": "来源对照…",
+    "en": "Compare sources…"
+  },
+  {
+    "id": "ui_0273",
+    "zh": "同设备续接（人工指定，合并全部来源）",
+    "en": "Same-device continuation (manual; combine all sources)"
+  },
+  {
+    "id": "ui_0274",
+    "zh": "独立查看来源（禁止跨来源配对）",
+    "en": "View independent source (no cross-source pairing)"
+  },
+  {
+    "id": "ui_0275",
+    "zh": "仅显示区间内事件；起止边沿可能在区间外，请恢复全范围复核。",
+    "en": "Events within this range only; boundaries may be outside it. Reset the range to review."
+  },
+  {
+    "id": "ui_0276",
+    "zh": "整行按时长分档：≤30s、31–60s、>60s；是否恢复以“状态”列为准。",
+    "en": "Row shading by duration: ≤30s, 31–60s, >60s. The Status column indicates recovery."
+  },
+  {
+    "id": "ui_0277",
+    "zh": "原始起止边沿",
+    "en": "Original event boundaries"
+  },
+  {
+    "id": "ui_0278",
+    "zh": "区间外待核对",
+    "en": "Outside range; review required"
+  },
+  {
+    "id": "ui_0279",
+    "zh": "未恢复",
+    "en": "Unrecovered"
+  },
+  {
+    "id": "ui_0280",
+    "zh": "尚未闭合",
+    "en": "Still open"
+  },
+  {
+    "id": "ui_0281",
+    "zh": "指标筛选 (",
+    "en": "Metric filters ("
+  },
+  {
+    "id": "ui_0282",
+    "zh": "常用",
+    "en": "Common"
+  },
+  {
+    "id": "ui_0283",
+    "zh": "射频",
+    "en": "Radio"
+  },
+  {
+    "id": "ui_0284",
+    "zh": "注册",
+    "en": "Registration"
+  },
+  {
+    "id": "ui_0285",
+    "zh": "流量",
+    "en": "Traffic"
+  },
+  {
+    "id": "ui_0286",
+    "zh": "AT 健康",
+    "en": "AT health"
+  },
+  {
+    "id": "ui_0287",
+    "zh": "显示全部列",
+    "en": "Show all columns"
+  },
+  {
+    "id": "ui_0288",
+    "zh": "自选列（时间固定；详情与导出保留全部列）",
+    "en": "Custom columns (time fixed; details and exports retain all columns)"
+  },
+  {
+    "id": "ui_0289",
+    "zh": "暂无数据",
+    "en": "No data"
+  },
+  {
+    "id": "ui_0290",
+    "zh": "清空指标快捷筛选",
+    "en": "Clear metric filters"
+  },
+  {
+    "id": "ui_0291",
+    "zh": "按“事件”列区分故障、已恢复和恢复动作；整行浅色辅助识别。",
+    "en": "Use Event to distinguish faults, recovery and recovery actions. Row shading assists identification."
+  },
+  {
+    "id": "ui_0292",
+    "zh": "保留原始文件行号；会话标记、空行单独统计，续行归入所属条目。",
+    "en": "Original file row numbers retained. Session markers and blank lines are counted separately; continuations belong to their entry."
+  },
+  {
+    "id": "ui_0293",
+    "zh": "无法定位该证据",
+    "en": "Cannot locate this evidence"
+  },
+  {
+    "id": "ui_0294",
+    "zh": "对应原始行未被解析，可在“未识别行”页面复核。",
+    "en": "This row was not parsed. Check the original text in Unparsed rows."
+  },
+  {
+    "id": "ui_0295",
+    "zh": "已定位原始证据",
+    "en": "Original evidence located"
+  },
+  {
+    "id": "ui_0296",
+    "zh": "第 %d 行已选中；按 Ctrl+C 可直接复制。",
+    "en": "Row %d selected; press Ctrl+C to copy."
+  },
+  {
+    "id": "ui_0297",
+    "zh": "没有可标记的原始行",
+    "en": "No original row to bookmark"
+  },
+  {
+    "id": "ui_0298",
+    "zh": "先选择或从诊断证据定位一行，再按 Ctrl+B 添加书签。",
+    "en": "Select a row or locate evidence, then press Ctrl+B to bookmark it."
+  },
+  {
+    "id": "ui_0299",
+    "zh": "证据书签已添加",
+    "en": "Evidence bookmark added"
+  },
+  {
+    "id": "ui_0300",
+    "zh": "证据书签已移除",
+    "en": "Evidence bookmark removed"
+  },
+  {
+    "id": "ui_0301",
+    "zh": "原始第 %d 行",
+    "en": "Original row %d"
+  },
+  {
+    "id": "ui_0302",
+    "zh": "字段",
+    "en": "Field"
+  },
+  {
+    "id": "ui_0303",
+    "zh": " · 第 ",
+    "en": " · Row "
+  },
+  {
+    "id": "ui_0304",
+    "zh": " 行完整内容（可选中文字复制）",
+    "en": " · Full content (select text to copy)"
+  },
+  {
+    "id": "ui_0305",
+    "zh": "已复制所选行",
+    "en": "Selected rows copied"
+  },
+  {
+    "id": "ui_0306",
+    "zh": "共 %d 行，使用制表符分列。",
+    "en": "%d rows, tab-separated columns."
+  },
+  {
+    "id": "ui_0307",
+    "zh": "复制完整消息",
+    "en": "Copy full message"
+  },
+  {
+    "id": "ui_0308",
+    "zh": "复制单元格",
+    "en": "Copy cell"
+  },
+  {
+    "id": "ui_0309",
+    "zh": "复制所选行（TSV）",
+    "en": "Copy selected rows (TSV)"
+  },
+  {
+    "id": "ui_0310",
+    "zh": "复制整行（TSV）",
+    "en": "Copy row (TSV)"
+  },
+  {
+    "id": "ui_0311",
+    "zh": "查看完整内容\tEnter",
+    "en": "View full content\tEnter"
+  },
+  {
+    "id": "ui_0312",
+    "zh": "定位到原始日志",
+    "en": "Locate in raw logs"
+  },
+  {
+    "id": "ui_0313",
+    "zh": "添加/移除证据书签\tCtrl+B",
+    "en": "Toggle evidence bookmark\tCtrl+B"
+  },
+  {
+    "id": "ui_0314",
+    "zh": "已复制完整内容",
+    "en": "Full content copied"
+  },
+  {
+    "id": "ui_0315",
+    "zh": "当前范围内没有数据",
+    "en": "No data in the current range"
+  },
+  {
+    "id": "ui_0316",
+    "zh": "还没有加载日志",
+    "en": "No logs loaded"
+  },
+  {
+    "id": "ui_0317",
+    "zh": "调整筛选条件，或切换到其他页面查看。",
+    "en": "Adjust filters or view another page."
+  },
+  {
+    "id": "ui_0318",
+    "zh": "拖入日志文件，或使用右上角“打开日志”。",
+    "en": "Drop log files or use Open logs at the top right."
+  },
+  {
+    "id": "ui_0319",
+    "zh": "没有发现断网记录",
+    "en": "No outage records found"
+  },
+  {
+    "id": "ui_0320",
+    "zh": "当前筛选范围内未检测到完整的断网事件。",
+    "en": "No complete outage events detected under the current filters."
+  },
+  {
+    "id": "ui_0321",
+    "zh": "没有信号指标",
+    "en": "No signal metrics"
+  },
+  {
+    "id": "ui_0322",
+    "zh": "当前日志中没有可绘制的心跳或信号采样。",
+    "en": "No heartbeat or signal samples available to plot."
+  },
+  {
+    "id": "ui_0323",
+    "zh": "没有关键事件",
+    "en": "No key events"
+  },
+  {
+    "id": "ui_0324",
+    "zh": "当前范围内没有状态迁移、切换或恢复事件。",
+    "en": "No state transitions, switching or recovery events in this range."
+  },
+  {
+    "id": "ui_0325",
+    "zh": "没有标签统计",
+    "en": "No tag statistics"
+  },
+  {
+    "id": "ui_0326",
+    "zh": "当前筛选结果为空，请尝试清空筛选条件。",
+    "en": "The filter result is empty. Try clearing the filters."
+  },
+  {
+    "id": "ui_0327",
+    "zh": "全部日志均已识别",
+    "en": "All log rows recognized"
+  },
+  {
+    "id": "ui_0328",
+    "zh": "解析覆盖完整，没有需要人工复核的原始行。",
+    "en": "Complete parse coverage; no original rows need review."
+  },
+  {
+    "id": "ui_0329",
+    "zh": "没有小区画像",
+    "en": "No cell profile"
+  },
+  {
+    "id": "ui_0330",
+    "zh": "当前日志未提供 Cell ID，无法按小区聚合信号质量。",
+    "en": "The logs contain no Cell ID for grouping signal quality."
+  },
+  {
+    "id": "ui_0331",
+    "zh": "筛选结果为空",
+    "en": "Empty filter result"
+  },
+  {
+    "id": "ui_0332",
+    "zh": "清空筛选条件即可恢复全部原始日志。",
+    "en": "Clear filters to restore the raw logs."
+  },
+  {
+    "id": "ui_0333",
+    "zh": "窗口空间不足",
+    "en": "Insufficient window space"
+  },
+  {
+    "id": "ui_0334",
+    "zh": "暂无信号趋势",
+    "en": "No signal trend"
+  },
+  {
+    "id": "ui_0335",
+    "zh": "收起顶部筛选栏、增加图表高度，或切换到图表全页。",
+    "en": "Collapse the filters, increase chart height or use the full-page chart."
+  },
+  {
+    "id": "ui_0336",
+    "zh": "可切换到表格查看其他指标。CSQ 99 为未知，不绘制。",
+    "en": "Use the table for other metrics. CSQ 99 means unknown and is omitted from the chart."
+  },
+  {
+    "id": "ui_0337",
+    "zh": "选区预览：",
+    "en": "Selection preview: "
+  },
+  {
+    "id": "ui_0338",
+    "zh": "%d 点",
+    "en": "%d points"
+  },
+  {
+    "id": "ui_0339",
+    "zh": "CSQ · 0–31（99 未知）",
+    "en": "CSQ · 0–31 (99 unknown)"
+  },
+  {
+    "id": "ui_0340",
+    "zh": "SNR · -20～30 dB（模组上报值）",
+    "en": "SNR · -20–30 dB (module-reported)"
+  },
+  {
+    "id": "ui_0341",
+    "zh": "≥10 一般",
+    "en": "≥10 fair"
+  },
+  {
+    "id": "ui_0342",
+    "zh": "≥15 良好",
+    "en": "≥15 good"
+  },
+  {
+    "id": "ui_0343",
+    "zh": "≥20 优秀",
+    "en": "≥20 excellent"
+  },
+  {
+    "id": "ui_0344",
+    "zh": "≥-100 一般",
+    "en": "≥-100 fair"
+  },
+  {
+    "id": "ui_0345",
+    "zh": "≥-90 良好",
+    "en": "≥-90 good"
+  },
+  {
+    "id": "ui_0346",
+    "zh": "≥-80 优秀",
+    "en": "≥-80 excellent"
+  },
+  {
+    "id": "ui_0347",
+    "zh": "≥-20 一般",
+    "en": "≥-20 fair"
+  },
+  {
+    "id": "ui_0348",
+    "zh": "≥-15 良好",
+    "en": "≥-15 good"
+  },
+  {
+    "id": "ui_0349",
+    "zh": "≥-10 优秀",
+    "en": "≥-10 excellent"
+  },
+  {
+    "id": "ui_0350",
+    "zh": ">0 一般",
+    "en": ">0 fair"
+  },
+  {
+    "id": "ui_0351",
+    "zh": "≥13 良好",
+    "en": "≥13 good"
+  },
+  {
+    "id": "ui_0352",
+    "zh": "最近小区 %s · %d 个",
+    "en": "Latest cell %s · %d cells"
+  },
+  {
+    "id": "ui_0353",
+    "zh": " · 区间内证据 · 起止边界请结合全范围复核",
+    "en": " · Selected-range evidence · Review boundaries in the full range"
+  },
+  {
+    "id": "ui_0354",
+    "zh": " · 浅红为断网 · >10 分钟采样空缺断线",
+    "en": " · Pale red: outage · Sample gaps >10 min break the curve"
+  },
+  {
+    "id": "ui_0355",
+    "zh": "最近采样  ",
+    "en": "Latest sample  "
+  },
+  {
+    "id": "ui_0356",
+    "zh": "附近无采样",
+    "en": "No nearby sample"
+  },
+  {
+    "id": "ui_0357",
+    "zh": "复制失败",
+    "en": "Copy failed"
+  },
+  {
+    "id": "ui_0358",
+    "zh": "完整内容已复制到剪贴板。",
+    "en": "Full content copied to the clipboard."
+  },
+  {
+    "id": "ui_0359",
+    "zh": "剪贴板暂时不可用，请重试。",
+    "en": "Clipboard unavailable. Try again."
+  },
+  {
+    "id": "ui_0360",
+    "zh": "；仅按区间内运行证据判断，边界需结合全范围复核。",
+    "en": "; runtime evidence within this range only; review boundaries in the full range."
+  },
+  {
+    "id": "ui_0361",
+    "zh": "\r\n依据：",
+    "en": "\r\nBasis: "
+  },
+  {
+    "id": "ui_0362",
+    "zh": "\r\n建议：",
+    "en": "\r\nAdvice: "
+  },
+  {
+    "id": "ui_0363",
+    "zh": "\r\n证据：\r\n",
+    "en": "\r\nEvidence:\r\n"
+  },
+  {
+    "id": "ui_0364",
+    "zh": "来源平台：",
+    "en": "Source platform: "
+  },
+  {
+    "id": "ui_0365",
+    "zh": "\r\n运行结论按区间内证据重算；平台识别基于当前来源，解析审计基于整份输入。起止边界请结合全范围复核。\r\n",
+    "en": "\r\nRuntime findings use selected-range evidence. Parse audit covers the whole input. Review boundaries in the full range.\r\n"
+  },
+  {
+    "id": "ui_0366",
+    "zh": "解析统计：已解析 %d 行，未识别 %d 行（%.2f%%），NUL %d 字节 / %d 行\r\n",
+    "en": "Parse statistics: %d parsed rows, %d unparsed (%.2f%%), NUL %d bytes / %d rows\r\n"
+  },
+  {
+    "id": "ui_0367",
+    "zh": "识别依据：第 %d 行  ",
+    "en": "Identification basis: row %d  "
+  },
+  {
+    "id": "ui_0368",
+    "zh": "时钟跳变：第 %d 行 %s → %s\r\n两侧分别计算观测区间，不跨时基配对。\r\n",
+    "en": "Clock jump: row %d %s → %s\r\nObservation windows calculated separately; no pairing across time bases.\r\n"
+  },
+  {
+    "id": "ui_0369",
+    "zh": "诊断结论\r\n",
+    "en": "Findings\r\n"
+  },
+  {
+    "id": "ui_0370",
+    "zh": "输入：",
+    "en": "Input: "
+  },
+  {
+    "id": "ui_0371",
+    "zh": "当前日志未命中诊断规则；请结合解析覆盖率和原始日志检查。\r\n",
+    "en": "No diagnostic rule matched. Review parse coverage and raw logs.\r\n"
+  },
+  {
+    "id": "ui_0372",
+    "zh": "复制此卡片",
+    "en": "Copy this card"
+  },
+  {
+    "id": "ui_0373",
+    "zh": "复制此条结论",
+    "en": "Copy this finding"
+  },
+  {
+    "id": "ui_0374",
+    "zh": "复制完整概览\tCtrl+C",
+    "en": "Copy full overview\tCtrl+C"
+  },
+  {
+    "id": "ui_0375",
+    "zh": "复制全部结论\tCtrl+C",
+    "en": "Copy all findings\tCtrl+C"
+  },
+  {
+    "id": "ui_0376",
+    "zh": "开始分析第一份日志",
+    "en": "Analyze your first log"
+  },
+  {
+    "id": "ui_0377",
+    "zh": "将 dial_*.log、文本或压缩包拖到窗口中，也可以使用“打开日志”或“粘贴日志”。",
+    "en": "Drop dial_*.log, text or archives into this window, or use Open logs or Paste log."
+  },
+  {
+    "id": "ui_0378",
+    "zh": "筛选后没有结果",
+    "en": "No filter results"
+  },
+  {
+    "id": "ui_0379",
+    "zh": "当前日志已加载，但没有行满足筛选条件。展开筛选面板并清空条件即可恢复。",
+    "en": "The log is loaded, but no rows match. Expand the filter panel and clear the conditions."
+  },
+  {
+    "id": "ui_0380",
+    "zh": "证据不足",
+    "en": "Insufficient evidence"
+  },
+  {
+    "id": "ui_0381",
+    "zh": "未建立连接",
+    "en": "No connection established"
+  },
+  {
+    "id": "ui_0382",
+    "zh": "数据不足",
+    "en": "Insufficient data"
+  },
+  {
+    "id": "ui_0383",
+    "zh": "良好",
+    "en": "Good"
+  },
+  {
+    "id": "ui_0384",
+    "zh": "偏低",
+    "en": "Low"
+  },
+  {
+    "id": "ui_0385",
+    "zh": "差",
+    "en": "Poor"
+  },
+  {
+    "id": "ui_0386",
+    "zh": "首次联网后运行期可用率",
+    "en": "Runtime availability after first connection"
+  },
+  {
+    "id": "ui_0387",
+    "zh": "复制概览",
+    "en": "Copy overview"
+  },
+  {
+    "id": "ui_0388",
+    "zh": "累计 %s",
+    "en": "Total %s"
+  },
+  {
+    "id": "ui_0389",
+    "zh": "最长单次断网",
+    "en": "Longest outage"
+  },
+  {
+    "id": "ui_0390",
+    "zh": "未识别/文件损伤",
+    "en": "Unparsed / damaged input"
+  },
+  {
+    "id": "ui_0391",
+    "zh": "未识别 %.2f%% · NUL %d 行",
+    "en": "Unparsed %.2f%% · NUL in %d rows"
+  },
+  {
+    "id": "ui_0392",
+    "zh": "无解析遗漏或 NUL 损伤",
+    "en": "No unparsed rows or NUL damage"
+  },
+  {
+    "id": "ui_0393",
+    "zh": "信号 CSQ(最小/均/最大)",
+    "en": "CSQ (min / mean / max)"
+  },
+  {
+    "id": "ui_0394",
+    "zh": "%d 个样本",
+    "en": "%d samples"
+  },
+  {
+    "id": "ui_0395",
+    "zh": "断网时长分布",
+    "en": "Outage duration distribution"
+  },
+  {
+    "id": "ui_0396",
+    "zh": "定位原始行",
+    "en": "Locate original row"
+  },
+  {
+    "id": "ui_0397",
+    "zh": "复制证据",
+    "en": "Copy evidence"
+  },
+  {
+    "id": "ui_0398",
+    "zh": "添加 / 移除书签\tCtrl+B",
+    "en": "Toggle bookmark\tCtrl+B"
+  },
+  {
+    "id": "ui_0399",
+    "zh": "证据已复制",
+    "en": "Evidence copied"
+  },
+  {
+    "id": "ui_0400",
+    "zh": "原始行号、时间和日志正文已复制到剪贴板。",
+    "en": "Original row number, timestamp and log text copied to the clipboard."
+  },
+  {
+    "id": "ui_0401",
+    "zh": "剪贴板暂时不可用，请稍后重试。",
+    "en": "Clipboard unavailable. Try again later."
+  },
+  {
+    "id": "ui_0402",
+    "zh": "加载日志后查看异常、处理建议和原始证据。",
+    "en": "Load logs to view faults, advice and original evidence."
+  },
+  {
+    "id": "ui_0403",
+    "zh": "诊断摘要",
+    "en": "Diagnostic summary"
+  },
+  {
+    "id": "ui_0404",
+    "zh": "%d 条规则命中",
+    "en": "%d rules matched"
+  },
+  {
+    "id": "ui_0405",
+    "zh": "复制全部结论",
+    "en": "Copy all findings"
+  },
+  {
+    "id": "ui_0406",
+    "zh": "严重 %d · 告警 %d · 信息 %d",
+    "en": "Critical %d · Warning %d · Info %d"
+  },
+  {
+    "id": "ui_0407",
+    "zh": "来源平台:  ",
+    "en": "Source platform:  "
+  },
+  {
+    "id": "ui_0408",
+    "zh": "解析覆盖: 已解析 %d 行,未识别 %d 行(%.2f%%),NUL %d 字节/%d 行%s",
+    "en": "Parse coverage: %d parsed, %d unparsed (%.2f%%), NUL %d bytes / %d rows%s"
+  },
+  {
+    "id": "ui_0409",
+    "zh": "  → 无已知损伤",
+    "en": "  → No known damage"
+  },
+  {
+    "id": "ui_0410",
+    "zh": "  → 见“未识别行”页",
+    "en": "  → See Unparsed rows"
+  },
+  {
+    "id": "ui_0411",
+    "zh": "识别依据:  第 %d 行  ",
+    "en": "Identification basis: row %d  "
+  },
+  {
+    "id": "ui_0412",
+    "zh": "时钟跳变：第 %d 行 %s → %s",
+    "en": "Clock jump: row %d %s → %s"
+  },
+  {
+    "id": "ui_0413",
+    "zh": "跳变两侧分别计算观测区间，不跨时基配对。",
+    "en": "Observation windows separated at the jump; no pairing across time bases."
+  },
+  {
+    "id": "ui_0414",
+    "zh": "运行结论按当前时间区间内证据重算；区间外的故障起点、恢复或启动可能缺失，请结合全范围复核。平台识别基于当前来源，解析审计基于整份输入。",
+    "en": "Runtime findings use evidence in the selected time range. Fault, recovery or startup boundaries may be missing; review the full range. Parse audit covers the whole input."
+  },
+  {
+    "id": "ui_0415",
+    "zh": "当前日志未命中诊断规则；请结合解析覆盖率和原始日志检查。",
+    "en": "No diagnostic rule matched. Review parse coverage and raw logs."
+  },
+  {
+    "id": "ui_0416",
+    "zh": "未命中诊断规则。",
+    "en": "No diagnostic rule matched."
+  },
+  {
+    "id": "ui_0417",
+    "zh": "· 第 %d 行  ",
+    "en": "· Row %d  "
+  },
+  {
+    "id": "ui_0418",
+    "zh": "复制此条",
+    "en": "Copy finding"
+  },
+  {
+    "id": "ui_0419",
+    "zh": "建议",
+    "en": "Advice"
+  },
+  {
+    "id": "ui_0420",
+    "zh": "证据 · 单击定位，右键复制",
+    "en": "Evidence · Click to locate, right-click to copy"
+  },
+  {
+    "id": "ui_0421",
+    "zh": "复制",
+    "en": "Copy"
+  },
+  {
+    "id": "ui_0422",
+    "zh": "明细",
+    "en": "Details"
+  },
+  {
+    "id": "ui_0423",
+    "zh": "筛选后没有可解析的日志行(试试“清空筛选”)。",
+    "en": "No parsed rows after filtering (try Clear filters)."
+  },
+  {
+    "id": "ui_0424",
+    "zh": "首次联网后运行期可用率：%.3f%%",
+    "en": "Runtime availability after first connection: %.3f%%"
+  },
+  {
+    "id": "ui_0425",
+    "zh": "首次联网后运行期可用率：—（未建立连接或证据不足）",
+    "en": "Runtime availability after first connection: — (no connection or insufficient evidence)"
+  },
+  {
+    "id": "ui_0426",
+    "zh": "全程服务可达率：—（事件证据不足，详见诊断结论）",
+    "en": "Full-period service reachability: — (insufficient event evidence; see Findings)"
+  },
+  {
+    "id": "ui_0427",
+    "zh": "全程服务可达率：%.3f%% · 启动至首次联网最长 %s%s",
+    "en": "Full-period service reachability: %.3f%% · Longest startup wait %s%s"
+  },
+  {
+    "id": "ui_0428",
+    "zh": " · 存在未恢复断网，此值为上限",
+    "en": " · Unrecovered outage present; this value is an upper bound"
+  },
+  {
+    "id": "ui_0429",
+    "zh": "%d 个启动会话未建立首次连接",
+    "en": "%d startup sessions without an initial connection"
+  },
+  {
+    "id": "ui_0430",
+    "zh": "全程服务可达率：—（未观察到启动横幅）",
+    "en": "Full-period service reachability: — (no startup banner observed)"
+  },
+  {
+    "id": "ui_0431",
+    "zh": "实际观测 %s / 日历跨度 %s · 覆盖 %.2f%%",
+    "en": "Actual observed %s / calendar span %s · Coverage %.2f%%"
+  },
+  {
+    "id": "ui_0432",
+    "zh": "%d 处授时跳变已分段计算",
+    "en": "%d time synchronization jumps calculated separately"
+  },
+  {
+    "id": "ui_0433",
+    "zh": "未识别 %d 行（%.2f%%） · NUL %d 字节 / %d 行",
+    "en": "Unparsed %d rows (%.2f%%) · NUL %d bytes / %d rows"
+  },
+  {
+    "id": "ui_0434",
+    "zh": "可用率与观测范围",
+    "en": "Availability and observation scope"
+  },
+  {
+    "id": "ui_0435",
+    "zh": "日志行数 %d    日志打开 %d    有证据的进程启动 %d",
+    "en": "Log rows %d    Log-open markers %d    Evidenced process starts %d"
+  },
+  {
+    "id": "ui_0436",
+    "zh": "检测到 %d 次启动横幅/Program Started 证据；启动原因不能仅凭拨号日志判定。",
+    "en": "%d startup banners / Program Started markers. Dial logs alone do not establish the cause of startup."
+  },
+  {
+    "id": "ui_0437",
+    "zh": "⚠ 日志打开数多于启动证据：部分可能是跨日/授时轮转，不能计为重启。",
+    "en": "⚠ More log-open markers than startup evidence: some may be daily/time-sync rotation, not restarts."
+  },
+  {
+    "id": "ui_0438",
+    "zh": "%d 份来源已载入；下列统计基于各来源完整输入。设备身份与观测区间需核实后再比较。",
+    "en": "%d sources loaded. Statistics below cover each full input independently; device identity and observation windows require review before comparison."
+  },
+  {
+    "id": "ui_0439",
+    "zh": "%-28s  行:%d  断网:%d  指标:%d  平均 RSRP:%s",
+    "en": "%-28s  Rows:%d  Outages:%d  Samples:%d  Mean RSRP:%s"
+  },
+  {
+    "id": "ui_0440",
+    "zh": "多日志对比",
+    "en": "Source statistics"
+  },
+  {
+    "id": "ui_0441",
+    "zh": "断网 %d 次 · 已恢复事件累计 %s · 最长 %s",
+    "en": "Outages %d · Total recovered duration %s · Longest %s"
+  },
+  {
+    "id": "ui_0442",
+    "zh": "已恢复事件时长分布：≤30s %d 次 / 31–60s %d 次 / 1–5m %d 次 / >5m %d 次",
+    "en": "Recovered duration: ≤30s %d / 31–60s %d / 1–5m %d / >5m %d"
+  },
+  {
+    "id": "ui_0443",
+    "zh": "最长单次 %s 发生在 %s",
+    "en": "Longest outage %s at %s"
+  },
+  {
+    "id": "ui_0444",
+    "zh": "仅作 LTE 工程参考；RAT 缺失按兼容的 LTE 日志处理",
+    "en": "LTE engineering reference only; missing RAT follows compatible LTE logs"
+  },
+  {
+    "id": "ui_0445",
+    "zh": "最低 %d / 均 %.1f / 最高 %d · %d 个样本   [均值:%s]",
+    "en": "Min %d / mean %.1f / max %d · %d samples   [mean:%s]"
+  },
+  {
+    "id": "ui_0446",
+    "zh": "0–9 较差 / 10–14 一般 / 15–19 良好 / 20–31 优秀（99 未知，越大越好）",
+    "en": "0–9 poor / 10–14 fair / 15–19 good / 20–31 excellent (99 unknown; higher is better)"
+  },
+  {
+    "id": "ui_0447",
+    "zh": "弱信号(<10)  %d/%d 样本   首次 %s",
+    "en": "Weak signal (<10): %d/%d samples   First %s"
+  },
+  {
+    "id": "ui_0448",
+    "zh": "RSRP  最低 %d / 均 %d / 最高 %d dBm   [均值:%s]",
+    "en": "RSRP min %d / mean %d / max %d dBm   [mean:%s]"
+  },
+  {
+    "id": "ui_0449",
+    "zh": "      (<-100 较差 / -100~-91 一般 / -90~-81 良好 / ≥-80 优秀，越大越好)",
+    "en": "      (<-100 poor / -100~-91 fair / -90~-81 good / ≥-80 excellent; higher is better)"
+  },
+  {
+    "id": "ui_0450",
+    "zh": "RSRQ  最低 %d / 均 %d / 最高 %d dB   [均值:%s]",
+    "en": "RSRQ min %d / mean %d / max %d dB   [mean:%s]"
+  },
+  {
+    "id": "ui_0451",
+    "zh": "      (<-20 较差 / -20~-16 一般 / -15~-11 良好 / ≥-10 优秀，越大越好)",
+    "en": "      (<-20 poor / -20~-16 fair / -15~-11 good / ≥-10 excellent; higher is better)"
+  },
+  {
+    "id": "ui_0452",
+    "zh": "SNR   最低 %.1f / 均 %.1f / 最高 %.1f dB   [均值:%s]   非正值 %d/%d",
+    "en": "SNR min %.1f / mean %.1f / max %.1f dB   [mean:%s]   Nonpositive %d/%d"
+  },
+  {
+    "id": "ui_0453",
+    "zh": "      (≤0 较差 / 0.1~12.9 一般 / 13~19.9 良好 / ≥20 优秀；模组上报值，不等同标准化 SINR)",
+    "en": "      (≤0 poor / 0.1~12.9 fair / 13~19.9 good / ≥20 excellent; module-reported, not standardized SINR)"
+  },
+  {
+    "id": "ui_0454",
+    "zh": "LTE 工程参考 · RSRP / RSRQ / SNR",
+    "en": "LTE reference · RSRP / RSRQ / SNR"
+  },
+  {
+    "id": "ui_0455",
+    "zh": "DENY 非零 %d/%d（保留 SDK 原始码；不同产品 SDK 编码表不同）",
+    "en": "Nonzero DENY %d/%d (raw SDK codes retained; encoding differs between SDKs)"
+  },
+  {
+    "id": "ui_0456",
+    "zh": "注网 / 运营商",
+    "en": "Registration / operator"
+  },
+  {
+    "id": "ui_0457",
+    "zh": "    ⚠ ≥85°C %d 次",
+    "en": "    ⚠ ≥85°C: %d samples"
+  },
+  {
+    "id": "ui_0458",
+    "zh": "温度",
+    "en": "Temperature"
+  },
+  {
+    "id": "ui_0459",
+    "zh": "通道占比",
+    "en": "Channel distribution"
+  },
+  {
+    "id": "ui_0460",
+    "zh": "识别到 %d 个小区，覆盖 %d 条指标样本",
+    "en": "%d identified cells across %d metric samples"
+  },
+  {
+    "id": "ui_0461",
+    "zh": "%s    %d 次（%.1f%%）",
+    "en": "%s    %d samples (%.1f%%)"
+  },
+  {
+    "id": "ui_0462",
+    "zh": "… 另有 %d 个小区",
+    "en": "… %d more cells"
+  },
+  {
+    "id": "ui_0463",
+    "zh": "小区驻留分布",
+    "en": "Cell dwell distribution"
+  },
+  {
+    "id": "ui_0464",
+    "zh": "RX_PKT 卡住 %s  %s → %s",
+    "en": "RX_PKT stalled %s  %s → %s"
+  },
+  {
+    "id": "ui_0465",
+    "zh": "数据假死征兆(RX_PKT 停滞)",
+    "en": "Possible data stall (RX_PKT)"
+  },
+  {
+    "id": "ui_0466",
+    "zh": "... 另有 %d 条",
+    "en": "... %d more rows"
+  },
+  {
+    "id": "ui_0467",
+    "zh": "报错/告警 (%d)",
+    "en": "Errors / warnings (%d)"
+  },
+  {
+    "id": "ui_0468",
+    "zh": "DataCall: APP_STOP主动:%d   SDK_URC/UNSOLICITED异常:%d   旧格式未归因:%d   Stop请求:%d",
+    "en": "DataCall: APP_STOP intentional:%d   SDK_URC/UNSOLICITED abnormal:%d   Unattributed legacy:%d   Stop requests:%d"
+  },
+  {
+    "id": "ui_0469",
+    "zh": "提示: APP_STOP 是应用主动动作；只有 SDK_URC + UNSOLICITED 标记为异常断线证据。",
+    "en": "APP_STOP is an intentional application action; only SDK_URC + UNSOLICITED marks an abnormal disconnect."
+  },
+  {
+    "id": "ui_0470",
+    "zh": "reason汇总: ",
+    "en": "Reasons: "
+  },
+  {
+    "id": "ui_0471",
+    "zh": "关键事件计数",
+    "en": "Key event counts"
+  },
+  {
+    "id": "ui_0472",
+    "zh": "时间条件：",
+    "en": "Time conditions: "
+  },
+  {
+    "id": "ui_0473",
+    "zh": "\r\n选区终点：",
+    "en": "\r\nSelection end: "
+  },
+  {
+    "id": "ui_0474",
+    "zh": "\r\n区间结论仅使用区间内证据",
+    "en": "\r\nFindings use evidence within this range only"
+  },
+  {
+    "id": "ui_0475",
+    "zh": "- 观测覆盖：实际 %s / 日历跨度 %s（%.2f%%）；授时跳变切段 %d 处",
+    "en": "- Observation: actual %s / calendar span %s (%.2f%%); %d time synchronization jumps"
+  },
+  {
+    "id": "ui_0476",
+    "zh": "筛选 (%d)",
+    "en": "Filter (%d)"
+  },
+  {
+    "id": "ui_0477",
+    "zh": "概览\r\n",
+    "en": "Overview\r\n"
+  },
+  {
+    "id": "ui_0478",
+    "zh": "已复制",
+    "en": "Copied"
+  },
+  {
+    "id": "ui_0479",
+    "zh": "⚠ 日志结束时仍处于断网(未见恢复),始于 %s",
+    "en": "⚠ No recovery seen before the end of the log; outage started at %s"
+  },
+  {
+    "id": "ui_0480",
+    "zh": "检测到 %d 份日志时钟未同步(时间戳落在 1970 年),\n与其余 %d 份墙钟日志不在同一时间坐标系。\n\n已从本次合并中排除以下未同步日志,仅用墙钟日志出结论:%s\n\n如需查看未同步日志,请单独拖入分析。",
+    "en": "%d logs have unsynchronized clocks (timestamps in 1970).\nTheir time base differs from the other %d wall-clock logs.\n\nThese unsynchronized logs were excluded; findings use wall-clock logs only:%s\n\nOpen unsynchronized logs separately to analyze them."
+  },
+  {
+    "id": "ui_0481",
+    "zh": " · 含推定时间",
+    "en": " · Includes inferred timestamps"
+  },
+  {
+    "id": "ui_0482",
+    "zh": "... 另有 %d 段",
+    "en": "... %d more segments"
+  },
+  {
+    "id": "ui_0483",
+    "zh": "LTE 工程参考 · CSQ",
+    "en": "LTE reference · CSQ"
+  },
+  {
+    "id": "ui_0484",
+    "zh": "小区 ID 未提供",
+    "en": "Cell ID unavailable"
+  },
+  {
+    "id": "ui_0485",
+    "zh": "断网",
+    "en": "Outage"
+  },
+  {
+    "id": "ui_0486",
+    "zh": "设备自报 Down 时长",
+    "en": "Device-reported Down duration"
+  },
+  {
+    "id": "ui_0487",
+    "zh": "通道切换:%d   SDK断开:%d   状态迁移:%d   CFUN:%d   切卡:%d   选网:%d   小区变更:%d",
+    "en": "Channel switches:%d   SDK disconnects:%d   State transitions:%d   CFUN:%d   SIM switches:%d   Operator selections:%d   Cell changes:%d"
+  },
+  {
+    "id": "ui_0488",
+    "zh": "（时间含推定，见表格 ~）",
+    "en": " (inferred timestamps; see ~ in the table)"
+  },
+  {
+    "id": "ui_0489",
+    "zh": "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>dialLog 可视化诊断报告</title><style>:root{color-scheme:light dark;--bg:#f5f7fa;--card:#fff;--ink:#161a21;--muted:#596579;--line:#dce2ea;--accent:#1769d2;--bad:#c93c43;--warn:#9a6700;--soft:#eaf2ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}.wrap{max-width:1240px;margin:auto;padding:32px}header,.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:18px}h1{margin:0 0 6px;font-size:30px}h2{font-size:20px;margin:0 0 16px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.kpi{padding:16px;background:var(--soft);border-radius:12px}.kpi b{display:block;font-size:24px}.charts{display:grid;gap:16px}svg{width:100%;height:auto;background:var(--card);border-radius:10px}table{border-collapse:collapse;width:100%;display:block;overflow:auto}th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:var(--card)}.severity2{border-left:5px solid var(--bad)}.severity1{border-left:5px solid var(--warn)}.finding{padding:14px 16px;margin:10px 0;background:var(--soft);border-radius:10px}.finding h3{margin:0 0 8px}.evidence{font-family:ui-monospace,Consolas,monospace;white-space:normal}@media(prefers-color-scheme:dark){:root{--bg:#111419;--card:#1c2026;--ink:#f3f5f8;--muted:#aeb8c7;--line:#38414d;--accent:#65a7f3;--bad:#f06c73;--warn:#f0b945;--soft:#19324f}}@media(forced-colors:active){*{forced-color-adjust:auto}.kpi,.finding{border:1px solid CanvasText}}@media(max-width:700px){.wrap{padding:14px}header,.card{padding:16px;border-radius:10px}h1{font-size:24px}}@media print{body{background:white}.wrap{max-width:none;padding:0}.card,header{break-inside:avoid;box-shadow:none}}</style></head><body><main class=\"wrap\"><header><h1>dialLog 可视化诊断报告</h1><div class=\"muted\">生成于 ",
+    "en": "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>dialLog visual diagnostic report</title><style>:root{color-scheme:light dark;--bg:#f5f7fa;--card:#fff;--ink:#161a21;--muted:#596579;--line:#dce2ea;--accent:#1769d2;--bad:#c93c43;--warn:#9a6700;--soft:#eaf2ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}.wrap{max-width:1240px;margin:auto;padding:32px}header,.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:18px}h1{margin:0 0 6px;font-size:30px}h2{font-size:20px;margin:0 0 16px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.kpi{padding:16px;background:var(--soft);border-radius:12px}.kpi b{display:block;font-size:24px}.charts{display:grid;gap:16px}svg{width:100%;height:auto;background:var(--card);border-radius:10px}table{border-collapse:collapse;width:100%;display:block;overflow:auto}th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:var(--card)}.severity2{border-left:5px solid var(--bad)}.severity1{border-left:5px solid var(--warn)}.finding{padding:14px 16px;margin:10px 0;background:var(--soft);border-radius:10px}.finding h3{margin:0 0 8px}.evidence{font-family:ui-monospace,Consolas,monospace;white-space:normal}@media(prefers-color-scheme:dark){:root{--bg:#111419;--card:#1c2026;--ink:#f3f5f8;--muted:#aeb8c7;--line:#38414d;--accent:#65a7f3;--bad:#f06c73;--warn:#f0b945;--soft:#19324f}}@media(forced-colors:active){*{forced-color-adjust:auto}.kpi,.finding{border:1px solid CanvasText}}@media(max-width:700px){.wrap{padding:14px}header,.card{padding:16px;border-radius:10px}h1{font-size:24px}}@media print{body{background:white}.wrap{max-width:none;padding:0}.card,header{break-inside:avoid;box-shadow:none}}</style></head><body><main class=\"wrap\"><header><h1>dialLog visual diagnostic report</h1><div class=\"muted\">Generated at "
+  },
+  {
+    "id": "ui_0490",
+    "zh": " · 本地离线分析 · 单文件可归档</div></header>",
+    "en": " · Local offline analysis · Self-contained archive</div></header>"
+  },
+  {
+    "id": "ui_0491",
+    "zh": "<section class=\"card\"><h2>分析摘要</h2><div class=\"grid\">",
+    "en": "<section class=\"card\"><h2>Analysis summary</h2><div class=\"grid\">"
+  },
+  {
+    "id": "ui_0492",
+    "zh": "平台",
+    "en": "Platform"
+  },
+  {
+    "id": "ui_0493",
+    "zh": "解析行",
+    "en": "Parsed rows"
+  },
+  {
+    "id": "ui_0494",
+    "zh": "筛选后",
+    "en": "Filtered"
+  },
+  {
+    "id": "ui_0495",
+    "zh": " 次",
+    "en": " events"
+  },
+  {
+    "id": "ui_0496",
+    "zh": "小区",
+    "en": "Cells"
+  },
+  {
+    "id": "ui_0497",
+    "zh": " 个",
+    "en": " cells"
+  },
+  {
+    "id": "ui_0498",
+    "zh": "未识别",
+    "en": "Unparsed"
+  },
+  {
+    "id": "ui_0499",
+    "zh": " 行",
+    "en": " rows"
+  },
+  {
+    "id": "ui_0500",
+    "zh": "文件损伤",
+    "en": "Input damage"
+  },
+  {
+    "id": "ui_0501",
+    "zh": " NUL 字节",
+    "en": " NUL bytes"
+  },
+  {
+    "id": "ui_0502",
+    "zh": "分析时间范围",
+    "en": "Analysis time range"
+  },
+  {
+    "id": "ui_0503",
+    "zh": "业务可用率",
+    "en": "Service availability"
+  },
+  {
+    "id": "ui_0504",
+    "zh": "运行期可用率（仅已识别事件）",
+    "en": "Runtime availability (recognized events only)"
+  },
+  {
+    "id": "ui_0505",
+    "zh": "全程可达率（仅已识别事件）",
+    "en": "Full-period reachability (recognized events only)"
+  },
+  {
+    "id": "ui_0506",
+    "zh": "全程可达率",
+    "en": "Full-period reachability"
+  },
+  {
+    "id": "ui_0507",
+    "zh": "DataCall 断开",
+    "en": "DataCall disconnects"
+  },
+  {
+    "id": "ui_0508",
+    "zh": " 次（APP_STOP ",
+    "en": " events (APP_STOP "
+  },
+  {
+    "id": "ui_0509",
+    "zh": " / 旧格式未归因 ",
+    "en": " / unattributed legacy "
+  },
+  {
+    "id": "ui_0510",
+    "zh": "</div><p class=\"muted\">日志时间：",
+    "en": "</div><p class=\"muted\">Log time: "
+  },
+  {
+    "id": "ui_0511",
+    "zh": "；实际观测 ",
+    "en": "; actual observed "
+  },
+  {
+    "id": "ui_0512",
+    "zh": " / 日历跨度 ",
+    "en": " / calendar span "
+  },
+  {
+    "id": "ui_0513",
+    "zh": "（覆盖 ",
+    "en": " (coverage "
+  },
+  {
+    "id": "ui_0514",
+    "zh": "%）；授时跳变切段 ",
+    "en": "%); time synchronization segments "
+  },
+  {
+    "id": "ui_0515",
+    "zh": " 处</p>",
+    "en": " jumps</p>"
+  },
+  {
+    "id": "ui_0516",
+    "zh": "<p>运行结论按区间内证据重算；区间外起止边沿与启动可能缺失，请结合全范围复核。平台识别基于当前来源；解析审计和来源统计基于整份输入。</p>",
+    "en": "<p>Runtime findings use selected-range evidence. Fault, recovery or startup boundaries may be missing; review the full range. Parse audit and source statistics cover the whole input.</p>"
+  },
+  {
+    "id": "ui_0517",
+    "zh": "<p class=\"muted\">暂无 ",
+    "en": "<p class=\"muted\">No "
+  },
+  {
+    "id": "ui_0518",
+    "zh": " 样本。</p>",
+    "en": " samples.</p>"
+  },
+  {
+    "id": "ui_0519",
+    "zh": " 趋势图\"><text x=\"55\" y=\"24\" fill=\"currentColor\" font-size=\"17\" font-weight=\"600\">",
+    "en": " trend chart\"><text x=\"55\" y=\"24\" fill=\"currentColor\" font-size=\"17\" font-weight=\"600\">"
+  },
+  {
+    "id": "ui_0520",
+    "zh": "<section class=\"card\"><h2>LTE 信号趋势与工程参考线</h2><p class=\"muted\">仅适用于 RAT=LTE（RAT 缺失按兼容的 LTE 日志处理）；分档不是 3GPP 或运营商统一故障等级。综合等级取四项中的最弱项；SNR 为模组上报值，不等同于所有制式的标准化 SINR。</p><div class=\"charts\">",
+    "en": "<section class=\"card\"><h2>LTE signal trends and engineering references</h2><p class=\"muted\">LTE only (missing RAT follows compatible LTE logs). These are not universal 3GPP/operator fault grades. Overall grade uses the weakest metric. SNR is module-reported, not standardized SINR across all technologies.</p><div class=\"charts\">"
+  },
+  {
+    "id": "ui_0521",
+    "zh": "CSQ 信号强度",
+    "en": "CSQ signal strength"
+  },
+  {
+    "id": "ui_0522",
+    "zh": "RSRP 覆盖质量 (dBm)",
+    "en": "RSRP coverage quality (dBm)"
+  },
+  {
+    "id": "ui_0523",
+    "zh": "RSRQ 覆盖质量 (dB)",
+    "en": "RSRQ coverage quality (dB)"
+  },
+  {
+    "id": "ui_0524",
+    "zh": "SNR 信噪比 (dB)",
+    "en": "SNR signal-to-noise ratio (dB)"
+  },
+  {
+    "id": "ui_0525",
+    "zh": "<section class=\"card\"><h2>小区质量画像</h2><table><thead><tr><th>Cell ID</th><th>PCI</th><th>TAC</th><th>样本</th><th>占比%</th><th>观测驻留</th><th>平均RSRP</th><th>最低RSRP</th><th>平均RSRQ</th><th>平均SNR</th><th>平均CSQ</th><th>切入/切出</th><th>断网关联</th><th>判断</th></tr></thead><tbody>",
+    "en": "<section class=\"card\"><h2>Cell quality profiles</h2><table><thead><tr><th>Cell ID</th><th>PCI</th><th>TAC</th><th>Samples</th><th>Share%</th><th>Observed dwell</th><th>Mean RSRP</th><th>Min RSRP</th><th>Mean RSRQ</th><th>Mean SNR</th><th>Mean CSQ</th><th>Entries / exits</th><th>Outage association</th><th>Assessment</th></tr></thead><tbody>"
+  },
+  {
+    "id": "ui_0526",
+    "zh": "</tbody></table><p class=\"muted\">断网关联：同一日志来源中，断网前 10 分钟内最近的小区样本；相关不等同因果。观测驻留只累计相邻且间隔不超过 10 分钟的同小区样本。</p></section>",
+    "en": "</tbody></table><p class=\"muted\">Outage association: the nearest cell sample within 10 minutes before an outage in the same source. Correlation is not causation. Observed dwell sums adjacent same-cell samples no more than 10 minutes apart.</p></section>"
+  },
+  {
+    "id": "ui_0527",
+    "zh": "<section class=\"card\"><h2>断网记录</h2><table><thead><tr><th>#</th><th>开始</th><th>恢复</th><th>时长</th><th>证据行</th></tr></thead><tbody>",
+    "en": "<section class=\"card\"><h2>Outage records</h2><table><thead><tr><th>#</th><th>Start</th><th>Recovery</th><th>Duration</th><th>Evidence row</th></tr></thead><tbody>"
+  },
+  {
+    "id": "ui_0528",
+    "zh": "</tbody></table></section><section class=\"card\"><h2>诊断结论与证据</h2>",
+    "en": "</tbody></table></section><section class=\"card\"><h2>Findings and evidence</h2>"
+  },
+  {
+    "id": "ui_0529",
+    "zh": "<p class=\"muted\">未形成有证据支撑的结论。</p>",
+    "en": "<p class=\"muted\">No evidence-supported findings.</p>"
+  },
+  {
+    "id": "ui_0530",
+    "zh": "</h3><p><b>依据：</b>",
+    "en": "</h3><p><b>Basis: </b>"
+  },
+  {
+    "id": "ui_0531",
+    "zh": "</p><p><b>建议：</b>",
+    "en": "</p><p><b>Advice: </b>"
+  },
+  {
+    "id": "ui_0532",
+    "zh": "<p class=\"evidence\">第 ",
+    "en": "<p class=\"evidence\">Row "
+  },
+  {
+    "id": "ui_0533",
+    "zh": " 行 · ",
+    "en": " rows · "
+  },
+  {
+    "id": "ui_0534",
+    "zh": "<h2>人工证据书签</h2><ul>",
+    "en": "<h2>Manual evidence bookmarks</h2><ul>"
+  },
+  {
+    "id": "ui_0535",
+    "zh": "<li class=\"evidence\">第 ",
+    "en": "<li class=\"evidence\">Row "
+  },
+  {
+    "id": "ui_0536",
+    "zh": "</section><footer class=\"muted\">由 dialLog 本地离线生成；报告不加载外部字体、脚本或网络资源。</footer></main></body></html>",
+    "en": "</section><footer class=\"muted\">Generated offline by dialLog; no external fonts, scripts or network resources are loaded.</footer></main></body></html>"
+  },
+  {
+    "id": "ui_0537",
+    "zh": "(无标签)",
+    "en": "(no tag)"
+  },
+  {
+    "id": "ui_0539",
+    "zh": "当前来源历史汇总",
+    "en": "Current-source history summary"
+  }
+]

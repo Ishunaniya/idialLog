@@ -1,0 +1,2517 @@
+[
+  {
+    "id": "diag_0000",
+    "zh": " (模组待识别)",
+    "en": " (module unidentified)"
+  },
+  {
+    "id": "diag_0001",
+    "zh": "v2 原文明确给出模组:  ",
+    "en": "v2 log explicitly identifies the module:  "
+  },
+  {
+    "id": "diag_0002",
+    "zh": "出现 modem_mng_v2 固定启动/状态机特征:  ",
+    "en": "modem_mng_v2 startup/state-machine signature:  "
+  },
+  {
+    "id": "diag_0003",
+    "zh": "新版展示版本标识:  ",
+    "en": "Display version identifier:  "
+  },
+  {
+    "id": "diag_0004",
+    "zh": "行格式为 seas_log(时间带毫秒+级别+函数名)",
+    "en": "seas_log format (millisecond timestamp, level and function)"
+  },
+  {
+    "id": "diag_0005",
+    "zh": "AG35 (modem_mng, 双卡)",
+    "en": "AG35 (modem_mng, dual SIM)"
+  },
+  {
+    "id": "diag_0006",
+    "zh": "出现 AG35 专有的 SLOT 切卡痕迹",
+    "en": "AG35-specific SLOT switching evidence"
+  },
+  {
+    "id": "diag_0007",
+    "zh": "出现 EG25 专有的 ROAMLINK/CH 通道字段",
+    "en": "EG25-specific ROAMLINK/CH channel fields"
+  },
+  {
+    "id": "diag_0008",
+    "zh": "EC200A (modem_mng 或 open_dial 上游)",
+    "en": "EC200A (modem_mng or upstream open_dial)"
+  },
+  {
+    "id": "diag_0009",
+    "zh": "心跳为 SIM_AT/SIM_CB 格式且无 SLOT",
+    "en": "SIM_AT/SIM_CB heartbeat without SLOT"
+  },
+  {
+    "id": "diag_0010",
+    "zh": "RK3506J 公网成功/保留网络/完整拨号固定日志",
+    "en": "RK3506J public-connectivity/retained-network/full-dial signatures"
+  },
+  {
+    "id": "diag_0011",
+    "zh": "未识别",
+    "en": "Unidentified"
+  },
+  {
+    "id": "diag_0012",
+    "zh": "无任何平台特征字段",
+    "en": "No platform signature fields"
+  },
+  {
+    "id": "diag_0013",
+    "zh": "证据不足：",
+    "en": "Insufficient evidence: "
+  },
+  {
+    "id": "diag_0014",
+    "zh": "旧版 SDK 断开回调未计入业务断网区间；",
+    "en": "Legacy SDK disconnect callbacks are not included in business outage windows; "
+  },
+  {
+    "id": "diag_0015",
+    "zh": "应用长期停留 start_call，后续监测状态不能确认；",
+    "en": "Application remained in start_call; subsequent monitoring state is unconfirmed; "
+  },
+  {
+    "id": "diag_0016",
+    "zh": "状态证据冲突，可能混入多个实例/日志流；",
+    "en": "Conflicting state evidence may indicate multiple instances/log streams; "
+  },
+  {
+    "id": "diag_0017",
+    "zh": "百分比仅按已识别事件计算，不能据此确认业务 100% 可用。",
+    "en": "Percentages use recognized events only and cannot establish 100% business availability."
+  },
+  {
+    "id": "diag_0018",
+    "zh": "弱信号",
+    "en": "Weak signal"
+  },
+  {
+    "id": "diag_0019",
+    "zh": "数据假死(RX_PKT 停滞)",
+    "en": "Possible data stall (RX_PKT)"
+  },
+  {
+    "id": "diag_0020",
+    "zh": "切卡/选网/CFUN 期间",
+    "en": "During SIM/operator switching or CFUN"
+  },
+  {
+    "id": "diag_0021",
+    "zh": "注册被拒/受限/疑似账户问题",
+    "en": "Registration denied/limited or suspected account issue"
+  },
+  {
+    "id": "diag_0022",
+    "zh": "数据服务未就绪",
+    "en": "Data service not ready"
+  },
+  {
+    "id": "diag_0023",
+    "zh": "SDK 短断网(链路抖动,非设备故障)",
+    "en": "Short SDK outage (link fluctuation, not established device failure)"
+  },
+  {
+    "id": "diag_0024",
+    "zh": "未能归类",
+    "en": "Unclassified"
+  },
+  {
+    "id": "diag_0025",
+    "zh": "artery 应用长期停留 start_call",
+    "en": "artery application remained in start_call"
+  },
+  {
+    "id": "diag_0026",
+    "zh": "【日志直证】连续心跳支持 ",
+    "en": "[Log evidence] Consecutive heartbeats support "
+  },
+  {
+    "id": "diag_0027",
+    "zh": " 段 start_call 停留，最长 ",
+    "en": " start_call dwell segments; longest "
+  },
+  {
+    "id": "diag_0028",
+    "zh": " 条心跳。观察规则为至少 300 秒、3 条心跳且相邻间隔不超过 120 秒，非协议超时。",
+    "en": " heartbeats. Observation requires at least 300 seconds and 3 heartbeats with gaps no longer than 120 seconds; this is not a protocol timeout."
+  },
+  {
+    "id": "diag_0029",
+    "zh": " 该段前记录了 SIM TCP 失败重拨。",
+    "en": " SIM TCP failure and redial were recorded before this segment."
+  },
+  {
+    "id": "diag_0030",
+    "zh": " 期间 SDK 仍报告联网；SDK 连通不代表应用恢复 net_connected。",
+    "en": " SDK still reported connectivity; SDK connection does not establish application recovery to net_connected."
+  },
+  {
+    "id": "diag_0031",
+    "zh": " 这是应用状态推进/后续监测异常证据，不能折算成整段业务断网。",
+    "en": " This indicates abnormal application state progression/monitoring, not an outage spanning the entire period."
+  },
+  {
+    "id": "diag_0032",
+    "zh": "核对重拨后的 DataCall Stop/Start 与状态门控；日志未打印门控变量，具体代码原因需结合对应固件源码确认。补充 PID、业务探测和单调时间，勿以 tcp_fail=0 证明健康。",
+    "en": "Review DataCall Stop/Start and state gates after redial. Gate variables are absent; verify the specific cause against firmware source. Collect PID, business probes and monotonic time. tcp_fail=0 does not establish health."
+  },
+  {
+    "id": "diag_0033",
+    "zh": "artery 状态证据冲突，疑似混合实例/日志流",
+    "en": "artery state conflict; possible mixed instances/log streams"
+  },
+  {
+    "id": "diag_0034",
+    "zh": "【日志直证】明确状态迁移后，超过 15 秒仍重复出现相反的 start_call/net_connected 心跳（180 秒内至少两次）。【推断】可能有多个实例/日志流；无 PID，无法确定实例数量或逐行归属。",
+    "en": "[Log evidence] After an explicit transition, opposite start_call/net_connected heartbeats continued beyond 15 seconds, at least twice within 180 seconds. [Inference] Multiple instances/log streams are possible; without PID, instance count and row ownership remain unknown."
+  },
+  {
+    "id": "diag_0035",
+    "zh": "按 PID/启动标识分别采集日志，并核对守护进程是否重复拉起；不要把这些心跳解释成同一实例反复迁移，也不要跨启动拼接停留时长。",
+    "en": "Collect logs by PID/startup identifier and check for duplicate daemon starts. Do not interpret these heartbeats as repeated transitions of one instance or combine dwell time across starts."
+  },
+  {
+    "id": "diag_0036",
+    "zh": "artery 旧版 SDK 断开回调 ",
+    "en": "artery legacy SDK disconnect callbacks: "
+  },
+  {
+    "id": "diag_0037",
+    "zh": " 次",
+    "en": " occurrences"
+  },
+  {
+    "id": "diag_0038",
+    "zh": "【日志直证】Net disconnected 回调已纳入旧格式未归因计数；原始原因码不能证明是应用主动停止或 SDK 自发断开，回调区间也不等于业务中断区间。",
+    "en": "[Log evidence] Net disconnected callbacks count as unattributed legacy events. Raw reason codes do not distinguish intentional application stops from spontaneous SDK disconnects; callback intervals do not establish business outage intervals."
+  },
+  {
+    "id": "diag_0039",
+    "zh": "结合对应 Net Connected、业务探测和 RX 判断恢复；未识别业务断网不意味着业务 100% 可用，概览和报告按证据不足展示。",
+    "en": "Review Net Connected, business probes and RX. No recognized outage does not establish 100% availability; overview and reports show insufficient evidence."
+  },
+  {
+    "id": "diag_0040",
+    "zh": "恢复记录缺少可信故障起点或时长不可能，已排除出断网统计",
+    "en": "Recovery lacks a credible fault start or has an impossible duration; excluded from outage statistics"
+  },
+  {
+    "id": "diag_0041",
+    "zh": "恢复行必须与同一日志来源内的 fault timer started 配对；声明时长还必须",
+    "en": "A recovery row must pair with fault timer started in the same log source. Its declared duration must also "
+  },
+  {
+    "id": "diag_0042",
+    "zh": "不超过该来源的实际观测跨度。未满足时通常表示日志缺失、授时跳变或残留",
+    "en": "not exceed the source's actual observation span. Failure usually indicates missing logs, a clock jump or residual "
+  },
+  {
+    "id": "diag_0043",
+    "zh": "状态，不能据此计算断网和可用率。",
+    "en": "state; such values cannot establish outage duration or availability."
+  },
+  {
+    "id": "diag_0044",
+    "zh": "补充同进程的 unsynced/前序日志并核对系统授时记录；产品持续时间应使用",
+    "en": "Collect the preceding/unsynced logs of the same process and system time synchronization records. Product durations should use "
+  },
+  {
+    "id": "diag_0045",
+    "zh": "CLOCK_MONOTONIC。工具已保留原始恢复值作为异常证据。",
+    "en": "CLOCK_MONOTONIC. Original recovery values are retained as anomalous evidence."
+  },
+  {
+    "id": "diag_0046",
+    "zh": "SIM 卡未插入，v2 正在低频轮询",
+    "en": "v2 SIM absent; low-frequency polling active"
+  },
+  {
+    "id": "diag_0047",
+    "zh": "日志明确返回 CME SIM not inserted。v2 对该分支采用 5s→10s→15s 的慢轮询，",
+    "en": "The log explicitly reports CME SIM not inserted. v2 uses slow polling at 5s→10s→15s for this branch, "
+  },
+  {
+    "id": "diag_0048",
+    "zh": "不会因卡缺失耗尽普通 CPIN 重试并复位模组。",
+    "en": "so absence does not exhaust ordinary CPIN retries or reset the module."
+  },
+  {
+    "id": "diag_0049",
+    "zh": "检查 SIM 卡槽、卡片方向和接触；插卡后确认出现 sim ok，再继续排查注网/APN。",
+    "en": "Check the SIM slot, orientation and contacts. After insertion, confirm sim ok before investigating registration/APN."
+  },
+  {
+    "id": "diag_0050",
+    "zh": "网络长期未注册，v2 已触发模组复位",
+    "en": "v2 prolonged lack of registration triggered module reset"
+  },
+  {
+    "id": "diag_0051",
+    "zh": "日志出现 No registered so long 或注册阶段失败后的 Reset modem 固定动作，",
+    "en": "No registered so long or Reset modem after registration failure is recorded, "
+  },
+  {
+    "id": "diag_0052",
+    "zh": "说明不是一次尚在等待的 CEREG/CGREG 采样。",
+    "en": "not merely a CEREG/CGREG sample still waiting for registration."
+  },
+  {
+    "id": "diag_0053",
+    "zh": "核对同一时段的 CEREG/CGREG stat、LAC/CI/AcT、SIM 状态和运营商覆盖；",
+    "en": "Review CEREG/CGREG stat, LAC/CI/AcT, SIM state and coverage for the same period. "
+  },
+  {
+    "id": "diag_0054",
+    "zh": "复位反复出现时优先查注册条件，而不是继续缩短复位周期。",
+    "en": "If resets recur, investigate registration conditions before shortening reset intervals."
+  },
+  {
+    "id": "diag_0055",
+    "zh": "连续 ping 失败触发重初始化",
+    "en": "Consecutive ping failures triggered reinitialization"
+  },
+  {
+    "id": "diag_0056",
+    "zh": "v2 的 keepalive 重试次数已经达到配置上限，源码随后将状态转入 MD_ERROR，",
+    "en": "v2 keepalive retries reached the configured limit; source transitions to MD_ERROR "
+  },
+  {
+    "id": "diag_0057",
+    "zh": "重新执行模组初始化；单条 ping failed(x/y) 不会触发本结论。",
+    "en": "and reinitializes the module. A single ping failed(x/y) does not trigger this finding."
+  },
+  {
+    "id": "diag_0058",
+    "zh": "结合 WAN down/up 断网区间和 CSQ/CEREG 指标判断是覆盖、注册还是数据面故障；",
+    "en": "Use WAN down/up windows and CSQ/CEREG to distinguish coverage, registration and data-plane faults. "
+  },
+  {
+    "id": "diag_0059",
+    "zh": "若频繁重初始化，保留完整周期日志。",
+    "en": "Retain full-cycle logs if reinitialization recurs."
+  },
+  {
+    "id": "diag_0060",
+    "zh": "进入 READY 时 WAN 仍离线",
+    "en": "WAN offline on entry to READY"
+  },
+  {
+    "id": "diag_0061",
+    "zh": "READY 横幅明确记录 online=0。v2 会继续在 READY 周期内刷新注册、CSQ 和 WAN，",
+    "en": "The READY banner explicitly reports online=0. v2 keeps refreshing registration, CSQ and WAN in READY. "
+  },
+  {
+    "id": "diag_0062",
+    "zh": "该行证明当时尚未联网，但不等同于进程初始化失败。",
+    "en": "This proves connectivity was absent then, but does not establish process initialization failure."
+  },
+  {
+    "id": "diag_0063",
+    "zh": "查看随后是否出现 WAN ping OK；若持续离线，再结合注册状态和 SIM/CSQ 证据处理。",
+    "en": "Check for later WAN ping OK. If offline persists, investigate registration and SIM/CSQ evidence."
+  },
+  {
+    "id": "diag_0064",
+    "zh": "READY 状态失败并复位",
+    "en": "READY state failed and reset"
+  },
+  {
+    "id": "diag_0065",
+    "zh": "日志出现 failed to in ready state，表明状态机从 MD_READY 进入错误处理并调用模组复位。",
+    "en": "failed to in ready state shows a transition from MD_READY to error handling and module reset."
+  },
+  {
+    "id": "diag_0066",
+    "zh": "回看此前连续 ping、WAN online、CEREG/CGREG 与 CSQ；区分网络不可达和模组/AT 端口异常。",
+    "en": "Review preceding ping failures, WAN online, CEREG/CGREG and CSQ. Distinguish network reachability from module/AT-port faults."
+  },
+  {
+    "id": "diag_0067",
+    "zh": "IMX6ULL 拨号失败，已进入退避重试",
+    "en": "IMX6ULL dial failure entered backoff retry"
+  },
+  {
+    "id": "diag_0068",
+    "zh": "【源码直证】旧版以 FAILURE/RETRY 记录退避；1.25.1 以 RECOVERY 的 class、level、",
+    "en": "[Source-code evidence] Older versions record backoff under FAILURE/RETRY; 1.25.1 records the same action under RECOVERY using class, level, "
+  },
+  {
+    "id": "diag_0069",
+    "zh": "action、attempt 和 wait_s 记录同一动作。它们是恢复进行中的证据，不是联网恢复。",
+    "en": "action, attempt and wait_s. These indicate recovery in progress, not restored connectivity."
+  },
+  {
+    "id": "diag_0070",
+    "zh": "按证据中的 state、pdn、if 和 reason 分流排查；保留完整失败—恢复周期，确认重试是否反复耗尽。",
+    "en": "Investigate by state, pdn, if and reason. Retain the full failure/recovery cycle and check whether retries repeatedly exhaust."
+  },
+  {
+    "id": "diag_0071",
+    "zh": "IMX6ULL SIM 未就绪",
+    "en": "IMX6ULL SIM not ready"
+  },
+  {
+    "id": "diag_0072",
+    "zh": "【源码直证】AT+CPIN 检查未返回 READY，状态机转入 FAILURE_RETRY。",
+    "en": "[Source-code evidence] AT+CPIN did not return READY; the state machine entered FAILURE_RETRY."
+  },
+  {
+    "id": "diag_0073",
+    "zh": "检查卡槽、卡接触、PIN 锁状态和 CPIN 原始响应；SIM 未就绪前继续拨号没有意义。",
+    "en": "Check the slot, contacts, PIN lock and raw CPIN response. Dialing cannot proceed while the SIM is not ready."
+  },
+  {
+    "id": "diag_0074",
+    "zh": "IMX6ULL 网络注册等待失败",
+    "en": "IMX6ULL registration wait failed"
+  },
+  {
+    "id": "diag_0075",
+    "zh": "【源码直证】CEREG 响应无法解析或在注册等待窗口内超时，状态机未进入正常数据拨号。",
+    "en": "[Source-code evidence] CEREG was unparseable or registration wait timed out; normal data dialing was not reached."
+  },
+  {
+    "id": "diag_0076",
+    "zh": "核对 CEREG、CSQ、运营商选择和 AT 端口响应；区分无注册、响应损坏和覆盖问题。",
+    "en": "Review CEREG, CSQ, operator selection and AT responses. Distinguish no registration from damaged responses and poor coverage."
+  },
+  {
+    "id": "diag_0077",
+    "zh": "IMX6ULL PDP 数据连接失败",
+    "en": "IMX6ULL PDP connection failed"
+  },
+  {
+    "id": "diag_0078",
+    "zh": "【源码直证】CID1 请求被拒、PDP 等待耗尽或状态不可解析，数据面尚未就绪。",
+    "en": "[Source-code evidence] CID1 was rejected, PDP wait exhausted or state unparseable; the data plane is not ready."
+  },
+  {
+    "id": "diag_0079",
+    "zh": "核对 APN/PDP 类型、QNETDEVCTL/QNETDEVSTATUS 原始响应和模组侧 PDP 上下文。",
+    "en": "Check APN/PDP type, raw QNETDEVCTL/QNETDEVSTATUS responses and module PDP contexts."
+  },
+  {
+    "id": "diag_0080",
+    "zh": "IMX6ULL DHCP/IPv4/路由配置失败",
+    "en": "IMX6ULL DHCP/IPv4/route configuration failed"
+  },
+  {
+    "id": "diag_0081",
+    "zh": "【源码直证】DHCP 客户端失败或网卡没有 IPv4/默认路由，问题位于 AP 侧网络配置或链路可达性。",
+    "en": "[Source-code evidence] DHCP failed or the interface lacked IPv4/default route; investigate AP-side configuration and reachability."
+  },
+  {
+    "id": "diag_0082",
+    "zh": "检查接口是否存在、udhcpc 进程与租约、IP/网关/路由/DNS；再复核探测端点可达性。",
+    "en": "Check interface existence, udhcpc, lease, IP/gateway/routes/DNS, then probe-endpoint reachability."
+  },
+  {
+    "id": "diag_0083",
+    "zh": "IMX6ULL 模组拓扑或 AT 通道不可用",
+    "en": "IMX6ULL module topology or AT channel unavailable"
+  },
+  {
+    "id": "diag_0084",
+    "zh": "【源码直证】USB 模组拓扑发现超时/失败，或已选 AT 端口打开、读写响应失败。",
+    "en": "[Source-code evidence] USB topology discovery failed/timed out, or the selected AT port failed to open/read/write/respond."
+  },
+  {
+    "id": "diag_0085",
+    "zh": "检查 USB 枚举、option 驱动绑定、AT 端口节点及供电；确认网卡与 AT 口来自同一模组。",
+    "en": "Check USB enumeration, option driver binding, AT nodes and power. Confirm the interface and AT port belong to the same module."
+  },
+  {
+    "id": "diag_0086",
+    "zh": "IMX6ULL AT 遥测命令超时",
+    "en": "IMX6ULL AT telemetry command timed out"
+  },
+  {
+    "id": "diag_0087",
+    "zh": "【日志直证】心跳的 at_timeout=1 表示本轮遥测 AT 命令没有获得终止响应。",
+    "en": "[Log evidence] at_timeout=1 means this heartbeat's telemetry AT command received no terminating response."
+  },
+  {
+    "id": "diag_0088",
+    "zh": "该字段本身不等同 AT 端口完全不可用；新版会另以 at_probe 或 [AT] 基础探测确认。",
+    "en": "This alone does not establish total AT-port failure; newer versions confirm with at_probe or an [AT] basic probe."
+  },
+  {
+    "id": "diag_0089",
+    "zh": "查看同一心跳的 at_probe 及后续 [AT] timeout event；probe=ok 时优先保留现场观察，",
+    "en": "Review at_probe and subsequent [AT] timeout events. With probe=ok, retain evidence and observe; "
+  },
+  {
+    "id": "diag_0090",
+    "zh": "probe=fail 或连续失败达到阈值时检查 AT 口、USB 与模组供电。",
+    "en": "with probe=fail or threshold-level consecutive failures, check AT, USB and module power."
+  },
+  {
+    "id": "diag_0091",
+    "zh": "IMX6ULL AT 基础确认探测失败",
+    "en": "IMX6ULL basic AT confirmation probe failed"
+  },
+  {
+    "id": "diag_0092",
+    "zh": "【源码直证】遥测超时后，拨号循环用裸 AT 探测确认控制面；连续失败达到配置阈值才升级恢复。",
+    "en": "[Source-code evidence] After telemetry timeout, the dial loop confirms the control plane with bare AT. Recovery escalates only at the configured consecutive-failure threshold."
+  },
+  {
+    "id": "diag_0093",
+    "zh": "核对 failed streak/limit、AT 口节点和 USB 枚举；不要仅凭单条遥测超时直接判定模组失联。",
+    "en": "Review failed streak/limit, AT nodes and USB enumeration. One telemetry timeout does not establish module disconnection."
+  },
+  {
+    "id": "diag_0094",
+    "zh": "IMX6ULL 已执行 PDP 软重建恢复",
+    "en": "IMX6ULL PDP soft rebuild executed"
+  },
+  {
+    "id": "diag_0095",
+    "zh": "【源码直证】RECOVERY level=L2_PDP 的 soft-rebuild 会重建数据呼叫；达到上限才升级 CFUN。",
+    "en": "[Source-code evidence] RECOVERY level=L2_PDP soft-rebuild reconstructs the data call; CFUN escalation follows only after the limit is reached."
+  },
+  {
+    "id": "diag_0096",
+    "zh": "核对 PDP 上下文、APN 和 QNETDEV 状态；若反复出现，保留每次 attempt 与 reason。",
+    "en": "Review PDP context, APN and QNETDEV state. Retain each attempt and reason if recurring."
+  },
+  {
+    "id": "diag_0097",
+    "zh": "IMX6ULL 已执行 CFUN 射频恢复",
+    "en": "IMX6ULL CFUN radio recovery executed"
+  },
+  {
+    "id": "diag_0098",
+    "zh": "【源码直证】RECOVERY level=L3_CFUN action=cycle 执行 CFUN=0/1，并受冷却时间限制。",
+    "en": "[Source-code evidence] RECOVERY level=L3_CFUN action=cycle runs CFUN=0/1, subject to cooldown."
+  },
+  {
+    "id": "diag_0099",
+    "zh": "结合注册状态与 cooldown 观察；频繁升级说明 PDP 软重建未解决根因。",
+    "en": "Review registration and cooldown. Repeated escalation indicates PDP soft rebuild did not resolve the cause."
+  },
+  {
+    "id": "diag_0100",
+    "zh": "IMX6ULL 已升级硬件级模组恢复",
+    "en": "IMX6ULL recovery escalated to module hardware"
+  },
+  {
+    "id": "diag_0101",
+    "zh": "【源码直证】RECOVERY level=L4_HARDWARE 进入后会执行 power-cycle，并持久化冷却时间。",
+    "en": "[Source-code evidence] RECOVERY level=L4_HARDWARE executes power-cycle and persists cooldown time."
+  },
+  {
+    "id": "diag_0102",
+    "zh": "检查 USB/供电/模组硬件和此前 AT 失败；保留冷却期内的完整日志，避免把延迟动作误判为卡死。",
+    "en": "Check USB, power, hardware and preceding AT failures. Retain logs through cooldown to distinguish delayed action from a stall."
+  },
+  {
+    "id": "diag_0103",
+    "zh": "IMX6ULL 拨号配置错误，恢复已停止",
+    "en": "IMX6ULL configuration error stopped recovery"
+  },
+  {
+    "id": "diag_0104",
+    "zh": "【源码直证】CONFIGURATION 类故障进入 CONFIG_ERROR，而非继续重拨或复位模组。",
+    "en": "[Source-code evidence] CONFIGURATION faults enter CONFIG_ERROR rather than continued redial/module reset."
+  },
+  {
+    "id": "diag_0105",
+    "zh": "修正 APN、PDP 类型等配置后重启服务；重拨、CFUN 和硬件复位不能修复配置值。",
+    "en": "Correct APN/PDP type and restart the service. Redial, CFUN and hardware reset cannot repair invalid configuration values."
+  },
+  {
+    "id": "diag_0106",
+    "zh": "RK3506J SIM 未就绪",
+    "en": "RK3506J SIM not ready"
+  },
+  {
+    "id": "diag_0107",
+    "zh": "【源码直证】CPIN 明确报告非 READY 状态或需要处理的 SIM 锁；初始化 transient 查询不作为永久故障证据。",
+    "en": "[Source-code evidence] CPIN explicitly reports a non-READY state or SIM lock. Transient initialization queries are not permanent-fault evidence."
+  },
+  {
+    "id": "diag_0108",
+    "zh": "检查卡槽、卡接触和 PIN 锁；保留 CPIN 原始应答，确认不是 AT 通道超时。",
+    "en": "Check the slot, contacts and PIN lock. Retain raw CPIN responses and distinguish AT timeout."
+  },
+  {
+    "id": "diag_0109",
+    "zh": "RK3506J LTE/EPS 未注册",
+    "en": "RK3506J LTE/EPS unregistered"
+  },
+  {
+    "id": "diag_0110",
+    "zh": "【源码直证】注册等待耗尽后明确记录 LTE/EPS is not registered，当前尚不能建立数据连接。",
+    "en": "[Source-code evidence] LTE/EPS is not registered is explicit after registration wait exhausts; data connectivity cannot yet be established."
+  },
+  {
+    "id": "diag_0111",
+    "zh": "核对 CEREG、运营商选择、覆盖和 SIM 数据权限；不要仅凭一次 CSQ 数值归因。",
+    "en": "Review CEREG, operator selection, coverage and SIM data permissions. A single CSQ value cannot establish the cause."
+  },
+  {
+    "id": "diag_0112",
+    "zh": "RK3506J PDP/ECM 数据激活失败",
+    "en": "RK3506J PDP/ECM activation failed"
+  },
+  {
+    "id": "diag_0113",
+    "zh": "【源码直证】PDP profile、CGACT 或 QNETDEVCTL 的固定 bringup 失败文案表明模组侧数据面未就绪。",
+    "en": "[Source-code evidence] Fixed PDP profile/CGACT/QNETDEVCTL bringup failure messages indicate the module data plane is not ready."
+  },
+  {
+    "id": "diag_0114",
+    "zh": "核对 APN、PDP 类型、CGACT 与 QNETDEVCTL 原始响应，再检查模组 profile。",
+    "en": "Check APN, PDP type, raw CGACT/QNETDEVCTL responses and module profile."
+  },
+  {
+    "id": "diag_0115",
+    "zh": "RK3506J DHCP/IPv4 配置失败",
+    "en": "RK3506J DHCP/IPv4 configuration failed"
+  },
+  {
+    "id": "diag_0116",
+    "zh": "【源码直证】主机接口缺失、IP/路由不完整，或 DHCP/CGCONTRDP 明确失败；成功静态 IP 与开始回退不作为最终失败。",
+    "en": "[Source-code evidence] The interface is missing, IP/routes incomplete, or DHCP/CGCONTRDP explicitly failed. Successful static IP or the start of fallback is not final-failure evidence."
+  },
+  {
+    "id": "diag_0117",
+    "zh": "检查接口存在性、udhcpc、IP/网关/默认路由和 CGCONTRDP 响应。",
+    "en": "Check interface existence, udhcpc, IP/gateway/default route and CGCONTRDP responses."
+  },
+  {
+    "id": "diag_0118",
+    "zh": "RK3506J 模组拓扑或 AT 通道不可用",
+    "en": "RK3506J module topology or AT channel unavailable"
+  },
+  {
+    "id": "diag_0119",
+    "zh": "【源码直证】设备发现/AT 端口报告不可用，或基本 AT/CFUN 就绪窗口耗尽、状态机报告传输失败。",
+    "en": "[Source-code evidence] Discovery/AT reports unavailable, basic AT/CFUN readiness windows exhausted, or the state machine reports transport failure."
+  },
+  {
+    "id": "diag_0120",
+    "zh": "检查 USB 枚举、option 驱动绑定、AT 端口节点及供电，并确认 AT 口和网卡属于同一模组。",
+    "en": "Check USB enumeration, option binding, AT nodes and power. Confirm AT and network interface belong to the same module."
+  },
+  {
+    "id": "diag_0121",
+    "zh": "RK3506J 连通性探测失败",
+    "en": "RK3506J connectivity probe failed"
+  },
+  {
+    "id": "diag_0122",
+    "zh": "【日志直证】状态机记录公网 PING 失败，或保留网络接管后 IP/路由完整但 internet=0；单次失败不等同于已完成重拨。",
+    "en": "[Log evidence] Public PING failed, or retained-network adoption had complete IP/routes but internet=0. One failure does not establish completed redial."
+  },
+  {
+    "id": "diag_0123",
+    "zh": "结合随后 HB30 的 online、fail_streak/retry 和 FAILURE_RETRY 状态判断是否升级恢复。",
+    "en": "Use subsequent HB30 online, fail_streak/retry and FAILURE_RETRY to assess recovery escalation."
+  },
+  {
+    "id": "diag_0124",
+    "zh": "RK3506J 已进入失败重试状态",
+    "en": "RK3506J entered failure retry"
+  },
+  {
+    "id": "diag_0125",
+    "zh": "【源码直证】FULL-DIAL/EC200A/EG912 状态机明确进入或转移到 FAILURE_RETRY；普通 REDIAL_AT 不等同该状态。",
+    "en": "[Source-code evidence] FULL-DIAL/EC200A/EG912 explicitly entered FAILURE_RETRY. Ordinary REDIAL_AT is not this state."
+  },
+  {
+    "id": "diag_0126",
+    "zh": "从同一轮前序 bringup、注册、PDP、DHCP 和 AT 证据定位失败层级，保留恢复完成前的完整日志。",
+    "en": "Locate the failed layer using the same cycle's bringup, registration, PDP, DHCP and AT evidence. Retain logs through recovery completion."
+  },
+  {
+    "id": "diag_0127",
+    "zh": "RK3506J SIM 就绪等待耗尽",
+    "en": "RK3506J SIM readiness wait exhausted"
+  },
+  {
+    "id": "diag_0128",
+    "zh": "【日志直证】CPIN 的限时就绪窗口结束仍未获得可接受的 READY；单凭该总结不能确认缺卡或 PIN 锁。",
+    "en": "[Log evidence] CPIN's bounded readiness window ended without acceptable READY. This summary alone cannot distinguish absent SIM from PIN lock."
+  },
+  {
+    "id": "diag_0129",
+    "zh": "检查前序 CPIN class/state、CME 原码和 AT 传输状态，区分 SIM 初始化、SIM 锁与 AT 不响应。",
+    "en": "Review preceding CPIN class/state, raw CME codes and AT transport. Distinguish initialization, SIM lock and unresponsive AT."
+  },
+  {
+    "id": "diag_0130",
+    "zh": "RK3506J 已进入启动软恢复",
+    "en": "RK3506J entered startup soft recovery"
+  },
+  {
+    "id": "diag_0131",
+    "zh": "【源码直证】保留网络接管失败后进入 SOFT_RECOVERY，先尝试 AT/ECM 恢复。",
+    "en": "[Source-code evidence] Retained-network adoption failed and entered SOFT_RECOVERY, first trying AT/ECM recovery."
+  },
+  {
+    "id": "diag_0132",
+    "zh": "结合前序 retained、CID、ECM、接口和公网结果定位接管失败层级；后续 PING 成功才证明公网恢复。",
+    "en": "Review retained, CID, ECM, interface and public probe results to locate the adoption failure. Only subsequent PING success establishes public connectivity recovery."
+  },
+  {
+    "id": "diag_0133",
+    "zh": "RK3506J 已进入硬恢复阶段",
+    "en": "RK3506J entered hard recovery"
+  },
+  {
+    "id": "diag_0134",
+    "zh": "【日志直证】启动软恢复或运行期恢复耗尽，明确进入 HARD_RECOVERY；许可 allowed 本身不算执行动作。",
+    "en": "[Log evidence] Startup soft recovery/runtime recovery exhausted and explicitly entered HARD_RECOVERY. allowed permission alone is not an executed action."
+  },
+  {
+    "id": "diag_0135",
+    "zh": "继续检查 CFUN、POWER/PWRKEY 和冷却日志，确认软关机或物理关机是否成功；不要仅凭阶段名认定已断电复位。",
+    "en": "Review CFUN, POWER/PWRKEY and cooldown to confirm shutdown. The stage name alone does not establish a physical power cycle."
+  },
+  {
+    "id": "diag_0136",
+    "zh": "RK3506J 启动保留网络保护",
+    "en": "RK3506J startup retained-network protection"
+  },
+  {
+    "id": "diag_0137",
+    "zh": "【日志直证】启动期限制破坏性或硬件恢复以保护已有会话；缺少唤醒事件不证明冷启动。",
+    "en": "[Log evidence] Startup limits destructive/hardware recovery to protect an existing session. No wake event does not establish cold boot."
+  },
+  {
+    "id": "diag_0138",
+    "zh": "结合 MQTT/PDP 保留状态和接管结果判断路径；关注 SOFT_RECOVERY/HARD_RECOVERY 的实际后续动作。",
+    "en": "Review retained MQTT/PDP state and adoption results. Track actual subsequent SOFT_RECOVERY/HARD_RECOVERY actions."
+  },
+  {
+    "id": "diag_0139",
+    "zh": "RK3506J AT 端口缓存未采用",
+    "en": "RK3506J AT-port cache rejected"
+  },
+  {
+    "id": "diag_0140",
+    "zh": "【日志直证】缓存身份、端口或 ATI 校验不满足要求，转入探测；缓存拒绝不等同拨号失败。",
+    "en": "[Log evidence] Cache identity, port or ATI verification failed and discovery resumed. Cache rejection is not dial failure."
+  },
+  {
+    "id": "diag_0141",
+    "zh": "查看拒绝原因及后续 family/AT ports；只有端口探测或拨号明确失败时再判定通道故障。",
+    "en": "Review rejection reason and subsequent family/AT ports. Diagnose channel failure only with explicit discovery/dial failure."
+  },
+  {
+    "id": "diag_0142",
+    "zh": "RK3506J AT 端口缓存写入失败",
+    "en": "RK3506J AT-port cache write failed"
+  },
+  {
+    "id": "diag_0143",
+    "zh": "【日志直证】缓存无法持久化，源码明确说明 dialing remains active。",
+    "en": "[Log evidence] Cache persistence failed; source explicitly states dialing remains active."
+  },
+  {
+    "id": "diag_0144",
+    "zh": "检查缓存路径和文件系统权限；依据公网 PING/HB30 判断当前联网，不把缓存写入失败当断网。",
+    "en": "Check cache path and filesystem permissions. Use public PING/HB30 for connectivity; cache write failure is not an outage."
+  },
+  {
+    "id": "diag_0145",
+    "zh": "RK3506J 本地 IPC 等待就绪，拨号继续",
+    "en": "RK3506J local IPC pending; dialing continues"
+  },
+  {
+    "id": "diag_0146",
+    "zh": "【源码直证】NANOMSG 的 PUB/REQ-REP 后台重试；本地 IPC 尚不可用不阻塞拨号。",
+    "en": "[Source-code evidence] NANOMSG PUB/REQ-REP retries in the background; unavailable local IPC does not block dialing."
+  },
+  {
+    "id": "diag_0147",
+    "zh": "检查 loopback 与本地端点；用公网成功、接管 internet 和心跳判断外网状态。",
+    "en": "Check loopback/local endpoints. Use public success, adopted internet state and heartbeats for external connectivity."
+  },
+  {
+    "id": "diag_0148",
+    "zh": "RK3506J AT 状态查询进入回退验证",
+    "en": "RK3506J AT-state query entered fallback verification"
+  },
+  {
+    "id": "diag_0149",
+    "zh": "【日志直证】CGACT 查询不可用或 QNETDEVCTL 启动未确认，转入幂等激活/只读验证；此时尚不能断言最终数据激活失败。",
+    "en": "[Log evidence] CGACT query unavailable or QNETDEVCTL start unconfirmed; idempotent activation/read-only verification follows. Final activation failure is not yet established."
+  },
+  {
+    "id": "diag_0150",
+    "zh": "查看随后 CGACT/QNETDEVCTL 状态和公网 PING；只读完整状态行可能在末尾 OK 超时时仍被接受。",
+    "en": "Review subsequent CGACT/QNETDEVCTL and public PING. A complete read-only state line can be accepted despite a timeout waiting for final OK."
+  },
+  {
+    "id": "diag_0151",
+    "zh": "RK3506J DHCP 尝试失败或进入静态 IP 回退",
+    "en": "RK3506J DHCP attempt failed or static-IP fallback began"
+  },
+  {
+    "id": "diag_0152",
+    "zh": "【日志直证】单次 DHCP 尝试失败或开始 CGCONTRDP 回退；静态 IP 成功及公网可达可以完成恢复。",
+    "en": "[Log evidence] A DHCP attempt failed or CGCONTRDP fallback began. Successful static IP and public reachability can complete recovery."
+  },
+  {
+    "id": "diag_0153",
+    "zh": "检查后续静态地址、网关、路由和 PING；仅在明确最终失败时判断主机网络配置故障。",
+    "en": "Review subsequent static address, gateway, routes and PING. Diagnose host configuration failure only after explicit final failure."
+  },
+  {
+    "id": "diag_0154",
+    "zh": "RK3506J 首次公网 PING 成功",
+    "en": "RK3506J first public PING success"
+  },
+  {
+    "id": "diag_0155",
+    "zh": "【源码直证】每进程首次 PUBLIC PING OK 公告确认接口绑定的 223.5.5.5 可达，作为首次联网边沿。",
+    "en": "[Source-code evidence] The first PUBLIC PING OK announcement per process confirms interface-bound reachability of 223.5.5.5 and establishes the initial connection edge."
+  },
+  {
+    "id": "diag_0156",
+    "zh": "查看证据中的 path/retained、probe_ms、process_elapsed_ms 和 boot_ms；开机时长与墙钟时间分别解释。",
+    "en": "Review path/retained, probe_ms, process_elapsed_ms and boot_ms. Interpret boot duration separately from wall-clock time."
+  },
+  {
+    "id": "diag_0157",
+    "zh": "RK3506J 模组关机/上电未确认",
+    "en": "RK3506J module shutdown/power-on unconfirmed"
+  },
+  {
+    "id": "diag_0158",
+    "zh": "【日志直证】CFUN 软关机未确认、PWRKEY 脉冲操作失败或关机结果不明；源码可能跳过300秒上电冷却。",
+    "en": "[Log evidence] CFUN shutdown unconfirmed, PWRKEY pulse failed or shutdown outcome unknown. Source may skip the 300-second power-on cooldown."
+  },
+  {
+    "id": "diag_0159",
+    "zh": "核对具体失败步骤与后续 USB/AT 枚举；不能将未确认关机或允许硬恢复当作已完成物理断电。",
+    "en": "Review the exact failed step and subsequent USB/AT enumeration. Unconfirmed shutdown or allowed hard recovery is not completed physical power-off."
+  },
+  {
+    "id": "diag_0160",
+    "zh": "RK3506J 选网事务失败或结果未验证",
+    "en": "RK3506J operator-selection transaction failed or unverified"
+  },
+  {
+    "id": "diag_0161",
+    "zh": "【日志直证】CFUN/手动选网/查询事务未完成，或历史/候选 PLMN 未通过验证；历史失败转入扫描，候选失败尝试下一项。",
+    "en": "[Log evidence] CFUN/manual selection/query did not complete, or historical/candidate PLMN was unverified. History failure starts scanning; candidate failure tries the next candidate."
+  },
+  {
+    "id": "diag_0162",
+    "zh": "检查对应 COPS command/status/ok 与后续候选结果；ECM 停止被拒绝不单独算选网失败，选网失败也不证明公网已掉线。",
+    "en": "Review COPS command/status/ok and later candidates. ECM-stop rejection alone is not selection failure; selection failure does not establish a public outage."
+  },
+  {
+    "id": "diag_0163",
+    "zh": "RK3506J 历史 PLMN 选网验证成功",
+    "en": "RK3506J historical PLMN selection verified"
+  },
+  {
+    "id": "diag_0164",
+    "zh": "【源码直证】history PLMN verified 确认指定数字 PLMN 的手动 LTE 查询结果通过严格验证，随后进入 WRITE_TO_MODEM；它不代表已注册或公网已通。",
+    "en": "[Source-code evidence] history PLMN verified confirms strict verification of the specified numeric PLMN's manual LTE query, followed by WRITE_TO_MODEM. It does not establish registration or public connectivity."
+  },
+  {
+    "id": "diag_0165",
+    "zh": "结合后续 CEREG、PDP/ECM 和公网 PING；旧版 set operator OK 与单独 AT 命令不能提升为这条验证结论。",
+    "en": "Review later CEREG, PDP/ECM and public PING. Legacy set operator OK or a standalone AT command does not meet this verification standard."
+  },
+  {
+    "id": "diag_0166",
+    "zh": "RK3506J EG912 恢复循环重新开始",
+    "en": "RK3506J EG912 recovery loop restarted"
+  },
+  {
+    "id": "diag_0167",
+    "zh": "【源码直证】EG912 第四级恢复重新进入 FAILURE_RETRY 恢复循环；此事件不是恢复完成。",
+    "en": "[Source-code evidence] EG912 level-four recovery re-enters the FAILURE_RETRY loop. This is not recovery completion."
+  },
+  {
+    "id": "diag_0168",
+    "zh": "检查随后 FAILURE_RETRY/POWER 日志及公网恢复结果；不要把循环重启当作已经切换运营商或已完成物理复位。",
+    "en": "Review subsequent FAILURE_RETRY/POWER and public recovery. Loop restart does not establish an operator switch or completed physical reset."
+  },
+  {
+    "id": "diag_0169",
+    "zh": "流量采样/持久化已跳过",
+    "en": "Traffic sampling/persistence skipped"
+  },
+  {
+    "id": "diag_0170",
+    "zh": "【源码直证】共享流量监控跳过采样或数据库持久化；原因可能是接口计数器、数据库、保存记录、时钟或线程异常。count 是监控累计失败次数，日志仅首次和每十次输出；不是丢包数或连续断网次数。",
+    "en": "[Source-code evidence] Shared traffic monitoring skipped sampling/database persistence due to interface counters, database, record saving, clock or thread errors. count is cumulative monitoring failures; logging occurs first and every tenth failure. It is not lost packets or consecutive outages."
+  },
+  {
+    "id": "diag_0171",
+    "zh": "按 reason 检查接口和存储/时间；落盘失败可保留内存累计值，接口读失败是缺失采样，均不能单独证明公网断网或总流量归零。",
+    "en": "Investigate interface/storage/time by reason. Persistence failure may retain in-memory totals; interface read failure means missing samples. Neither alone establishes a public outage or zero total traffic."
+  },
+  {
+    "id": "diag_0172",
+    "zh": "进程重启后丢失既有联网上下文,L1/L2/L3 恢复被门控",
+    "en": "Restart lost existing connectivity context; L1/L2/L3 recovery gated"
+  },
+  {
+    "id": "diag_0173",
+    "zh": "门控行之前已有设备数据接口在线证据；因此 never-connected 仅描述新拨号进程，",
+    "en": "Online data-interface evidence predates the gate. never-connected describes the new dial process, "
+  },
+  {
+    "id": "diag_0174",
+    "zh": "不能表述为设备或 SIM 从未联网。重拉后 has_connected_once 未恢复，",
+    "en": "not the device/SIM's lifetime connectivity. has_connected_once was not restored after restart; "
+  },
+  {
+    "id": "diag_0175",
+    "zh": "进程停留在 L0 重拨，未继续执行射频重置或 L3。",
+    "en": "the process remained in L0 redial without radio reset or L3."
+  },
+  {
+    "id": "diag_0176",
+    "zh": "修复重拉后的联网历史继承，或为 never-connected 门控设置最大持续时长；",
+    "en": "Restore connection-history inheritance after restart, or bound the never-connected gate duration. "
+  },
+  {
+    "id": "diag_0177",
+    "zh": "同时保留 SIM/APN/运营商 PDP 证据以追查首次失败。",
+    "en": "Retain SIM/APN/operator PDP evidence to investigate the initial failure."
+  },
+  {
+    "id": "diag_0178",
+    "zh": "当前拨号进程未成功联网,L1/L2/L3 恢复被 has_connected_once 门控",
+    "en": "Current dial process never connected; has_connected_once gates L1/L2/L3"
+  },
+  {
+    "id": "diag_0179",
+    "zh": "日志出现 never-connected 门控行。该结论仅覆盖当前拨号进程，",
+    "en": "A never-connected gate is recorded. This finding covers the current dial process only, "
+  },
+  {
+    "id": "diag_0180",
+    "zh": "不推断设备历史联网情况；从未 ping 通的进程只停留在 L0。",
+    "en": "not earlier device connectivity. A process with no successful ping remains at L0."
+  },
+  {
+    "id": "diag_0181",
+    "zh": "查 SIM 数据权限、APN 和注册状态；补充故障前日志确认设备历史联网状态。",
+    "en": "Check SIM data permissions, APN and registration. Collect preceding logs to establish historical device connectivity."
+  },
+  {
+    "id": "diag_0182",
+    "zh": "数据接口不可用: [HEARTBEAT-NET] 记录 IF=(none) ",
+    "en": "Data interface unavailable: [HEARTBEAT-NET] IF=(none) "
+  },
+  {
+    "id": "diag_0183",
+    "zh": "【日志直证】SIM/LTE 注册状态与数据接口是不同层次。IF=(none) 表示设备当时",
+    "en": "[Log evidence] SIM/LTE registration and the data interface are separate layers. IF=(none) means "
+  },
+  {
+    "id": "diag_0184",
+    "zh": "没有可用数据接口；它可直接证明 PDP/数据呼叫未建立或已释放，不能单独定责",
+    "en": "no usable data interface existed then, directly showing PDP/data call absent or released; it alone cannot assign responsibility "
+  },
+  {
+    "id": "diag_0185",
+    "zh": "为运营商、SIM、APN 或模组。",
+    "en": "to the operator, SIM, APN or module."
+  },
+  {
+    "id": "diag_0186",
+    "zh": " 同期还记录到有发送但 RX 长时间空闲的接口样本，说明故障起点存在数据面异常。",
+    "en": " Samples with TX but prolonged RX idle were also recorded, indicating a data-plane anomaly at the fault start."
+  },
+  {
+    "id": "diag_0187",
+    "zh": "结合 PDP 激活结果、CEER、CGACT/CGATT、实际 APN 和运营商 PDP/ESM 原因码定责；",
+    "en": "Use PDP activation, CEER, CGACT/CGATT, actual APN and operator PDP/ESM reason codes to investigate. "
+  },
+  {
+    "id": "diag_0188",
+    "zh": "不要仅以 REG=1 判断设备在线。",
+    "en": "REG=1 alone does not establish device connectivity."
+  },
+  {
+    "id": "diag_0189",
+    "zh": "手动选网解除后恢复注册（强关联） ",
+    "en": "Registration recovered after manual-selection release (strong association) "
+  },
+  {
+    "id": "diag_0190",
+    "zh": "【强关联推断】同一日志来源先由 AT+COPS? 确认处于手动选网(mode=1)，",
+    "en": "[Strong-association inference] AT+COPS? first confirmed manual mode=1 in the same source, "
+  },
+  {
+    "id": "diag_0191",
+    "zh": "随后成功执行 AT+COPS=0，之后才出现注册/连接成功。手动锁网是本次",
+    "en": "AT+COPS=0 then succeeded, followed by registration/connection success. Manual lock is the primary local suspect "
+  },
+  {
+    "id": "diag_0192",
+    "zh": "未注册的首要本地侧嫌疑，但日志不能排除网络侧同时恢复，不能断言为唯一根因。",
+    "en": "for this unregistered episode, but simultaneous network recovery remains possible; it is not a proven sole cause."
+  },
+  {
+    "id": "diag_0193",
+    "zh": " 此前存在应用自身的 AT+COPS=1/运营商选择日志，锁网来源可追溯至应用流程。",
+    "en": " Earlier application AT+COPS=1/operator-selection logs trace the lock to the application flow."
+  },
+  {
+    "id": "diag_0194",
+    "zh": " 未见此前应用选网命令，锁网来源未知（可能来自旧会话或外部 AT 客户端）。",
+    "en": " No preceding application selection command was observed; the lock's origin is unknown (possibly an earlier session or external AT client)."
+  },
+  {
+    "id": "diag_0195",
+    "zh": "追查手动选网来源；若业务不要求固定运营商，启动发现 mode=1 且未注册时",
+    "en": "Trace the manual-selection origin. If a fixed operator is not required, switch to AT+COPS=0 promptly when startup finds unregistered mode=1, "
+  },
+  {
+    "id": "diag_0196",
+    "zh": "应尽早切回 AT+COPS=0，并保留 COPS/CEREG 原始应答。",
+    "en": "and retain raw COPS/CEREG responses."
+  },
+  {
+    "id": "diag_0197",
+    "zh": "手动选网已解锁但未见后续注册成功 ",
+    "en": "Manual selection released without subsequent registration success "
+  },
+  {
+    "id": "diag_0198",
+    "zh": "【日志直证】已确认 mode=1 并收到 COPS=0 成功应答，但当前日志片段之后",
+    "en": "[Log evidence] mode=1 was confirmed and COPS=0 succeeded, but the current log fragment contains "
+  },
+  {
+    "id": "diag_0199",
+    "zh": "没有注册/连接成功证据；不能把这类周期宣称为已恢复。",
+    "en": "no later registration/connection success. These cycles cannot be described as recovered."
+  },
+  {
+    "id": "diag_0200",
+    "zh": "补充 COPS=0 后的 CEREG、状态迁移和 DataCall 日志；同时检查运营商覆盖与账户状态。",
+    "en": "Collect CEREG, state transitions and DataCall after COPS=0; also review coverage and account status."
+  },
+  {
+    "id": "diag_0201",
+    "zh": "检测到手动选网模式，尚无完整恢复证据",
+    "en": "Manual operator selection detected; recovery evidence incomplete"
+  },
+  {
+    "id": "diag_0202",
+    "zh": "【日志直证】AT+COPS? 返回 mode=1；仅有手动状态，尚无同源的 COPS=0 成功",
+    "en": "[Log evidence] AT+COPS? returned mode=1. Manual state alone lacks a same-source successful COPS=0 "
+  },
+  {
+    "id": "diag_0203",
+    "zh": "及后续注册成功链，不能推断本次已由解锁恢复。",
+    "en": "and later registration chain, so recovery by release cannot be inferred."
+  },
+  {
+    "id": "diag_0204",
+    "zh": "补充 COPS=0 应答与后续 CEREG/连接日志；若业务不要求固定运营商，检查手动选网来源。",
+    "en": "Collect COPS=0 and subsequent CEREG/connection logs. Trace manual selection if the business does not require a fixed operator."
+  },
+  {
+    "id": "diag_0205",
+    "zh": "冷启动注册阻塞 ",
+    "en": "Cold-start registration blocked "
+  },
+  {
+    "id": "diag_0206",
+    "zh": " 次，最长 ",
+    "en": " times; longest "
+  },
+  {
+    "id": "diag_0207",
+    "zh": "【日志直证】从首次 sim_op -> reg_check 到首次注册/连接成功持续 ",
+    "en": "[Log evidence] From initial sim_op -> reg_check to initial registration/connection success: "
+  },
+  {
+    "id": "diag_0208",
+    "zh": "；此时尚未观察到已联网业务，因此不计为运行期断网。",
+    "en": "; business connectivity was not yet observed, so this is not a runtime outage."
+  },
+  {
+    "id": "diag_0209",
+    "zh": "结合 COPS 模式、CEREG、运营商选择与射频恢复动作排查；不要把冷启动注册耗时",
+    "en": "Review COPS mode, CEREG, operator selection and radio recovery. Do not mix cold-start registration delay "
+  },
+  {
+    "id": "diag_0210",
+    "zh": "混入已联网后的可用率或断网统计。",
+    "en": "into post-connection availability or outage statistics."
+  },
+  {
+    "id": "diag_0211",
+    "zh": "注册等待期存在日志空洞 ",
+    "en": "Log gaps during registration wait: "
+  },
+  {
+    "id": "diag_0212",
+    "zh": " 段，最大 ",
+    "en": " segments; maximum "
+  },
+  {
+    "id": "diag_0213",
+    "zh": "【日志直证】reg_check 活动期间相邻已记录行相隔 ",
+    "en": "[Log evidence] Consecutive recorded rows during reg_check were separated by "
+  },
+  {
+    "id": "diag_0214",
+    "zh": "；无法仅凭该空洞判定进程阻塞、日志丢失或模组命令阻塞，恢复因果链存在观测盲区。",
+    "en": "; this gap alone cannot distinguish process blocking, lost logs or blocked module commands. The recovery chain has an observation blind spot."
+  },
+  {
+    "id": "diag_0215",
+    "zh": "补充同时间段系统日志、进程/看门狗日志及存储 I/O 信息；产品侧可为 reg_check 重试",
+    "en": "Collect system/process/watchdog logs and storage I/O for the same period. Add periodic monotonic-clock diagnostics "
+  },
+  {
+    "id": "diag_0216",
+    "zh": "增加带单调时钟的周期性诊断。",
+    "en": "to reg_check retries."
+  },
+  {
+    "id": "diag_0217",
+    "zh": "网络注册被明确拒绝(REG=3)",
+    "en": "Registration explicitly denied (REG=3)"
+  },
+  {
+    "id": "diag_0218",
+    "zh": "【源码直证】产品输出 NETWORK REJECTED/Registration Denied；这是明确拒绝证据，仍需原始 AT 响应确定具体原因。",
+    "en": "[Source-code evidence] NETWORK REJECTED/Registration Denied is explicit rejection evidence. Raw AT responses are still needed for the specific cause."
+  },
+  {
+    "id": "diag_0219",
+    "zh": "核对 SIM/运营商签约、漫游权限与 COPS 原始响应；明确拒绝本身不能证明欠费。",
+    "en": "Review SIM/operator subscription, roaming permissions and raw COPS. Explicit rejection alone does not establish unpaid fees."
+  },
+  {
+    "id": "diag_0220",
+    "zh": "SDK 注网异常(SDK DENY)",
+    "en": "SDK registration/service anomaly (SDK DENY)"
+  },
+  {
+    "id": "diag_0221",
+    "zh": "【日志直证】SDK 摘要存在 SRV!=2(FULL) 且 DENY>0；该组合表示注册/服务异常线索，不能统一提升为 REG=3 明确拒绝，更不能直接判断账户欠费。FULL 状态下的非零原因码可能是残留值。",
+    "en": "[Log evidence] SRV!=2(FULL) with DENY>0 indicates a registration/service anomaly; it is not universally equivalent to REG=3 rejection or unpaid fees. Nonzero reason codes under FULL may be residual."
+  },
+  {
+    "id": "diag_0222",
+    "zh": "保留 SRV/RAT/DENY 原码，结合 CEREG/COPS/CEER 与 SDK 版本核验；EG25 SDK 的 DENY=9 为无合适小区、10 为网络失败、21 为消息类型不存在或未实现；勿套用 EC200A 编码表。",
+    "en": "Retain raw SRV/RAT/DENY and verify with CEREG/COPS/CEER and SDK version. EG25 DENY=9 means no suitable cells, 10 network failure, 21 nonexistent/unimplemented message type. Do not apply EC200A's encoding."
+  },
+  {
+    "id": "diag_0223",
+    "zh": "SDK注网摘要 SRV=",
+    "en": "SDK registration summary SRV="
+  },
+  {
+    "id": "diag_0224",
+    "zh": "SIM 注册处于受限服务(LIMITED SERVICE)",
+    "en": "SIM registration in LIMITED SERVICE"
+  },
+  {
+    "id": "diag_0225",
+    "zh": "【源码直证】产品读取到 CEREG 受限状态(REG=6..13)并输出 LIMITED SERVICE。",
+    "en": "[Source-code evidence] CEREG limited status REG=6..13 produced LIMITED SERVICE."
+  },
+  {
+    "id": "diag_0226",
+    "zh": "这表示普通分组数据可能不可用，但不能仅凭该行断言欠费或停机。",
+    "en": "Ordinary packet data may be unavailable, but this row alone does not establish unpaid fees or account suspension."
+  },
+  {
+    "id": "diag_0227",
+    "zh": "核对证据中的 CEREG/COPS/CGATT/CEER 原始响应，并向运营商确认业务开通、",
+    "en": "Review raw CEREG/COPS/CGATT/CEER and confirm service activation, "
+  },
+  {
+    "id": "diag_0228",
+    "zh": "漫游和网络限制状态。",
+    "en": "roaming and network restrictions with the operator."
+  },
+  {
+    "id": "diag_0229",
+    "zh": "SIM 账户/订阅异常提示已降级：存在手动选网冲突",
+    "en": "SIM account/subscription hint downgraded: manual-selection conflict"
+  },
+  {
+    "id": "diag_0230",
+    "zh": "【推断】产品按 SIM READY、信号良好且 REG=0 持续至少 120 秒输出",
+    "en": "[Inference] SIM READY, good signal and REG=0 for at least 120 seconds produced "
+  },
+  {
+    "id": "diag_0231",
+    "zh": "SUSPECTED；但本日志另有手动选网(mode=1)并在 COPS=0 后恢复注册的",
+    "en": "SUSPECTED, but manual mode=1 followed by registration recovery after COPS=0 provides "
+  },
+  {
+    "id": "diag_0232",
+    "zh": "强关联证据。该提示不能作为本次故障的主归因，更不能据此断言欠费或停机。",
+    "en": "strong association evidence. This hint cannot be the primary attribution, or prove unpaid fees/account suspension."
+  },
+  {
+    "id": "diag_0233",
+    "zh": "优先处理手动选网来源；若之后仍发生 REG=0，再携带 CPIN/CEREG/COPS/",
+    "en": "Trace manual selection first. If REG=0 recurs, provide raw CPIN/CEREG/COPS/ "
+  },
+  {
+    "id": "diag_0234",
+    "zh": "CGATT/CEER 原始应答向运营商核验账户、数据业务和漫游权限。",
+    "en": "CGATT/CEER to the operator to verify account, data service and roaming permissions."
+  },
+  {
+    "id": "diag_0235",
+    "zh": "疑似 SIM 账户/订阅异常(SUSPECTED)",
+    "en": "Suspected SIM account/subscription issue (SUSPECTED)"
+  },
+  {
+    "id": "diag_0236",
+    "zh": "【推断】产品仅在 SIM READY、信号良好且 REG=0 连续至少 120 秒时输出该诊断。",
+    "en": "[Inference] The product emits this diagnostic only for SIM READY, good signal and continuous REG=0 for at least 120 seconds."
+  },
+  {
+    "id": "diag_0237",
+    "zh": "标准 AT 无运营商后台停机字段，因此这不是欠费/停机的确定证据。",
+    "en": "Standard AT has no operator billing/suspension field; this is not confirmed unpaid-fee or suspension evidence."
+  },
+  {
+    "id": "diag_0238",
+    "zh": "保留行内 CPIN/CEREG/COPS/CGATT/CEER 证据，向运营商核验账户、数据业务和",
+    "en": "Retain CPIN/CEREG/COPS/CGATT/CEER and ask the operator to verify account, data service and "
+  },
+  {
+    "id": "diag_0239",
+    "zh": "漫游权限；同时排除覆盖与选网问题。",
+    "en": "roaming permissions; also rule out coverage and operator-selection issues."
+  },
+  {
+    "id": "diag_0240",
+    "zh": "CEREG 查询/解析失败，注册状态未知",
+    "en": "CEREG query/parse failed; registration unknown"
+  },
+  {
+    "id": "diag_0241",
+    "zh": "【源码直证】产品明确记录 CEREG query/parse failed；此时注册状态未知，",
+    "en": "[Source-code evidence] CEREG query/parse failed is explicit; registration is unknown, "
+  },
+  {
+    "id": "diag_0242",
+    "zh": "不得据此推断 SIM 或账户异常。",
+    "en": "so SIM/account problems cannot be inferred from it."
+  },
+  {
+    "id": "diag_0243",
+    "zh": "检查行内 Raw 响应、AT 端口和模组应答完整性；修复查询后再判断注册原因。",
+    "en": "Review raw responses, AT port and response completeness. Repair the query before assessing registration causes."
+  },
+  {
+    "id": "diag_0244",
+    "zh": "artery SIM 卡未检测到",
+    "en": "artery SIM not detected"
+  },
+  {
+    "id": "diag_0245",
+    "zh": "【源码直证】MCM 返回 card_state=0xb02(ABSENT)。重复状态日志每约 60 秒提醒一次，日志条数不是查询次数。",
+    "en": "[Source-code evidence] MCM returned card_state=0xb02 (ABSENT). Repeated state reminders appear about every 60 seconds; log count is not query count."
+  },
+  {
+    "id": "diag_0246",
+    "zh": "检查 SIM 卡槽、卡片接触和供电；插卡后确认应用状态变为 READY。",
+    "en": "Check slot, contacts and power. After insertion, confirm application state READY."
+  },
+  {
+    "id": "diag_0247",
+    "zh": "artery SIM 应用需要解锁或已锁定",
+    "en": "artery SIM application requires unlocking or is locked"
+  },
+  {
+    "id": "diag_0248",
+    "zh": "【源码直证】MCM 返回 PIN/PUK、个性化解锁或永久锁定的应用状态；以证据行中的 app_3gpp_state 原码区分具体情况。",
+    "en": "[Source-code evidence] MCM returned PIN/PUK, personalization-unlock or permanent-lock state. Distinguish the exact state using raw app_3gpp_state in evidence."
+  },
+  {
+    "id": "diag_0249",
+    "zh": "核对应用状态原码并按卡的实际锁定类型处理，勿将其归因于运营商账户停机。",
+    "en": "Review the raw application state and handle the actual lock type. Do not attribute it to operator account suspension."
+  },
+  {
+    "id": "diag_0250",
+    "zh": "artery SIM 应用尚未就绪",
+    "en": "artery SIM application not ready"
+  },
+  {
+    "id": "diag_0251",
+    "zh": "【源码直证】MCM 返回非 READY 应用状态；证据行同时保留卡态与应用态。未知态、初始化态或卡错误不能仅凭这一行确定根因。",
+    "en": "[Source-code evidence] MCM returned non-READY application state; evidence retains card and application state. Unknown, initializing or card-error state alone does not establish the cause."
+  },
+  {
+    "id": "diag_0252",
+    "zh": "检查证据中的 card_state、app_3gpp_state 及后续状态变化；结合模组与卡槽日志排查。",
+    "en": "Review card_state, app_3gpp_state and later transitions alongside module/slot logs."
+  },
+  {
+    "id": "diag_0253",
+    "zh": "artery SIM 状态查询失败",
+    "en": "artery SIM-state query failed"
+  },
+  {
+    "id": "diag_0254",
+    "zh": "【源码直证】SIM 客户端未初始化或 MCM 查询返回错误；此时没有可靠卡状态，不能推断未插卡或账户异常。",
+    "en": "[Source-code evidence] The SIM client was uninitialized or MCM query failed; reliable card state is unavailable. Absence/account issues cannot be inferred."
+  },
+  {
+    "id": "diag_0255",
+    "zh": "检查 SIM 客户端初始化及 SDK 返回码，再获取有效卡状态。",
+    "en": "Check SIM-client initialization and SDK return codes, then obtain a valid card state."
+  },
+  {
+    "id": "diag_0256",
+    "zh": "数据服务未就绪:ql_data_call_init 失败/重试 ",
+    "en": "Data service not ready: ql_data_call_init failed/retried "
+  },
+  {
+    "id": "diag_0257",
+    "zh": "AP 侧数据服务(ql_netd)没起来,不是射频或信号问题。此时 AT 命令照样能通",
+    "en": "AP-side data service (ql_netd) is unavailable, rather than a radio/signal fault. AT commands can still respond "
+  },
+  {
+    "id": "diag_0258",
+    "zh": "(那走 ql_atc),但数据业务起不来,表现为\"信号好好的却上不了网\"。",
+    "en": "through ql_atc while data cannot connect: good signal without usable connectivity."
+  },
+  {
+    "id": "diag_0259",
+    "zh": "查 ql_netd 守护进程是否在跑(ps);重拨/CFUN/换卡对这类故障都无效 —— ",
+    "en": "Check ql_netd with ps. Redial, CFUN and SIM switching cannot repair this class of fault: "
+  },
+  {
+    "id": "diag_0260",
+    "zh": "它们治射频侧,而问题在 AP 侧的数据服务。",
+    "en": "they address radio state, while this problem is in the AP-side data service."
+  },
+  {
+    "id": "diag_0261",
+    "zh": "QL_Data_Call_Init 初始化失败",
+    "en": "QL_Data_Call_Init initialization failed"
+  },
+  {
+    "id": "diag_0262",
+    "zh": "，进程主动退出",
+    "en": "; process exited voluntarily"
+  },
+  {
+    "id": "diag_0263",
+    "zh": "，随后检测到重新启动",
+    "en": "; a later process start was detected"
+  },
+  {
+    "id": "diag_0264",
+    "zh": "【日志直证】[FATAL][PROCESS EXIT] 明确记录 SDK 初始化返回值和退出进程 PID。",
+    "en": "[Log evidence] [FATAL][PROCESS EXIT] explicitly records SDK return value and process PID."
+  },
+  {
+    "id": "diag_0265",
+    "zh": "【日志直证】SDK 明确记录 Initialization data call failure；本段未见紧随其后的",
+    "en": "[Log evidence] SDK explicitly records Initialization data call failure, but this segment lacks a following "
+  },
+  {
+    "id": "diag_0266",
+    "zh": " [FATAL][PROCESS EXIT]，可能是旧固件或日志在两行之间截断。",
+    "en": "[FATAL][PROCESS EXIT]; firmware may be older or the log truncated between these rows."
+  },
+  {
+    "id": "diag_0267",
+    "zh": " 后续又出现版本启动横幅，证明进程后来重新启动；这与上层守护拉起路径相符，",
+    "en": " A later version banner proves a subsequent process start, consistent with supervisor restart, "
+  },
+  {
+    "id": "diag_0268",
+    "zh": "但仅凭拨号日志不能证明守护进程名称。",
+    "en": "but dial logs alone cannot identify the supervisor."
+  },
+  {
+    "id": "diag_0269",
+    "zh": " 【源码直证】当前 EG25 路径随后 log_close() 并 exit(EXIT_FAILURE)，",
+    "en": " [Source-code evidence] The current EG25 path calls log_close() and exit(EXIT_FAILURE); "
+  },
+  {
+    "id": "diag_0270",
+    "zh": "sw_mng 在进程缺失时启动 /usr/bin/modem_mng。",
+    "en": "sw_mng starts /usr/bin/modem_mng when the process is absent."
+  },
+  {
+    "id": "diag_0271",
+    "zh": "先查 AP 侧 ql_netd/数据服务是否就绪及 SDK 返回码；再对照 sw_mng 日志确认",
+    "en": "Check AP-side ql_netd/data-service readiness and SDK return code, then sw_mng logs for "
+  },
+  {
+    "id": "diag_0272",
+    "zh": "拉起时间。CFUN、换卡和缩短信号恢复阈值不能修复 Data Call 服务初始化失败。",
+    "en": "restart time. CFUN, SIM switching and shorter signal recovery thresholds cannot repair Data Call initialization failure."
+  },
+  {
+    "id": "diag_0273",
+    "zh": "artery DataCall 初始化失败，进程主动退出 ",
+    "en": "artery DataCall initialization failed; process exited "
+  },
+  {
+    "id": "diag_0274",
+    "zh": "【日志直证】artery 明确记录 DataCall 初始化失败后以 status 0 退出，",
+    "en": "[Log evidence] artery explicitly exits with status 0 after DataCall initialization failure, "
+  },
+  {
+    "id": "diag_0275",
+    "zh": "交由 supervisor 重启；该版本会先尝试回收本进程启动的 RBMaster。",
+    "en": "leaving restart to the supervisor. This version first attempts to stop its own RBMaster."
+  },
+  {
+    "id": "diag_0276",
+    "zh": " 同一日志来源在 5 分钟内出现新的 DIAL Version 横幅，证明进程随后重新启动。",
+    "en": " A new DIAL Version banner in the same source within 5 minutes proves a subsequent process start."
+  },
+  {
+    "id": "diag_0277",
+    "zh": "检查 QL_Data_Call_Init 的调用条件、AP 侧数据服务及 supervisor 拉起记录；",
+    "en": "Review QL_Data_Call_Init prerequisites, AP data services and supervisor restart logs. "
+  },
+  {
+    "id": "diag_0278",
+    "zh": "同时核对紧邻的 RBMaster 回收日志是否为 SIGTERM 超时或 SIGKILL。",
+    "en": "Check adjacent RBMaster cleanup for SIGTERM timeout or SIGKILL."
+  },
+  {
+    "id": "diag_0279",
+    "zh": "Roamlink license 备份失败，重启已延后 ",
+    "en": "Roamlink license backup failed; restart postponed "
+  },
+  {
+    "id": "diag_0280",
+    "zh": "【日志直证】license 备份失败后，程序明确记录已延后重启。",
+    "en": "[Log evidence] The program explicitly postponed restart after license backup failure."
+  },
+  {
+    "id": "diag_0281",
+    "zh": "【源码直证】当前 artery/EG25 会保留原有有效备份，并在 300 秒激活",
+    "en": "[Source-code evidence] Current artery/EG25 retains the valid backup and retries detection/backup every 30 seconds within the 300-second activation "
+  },
+  {
+    "id": "diag_0282",
+    "zh": "窗口内每 30 秒重新检测和尝试备份；这不是已完成激活，也不是已降级",
+    "en": "window. This is neither completed activation nor completed fallback to "
+  },
+  {
+    "id": "diag_0283",
+    "zh": "检查 license 主文件与备份目录的挂载、剩余空间、读写权限和文件系统 I/O",
+    "en": "Check license/backup mounts, free space, permissions and filesystem I/O "
+  },
+  {
+    "id": "diag_0284",
+    "zh": " 错误；保留同一激活窗口内后续的备份成功、重启或超时降级日志。",
+    "en": "errors. Retain later backup success, restart or timeout/fallback logs in the same activation window."
+  },
+  {
+    "id": "diag_0285",
+    "zh": "Roamlink license 已原子备份 ",
+    "en": "Roamlink license atomically backed up "
+  },
+  {
+    "id": "diag_0286",
+    "zh": "【日志直证】license 已记录为原子备份完成。",
+    "en": "[Log evidence] Atomic license backup completion was recorded."
+  },
+  {
+    "id": "diag_0287",
+    "zh": "【源码直证】当前实现先写入同目录临时文件并 fsync，再 rename 到正式",
+    "en": "[Source-code evidence] The implementation writes a same-directory temporary file, fsyncs, renames to the final "
+  },
+  {
+    "id": "diag_0288",
+    "zh": "备份路径并同步父目录，因而写入中断不会截断既有有效备份。",
+    "en": "backup path and syncs the parent directory; interrupted writes do not truncate an existing valid backup."
+  },
+  {
+    "id": "diag_0289",
+    "zh": "这是备份持久化成功信息；若它属于首次下载激活流程，可继续查看随后",
+    "en": "This indicates successful backup persistence. If part of initial download/activation, review subsequent "
+  },
+  {
+    "id": "diag_0290",
+    "zh": "的重启及启动后的 license probe 日志确认完整闭环。",
+    "en": "restart and license probe logs to confirm the complete cycle."
+  },
+  {
+    "id": "diag_0291",
+    "zh": "Roamlink license 下载超时，已降级 FORCE_SIM ",
+    "en": "Roamlink license download timed out; FORCE_SIM fallback "
+  },
+  {
+    "id": "diag_0292",
+    "zh": "【日志直证】license 缺失且无可用备份后，设备先通过物理 SIM 联网并启动 ",
+    "en": "[Log evidence] With no license or usable backup, the device first connects using physical SIM and starts "
+  },
+  {
+    "id": "diag_0293",
+    "zh": "RBMaster 下载；日志明确记录等待上限届满后放弃下载。",
+    "en": "RBMaster for download; the log explicitly abandons download at the wait limit."
+  },
+  {
+    "id": "diag_0294",
+    "zh": "【源码直证】此分支保持 FORCE_SIM、停止 RBMaster 释放 SIM 通道，并主动",
+    "en": "[Source-code evidence] This branch retains FORCE_SIM, stops RBMaster to release the SIM channel and actively "
+  },
+  {
+    "id": "diag_0295",
+    "zh": "重拨，避免 RBMaster 抢占通道造成地址/DNS 异常；因此紧随其后的 ",
+    "en": "redials, avoiding address/DNS problems from channel contention. The following "
+  },
+  {
+    "id": "diag_0296",
+    "zh": "Net disconnected 是应用处置动作，不作为非预期网络断线统计。",
+    "en": "Net disconnected is an application handling action, excluded from unexpected network disconnect counts."
+  },
+  {
+    "id": "diag_0297",
+    "zh": "采集同一时间窗的 RBMaster、DNS/resolv.conf、许可证下载 URL 的 HTTP/TLS",
+    "en": "Collect RBMaster, DNS/resolv.conf, HTTP/TLS download URL errors "
+  },
+  {
+    "id": "diag_0298",
+    "zh": " 错误及服务端请求日志；同时检查 license 主文件和备份文件的写入、挂载与持久化。",
+    "en": "and server requests in this window. Check writing, mounts and persistence of the license and backup files."
+  },
+  {
+    "id": "diag_0299",
+    "zh": "数据调用启动失败 ",
+    "en": "Data call start failed "
+  },
+  {
+    "id": "diag_0300",
+    "zh": "[SDK] start data call failure 保存了 profile 与原始十六进制错误码；",
+    "en": "[SDK] start data call failure retains profile and raw hexadecimal error code; "
+  },
+  {
+    "id": "diag_0301",
+    "zh": "这是拨号 Start 阶段失败，不等同于 SIM 未注册，也不等同于 Init 导致进程退出。",
+    "en": "this is a Start-stage failure, not equivalent to SIM unregistration or Init-triggered process exit."
+  },
+  {
+    "id": "diag_0302",
+    "zh": "按错误码核对 APN/profile、注册状态和数据服务；若连续失败，保留前序 CEREG、",
+    "en": "Review APN/profile, registration and data service by error code. If recurring, retain preceding CEREG, "
+  },
+  {
+    "id": "diag_0303",
+    "zh": "APN 选择及随后状态机重试日志。",
+    "en": "APN selection and subsequent state-machine retries."
+  },
+  {
+    "id": "diag_0304",
+    "zh": "无 reason 字段",
+    "en": "No reason field"
+  },
+  {
+    "id": "diag_0305",
+    "zh": "应用主动停止 DataCall ",
+    "en": "Application intentionally stopped DataCall "
+  },
+  {
+    "id": "diag_0306",
+    "zh": "【源码直证】当前 artery 在调用 QL_Data_Call_Stop 前保存 reason，并在 30 秒内按",
+    "en": "[Source-code evidence] Current artery saves reason before QL_Data_Call_Stop and marks initiator=APP_STOP when the callback matches "
+  },
+  {
+    "id": "diag_0307",
+    "zh": " profile/IP family 匹配断开回调后输出 initiator=APP_STOP。reason 汇总: ",
+    "en": "profile/IP family within 30 seconds. Reasons: "
+  },
+  {
+    "id": "diag_0308",
+    "zh": "。这些事件是应用主动动作，不作为 SDK 非预期掉线或网络故障证据。",
+    "en": ". These are intentional application actions, not unexpected SDK disconnect or network-fault evidence."
+  },
+  {
+    "id": "diag_0309",
+    "zh": "按 reason 回看对应状态机动作；START_CALL_TIMEOUT 重点检查拨号建立阶段，",
+    "en": "Review the state-machine action by reason. For START_CALL_TIMEOUT, investigate connection establishment; "
+  },
+  {
+    "id": "diag_0310",
+    "zh": "其余切换/重拨原因结合 ROAMLINK、REG 和 TCP 诊断。",
+    "en": "for other switch/redial reasons, review ROAMLINK, REG and TCP diagnostics."
+  },
+  {
+    "id": "diag_0311",
+    "zh": "SDK 非预期断线(SDK_URC/UNSOLICITED) ",
+    "en": "Unexpected SDK disconnect (SDK_URC/UNSOLICITED) "
+  },
+  {
+    "id": "diag_0312",
+    "zh": "【日志直证】断开回调明确记录 initiator=SDK_URC reason=UNSOLICITED。",
+    "en": "[Log evidence] The callback explicitly records initiator=SDK_URC reason=UNSOLICITED."
+  },
+  {
+    "id": "diag_0313",
+    "zh": "【源码直证】当前 artery 仅在回调未命中 30 秒内同 profile/IP family 的应用 Stop",
+    "en": "[Source-code evidence] Current artery emits this combination only when the callback does not match an application Stop "
+  },
+  {
+    "id": "diag_0314",
+    "zh": " 原因时输出该组合，因此它是非预期链路断开证据；reason 汇总: ",
+    "en": "reason for the same profile/IP family within 30 seconds. It is unexpected link-disconnect evidence. Reasons: "
+  },
+  {
+    "id": "diag_0315",
+    "zh": "结合断线前后的注册状态、信号、CEER、QMI/SDK 错误码和恢复耗时判断网络侧",
+    "en": "Review registration, signal, CEER, QMI/SDK errors and recovery duration around the disconnect to distinguish network "
+  },
+  {
+    "id": "diag_0316",
+    "zh": "释放、覆盖波动或数据服务异常；不要与 APP_STOP 主动停拨混算。",
+    "en": "release, coverage fluctuation and data-service faults. Do not mix these with intentional APP_STOP events."
+  },
+  {
+    "id": "diag_0317",
+    "zh": "APN 配置文件读取/解析失败 ",
+    "en": "APN configuration read/parse failed "
+  },
+  {
+    "id": "diag_0318",
+    "zh": "[APN] 明确记录文件打开、读取或 JSON 结构失败；代码随后可能回退默认 APN，",
+    "en": "[APN] explicitly reports file open/read or JSON structure failure. The code may fall back to a default APN, "
+  },
+  {
+    "id": "diag_0319",
+    "zh": "所以该事件本身不能证明最终拨号失败。",
+    "en": "so this event alone does not establish final dial failure."
+  },
+  {
+    "id": "diag_0320",
+    "zh": "检查 APN JSON 路径、权限、文件完整性和 apn 数组结构；再看是否出现",
+    "en": "Check the APN JSON path, permissions, integrity and apn array, then look for "
+  },
+  {
+    "id": "diag_0321",
+    "zh": "“use default apn”以及后续 DataCall connected。",
+    "en": "use default apn and subsequent DataCall connected."
+  },
+  {
+    "id": "diag_0322",
+    "zh": "检测到基带 CP 异常/重置的直接证据",
+    "en": "Direct evidence of baseband CP fault/reset"
+  },
+  {
+    "id": "diag_0323",
+    "zh": "快照中出现 CP down、DSP_COM_ERR、MSOCKET_DOWN 或 CP-ASSERT。该证据可确认",
+    "en": "The snapshot contains CP down, DSP_COM_ERR, MSOCKET_DOWN or CP-ASSERT, confirming "
+  },
+  {
+    "id": "diag_0324",
+    "zh": "基带通信异常/重置，但不能仅凭文本确定固件、硬件、供电、射频或网络侧根因。",
+    "en": "a baseband communication fault/reset. Text alone cannot identify firmware, hardware, power, radio or network root cause."
+  },
+  {
+    "id": "diag_0325",
+    "zh": "保留同一时段的 CP dump、SEH/内核日志和供电/射频记录，交由模组厂商按符号表解析。",
+    "en": "Retain CP dump, SEH/kernel logs and power/radio records for the same period; ask the module vendor to decode them with symbols."
+  },
+  {
+    "id": "diag_0326",
+    "zh": "检测到历史 CP dump 库存（不能定为当前崩溃）",
+    "en": "Historical CP dump inventory (not proof of a current crash)"
+  },
+  {
+    "id": "diag_0327",
+    "zh": "[CPDUMP] Found N existing CP dump(s) 只说明启动时存储中已有转储；它不提供本次",
+    "en": "[CPDUMP] Found N existing CP dump(s) only describes stored dumps at startup. It gives no current-startup "
+  },
+  {
+    "id": "diag_0328",
+    "zh": "启动内的崩溃时刻，也不能作为当前事故或独立崩溃次数。相同库存文本已去重。",
+    "en": "crash time and cannot establish a current incident or independent crash count. Identical inventory text is deduplicated."
+  },
+  {
+    "id": "diag_0329",
+    "zh": "如需定责，请以 CP down/CP-ASSERT 等当前事件及对应 dump 文件为准，并让模组厂商解析。",
+    "en": "For attribution, use current CP down/CP-ASSERT events and corresponding dumps; request vendor decoding."
+  },
+  {
+    "id": "diag_0330",
+    "zh": "设备级主事故: 数据业务中断 ",
+    "en": "Device-level major incident: data service interrupted "
+  },
+  {
+    "id": "diag_0331",
+    "zh": "该事故按设备连续状态跨日切文件和拨号进程重拉归并；恢复边沿为数据接口重新出现、",
+    "en": "This incident joins continuous device state across daily files and dial-process restarts. Recovery is marked by data-interface return, "
+  },
+  {
+    "id": "diag_0332",
+    "zh": "数据呼叫恢复或明确联网通知。其余断网分类为全量日志历史汇总，不能直接作为本事故根因。",
+    "en": "data-call recovery or explicit connectivity. Other outage categories summarize full-input history, not this incident's direct root cause."
+  },
+  {
+    "id": "diag_0333",
+    "zh": "优先围绕本事故窗口导出 PDP/ESM、APN、SIM 数据权限、CEER 和基带/系统日志；",
+    "en": "Export PDP/ESM, APN, SIM data permissions, CEER and baseband/system logs around this incident. "
+  },
+  {
+    "id": "diag_0334",
+    "zh": "不要用其他日期的短时弱信号或注册事件替代本事故定责。",
+    "en": "Short weak-signal or registration events on other dates cannot substitute for this incident's attribution."
+  },
+  {
+    "id": "diag_0335",
+    "zh": " (断网 ",
+    "en": " (outage "
+  },
+  {
+    "id": "diag_0336",
+    "zh": " 起)",
+    "en": " starts)"
+  },
+  {
+    "id": "diag_0337",
+    "zh": "心跳 CSQ=",
+    "en": "Heartbeat CSQ="
+  },
+  {
+    "id": "diag_0338",
+    "zh": "断网起点(无弱信号/无 ΔRX=0/无切卡选网痕迹)",
+    "en": "Outage start (no weak signal, ΔRX=0 or SIM/operator switching evidence)"
+  },
+  {
+    "id": "diag_0339",
+    "zh": "全量日志历史汇总:断网根因分类:",
+    "en": "Full-input history summary: outage classification: "
+  },
+  {
+    "id": "diag_0340",
+    "zh": " 次 / 共 ",
+    "en": " occurrences / total "
+  },
+  {
+    "id": "diag_0341",
+    "zh": "断网窗口内 LTE 心跳 CSQ 最小值 < 10(≈RSSI<-95dBm),或 RSRP ≤ -110dBm,",
+    "en": "Within the outage, LTE heartbeat min CSQ <10 (about RSSI<-95dBm), or RSRP≤-110dBm, "
+  },
+  {
+    "id": "diag_0342",
+    "zh": "命中本项目的弱覆盖工程观察线；该线不是 3GPP 统一故障等级。",
+    "en": "meeting this project's weak-coverage observation threshold, not a universal 3GPP fault grade."
+  },
+  {
+    "id": "diag_0343",
+    "zh": "查天线连接/馈线/安装位置;确认是否处于覆盖边缘或屏蔽环境。重拨无法解决覆盖问题。",
+    "en": "Check antenna connection, feeder and placement; review coverage edges or shielding. Redial cannot repair coverage."
+  },
+  {
+    "id": "diag_0344",
+    "zh": "断网窗口内 RX_PKT 不增长(ΔRX=0)但链路仍在,典型的数据面假死:",
+    "en": "Within the outage, RX_PKT does not increase (ΔRX=0) while the link remains present: a typical possible data-plane stall, "
+  },
+  {
+    "id": "diag_0345",
+    "zh": "控制面看似正常,业务无数据。",
+    "en": "with apparently normal control plane but no business data."
+  },
+  {
+    "id": "diag_0346",
+    "zh": "这类故障靠软重拨(L1)通常无效,需射频重置(L2 CFUN=0/1)或切通道;",
+    "en": "Soft redial (L1) is usually ineffective for this class; radio reset (L2 CFUN=0/1) or channel switching may be required. "
+  },
+  {
+    "id": "diag_0347",
+    "zh": "确认恢复阶梯是否被门控(见本页其它结论)。",
+    "en": "Check recovery gates in other findings on this page."
+  },
+  {
+    "id": "diag_0348",
+    "zh": "断网窗口内出现 [SLOT]/[OPER]/[CFUN] 动作,断网发生在切卡/选网/射频重置期间,",
+    "en": "[SLOT]/[OPER]/[CFUN] actions occur in the outage window. Interruption coincides with SIM/operator switching or radio reset, "
+  },
+  {
+    "id": "diag_0349",
+    "zh": "属该动作的预期代价(切卡实测 ~6-8s 数据中断)。",
+    "en": "consistent with its expected cost (observed SIM switching: about 6–8 seconds of interruption)."
+  },
+  {
+    "id": "diag_0350",
+    "zh": "若次数不多可视为正常;频繁发生则查切卡触发条件是否过于敏感。",
+    "en": "Occasional events may be expected. If frequent, review overly sensitive switch triggers."
+  },
+  {
+    "id": "diag_0351",
+    "zh": "断网窗口内出现注册明确拒绝、受限服务、产品有边界的疑似账户诊断，",
+    "en": "The outage contains explicit registration denial, limited service, bounded suspected-account diagnostics, "
+  },
+  {
+    "id": "diag_0352",
+    "zh": "或 SDK 摘要为 SRV!=2 且 DENY>0。证据等级以上方对应独立结论为准。",
+    "en": "or SDK SRV!=2 with DENY>0. Use the evidence level of the corresponding separate finding above."
+  },
+  {
+    "id": "diag_0353",
+    "zh": "按对应注册/服务异常证据核查网络、SIM 与运营商，并保留原始 AT 响应；SDK DENY 不等于明确拒绝，SUSPECTED 不能当成停机实锤。",
+    "en": "Review network, SIM and operator using the matching registration/service evidence and raw AT responses. SDK DENY is not explicit rejection; SUSPECTED does not prove suspension."
+  },
+  {
+    "id": "diag_0354",
+    "zh": "断网窗口内出现 data_call_init 失败/重试 —— **AP 侧数据服务(ql_netd)没起来**,",
+    "en": "The outage contains data_call_init failure/retry: **AP-side data service (ql_netd) is unavailable**, "
+  },
+  {
+    "id": "diag_0355",
+    "zh": "不是射频或信号问题。此时 AT 命令照样能通(那走 ql_atc),但数据业务起不来,",
+    "en": "not a radio/signal fault. AT can still respond through ql_atc while data fails, "
+  },
+  {
+    "id": "diag_0356",
+    "zh": "表现为\"信号好好的却上不了网\"。",
+    "en": "resulting in good signal without usable connectivity."
+  },
+  {
+    "id": "diag_0357",
+    "zh": "查 ql_netd 守护进程是否在跑(ps);这类故障靠重拨/CFUN/换卡都无效 —— ",
+    "en": "Check ql_netd with ps. Redial, CFUN or SIM switching cannot repair this class: "
+  },
+  {
+    "id": "diag_0358",
+    "zh": "它们治的是射频侧,而问题在 AP 侧的数据服务。",
+    "en": "they address radio state while this fault lies in AP-side data services."
+  },
+  {
+    "id": "diag_0359",
+    "zh": "断网短暂,SDK auto-reconnect 在 L0 阶段即自愈(未升级到 L1 软重拨/L2 射频重置),",
+    "en": "The brief outage self-recovered via SDK auto-reconnect at L0, without L1 soft redial/L2 radio reset escalation, "
+  },
+  {
+    "id": "diag_0360",
+    "zh": "且窗口内信号正常、无数据假死、无切卡。这类是网络侧瞬时抖动(基站释放/PDP ",
+    "en": "and had normal signal, no data stall and no SIM switch. This pattern indicates transient network fluctuation (cell release, PDP "
+  },
+  {
+    "id": "diag_0361",
+    "zh": "会话超时/覆盖切换等),设备本身无故障。",
+    "en": "session timeout or coverage transition) rather than established device failure."
+  },
+  {
+    "id": "diag_0362",
+    "zh": "无需排查设备:设备已自愈。若频率高或影响业务,查网络侧 —— 运营商专网策略、",
+    "en": "The device self-recovered. If frequent or disruptive, review operator private-network policy, "
+  },
+  {
+    "id": "diag_0363",
+    "zh": "基站 inactivity timer、PDP/承载超时;可要求运营商侧排查周期性断连。",
+    "en": "cell inactivity timer and PDP/bearer timeouts; ask the operator to investigate periodic disconnects."
+  },
+  {
+    "id": "diag_0364",
+    "zh": "该次断网窗口内未见弱信号、ΔRX=0、切卡/选网或注册被拒的痕迹,",
+    "en": "No weak signal, ΔRX=0, SIM/operator switch or registration-denial signature was found in this outage window. "
+  },
+  {
+    "id": "diag_0365",
+    "zh": "证据不足以归类(工具不臆测根因)。",
+    "en": "Evidence is insufficient for classification; the tool does not guess the root cause."
+  },
+  {
+    "id": "diag_0366",
+    "zh": "结合“时间线”页人工查看该时段;必要时提高日志级别复现。",
+    "en": "Review this period in Event timeline. If necessary, reproduce with a higher log level."
+  },
+  {
+    "id": "diag_0367",
+    "zh": "L3 已触发:进程主动 exit,交由 watchdog/init 重启",
+    "en": "L3 triggered: process exited for watchdog/init restart"
+  },
+  {
+    "id": "diag_0368",
+    "zh": "该事件日志实际写明 L3 阈值为 ",
+    "en": "The actual L3 threshold recorded for this event is "
+  },
+  {
+    "id": "diag_0369",
+    "zh": "；阶梯已走到尽头。L3 只是纯进程退出，清不掉挂死的 CP 固件。",
+    "en": "; the recovery ladder is exhausted. L3 only exits the process and cannot clear hung CP firmware."
+  },
+  {
+    "id": "diag_0370",
+    "zh": "该事件已触发 L3；日志未提供可解析的实际阈值，工具不套用平台默认值。",
+    "en": "L3 triggered, but the actual threshold is not parseable in the log. No platform default is substituted."
+  },
+  {
+    "id": "diag_0371",
+    "zh": "L3 只是纯进程退出，清不掉挂死的 CP 固件。",
+    "en": "L3 only exits the process and cannot clear hung CP firmware."
+  },
+  {
+    "id": "diag_0372",
+    "zh": "若 L3 反复出现,说明重启无法解决,应查 SIM/账户/覆盖或模组固件。",
+    "en": "If L3 recurs, restart is not resolving the problem. Review SIM/account/coverage or module firmware."
+  },
+  {
+    "id": "diag_0373",
+    "zh": "恢复阶梯已生效:L1 触发 ",
+    "en": "Recovery ladder active: L1 triggered "
+  },
+  {
+    "id": "diag_0374",
+    "zh": " 次,L2 触发 ",
+    "en": " times, L2 triggered "
+  },
+  {
+    "id": "diag_0375",
+    "zh": "阶梯按断网时长逐级升级(L1 软重拨 → L2 射频重置 → L3 退出)。",
+    "en": "The ladder escalates by outage duration: L1 soft redial → L2 radio reset → L3 exit."
+  },
+  {
+    "id": "diag_0376",
+    "zh": "若 L1 频繁但每次都靠 L2 才恢复,说明软重拨无效,可考虑下调 L2 阈值。",
+    "en": "If frequent L1 attempts recover only after L2, soft redial is ineffective; consider lowering the L2 threshold."
+  },
+  {
+    "id": "diag_0377",
+    "zh": "恢复阶梯一次都没触发,但存在超过 L1 阈值的断网",
+    "en": "Recovery ladder never triggered despite outages exceeding L1 threshold"
+  },
+  {
+    "id": "diag_0378",
+    "zh": "有断网时长 ≥ L1 阈值(EG25 60s / EC200A 5min)却无任何 [RECOVERY] 日志。",
+    "en": "Outages reached L1 duration (EG25 60s / EC200A 5min) without any [RECOVERY] log."
+  },
+  {
+    "id": "diag_0379",
+    "zh": "未知",
+    "en": "Unknown"
+  },
+  {
+    "id": "diag_0380",
+    "zh": " 日志在该断网前明确显示 policy=",
+    "en": " Before this outage, the log explicitly records policy="
+  },
+  {
+    "id": "diag_0381",
+    "zh": "；其中至少一项不满足 EG25 FORCE_SIM 阶梯条件。",
+    "en": "; at least one EG25 FORCE_SIM recovery condition was not met."
+  },
+  {
+    "id": "diag_0382",
+    "zh": "这是有日志证据的门控结果；按当前策略检查对应的 Roamlink/切卡恢复链。",
+    "en": "This gate outcome has log evidence. Review the corresponding Roamlink/SIM-switch recovery under the current policy."
+  },
+  {
+    "id": "diag_0383",
+    "zh": " 日志在该断网前明确显示 policy=4、CH=SIM 且已有联网证据，",
+    "en": " Before this outage, the log explicitly records policy=4, CH=SIM and prior connectivity, "
+  },
+  {
+    "id": "diag_0384",
+    "zh": "可见门控条件均满足；不能把未触发解释成策略/通道关闭。",
+    "en": "meeting visible gate conditions. Missing recovery cannot be explained as policy/channel disabling."
+  },
+  {
+    "id": "diag_0385",
+    "zh": "检查恢复日志是否缺失、故障计时是否被状态机提前清零，或对应产品版本",
+    "en": "Check missing recovery logs, premature fault-timer clearing by state transitions, or product versions "
+  },
+  {
+    "id": "diag_0386",
+    "zh": "是否仍使用受墙钟跳变影响的计时。",
+    "en": "still timing with a wall clock affected by jumps."
+  },
+  {
+    "id": "diag_0387",
+    "zh": " 未能从该断网同一来源的前序日志完整确定 policy、通道和",
+    "en": " The same source's preceding logs do not fully establish policy, channel and "
+  },
+  {
+    "id": "diag_0388",
+    "zh": "has_connected_once，不能推断为结构性关闭。",
+    "en": "has_connected_once. Structural disabling cannot be inferred."
+  },
+  {
+    "id": "diag_0389",
+    "zh": "补充该进程启动与故障前日志，确认 policy、CH 和首次联网证据。",
+    "en": "Collect this process's startup and preceding-fault logs to verify policy, CH and initial connectivity."
+  },
+  {
+    "id": "diag_0390",
+    "zh": " 未能从日志证据判定被何条件门控。",
+    "en": " The log evidence does not identify the gating condition."
+  },
+  {
+    "id": "diag_0391",
+    "zh": "确认 has_connected_once、平台策略和故障期间状态机条件。",
+    "en": "Review has_connected_once, platform policy and state-machine conditions during the fault."
+  },
+  {
+    "id": "diag_0392",
+    "zh": "该次断网时长 ",
+    "en": "This outage lasted "
+  },
+  {
+    "id": "diag_0393",
+    "zh": ",已超过 L1 阈值 ",
+    "en": ", exceeding L1 threshold "
+  },
+  {
+    "id": "diag_0394",
+    "zh": "模组/CPU 温度偏高:峰值 ",
+    "en": "High module/CPU temperature: peak "
+  },
+  {
+    "id": "diag_0395",
+    "zh": "高温会导致射频性能下降甚至模组保护性降频。(75℃ 为经验提示阈值,非源码常量)",
+    "en": "High temperature can degrade radio performance or trigger protective throttling. 75°C is an empirical hint, not a source-code constant."
+  },
+  {
+    "id": "diag_0396",
+    "zh": "查散热与安装环境;若高温与断网时间吻合,优先排散热。",
+    "en": "Review cooling and installation. If high temperature aligns with outages, prioritize thermal investigation."
+  },
+  {
+    "id": "diag_0397",
+    "zh": "心跳温度峰值 ",
+    "en": "Heartbeat peak temperature "
+  },
+  {
+    "id": "diag_0398",
+    "zh": "信号质量长期偏低:RSRP 均值 ",
+    "en": "Persistently low signal quality: mean RSRP "
+  },
+  {
+    "id": "diag_0399",
+    "zh": " dBm(共 ",
+    "en": " dBm (total "
+  },
+  {
+    "id": "diag_0400",
+    "zh": " 样本)",
+    "en": " samples)"
+  },
+  {
+    "id": "diag_0401",
+    "zh": "RSRP 均值命中 LTE 工程参考较差档(≤-100dBm),最低 ",
+    "en": "Mean RSRP meets the poor LTE reference grade (≤-100dBm); minimum "
+  },
+  {
+    "id": "diag_0402",
+    "zh": " dBm。该分档不是 3GPP 统一故障等级；持续弱覆盖可能与断网/低速相关。",
+    "en": " dBm. This is not a universal 3GPP fault grade. Persistent weak coverage may correlate with outages/low throughput."
+  },
+  {
+    "id": "diag_0403",
+    "zh": "系统性排查:天线选型/安装位置/朝向、是否室内深处或金属屏蔽;",
+    "en": "Review antenna selection, placement/orientation, indoor depth and metal shielding. "
+  },
+  {
+    "id": "diag_0404",
+    "zh": "必要时加装外置天线或选覆盖更好的运营商。",
+    "en": "Consider an external antenna or better-covered operator if needed."
+  },
+  {
+    "id": "diag_0405",
+    "zh": "最低 RSRP=",
+    "en": "Minimum RSRP="
+  },
+  {
+    "id": "diag_0406",
+    "zh": "dBm (均值 ",
+    "en": "dBm (mean "
+  },
+  {
+    "id": "diag_0407",
+    "zh": "LTE SNR偏低提示:非正值 ",
+    "en": "Low LTE SNR hint: nonpositive "
+  },
+  {
+    "id": "diag_0408",
+    "zh": " 样本,均值 ",
+    "en": " samples, mean "
+  },
+  {
+    "id": "diag_0409",
+    "zh": "【推断】至少5个有效样本且半数以上 SNR≤0dB。该门槛用于提示噪声/同频干扰,",
+    "en": "[Inference] At least 5 valid samples and over half with SNR≤0dB. This flags possible noise/co-channel interference, "
+  },
+  {
+    "id": "diag_0410",
+    "zh": "不是 SDK 或产品源码故障阈值；尚无新版真机日志验证,不单独据此归因断网。",
+    "en": "not an SDK/product fault threshold. No newer real-device sample validation; it does not independently attribute outages."
+  },
+  {
+    "id": "diag_0411",
+    "zh": "结合 RSRP/RSRQ、断网时段和安装环境复核；若 RSRP尚可但SNR持续非正,",
+    "en": "Review RSRP/RSRQ, outage periods and installation. If RSRP is acceptable but SNR remains nonpositive, "
+  },
+  {
+    "id": "diag_0412",
+    "zh": "重点排查同频干扰、天线位置及馈线。",
+    "en": "check co-channel interference, antenna placement and feeder."
+  },
+  {
+    "id": "diag_0413",
+    "zh": "最低 SNR=",
+    "en": "Minimum SNR="
+  },
+  {
+    "id": "diag_0414",
+    "zh": "dB (原值 ",
+    "en": "dB (raw value "
+  },
+  {
+    "id": "diag_0415",
+    "zh": ",均值 ",
+    "en": ", mean "
+  },
+  {
+    "id": "diag_0416",
+    "zh": "频繁小区切换:",
+    "en": "Frequent cell transitions: "
+  },
+  {
+    "id": "diag_0417",
+    "zh": " 次,约 ",
+    "en": " times, about "
+  },
+  {
+    "id": "diag_0418",
+    "zh": " 次/小时",
+    "en": " per hour"
+  },
+  {
+    "id": "diag_0419",
+    "zh": "【工程观察】已排除跨日志来源的伪切换；短时高频切换可能放大链路抖动，",
+    "en": "[Engineering observation] False cross-source transitions are excluded. Frequent transitions may amplify link fluctuation, "
+  },
+  {
+    "id": "diag_0420",
+    "zh": "但不能单凭该统计认定为断网根因。最常见方向 ",
+    "en": "but statistics alone do not establish an outage root cause. Most frequent direction: "
+  },
+  {
+    "id": "diag_0421",
+    "zh": " 共 ",
+    "en": " total "
+  },
+  {
+    "id": "diag_0422",
+    "zh": " 次。",
+    "en": " occurrences."
+  },
+  {
+    "id": "diag_0423",
+    "zh": "结合小区分析页的 RSRP/RSRQ/SNR、断网关联数和切换方向，复核覆盖边缘、",
+    "en": "Use Cell analysis RSRP/RSRQ/SNR, outage association and transition direction to review coverage edges, "
+  },
+  {
+    "id": "diag_0424",
+    "zh": "天线位置及运营商邻区配置。",
+    "en": "antenna placement and operator neighbor-cell configuration."
+  },
+  {
+    "id": "diag_0425",
+    "zh": "观察到小区切换 ",
+    "en": "Observed cell transition "
+  },
+  {
+    "id": "diag_0426",
+    "zh": "疑似小区乒乓:",
+    "en": "Possible cell ping-pong: "
+  },
+  {
+    "id": "diag_0427",
+    "zh": "【工程观察】A→B 后 5 分钟内又 B→A 记为一次乒乓。高频往返通常值得",
+    "en": "[Engineering observation] A→B followed by B→A within 5 minutes counts as one ping-pong. Frequent reversal merits "
+  },
+  {
+    "id": "diag_0428",
+    "zh": "检查覆盖重叠区，但该时间门槛不是模组 SDK 的故障常量。",
+    "en": "review of overlapping coverage; this threshold is not an SDK fault constant."
+  },
+  {
+    "id": "diag_0429",
+    "zh": "对照断网时间与两侧小区信号质量；若集中发生在固定位置，优先复核",
+    "en": "Compare outage time and both cells' signal quality. If concentrated at one location, review "
+  },
+  {
+    "id": "diag_0430",
+    "zh": "天线、遮挡和邻区切换参数。",
+    "en": "antennas, obstructions and neighbor-cell transition parameters."
+  },
+  {
+    "id": "diag_0431",
+    "zh": "5 分钟内往返 ",
+    "en": "Round trip within 5 minutes: "
+  },
+  {
+    "id": "diag_0432",
+    "zh": ",该方向累计 ",
+    "en": "; cumulative transitions in this direction: "
+  },
+  {
+    "id": "diag_0433",
+    "zh": "疑似弱覆盖小区:",
+    "en": "Possible weak-coverage cells: "
+  },
+  {
+    "id": "diag_0434",
+    "zh": " 个与断网起点相关",
+    "en": " associated with outage starts"
+  },
+  {
+    "id": "diag_0435",
+    "zh": "【相关性提示】这些小区同时满足：至少 5 个样本、RSRP均值≤-110dBm或",
+    "en": "[Correlation hint] These cells have at least 5 samples, mean RSRP≤-110dBm or "
+  },
+  {
+    "id": "diag_0436",
+    "zh": "SNR均值≤0dB，并在断网前 10 分钟内被观测到。关联不等同因果。",
+    "en": "mean SNR≤0dB, and were observed within 10 minutes before an outage. Association is not causation."
+  },
+  {
+    "id": "diag_0437",
+    "zh": "在小区分析页按断网关联数排序，优先复核对应 Cell ID 的安装位置、天线",
+    "en": "Sort Cell analysis by outage association. Review the corresponding Cell ID's placement, antenna "
+  },
+  {
+    "id": "diag_0438",
+    "zh": "及覆盖；再结合原始证据确认。",
+    "en": "and coverage, then confirm against original evidence."
+  },
+  {
+    "id": "diag_0439",
+    "zh": ":断网关联 ",
+    "en": ": outage association "
+  },
+  {
+    "id": "diag_0440",
+    "zh": " 次,RSRP均值 ",
+    "en": " times, mean RSRP "
+  },
+  {
+    "id": "diag_0441",
+    "zh": "dBm,SNR均值 ",
+    "en": "dBm, mean SNR "
+  },
+  {
+    "id": "diag_0442",
+    "zh": "有 ",
+    "en": "There are "
+  },
+  {
+    "id": "diag_0443",
+    "zh": " 行未被解析(占 ",
+    "en": " unparsed rows (share "
+  },
+  {
+    "id": "diag_0444",
+    "zh": "%),以上结论可能不完整",
+    "en": "%); findings may be incomplete"
+  },
+  {
+    "id": "diag_0445",
+    "zh": "解析器跳过了这些行,它们不参与任何统计与结论。占比越高,结论的覆盖面越窄。",
+    "en": "The parser skipped these rows; they do not participate in statistics/findings. Greater share means less evidence coverage."
+  },
+  {
+    "id": "diag_0446",
+    "zh": "到“未识别行”页查看样例;若是新格式或新标签,需要扩展解析器。",
+    "en": "Review examples in Unparsed rows. New formats/tags may require parser extension."
+  },
+  {
+    "id": "diag_0447",
+    "zh": "故障",
+    "en": "Fault"
+  },
+  {
+    "id": "diag_0448",
+    "zh": "已恢复",
+    "en": "Recovered"
+  },
+  {
+    "id": "diag_0449",
+    "zh": "恢复动作",
+    "en": "Recovery action"
+  },
+  {
+    "id": "diag_0450",
+    "zh": "错误",
+    "en": "Error"
+  },
+  {
+    "id": "diag_0451",
+    "zh": "提醒",
+    "en": "Warning"
+  },
+  {
+    "id": "diag_0452",
+    "zh": "状态变化",
+    "en": "State change"
+  },
+  {
+    "id": "diag_0453",
+    "zh": "小区/链路",
+    "en": "Cell / link"
+  },
+  {
+    "id": "diag_0454",
+    "zh": "SDK 事件",
+    "en": "SDK event"
+  },
+  {
+    "id": "diag_0455",
+    "zh": "常规",
+    "en": "Routine"
+  },
+  {
+    "id": "diag_0456",
+    "zh": "未恢复",
+    "en": "Unrecovered"
+  },
+  {
+    "id": "diag_0457",
+    "zh": "已恢复 · >60s",
+    "en": "Recovered · >60s"
+  },
+  {
+    "id": "diag_0458",
+    "zh": "已恢复 · 31–60s",
+    "en": "Recovered · 31–60s"
+  },
+  {
+    "id": "diag_0459",
+    "zh": "已恢复 · ≤30s",
+    "en": "Recovered · ≤30s"
+  },
+  {
+    "id": "diag_0460",
+    "zh": "是",
+    "en": "Yes"
+  },
+  {
+    "id": "diag_0461",
+    "zh": "否",
+    "en": "No"
+  },
+  {
+    "id": "diag_0462",
+    "zh": "失败",
+    "en": "Failed"
+  },
+  {
+    "id": "diag_0463",
+    "zh": "成功",
+    "en": "Succeeded"
+  },
+  {
+    "id": "diag_0464",
+    "zh": "未探测",
+    "en": "Not probed"
+  },
+  {
+    "id": "diag_0465",
+    "zh": "超时",
+    "en": "Timeout"
+  },
+  {
+    "id": "diag_0466",
+    "zh": "疑似弱覆盖",
+    "en": "Possible weak coverage"
+  },
+  {
+    "id": "diag_0467",
+    "zh": "需关注",
+    "en": "Review needed"
+  },
+  {
+    "id": "diag_0468",
+    "zh": "正常",
+    "en": "Normal"
+  },
+  {
+    "id": "diag_0469",
+    "zh": "不是已知压缩格式",
+    "en": "Unknown archive format"
+  },
+  {
+    "id": "diag_0470",
+    "zh": "gzip 数据过短",
+    "en": "gzip data too short"
+  },
+  {
+    "id": "diag_0471",
+    "zh": "gzip 标志位非法",
+    "en": "Invalid gzip flags"
+  },
+  {
+    "id": "diag_0472",
+    "zh": "gzip FEXTRA 越界",
+    "en": "gzip FEXTRA out of bounds"
+  },
+  {
+    "id": "diag_0473",
+    "zh": " 越界",
+    "en": " out of bounds"
+  },
+  {
+    "id": "diag_0474",
+    "zh": "gzip FHCRC 越界",
+    "en": "gzip FHCRC out of bounds"
+  },
+  {
+    "id": "diag_0475",
+    "zh": "gzip 头后没有 DEFLATE 数据",
+    "en": "No DEFLATE data after gzip header"
+  },
+  {
+    "id": "diag_0476",
+    "zh": "gzip 压缩数据过大",
+    "en": "gzip compressed data too large"
+  },
+  {
+    "id": "diag_0477",
+    "zh": "gzip 解压后超过 256MiB 限制",
+    "en": "gzip expansion exceeds 256 MiB"
+  },
+  {
+    "id": "diag_0478",
+    "zh": "inflate 初始化失败",
+    "en": "inflate initialization failed"
+  },
+  {
+    "id": "diag_0479",
+    "zh": "gzip 解压失败",
+    "en": "gzip decompression failed"
+  },
+  {
+    "id": "diag_0480",
+    "zh": "gzip ISIZE 校验失败",
+    "en": "gzip ISIZE validation failed"
+  },
+  {
+    "id": "diag_0481",
+    "zh": "gzip CRC32 校验失败",
+    "en": "gzip CRC32 validation failed"
+  },
+  {
+    "id": "diag_0482",
+    "zh": "tar 损坏、为空或超过解压限制",
+    "en": "tar damaged, empty or exceeding expansion limit"
+  },
+  {
+    "id": "diag_0483",
+    "zh": "zip 打开失败",
+    "en": "zip open failed"
+  },
+  {
+    "id": "diag_0484",
+    "zh": "zip 条目数超过 1000 限制",
+    "en": "zip entry count exceeds 1000"
+  },
+  {
+    "id": "diag_0485",
+    "zh": "zip 目录项读取失败",
+    "en": "zip directory entry read failed"
+  },
+  {
+    "id": "diag_0486",
+    "zh": "zip 解压后超过大小限制",
+    "en": "zip expansion exceeds size limit"
+  },
+  {
+    "id": "diag_0487",
+    "zh": "zip 条目解压失败",
+    "en": "zip entry decompression failed"
+  },
+  {
+    "id": "diag_0488",
+    "zh": "zip 内无可读文件",
+    "en": "No readable files in zip"
+  },
+  {
+    "id": "diag_0489",
+    "zh": "未支持的压缩格式",
+    "en": "Unsupported archive format"
+  },
+  {
+    "id": "diag_0490",
+    "zh": "本次构建未编入解压支持(DL_HAVE_MINIZ 未定义)",
+    "en": "Archive support not compiled (DL_HAVE_MINIZ undefined)"
+  },
+  {
+    "id": "diag_0491",
+    "zh": "内存不足,压缩包未展开",
+    "en": "Not enough memory; archive was not expanded"
+  },
+  {
+    "id": "diag_0492",
+    "zh": "良好",
+    "en": "Good"
+  },
+  {
+    "id": "diag_0493",
+    "zh": "优秀",
+    "en": "Excellent"
+  },
+  {
+    "id": "diag_0494",
+    "zh": "一般",
+    "en": "Fair"
+  },
+  {
+    "id": "diag_0495",
+    "zh": "较差",
+    "en": "Poor"
+  },
+  {
+    "id": "diag_0496",
+    "zh": "源码直证",
+    "en": "Source-code evidence"
+  },
+  {
+    "id": "diag_0497",
+    "zh": "日志直证",
+    "en": "Log evidence"
+  },
+  {
+    "id": "diag_0498",
+    "zh": "样本实证",
+    "en": "Sample evidence"
+  },
+  {
+    "id": "diag_0499",
+    "zh": "推断",
+    "en": "Inference"
+  },
+  {
+    "id": "diag_0500",
+    "zh": "工程观察",
+    "en": "Engineering observation"
+  },
+  {
+    "id": "diag_0501",
+    "zh": "相关性提示",
+    "en": "Correlation hint"
+  },
+  {
+    "id": "diag_0502",
+    "zh": "当前区间汇总",
+    "en": "Selected-range summary"
+  }
+]

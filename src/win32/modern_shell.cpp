@@ -11,6 +11,7 @@
 #include <string>
 
 #include "app_context.h"
+#include "text_catalog.h"
 #include "theme.h"
 #include "version.h"
 
@@ -43,15 +44,15 @@ std::wstring g_busyStatus;
 struct NavItem { int page; const wchar_t* text; const wchar_t* detail; int y; };
 
 std::array<NavItem, 9> NavItems() {
-    return {{{0, L"概览", L"可用率、断网与信号统计", 112},
-             {1, L"诊断结论", L"根因、建议与证据", 160},
-             {3, L"断网记录", L"中断、恢复与时长", 208},
-             {8, L"小区分析", L"质量、切换与断网关联", 256},
-             {2, L"事件时间线", L"状态变化与恢复动作", 354},
-             {4, L"信号指标", L"小区、射频与数据面", 402},
-             {5, L"标签统计", L"消息来源与分布", 450},
-             {6, L"原始日志", L"逐行定位与复制", 498},
-             {7, L"未识别行", L"解析覆盖与审计", 546}}};
+    return {{{0, UiText(TextId::ui_0164), UiText(TextId::ui_0221), 112},
+             {1, UiText(TextId::ui_0222), UiText(TextId::ui_0223), 160},
+             {3, UiText(TextId::ui_0224), UiText(TextId::ui_0225), 208},
+             {8, UiText(TextId::ui_0226), UiText(TextId::ui_0227), 256},
+             {2, UiText(TextId::ui_0228), UiText(TextId::ui_0229), 354},
+             {4, UiText(TextId::ui_0230), UiText(TextId::ui_0231), 402},
+             {5, UiText(TextId::ui_0232), UiText(TextId::ui_0233), 450},
+             {6, UiText(TextId::ui_0234), UiText(TextId::ui_0235), 498},
+             {7, UiText(TextId::ui_0236), UiText(TextId::ui_0237), 546}}};
 }
 
 COLORREF NavIconColor(int page) {
@@ -190,12 +191,12 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
         RECT brand{S(62), S(15), client.right - S(12), S(39)};
         DrawTextAt(dc, L"dialLog", brand, App().hFontSect, th::inkPri);
         RECT sub{S(62), S(36), client.right - S(12), S(58)};
-        DrawTextAt(dc, L"日志诊断工作台", sub, App().hFontSmall, th::inkMuted);
+        DrawTextAt(dc, UiText(TextId::ui_0238), sub, App().hFontSmall, th::inkMuted);
 
         RECT group1{S(20), S(78), client.right - S(16), S(101)};
-        DrawTextAt(dc, L"工作台", group1, App().hFontUI, th::inkPri);
+        DrawTextAt(dc, UiText(TextId::ui_0239), group1, App().hFontUI, th::inkPri);
         RECT group2{S(20), S(320), client.right - S(16), S(343)};
-        DrawTextAt(dc, L"数据", group2, App().hFontUI, th::inkPri);
+        DrawTextAt(dc, UiText(TextId::ui_0240), group2, App().hFontUI, th::inkPri);
 
         for (const auto& item : NavItems()) {
             RECT row{S(10), S(item.y), client.right - S(10), S(item.y + 44)};
@@ -241,7 +242,7 @@ LRESULT CALLBACK NavigationProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM l
         // 最小高度下优先保证第九个导航项完整可见，不让版本脚注与其重叠。
         if (client.bottom >= S(650)) {
             RECT version{S(20), client.bottom - S(42), client.right - S(12), client.bottom - S(16)};
-            DrawTextAt(dc, L"v" DL_VER_WSTR L"  ·  本地离线分析", version, App().hFontSmall, th::inkMuted);
+            DrawTextAt(dc, (std::wstring(L"v" DL_VER_WSTR) + UiText(TextId::ui_0241)).c_str(), version, App().hFontSmall, th::inkMuted);
         }
         HPEN sep = CreatePen(PS_SOLID, 1, th::border);
         HGDIOBJ old = SelectObject(dc, sep);
@@ -399,14 +400,14 @@ bool RegisterModernShellClasses(HINSTANCE instance) {
 }
 
 HWND CreateModernNavigation(HWND parent, int id) {
-    g_navigation = CreateWindowExW(0, kNavigationClass, L"主导航", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+    g_navigation = CreateWindowExW(0, kNavigationClass, UiText(TextId::ui_0242), WS_CHILD | WS_VISIBLE | WS_TABSTOP,
                                    0, 0, 10, 10, parent, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
                                    GetModuleHandleW(nullptr), nullptr);
     return g_navigation;
 }
 
 HWND CreateModernStatus(HWND parent, int id) {
-    return CreateWindowExW(0, kStatusClass, L"就绪。拖入日志文件，或使用“打开日志”。",
+    return CreateWindowExW(0, kStatusClass, UiText(TextId::ui_0243),
                            WS_CHILD | WS_VISIBLE, 0, 0, 10, 10, parent,
                            reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), GetModuleHandleW(nullptr), nullptr);
 }

@@ -564,7 +564,8 @@ static Platform sourcePlatformAt(std::map<std::uint16_t, Platform>& platforms,
     return platform;
 }
 
-PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
+template<class Lines>
+static PlatformInfo detectPlatformImpl(const Lines& lines) {
     PlatformInfo pi;
     size_t seas = 0;
     const LogLine* seasEv = nullptr;
@@ -578,7 +579,8 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
     const DisplayVersionPlatform* displayVersion = nullptr;
     const LogLine* rkEv = nullptr;
 
-    for (const auto& l : lines) {
+    for (const auto& item : lines) {
+        const LogLine& l = lineRef(item);
         if (!rkEv && rkIdentityLine(l)) rkEv = &l;
         if (!v2Ev && isModemMngV2Envelope(l)) v2Ev = &l;
         if (const char* module = modemMngV2Module(l)) {
@@ -635,6 +637,9 @@ PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
     else               set(PLAT_UNKNOWN, "未识别", nullptr, "无任何平台特征字段");
     return pi;
 }
+
+PlatformInfo detectPlatform(const std::vector<LogLine>& lines) { return detectPlatformImpl(lines); }
+PlatformInfo detectPlatform(const LogView& lines) { return detectPlatformImpl(lines); }
 
 // ============================ 判定 ============================
 bool isFaultStart(const std::string& msg) {

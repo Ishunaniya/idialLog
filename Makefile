@@ -69,8 +69,8 @@ MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 
 CORE_NAMES := log_time log_parser log_analysis log_filter archive_reader
 APP_NAMES := document_state app_context
-PRESENTATION_NAMES := tablemodel chartmodel
-WIN32_NAMES := ui modern_shell ui_pages overview_page chart_page load_controller app_settings win_file_io win_text
+PRESENTATION_NAMES := tablemodel chartmodel text_catalog
+WIN32_NAMES := ui modern_shell ui_pages overview_page chart_page load_controller app_settings win_file_io win_text source_workspace
 
 CORE_OBJS := $(addprefix $(BUILD_DIR)/core/,$(addsuffix .o,$(CORE_NAMES)))
 APP_OBJS := $(addprefix $(BUILD_DIR)/app/,$(addsuffix .o,$(APP_NAMES)))
@@ -137,10 +137,11 @@ HOST_ARCHIVE_FULL_OBJ := $(HOST_BUILD_DIR)/archive_reader_miniz.o
 HOST_CORE_OBJS := $(HOST_CORE_BASE_OBJS) $(HOST_ARCHIVE_STUB_OBJ)
 HOST_ARCHIVE_OBJS := $(HOST_CORE_BASE_OBJS) $(HOST_ARCHIVE_FULL_OBJ)
 HOST_TABLE_OBJ := $(HOST_BUILD_DIR)/tablemodel.o
+HOST_LOCALE_OBJ := $(HOST_BUILD_DIR)/text_catalog.o
 HOST_CHART_OBJ := $(HOST_BUILD_DIR)/chartmodel.o
 HOST_DOCUMENT_OBJ := $(HOST_BUILD_DIR)/document_state.o
 HOST_MINIZ_OBJ := $(HOST_BUILD_DIR)/miniz.o
-HOST_DEPS := $(HOST_CORE_OBJS:.o=.d) $(HOST_ARCHIVE_FULL_OBJ:.o=.d) \
+HOST_DEPS := $(HOST_LOCALE_OBJ:.o=.d) $(HOST_CORE_OBJS:.o=.d) $(HOST_ARCHIVE_FULL_OBJ:.o=.d) \
              $(HOST_TABLE_OBJ:.o=.d) $(HOST_CHART_OBJ:.o=.d) $(HOST_DOCUMENT_OBJ:.o=.d) $(HOST_MINIZ_OBJ:.o=.d)
 
 UNIT_BIN_DIR := $(HOST_TEST_DIR)/unit
@@ -152,6 +153,7 @@ ARCHIVETEST_BIN := $(UNIT_BIN_DIR)/archivetest
 BOUNDARYTEST_BIN := $(UNIT_BIN_DIR)/boundarytest
 TABLETEST_BIN := $(UNIT_BIN_DIR)/tabletest
 CHARTTEST_BIN := $(UNIT_BIN_DIR)/charttest
+LOCALETEST_BIN := $(UNIT_BIN_DIR)/localetest
 DOCUMENTTEST_BIN := $(UNIT_BIN_DIR)/documenttest
 MODEMV2PARSERTEST_BIN := $(UNIT_BIN_DIR)/modem_v2_parser_test
 SIMTEST_BIN := $(REGRESSION_BIN_DIR)/simtest
@@ -166,7 +168,7 @@ UI_SMOKE_BIN := $(HOST_TEST_DIR)/ui/smoke.exe
 UI_WINEPREFIX ?= $(abspath $(BUILD_ROOT)/wine-smoke)
 TEST_BINS := $(SELFTEST_BIN) $(SIMTEST_BIN) $(HOSTRUNTEST_BIN) $(BASELINETEST_BIN) \
              $(MERGETEST_BIN) $(MODEMV2TEST_BIN) $(ARCHIVETEST_BIN) $(BOUNDARYTEST_BIN) \
-             $(TABLETEST_BIN) $(CHARTTEST_BIN) $(DOCUMENTTEST_BIN) $(MODEMV2PARSERTEST_BIN) $(RK3506JTEST_BIN) $(ARTERYTEST_BIN)
+             $(TABLETEST_BIN) $(CHARTTEST_BIN) $(DOCUMENTTEST_BIN) $(LOCALETEST_BIN) $(MODEMV2PARSERTEST_BIN) $(RK3506JTEST_BIN) $(ARTERYTEST_BIN)
 TEST_TARGETS := selftest simtest hostruntest baselinetest mergetest \
                 modemv2test modemv2parsertest archivetest boundarytest tabletest charttest \
                 documenttest perftest rk3506jtest arterytest
@@ -188,6 +190,9 @@ $(HOST_TABLE_OBJ): $(PRESENTATION_DIR)/tablemodel.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(HOST_CHART_OBJ): $(PRESENTATION_DIR)/chartmodel.cpp | $(HOST_BUILD_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(HOST_LOCALE_OBJ): $(PRESENTATION_DIR)/text_catalog.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(HOST_DOCUMENT_OBJ): $(APP_DIR)/document_state.cpp | $(HOST_BUILD_DIR)
@@ -234,6 +239,9 @@ $(TABLETEST_BIN): $(TEST_UNIT_DIR)/tabletest.cpp $(HOST_TABLE_OBJ) $(HOST_CORE_O
 $(CHARTTEST_BIN): $(TEST_UNIT_DIR)/charttest.cpp $(HOST_CHART_OBJ) | $(UNIT_BIN_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
+$(LOCALETEST_BIN): $(TEST_UNIT_DIR)/localetest.cpp $(HOST_LOCALE_OBJ) $(HOST_CORE_OBJS) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+
 $(DOCUMENTTEST_BIN): $(TEST_UNIT_DIR)/documenttest.cpp $(HOST_DOCUMENT_OBJ) $(HOST_CORE_OBJS) | $(UNIT_BIN_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
@@ -263,6 +271,7 @@ perf: $(PERF_BIN)
 	$(PERF_BIN)
 
 check: $(TEST_BINS)
+	python3 tools/build_text_catalog.py --check
 	python3 tests/unit/sourceaudit_test.py
 	$(SELFTEST_BIN) samples/rtms_eg25/dial_20260630_000026.log
 	$(SIMTEST_BIN)
@@ -278,6 +287,7 @@ check: $(TEST_BINS)
 	$(TABLETEST_BIN)
 	$(CHARTTEST_BIN)
 	$(DOCUMENTTEST_BIN)
+	$(LOCALETEST_BIN)
 
 check-full: check
 	python3 sim/mutate.py

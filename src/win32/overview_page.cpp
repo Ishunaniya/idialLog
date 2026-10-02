@@ -16,12 +16,14 @@
 #include "log_analysis.h"
 #include "log_time.h"
 #include "load_controller.h"
+#include "source_workspace.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "signal_quality.h"
 #include "theme.h"
 #include "ui_pages.h"
 #include "win_text.h"
+#include "text_catalog.h"
 
 namespace dl {
 
@@ -79,12 +81,13 @@ static void ClampPageScroll(HWND window, int& position) {
 }
 static void CopyNotice(const std::wstring& text) {
     const bool copied = CopyText(text);
-    ShowModernNotice(copied ? L"已复制" : L"复制失败",
-                     copied ? L"完整内容已复制到剪贴板。" : L"剪贴板暂时不可用，请重试。",
+    ShowModernNotice(copied ? UiText(TextId::ui_0478) : UiText(TextId::ui_0357),
+                     copied ? UiText(TextId::ui_0358) : UiText(TextId::ui_0359),
                      copied ? ModernNoticeKind::Success : ModernNoticeKind::Error, 3000);
 }
 static std::wstring CardText(const SumCard& card) {
     std::wstring text = card.title + L"\r\n";
+    if (App().document.sources.size()>1) text+=AnalysisSourceText()+L"\r\n";
     if (HasAnalysisTimeFilter()) text += AnalysisTimeRangeText() + L"\r\n";
     for (const auto& line : card.lines) text += line + L"\r\n";
     return text;
@@ -92,23 +95,24 @@ static std::wstring CardText(const SumCard& card) {
 static std::wstring FindingText(size_t index) {
     const auto& finding = App().document.findings[index];
     std::wstring text = FmtW(L"%d. [%s] ", static_cast<int>(index + 1),
-        finding.severity == 2 ? L"严重" : finding.severity == 1 ? L"告警" : L"信息") + AnalysisScopedText(finding.title);
-    if (HasAnalysisTimeFilter()) text += L"\r\n" + AnalysisTimeRangeText() + L"；仅按区间内运行证据判断，边界需结合全范围复核。";
-    text += L"\r\n依据：" + AnalysisScopedText(finding.detail) + L"\r\n建议：" + U8ToW(finding.advice) + L"\r\n证据：\r\n";
+        finding.severity == 2 ? UiText(TextId::ui_0115) : finding.severity == 1 ? UiText(TextId::ui_0116) : UiText(TextId::ui_0117)) + AnalysisScopedText(finding.title);
+    if (App().document.sources.size()>1 && !HasAnalysisTimeFilter()) text+=L"\r\n"+AnalysisSourceText();
+    if (HasAnalysisTimeFilter()) text += L"\r\n" + AnalysisSourceText() + L"\r\n" + AnalysisTimeRangeText() + UiText(TextId::ui_0360);
+    text += UiText(TextId::ui_0361) + AnalysisScopedText(finding.detail) + UiText(TextId::ui_0362) + U8ToW(GeneratedText(finding.advice)) + UiText(TextId::ui_0363);
     for (const auto& item : finding.ev)
-        text += FmtW(L"第 %d 行  ", static_cast<int>(item.lineNo)) + U8ToW(item.ts) + L"  " + U8ToW(item.text) + L"\r\n";
+        text += FmtW(UiText(TextId::ui_0156), static_cast<int>(item.lineNo)) + U8ToW(item.ts) + L"  " + U8ToW(item.text) + L"\r\n";
     return text;
 }
 static std::wstring FindingsMetaText() {
     const auto& doc = App().document;
-    std::wstring text = L"来源平台：" + U8ToW(doc.platform.name) + L"\r\n";
+    std::wstring text = AnalysisSourceText() + L"\r\n" + UiText(TextId::ui_0364) + U8ToW(GeneratedText(doc.platform.name)) + L"\r\n";
     if (HasAnalysisTimeFilter()) text += AnalysisTimeRangeText() +
-        L"\r\n运行结论按区间内证据重算；平台识别与解析审计仍基于整份输入。起止边界请结合全范围复核。\r\n";
-    text += FmtW(L"解析统计：已解析 %d 行，未识别 %d 行（%.2f%%），NUL %d 字节 / %d 行\r\n",
+        UiText(TextId::ui_0365);
+    text += FmtW(UiText(TextId::ui_0366),
         static_cast<int>(doc.audit.parsed), static_cast<int>(doc.audit.unparsed), doc.audit.unparsedRatio() * 100.0,
         static_cast<int>(doc.audit.nulBytes), static_cast<int>(doc.audit.nulLines));
-    if (doc.platform.evidenceLine) text += FmtW(L"识别依据：第 %d 行  ", static_cast<int>(doc.platform.evidenceLine)) + U8ToW(doc.platform.evidence) + L"\r\n";
-    if (doc.audit.clockJump) text += FmtW(L"时钟跳变：第 %d 行 %s → %s\r\n两侧分别计算观测区间，不跨时基配对。\r\n",
+    if (doc.platform.evidenceLine) text += FmtW(UiText(TextId::ui_0367), static_cast<int>(doc.platform.evidenceLine)) + U8ToW(doc.platform.evidence) + L"\r\n";
+    if (doc.audit.clockJump) text += FmtW(UiText(TextId::ui_0368),
         static_cast<int>(doc.audit.jumpAtLine), U8ToW(fmtTime(doc.audit.jumpFromT, "FULL")).c_str(), U8ToW(fmtTime(doc.audit.jumpToT, "FULL")).c_str());
     return text;
 }
@@ -116,14 +120,14 @@ bool CopyOverviewPage(int page) {
     if (page != 0 && page != 1) return false;
     if (App().document.lines.empty()) return false;
     RenderPage(page);
-    std::wstring text = page == 0 ? L"概览\r\n" : L"诊断结论\r\n";
-    text += L"输入：" + GetText(App().hFileLbl) + L"\r\n";
+    std::wstring text = page == 0 ? UiText(TextId::ui_0477) : UiText(TextId::ui_0369);
+    text += UiText(TextId::ui_0370) + GetText(App().hFileLbl) + L"\r\n";
     text += AnalysisTimeRangeText() + L"\r\n";
     if (page == 0) {
         for (const auto& card : g_sumCards) text += L"\r\n" + CardText(card);
     } else {
         text += FindingsMetaText();
-        if (App().document.findings.empty()) text += L"当前日志未命中诊断规则；请结合解析覆盖率和原始日志检查。\r\n";
+        if (App().document.findings.empty()) text += UiText(TextId::ui_0371);
         for (size_t index = 0; index < App().document.findings.size(); ++index) text += L"\r\n" + FindingText(index);
     }
     CopyNotice(text);
@@ -137,8 +141,8 @@ static bool HandleCopyMenu(HWND hwnd, UINT msg, LPARAM lp, const std::vector<Cop
     std::wstring cardText;
     for (const auto& hit : hits) if (PtInRect(&hit.rect, client)) { cardText = hit.text; break; }
     HMENU menu = CreatePopupMenu();
-    if (!cardText.empty()) AppendMenuW(menu, MF_STRING, 1, page == 0 ? L"复制此卡片" : L"复制此条结论");
-    AppendMenuW(menu, MF_STRING, 2, page == 0 ? L"复制完整概览\tCtrl+C" : L"复制全部结论\tCtrl+C");
+    if (!cardText.empty()) AppendMenuW(menu, MF_STRING, 1, page == 0 ? UiText(TextId::ui_0372) : UiText(TextId::ui_0373));
+    AppendMenuW(menu, MF_STRING, 2, page == 0 ? UiText(TextId::ui_0374) : UiText(TextId::ui_0375));
     const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD, point.x, point.y, 0, hwnd, nullptr);
     DestroyMenu(menu);
     if (command == 1) CopyNotice(cardText);
@@ -278,11 +282,11 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     if (App().document.filtered.empty()) {
         if (App().document.lines.empty())
-            DrawPageEmpty(hdc, rc, L"开始分析第一份日志",
-                          L"将 dial_*.log、文本或压缩包拖到窗口中，也可以使用“打开日志”或“粘贴日志”。");
+            DrawPageEmpty(hdc, rc, UiText(TextId::ui_0376),
+                          UiText(TextId::ui_0377));
         else
-            DrawPageEmpty(hdc, rc, L"筛选后没有结果",
-                          L"当前日志已加载，但没有行满足筛选条件。展开筛选面板并清空条件即可恢复。");
+            DrawPageEmpty(hdc, rc, UiText(TextId::ui_0378),
+                          UiText(TextId::ui_0379));
         BitBlt(hw, 0, 0, rc.right, rc.bottom, hdc, 0, 0, SRCCOPY);
         SelectObject(hdc, obm); DeleteObject(bmp); DeleteDC(hdc);
         EndPaint(hwnd, &ps);
@@ -302,10 +306,10 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     // 状态色须配文字标签,不能只靠颜色表意 —— 故旁边永远写着"可用率"
     const bool noFirstConnection = availability.neverConnectedStartupSegments > 0 &&
                                    !availability.runtimeValid();
-    const wchar_t* heroTag = evidenceLimited ? L"证据不足" : noFirstConnection ? L"未建立连接" : !availValid ? L"数据不足" :
-                              (avail >= 99.9 ? L"良好" : (avail >= 99.0 ? L"偏低" : L"差"));
+    const wchar_t* heroTag = evidenceLimited ? UiText(TextId::ui_0380) : noFirstConnection ? UiText(TextId::ui_0381) : !availValid ? UiText(TextId::ui_0382) :
+                              (avail >= 99.9 ? UiText(TextId::ui_0383) : (avail >= 99.0 ? UiText(TextId::ui_0384) : UiText(TextId::ui_0385)));
     const int pad = S(20);
-    DrawText_(hdc, pad, S(14), L"首次联网后运行期可用率", App().hFontTileLbl, th::inkSec);
+    DrawText_(hdc, pad, S(14), UiText(TextId::ui_0386), App().hFontTileLbl, th::inkSec);
     std::wstring hv = availValid ? FmtW(L"%.3f%%", avail) : L"—";
     DrawText_(hdc, pad, S(30), hv, App().hFontHero, th::inkPri);
     int hx = pad + TextW_(hdc, hv, App().hFontHero) + S(14);
@@ -317,38 +321,38 @@ LRESULT CALLBACK DashProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
               g_dashboard.startText + L" → " + g_dashboard.endText,
               App().hFontTileLbl, th::inkSec);
     g_dashCopyRect = RECT{rc.right - S(122), S(14), rc.right - S(20), S(42)};
-    DrawPill(hdc, g_dashCopyRect.left, g_dashCopyRect.top, L"复制概览", th::accentSoft, th::accent);
+    DrawPill(hdc, g_dashCopyRect.left, g_dashCopyRect.top, UiText(TextId::ui_0387), th::accentSoft, th::accent);
 
     // ---- 指标卡 ----
     int gap = S(10), ty = S(114), th_ = S(106);
     int tw = (rc.right - pad * 2 - gap * 3) / 4;
     if (tw > 60) {
         RECT r1{ pad, ty, pad + tw, ty + th_ };
-        DrawTile(hdc, r1, L"断网次数", FmtW(L"%d", (int)App().document.outages.size()), th::inkPri,
-                 FmtW(L"累计 %s", U8ToW(fmtDur(total)).c_str()));
+        DrawTile(hdc, r1, UiText(TextId::ui_0250), FmtW(L"%d", (int)App().document.outages.size()), th::inkPri,
+                 FmtW(UiText(TextId::ui_0388), U8ToW(fmtDur(total)).c_str()));
         RECT r2{ r1.right + gap, ty, r1.right + gap + tw, ty + th_ };
-        DrawTile(hdc, r2, L"最长单次断网", U8ToW(fmtDur(longest)), th::inkPri, L"");
+        DrawTile(hdc, r2, UiText(TextId::ui_0389), U8ToW(fmtDur(longest)), th::inkPri, L"");
         RECT r3{ r2.right + gap, ty, r2.right + gap + tw, ty + th_ };
-        DrawTile(hdc, r3, L"未识别/文件损伤",
+        DrawTile(hdc, r3, UiText(TextId::ui_0390),
                  FmtW(L"%d / %d NUL", (int)App().document.audit.unparsed,
                       (int)App().document.audit.nulBytes),
                  App().document.audit.unparsed ? th::inkPri : th::inkPri,
                  (App().document.audit.unparsed || App().document.audit.nulBytes)
-                     ? FmtW(L"未识别 %.2f%% · NUL %d 行",
+                     ? FmtW(UiText(TextId::ui_0391),
                             App().document.audit.unparsedRatio()*100.0,
                             (int)App().document.audit.nulLines)
-                     : L"无解析遗漏或 NUL 损伤");
+                     : UiText(TextId::ui_0392));
         RECT r4{ r3.right + gap, ty, r3.right + gap + tw, ty + th_ };
         g_dashTileRects[0] = r1; g_dashTileRects[1] = r2; g_dashTileRects[2] = r3; g_dashTileRects[3] = r4;
-        DrawTile(hdc, r4, L"信号 CSQ(最小/均/最大)",
+        DrawTile(hdc, r4, UiText(TextId::ui_0393),
                  csqN ? FmtW(L"%d / %.1f / %d", csqMin, (double)csqSum/csqN, csqMax) : L"—",
-                 th::inkPri, csqN ? FmtW(L"%d 个样本", csqN) : L"");
+                 th::inkPri, csqN ? FmtW(UiText(TextId::ui_0394), csqN) : L"");
     }
 
     // ---- 断网时长分布(横条)----
     int by = ty + th_ + S(18);
     if (rc.bottom >= S(352)) {
-    DrawText_(hdc, pad, by, L"断网时长分布", App().hFontSect, th::inkPri);
+    DrawText_(hdc, pad, by, UiText(TextId::ui_0395), App().hFontSect, th::inkPri);
     by += S(22);
     const wchar_t* bl[4] = { L"≤30s", L"31-60s", L"1-5m", L">5m" };
     int mx = std::max(1, std::max(std::max(b[0], b[1]), std::max(b[2], b[3])));
@@ -438,9 +442,9 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             const EvidenceHit evidenceHit = *found;
             const EvidenceHit* hit = &evidenceHit;
             HMENU menu = CreatePopupMenu();
-            AppendMenuW(menu, MF_STRING, 1, L"定位原始行");
-            AppendMenuW(menu, MF_STRING, 2, L"复制证据");
-            AppendMenuW(menu, MF_STRING, 3, L"添加 / 移除书签\tCtrl+B");
+            AppendMenuW(menu, MF_STRING, 1, UiText(TextId::ui_0396));
+            AppendMenuW(menu, MF_STRING, 2, UiText(TextId::ui_0397));
+            AppendMenuW(menu, MF_STRING, 3, UiText(TextId::ui_0398));
             POINT screen = point; ClientToScreen(hwnd, &screen);
             const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
                                                 screen.x, screen.y, 0, hwnd, nullptr);
@@ -448,15 +452,15 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             if (command == 1) JumpToRawLine(hit->lineNo);
             else if (command == 2) {
                 if (CopyText(hit->text))
-                    ShowModernNotice(L"证据已复制", L"原始行号、时间和日志正文已复制到剪贴板。",
+                    ShowModernNotice(UiText(TextId::ui_0399), UiText(TextId::ui_0400),
                                      ModernNoticeKind::Success, 3500);
                 else
-                    ShowModernNotice(L"复制失败", L"剪贴板暂时不可用，请稍后重试。",
+                    ShowModernNotice(UiText(TextId::ui_0357), UiText(TextId::ui_0401),
                                      ModernNoticeKind::Error);
             } else if (command == 3) {
                 const bool added = ToggleEvidenceBookmark(hit->lineNo, hit->text);
-                ShowModernNotice(added ? L"证据书签已添加" : L"证据书签已移除",
-                                 FmtW(L"原始第 %d 行", static_cast<int>(hit->lineNo)).c_str(),
+                ShowModernNotice(added ? UiText(TextId::ui_0299) : UiText(TextId::ui_0300),
+                                 FmtW(UiText(TextId::ui_0301), static_cast<int>(hit->lineNo)).c_str(),
                                  added ? ModernNoticeKind::Success : ModernNoticeKind::Info);
             }
             return 0;
@@ -522,8 +526,8 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     g_findCopyRect = RECT{};
 
     if (App().document.lines.empty()) {
-        DrawPageEmpty(hdc, rc, L"诊断结论",
-                      L"加载日志后查看异常、处理建议和原始证据。");
+        DrawPageEmpty(hdc, rc, UiText(TextId::ui_0222),
+                      UiText(TextId::ui_0402));
         g_findContentH = rc.bottom;
         SCROLLINFO emptyScroll{}; emptyScroll.cbSize = sizeof(emptyScroll);
         emptyScroll.fMask = SIF_RANGE | SIF_PAGE | SIF_POS; emptyScroll.nMin = 0;
@@ -562,28 +566,28 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
         const int h = S(74);
         drawCard(y, h, 0);
-        DrawText_(hdc, textX0, y + S(14), L"诊断摘要", App().hFontSect, th::inkPri);
+        DrawText_(hdc, textX0, y + S(14), UiText(TextId::ui_0403), App().hFontSect, th::inkPri);
         DrawText_(hdc, textX0, y + S(40),
-                  FmtW(L"%d 条规则命中", (int)App().document.findings.size()),
+                  FmtW(UiText(TextId::ui_0404), (int)App().document.findings.size()),
                   App().hFontSmall, th::inkMuted);
         g_findCopyRect = RECT{M + cardW - S(144), y + S(12), M + cardW - S(18), y + S(40)};
-        DrawPill(hdc, g_findCopyRect.left, g_findCopyRect.top, L"复制全部结论", th::accentSoft, th::accent);
-        DrawText_(hdc, textX0 + S(140), y + S(40), FmtW(L"严重 %d · 告警 %d · 信息 %d", severe, warning, info), App().hFontSmall, th::inkSec);
+        DrawPill(hdc, g_findCopyRect.left, g_findCopyRect.top, UiText(TextId::ui_0405), th::accentSoft, th::accent);
+        DrawText_(hdc, textX0 + S(140), y + S(40), FmtW(UiText(TextId::ui_0406), severe, warning, info), App().hFontSmall, th::inkSec);
         y += h + GAP;
     }
 
     // ── 头部元信息卡 ──
     {
-        std::wstring platform = L"来源平台:  " + U8ToW(App().document.platform.name);
-        std::wstring coverage = FmtW(L"解析覆盖: 已解析 %d 行,未识别 %d 行(%.2f%%),NUL %d 字节/%d 行%s",
+        std::wstring platform = UiText(TextId::ui_0407) + U8ToW(GeneratedText(App().document.platform.name));
+        std::wstring coverage = FmtW(UiText(TextId::ui_0408),
             (int)App().document.audit.parsed, (int)App().document.audit.unparsed,
             App().document.audit.unparsedRatio() * 100.0, (int)App().document.audit.nulBytes,
             (int)App().document.audit.nulLines,
             App().document.audit.unparsed == 0 && App().document.audit.nulBytes == 0
-                ? L"  → 无已知损伤" : L"  → 见“未识别行”页");
+                ? UiText(TextId::ui_0409) : UiText(TextId::ui_0410));
         std::wstring evidence;
         if (App().document.platform.evidenceLine)
-            evidence = FmtW(L"识别依据:  第 %d 行  ", (int)App().document.platform.evidenceLine) +
+            evidence = FmtW(UiText(TextId::ui_0411), (int)App().document.platform.evidenceLine) +
                        U8ToW(App().document.platform.evidence);
         auto measureMeta = [&](const std::wstring& text) {
             HGDIOBJ old = SelectObject(hdc, App().hFontUI);
@@ -594,11 +598,11 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             return std::max(S(20), static_cast<int>(measured.bottom));
         };
         bool jump = App().document.audit.clockJump;
-        const std::wstring jumpTitle = jump ? FmtW(L"时钟跳变：第 %d 行 %s → %s", static_cast<int>(App().document.audit.jumpAtLine),
+        const std::wstring jumpTitle = jump ? FmtW(UiText(TextId::ui_0412), static_cast<int>(App().document.audit.jumpAtLine),
             U8ToW(fmtTime(App().document.audit.jumpFromT, "FULL")).c_str(), U8ToW(fmtTime(App().document.audit.jumpToT, "FULL")).c_str()) : L"";
-        const std::wstring jumpDetail = L"跳变两侧分别计算观测区间，不跨时基配对。";
+        const std::wstring jumpDetail = UiText(TextId::ui_0413);
         const std::wstring scope = HasAnalysisTimeFilter() ?
-            L"运行结论按当前时间区间内证据重算；区间外的故障起点、恢复或启动可能缺失，请结合全范围复核。平台识别与解析审计仍基于整份输入。" : L"";
+            UiText(TextId::ui_0414) : L"";
         int h = CARD_PAD * 2 + measureMeta(platform) + measureMeta(coverage) +
                 (evidence.empty() ? 0 : measureMeta(evidence)) + (jump ? measureMeta(jumpTitle) + measureMeta(jumpDetail) : 0) +
                 (scope.empty() ? 0 : measureMeta(scope));
@@ -624,14 +628,14 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
 
     if (App().document.findings.empty()) {
-        const std::wstring description = L"当前日志未命中诊断规则；请结合解析覆盖率和原始日志检查。";
+        const std::wstring description = UiText(TextId::ui_0415);
         HGDIOBJ old = SelectObject(hdc, App().hFontUI);
         RECT measure{0, 0, textW, 10000};
         DrawTextW(hdc, description.c_str(), -1, &measure, DT_WORDBREAK | DT_CALCRECT | DT_NOPREFIX);
         SelectObject(hdc, old);
         int h = CARD_PAD * 2 + S(26) + measure.bottom;
         drawCard(y, h, th::inkMuted);
-        DrawText_(hdc, textX0, y + CARD_PAD, L"未命中诊断规则。", App().hFontSect, th::inkPri);
+        DrawText_(hdc, textX0, y + CARD_PAD, UiText(TextId::ui_0416), App().hFontSect, th::inkPri);
         DrawWrapped(hdc, textX0, y + CARD_PAD + S(26), textW, description, App().hFontUI, th::inkSec);
         y += h + GAP;
     }
@@ -640,14 +644,14 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     int n = 0;
     for (const auto& f : App().document.findings) {
         COLORREF band = (f.severity == 2) ? th::rowFault : (f.severity == 1 ? th::rowWarn : th::rowState);
-        const wchar_t* lv = (f.severity == 2) ? L"严重" : (f.severity == 1 ? L"告警" : L"信息");
+        const wchar_t* lv = (f.severity == 2) ? UiText(TextId::ui_0115) : (f.severity == 1 ? UiText(TextId::ui_0116) : UiText(TextId::ui_0117));
         ++n;
         std::wstring title = FmtW(L"%d. ", n) + AnalysisScopedText(f.title);
-        std::wstring detail = AnalysisScopedText(f.detail), advice = U8ToW(f.advice);
+        std::wstring detail = AnalysisScopedText(f.detail), advice = U8ToW(GeneratedText(f.advice));
         std::vector<std::wstring> evidence;
         evidence.reserve(f.ev.size());
         for (const auto& e : f.ev)
-            evidence.push_back(FmtW(L"· 第 %d 行  ", (int)e.lineNo) + U8ToW(e.ts) + L"  " + U8ToW(e.text));
+            evidence.push_back(FmtW(UiText(TextId::ui_0417), (int)e.lineNo) + U8ToW(e.ts) + L"  " + U8ToW(e.text));
 
         // —— 测量 pass:算这张卡多高(不画,只用 DT_CALCRECT)——
         auto measureWrap = [&](const std::wstring& s, HFONT font, int width = 0) {
@@ -681,14 +685,14 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                  f.severity == 2 ? th::outageBand : (f.severity == 1 ? th::cellWeak : th::accentSoft),
                  band);
         DrawWrapped(hdc, textX0 + badgeW, ty + S(2), titleWidth, title, App().hFontSect, th::inkPri);
-        DrawPill(hdc, M + cardW - S(120), ty, L"复制此条", th::accentSoft, th::accent);
+        DrawPill(hdc, M + cardW - S(120), ty, UiText(TextId::ui_0418), th::accentSoft, th::accent);
         g_findingCopyHits.push_back(CopyHit{RECT{M, y, M + cardW, y + h}, FindingText(n - 1)});
         ty += titleH + S(8);
-        DrawText_(hdc, textX0, ty, L"依据", App().hFontUI, th::inkMuted); ty += lblH;
+        DrawText_(hdc, textX0, ty, UiText(TextId::ui_0192), App().hFontUI, th::inkMuted); ty += lblH;
         ty += DrawWrapped(hdc, textX0, ty, textW, detail, App().hFontUI, th::inkPri) + SEC;
-        DrawText_(hdc, textX0, ty, L"建议", App().hFontUI, th::inkMuted); ty += lblH;
+        DrawText_(hdc, textX0, ty, UiText(TextId::ui_0419), App().hFontUI, th::inkMuted); ty += lblH;
         ty += DrawWrapped(hdc, textX0, ty, textW, advice, App().hFontUI, th::inkSec) + SEC;
-        DrawText_(hdc, textX0, ty, L"证据 · 单击定位，右键复制", App().hFontUI, th::inkMuted); ty += lblH;
+        DrawText_(hdc, textX0, ty, UiText(TextId::ui_0420), App().hFontUI, th::inkMuted); ty += lblH;
         for (size_t evidenceIndex = 0; evidenceIndex < evidence.size(); ++evidenceIndex) {
             const int evidenceH = DrawWrapped(hdc, textX0 + S(8), ty, textW - S(8),
                                               evidence[evidenceIndex], App().hFontMono, th::accent);
@@ -795,7 +799,7 @@ LRESULT CALLBACK SummaryProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
         int ty = y + CARD_PAD;
         DrawWrapped(hdc, textX0, ty, std::max(S(80), textW - S(92)), c.title, App().hFontSect, th::inkPri);
-        DrawPill(hdc, cr.right - S(94), ty - S(2), L"复制", th::accentSoft, th::accent);
+        DrawPill(hdc, cr.right - S(94), ty - S(2), UiText(TextId::ui_0421), th::accentSoft, th::accent);
         g_summaryCopyHits.push_back(CopyHit{cr, CardText(c)});
         ty += titleH + S(6);
         for (const auto& ln : c.lines) {
@@ -826,7 +830,7 @@ void RenderSummary() {
     if (App().hSummary) { SetScrollPos(App().hSummary, SB_VERT, 0, TRUE); }
     if (App().document.filtered.empty()) {
         if (!App().document.lines.empty())      // 未加载日志时不显示卡片(上方已有提示)
-            g_sumCards.push_back({ L"明细", { L"筛选后没有可解析的日志行(试试“清空筛选”)。" }, 0, false });
+            g_sumCards.push_back({ UiText(TextId::ui_0422), { UiText(TextId::ui_0423) }, 0, false });
         if (App().hSummary) InvalidateRect(App().hSummary, nullptr, FALSE);
         return;
     }
@@ -840,61 +844,61 @@ void RenderSummary() {
         const auto availability = availabilityStats(App().document.filtered, App().document.outages);
         std::vector<std::wstring> facts;
         facts.push_back(g_dashboard.startText + L" → " + g_dashboard.endText);
-        facts.push_back(L"来源平台：" + U8ToW(App().document.platform.name));
+        facts.push_back(UiText(TextId::ui_0364) + U8ToW(GeneratedText(App().document.platform.name)));
         facts.push_back(availability.runtimeValid() && !availability.evidenceLimited()
-            ? FmtW(L"首次联网后运行期可用率：%.3f%%", availability.runtimePercent())
-            : L"首次联网后运行期可用率：—（未建立连接或证据不足）");
-        if (availability.evidenceLimited()) facts.push_back(L"全程服务可达率：—（事件证据不足，详见诊断结论）");
+            ? FmtW(UiText(TextId::ui_0424), availability.runtimePercent())
+            : UiText(TextId::ui_0425));
+        if (availability.evidenceLimited()) facts.push_back(UiText(TextId::ui_0426));
         else if (availability.fullValid()) {
-            facts.push_back(FmtW(L"全程服务可达率：%.3f%% · 启动至首次联网最长 %s%s",
+            facts.push_back(FmtW(UiText(TextId::ui_0427),
                 availability.fullPercent(), U8ToW(fmtDur(availability.longestStartupSeconds)).c_str(),
-                availability.terminalOutages ? L" · 存在未恢复断网，此值为上限" : L""));
-            if (availability.neverConnectedStartupSegments) facts.push_back(FmtW(L"%d 个启动会话未建立首次连接", static_cast<int>(availability.neverConnectedStartupSegments)));
-        } else facts.push_back(L"全程服务可达率：—（未观察到启动横幅）");
-        facts.push_back(FmtW(L"实际观测 %s / 日历跨度 %s · 覆盖 %.2f%%",
+                availability.terminalOutages ? UiText(TextId::ui_0428) : L""));
+            if (availability.neverConnectedStartupSegments) facts.push_back(FmtW(UiText(TextId::ui_0429), static_cast<int>(availability.neverConnectedStartupSegments)));
+        } else facts.push_back(UiText(TextId::ui_0430));
+        facts.push_back(FmtW(UiText(TextId::ui_0431),
             U8ToW(fmtDur(observation.observedSpan)).c_str(), U8ToW(fmtDur(observation.calendarSpan)).c_str(), observation.coveragePercent));
-        if (observation.clockDiscontinuities) facts.push_back(FmtW(L"%d 处授时跳变已分段计算", static_cast<int>(observation.clockDiscontinuities)));
-        facts.push_back(FmtW(L"未识别 %d 行（%.2f%%） · NUL %d 字节 / %d 行",
+        if (observation.clockDiscontinuities) facts.push_back(FmtW(UiText(TextId::ui_0432), static_cast<int>(observation.clockDiscontinuities)));
+        facts.push_back(FmtW(UiText(TextId::ui_0433),
             static_cast<int>(App().document.audit.unparsed), App().document.audit.unparsedRatio() * 100.0,
             static_cast<int>(App().document.audit.nulBytes), static_cast<int>(App().document.audit.nulLines)));
-        add(L"可用率与观测范围", facts);
+        add(UiText(TextId::ui_0434), facts);
     }
 
     // ── 概览 ──
     {
         std::vector<std::wstring> ls;
-        ls.push_back(FmtW(L"日志行数 %d    日志打开 %d    有证据的进程启动 %d",
+        ls.push_back(FmtW(UiText(TextId::ui_0435),
                           (int)App().document.filtered.size(), (int)App().document.audit.logOpened,
                           (int)App().document.sessions.size()));
         int acc = 0;
         if (App().document.sessions.size() > 1) {
-            ls.push_back(FmtW(L"检测到 %d 次启动横幅/Program Started 证据；启动原因不能仅凭拨号日志判定。",
+            ls.push_back(FmtW(UiText(TextId::ui_0436),
                               (int)App().document.sessions.size()));
             for (size_t i = 0; i < App().document.sessions.size() && i < 6; ++i)
                 ls.push_back(L"   " + U8ToW(App().document.sessions[i]));
         }
         if (App().document.audit.logOpened > App().document.sessions.size()) {
             acc = 1;
-            ls.push_back(L"⚠ 日志打开数多于启动证据：部分可能是跨日/授时轮转，不能计为重启。");
+            ls.push_back(UiText(TextId::ui_0437));
         }
-        add(L"概览", ls, acc);
+        add(UiText(TextId::ui_0164), ls, acc);
     }
 
     if (App().document.sources.size() > 1) {
         std::vector<std::wstring> lines;
-        lines.push_back(FmtW(L"%d 份日志已按时间轴合并；下列指标按来源独立计算，可直接横向比较。",
+        lines.push_back(FmtW(UiText(TextId::ui_0438),
                              static_cast<int>(App().document.sources.size())));
         for (const auto& source : App().document.sources) {
             std::wstring label = source.label;
             const size_t slash = label.find_last_of(L"\\/");
             if (slash != std::wstring::npos) label = label.substr(slash + 1);
-            lines.push_back(FmtW(L"%-28s  行:%d  断网:%d  指标:%d  平均 RSRP:%s",
+            lines.push_back(FmtW(UiText(TextId::ui_0439),
                                  label.c_str(), static_cast<int>(source.parsedLines),
                                  static_cast<int>(source.outages), static_cast<int>(source.metricRows),
                                  source.hasAverageRsrp
                                      ? FmtW(L"%d dBm", source.averageRsrp).c_str() : L"—"));
         }
-        add(L"多日志对比", lines, 0, true);
+        add(UiText(TextId::ui_0440), lines, 0, true);
     }
 
     // 断网
@@ -908,16 +912,16 @@ void RenderSummary() {
     }
     {
         std::vector<std::wstring> ls; int acc = 0;
-        ls.push_back(FmtW(L"断网 %d 次 · 已恢复事件累计 %s · 最长 %s",
+        ls.push_back(FmtW(UiText(TextId::ui_0441),
             static_cast<int>(App().document.outages.size()), U8ToW(fmtDur(total)).c_str(), U8ToW(fmtDur(longest)).c_str()));
-        ls.push_back(FmtW(L"已恢复事件时长分布：≤30s %d 次 / 31–60s %d 次 / 1–5m %d 次 / >5m %d 次", b0, b1, b2, b3));
+        ls.push_back(FmtW(UiText(TextId::ui_0442), b0, b1, b2, b3));
         if (longest > 0)
-            ls.push_back(FmtW(L"最长单次 %s 发生在 %s", U8ToW(fmtDur(longest)).c_str(), U8ToW(fmtTime(longestAt, "FULL")).c_str()));
+            ls.push_back(FmtW(UiText(TextId::ui_0443), U8ToW(fmtDur(longest)).c_str(), U8ToW(fmtTime(longestAt, "FULL")).c_str()));
         if (!App().document.outages.empty() && !App().document.outages.back().recovered) {
             acc = 2;
-            ls.push_back(FmtW(L"⚠ 日志结束时仍处于断网(未见恢复),始于 %s", U8ToW(fmtTime(App().document.outages.back().start, "FULL")).c_str()));
+            ls.push_back(FmtW(UiText(TextId::ui_0479), U8ToW(fmtTime(App().document.outages.back().start, "FULL")).c_str()));
         }
-        if (!ls.empty()) add(L"断网", ls, acc);
+        if (!ls.empty()) add(UiText(TextId::ui_0485), ls, acc);
     }
 
     // 信号/温度/通道
@@ -960,46 +964,46 @@ void RenderSummary() {
     if (csqN) {
         const int average = static_cast<int>(csqSum / csqN);
         std::vector<std::wstring> lines{
-            L"仅作 LTE 工程参考；RAT 缺失按兼容的 LTE 日志处理",
-            FmtW(L"最低 %d / 均 %.1f / 最高 %d · %d 个样本   [均值:%s]", csqMin, static_cast<double>(csqSum) / csqN, csqMax, csqN,
-                 U8ToW(signalQualityName(csqQuality(average))).c_str()),
-            L"0–9 较差 / 10–14 一般 / 15–19 良好 / 20–31 优秀（99 未知，越大越好）"
+            UiText(TextId::ui_0444),
+            FmtW(UiText(TextId::ui_0445), csqMin, static_cast<double>(csqSum) / csqN, csqMax, csqN,
+                 U8ToW(GeneratedText(signalQualityName(csqQuality(average)))).c_str()),
+            UiText(TextId::ui_0446)
         };
         if (weak)
-            lines.push_back(FmtW(L"弱信号(<10)  %d/%d 样本   首次 %s", weak, csqN,
+            lines.push_back(FmtW(UiText(TextId::ui_0447), weak, csqN,
                                  U8ToW(fmtTime(weakFirst, "FULL")).c_str()));
-        add(L"LTE 工程参考 · CSQ", lines, weak ? 1 : 0);
+        add(UiText(TextId::ui_0483), lines, weak ? 1 : 0);
     }
     // LTE 详情。SNR 是 SDK 原值(0.1dB);阈值仅作工程观察,不冒充协议定论。
     if (rsrpN || rsrqN || snrN) {
         std::vector<std::wstring> ls; int acc = 0;
         if (rsrpN) {
             int avg = (int)(rsrpSum / rsrpN);
-            ls.push_back(FmtW(L"RSRP  最低 %d / 均 %d / 最高 %d dBm   [均值:%s]",
+            ls.push_back(FmtW(UiText(TextId::ui_0448),
                               rsrpMin, avg, rsrpMax,
-                              U8ToW(signalQualityName(rsrpQuality(avg))).c_str()));
-            ls.push_back(L"      (<-100 较差 / -100~-91 一般 / -90~-81 良好 / ≥-80 优秀，越大越好)");
+                              U8ToW(GeneratedText(signalQualityName(rsrpQuality(avg)))).c_str()));
+            ls.push_back(UiText(TextId::ui_0449));
             if (avg < -100 || rsrpMin < -110) acc = std::max(acc, 1);
         }
         if (rsrqN) {
             int avg = (int)(rsrqSum / rsrqN);
-            ls.push_back(FmtW(L"RSRQ  最低 %d / 均 %d / 最高 %d dB   [均值:%s]",
+            ls.push_back(FmtW(UiText(TextId::ui_0450),
                               rsrqMin, avg, rsrqMax,
-                              U8ToW(signalQualityName(rsrqQuality(avg))).c_str()));
-            ls.push_back(L"      (<-20 较差 / -20~-16 一般 / -15~-11 良好 / ≥-10 优秀，越大越好)");
+                              U8ToW(GeneratedText(signalQualityName(rsrqQuality(avg)))).c_str()));
+            ls.push_back(UiText(TextId::ui_0451));
             if (avg < -20) acc = std::max(acc, 1);
         }
         if (snrN) {
             double avg = (double)snrSum10 / (10.0 * snrN);
             const int avg10 = static_cast<int>(snrSum10 / snrN);
-            ls.push_back(FmtW(L"SNR   最低 %.1f / 均 %.1f / 最高 %.1f dB   [均值:%s]   非正值 %d/%d",
+            ls.push_back(FmtW(UiText(TextId::ui_0452),
                               snrMin / 10.0, avg, snrMax / 10.0,
-                              U8ToW(signalQualityName(snrQuality10(avg10))).c_str(),
+                              U8ToW(GeneratedText(signalQualityName(snrQuality10(avg10)))).c_str(),
                               snrNonPositive, snrN));
-            ls.push_back(L"      (≤0 较差 / 0.1~12.9 一般 / 13~19.9 良好 / ≥20 优秀；模组上报值，不等同标准化 SINR)");
+            ls.push_back(UiText(TextId::ui_0453));
             if (snrN >= 5 && snrNonPositive * 2 >= snrN) acc = std::max(acc, 1);
         }
-        add(L"LTE 工程参考 · RSRP / RSRQ / SNR", ls, acc);
+        add(UiText(TextId::ui_0454), ls, acc);
     }
     if (!srvs.empty() || !rats.empty() || denyN || !opers.empty()) {
         auto dist = [](const std::map<std::string, int>& xs) {
@@ -1013,20 +1017,20 @@ void RenderSummary() {
         std::vector<std::wstring> ls;
         if (!srvs.empty()) ls.push_back(L"SRV  " + dist(srvs) + L"    (0=NONE / 1=LIMITED / 2=FULL)");
         if (!rats.empty()) ls.push_back(L"RAT  " + dist(rats));
-        if (denyN) ls.push_back(FmtW(L"DENY 非零 %d/%d（保留 SDK 原始码；不同产品 SDK 编码表不同）", denyNonzero, denyN));
+        if (denyN) ls.push_back(FmtW(UiText(TextId::ui_0455), denyNonzero, denyN));
         if (!opers.empty()) ls.push_back(L"OPER " + dist(opers));
-        add(L"注网 / 运营商", ls, denyNonzero ? 1 : 0);
+        add(UiText(TextId::ui_0456), ls, denyNonzero ? 1 : 0);
     }
     if (tN) {
         std::wstring s = FmtW(L"max=%d°C   avg=%.0f°C", tMax, (double)tSum / tN);
-        if (hot) s += FmtW(L"    ⚠ ≥85°C %d 次", hot);
-        add(L"温度", { s }, hot ? 1 : 0);
+        if (hot) s += FmtW(UiText(TextId::ui_0457), hot);
+        add(UiText(TextId::ui_0458), { s }, hot ? 1 : 0);
     }
     if (!chans.empty()) {
         int tot = 0; for (auto& kv : chans) tot += kv.second;
         std::wstring s;
         for (auto& kv : chans) s += FmtW(L"%s:%.0f%%    ", U8ToW(kv.first).c_str(), 100.0 * kv.second / tot);
-        add(L"通道占比", { s });
+        add(UiText(TextId::ui_0459), { s });
     }
     if (!cells.empty()) {
         std::vector<std::pair<std::string, int>> ranked(cells.begin(), cells.end());
@@ -1036,12 +1040,12 @@ void RenderSummary() {
         int totalSamples = 0;
         for (const auto& cell : ranked) totalSamples += cell.second;
         std::vector<std::wstring> ls;
-        ls.push_back(FmtW(L"识别到 %d 个小区，覆盖 %d 条指标样本", (int)ranked.size(), totalSamples));
+        ls.push_back(FmtW(UiText(TextId::ui_0460), (int)ranked.size(), totalSamples));
         for (size_t index = 0; index < ranked.size() && index < 6; ++index)
-            ls.push_back(FmtW(L"%s    %d 次（%.1f%%）", U8ToW(ranked[index].first).c_str(),
+            ls.push_back(FmtW(UiText(TextId::ui_0461), U8ToW(ranked[index].first).c_str(),
                               ranked[index].second, 100.0 * ranked[index].second / totalSamples));
-        if (ranked.size() > 6) ls.push_back(FmtW(L"… 另有 %d 个小区", (int)ranked.size() - 6));
-        add(L"小区驻留分布", ls, ranked.size() > 12 ? 1 : 0, true);
+        if (ranked.size() > 6) ls.push_back(FmtW(UiText(TextId::ui_0462), (int)ranked.size() - 6));
+        add(UiText(TextId::ui_0463), ls, ranked.size() > 12 ? 1 : 0, true);
     }
 
     // RX 停滞
@@ -1049,10 +1053,10 @@ void RenderSummary() {
     if (!stalls.empty()) {
         std::vector<std::wstring> ls;
         for (size_t i = 0; i < stalls.size() && i < 6; ++i)
-            ls.push_back(FmtW(L"RX_PKT 卡住 %s  %s → %s", U8ToW(fmtDur(stalls[i].dur)).c_str(),
+            ls.push_back(FmtW(UiText(TextId::ui_0464), U8ToW(fmtDur(stalls[i].dur)).c_str(),
                          U8ToW(fmtTime(stalls[i].start, "FULL")).c_str(), U8ToW(fmtTime(stalls[i].end, "FULL")).c_str()));
-        if (stalls.size() > 6) ls.push_back(FmtW(L"... 另有 %d 段", (int)stalls.size() - 6));
-        add(L"数据假死征兆(RX_PKT 停滞)", ls, 1, true);
+        if (stalls.size() > 6) ls.push_back(FmtW(UiText(TextId::ui_0482), (int)stalls.size() - 6));
+        add(UiText(TextId::ui_0465), ls, 1, true);
     }
 
     // 报错
@@ -1063,8 +1067,8 @@ void RenderSummary() {
         for (size_t i = 0; i < errs.size() && i < 12; ++i)
             ls.push_back(FmtW(L"%s  [%s] %s", U8ToW(errs[i]->ts).c_str(),
                          U8ToW(errs[i]->tagText()).c_str(), U8ToW(errs[i]->msg.substr(0, 90)).c_str()));
-        if (errs.size() > 12) ls.push_back(FmtW(L"... 另有 %d 条", (int)errs.size() - 12));
-        add(FmtW(L"报错/告警 (%d)", (int)errs.size()), ls, 2, true);
+        if (errs.size() > 12) ls.push_back(FmtW(UiText(TextId::ui_0466), (int)errs.size() - 12));
+        add(FmtW(UiText(TextId::ui_0467), (int)errs.size()), ls, 2, true);
     }
 
     // 关键事件计数
@@ -1082,16 +1086,16 @@ void RenderSummary() {
         if (l.tagText().compare(0, 4, "CELL") == 0) cellChanges++;
     }
     std::vector<std::wstring> eventLines = {
-          FmtW(L"通道切换:%d   SDK断开:%d   状态迁移:%d   CFUN:%d   切卡:%d   选网:%d   小区变更:%d",
+          FmtW(UiText(TextId::ui_0487),
                sw, (int)dataCalls.disconnected, states, cfun, slot, oper, cellChanges),
-          FmtW(L"DataCall: APP_STOP主动:%d   SDK_URC/UNSOLICITED异常:%d   旧格式未归因:%d   Stop请求:%d",
+          FmtW(UiText(TextId::ui_0468),
                (int)dataCalls.appStop, (int)dataCalls.unsolicited,
                (int)dataCalls.legacy, (int)dataCalls.stopRequested),
           L"",
-          L"提示: APP_STOP 是应用主动动作；只有 SDK_URC + UNSOLICITED 标记为异常断线证据。"
+          UiText(TextId::ui_0469)
     };
     if (!dataCalls.reasons.empty()) {
-        std::wstring reasons = L"reason汇总: ";
+        std::wstring reasons = UiText(TextId::ui_0470);
         bool firstReason = true;
         for (const auto& entry : dataCalls.reasons) {
             if (!firstReason) reasons += L"   ";
@@ -1100,7 +1104,7 @@ void RenderSummary() {
         }
         eventLines.insert(eventLines.begin() + 2, std::move(reasons));
     }
-    add(L"关键事件计数", eventLines);
+    add(UiText(TextId::ui_0471), eventLines);
 
     if (App().hSummary) InvalidateRect(App().hSummary, nullptr, FALSE);
 }

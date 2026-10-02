@@ -10,6 +10,7 @@
 #include "overview_page.h"
 
 namespace dl {
+void RefreshBookmarkButton();
 
 struct EvidenceBookmark {
     size_t lineNo = 0;
@@ -30,6 +31,9 @@ bool ToggleCurrentRawBookmark();
 void ClearEvidenceBookmarks();
 const std::vector<EvidenceBookmark>& EvidenceBookmarks();
 void ShowMetricQuickFilterMenu(HWND anchor);
+void ShowMetricColumnMenu(HWND anchor);
+void ApplyMetricColumnSettings();
+bool ApplyMetricColumnCommand(UINT command);
 void ClearMetricQuickFilters(bool refresh = true);
 void RebuildMetricQuickFilterView();
 bool CopySelectedPageRows();

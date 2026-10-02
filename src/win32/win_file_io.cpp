@@ -1,5 +1,6 @@
 // win_file_io.cpp — Win32 文件读取、原子写入与压缩日志来源展开
 #include "win_file_io.h"
+#include "text_catalog.h"
 
 #include "log_parser.h"
 
@@ -44,18 +45,18 @@ bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstring& err
     err.clear();
     HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (h == INVALID_HANDLE_VALUE) { err = L"无法打开文件"; return false; }
+    if (h == INVALID_HANDLE_VALUE) { err = UiText(TextId::ui_0130); return false; }
     LARGE_INTEGER sz;
     if (!GetFileSizeEx(h, &sz) || sz.QuadPart < 0) {
-        CloseHandle(h); err = L"无法取得文件大小"; return false;
+        CloseHandle(h); err = UiText(TextId::ui_0131); return false;
     }
     if (static_cast<unsigned long long>(sz.QuadPart) > kMaxInputBytes) {
-        CloseHandle(h); err = L"文件超过 512 MiB 输入限制"; return false;
+        CloseHandle(h); err = UiText(TextId::ui_0132); return false;
     }
     try {
         buf.assign(static_cast<std::size_t>(sz.QuadPart), '\0');
     } catch (const std::bad_alloc&) {
-        CloseHandle(h); err = L"内存不足,无法读取文件"; return false;
+        CloseHandle(h); err = UiText(TextId::ui_0133); return false;
     }
     DWORD got = 0;
     std::size_t total = 0;
@@ -65,12 +66,12 @@ bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstring& err
         if (!ReadFile(h, &buf[total], want, &got, nullptr) || got == 0) break;
         total += got;
         if (observer && !observer(observerContext, total, static_cast<std::size_t>(sz.QuadPart))) {
-            CloseHandle(h); buf.clear(); err = L"操作已取消"; return false;
+            CloseHandle(h); buf.clear(); err = UiText(TextId::ui_0032); return false;
         }
     }
     CloseHandle(h);
     if (total != static_cast<std::size_t>(sz.QuadPart)) {
-        buf.clear(); err = L"文件读取不完整"; return false;
+        buf.clear(); err = UiText(TextId::ui_0134); return false;
     }
     return true;
 }
@@ -86,13 +87,13 @@ bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
     err.clear();
     HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (h == INVALID_HANDLE_VALUE) { err = L"无法打开文件"; return false; }
+    if (h == INVALID_HANDLE_VALUE) { err = UiText(TextId::ui_0130); return false; }
     LARGE_INTEGER sz;
     if (!GetFileSizeEx(h, &sz) || sz.QuadPart < 0) {
-        CloseHandle(h); err = L"无法取得文件大小"; return false;
+        CloseHandle(h); err = UiText(TextId::ui_0131); return false;
     }
     if (static_cast<unsigned long long>(sz.QuadPart) > kMaxInputBytes) {
-        CloseHandle(h); err = L"文件超过 512 MiB 输入限制"; return false;
+        CloseHandle(h); err = UiText(TextId::ui_0132); return false;
     }
     if (fileBytes) *fileBytes = static_cast<std::size_t>(sz.QuadPart);
 
@@ -101,7 +102,7 @@ bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
     try {
         block.resize(1024 * 1024);
     } catch (const std::bad_alloc&) {
-        CloseHandle(h); err = L"内存不足,无法建立读取缓冲"; return false;
+        CloseHandle(h); err = UiText(TextId::ui_0135); return false;
     }
 
     std::size_t total = 0, emitted = 0;
@@ -114,7 +115,7 @@ bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
             if (!ReadFile(h, block.data(), want, &got, nullptr) || got == 0) break;
             total += got;
             if (observer && !observer(observerContext, total, static_cast<std::size_t>(sz.QuadPart))) {
-                CloseHandle(h); err = L"操作已取消"; return false;
+                CloseHandle(h); err = UiText(TextId::ui_0032); return false;
             }
             carry.append(block.data(), got);
             if (first) { stripBom(carry); first = false; }
@@ -142,7 +143,7 @@ bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
     }
     CloseHandle(h);
     if (total != static_cast<std::size_t>(sz.QuadPart)) {
-        err = L"文件读取不完整";
+        err = UiText(TextId::ui_0134);
         return false;
     }
     if (!carry.empty() && emitted < maxLines) sink(sinkContext, std::move(carry));
@@ -154,19 +155,19 @@ bool InspectFile(const std::wstring& path, ArchiveKind& kind,
     err.clear();
     HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (h == INVALID_HANDLE_VALUE) { err = L"无法打开文件"; return false; }
+    if (h == INVALID_HANDLE_VALUE) { err = UiText(TextId::ui_0130); return false; }
     LARGE_INTEGER sz;
     if (!GetFileSizeEx(h, &sz) || sz.QuadPart < 0) {
-        CloseHandle(h); err = L"无法取得文件大小"; return false;
+        CloseHandle(h); err = UiText(TextId::ui_0131); return false;
     }
     if (static_cast<unsigned long long>(sz.QuadPart) > kMaxInputBytes) {
-        CloseHandle(h); err = L"文件超过 512 MiB 输入限制"; return false;
+        CloseHandle(h); err = UiText(TextId::ui_0132); return false;
     }
     char magic[4]{};
     DWORD got = 0;
     DWORD want = static_cast<DWORD>(std::min<long long>(4, sz.QuadPart));
     if (want && (!ReadFile(h, magic, want, &got, nullptr) || got != want)) {
-        CloseHandle(h); err = L"文件读取不完整"; return false;
+        CloseHandle(h); err = UiText(TextId::ui_0134); return false;
     }
     CloseHandle(h);
     fileBytes = static_cast<std::size_t>(sz.QuadPart);
@@ -182,11 +183,11 @@ bool WriteFileBytesAtomic(const std::wstring& path, const std::string& data,
     std::wstring dir = slash == std::wstring::npos ? L"." : path.substr(0, slash + 1);
     wchar_t tempPath[MAX_PATH]{};
     if (dir.size() >= MAX_PATH) {
-        err = L"目标目录路径过长";
+        err = UiText(TextId::ui_0136);
         return false;
     }
     if (!GetTempFileNameW(dir.c_str(), L"dlg", 0, tempPath)) {
-        err = FormatW(L"无法在目标目录创建临时文件 (Windows 错误 %lu)", GetLastError());
+        err = FormatW(UiText(TextId::ui_0137), GetLastError());
         return false;
     }
 
@@ -195,7 +196,7 @@ bool WriteFileBytesAtomic(const std::wstring& path, const std::string& data,
     if (h == INVALID_HANDLE_VALUE) {
         DWORD code = GetLastError();
         DeleteFileW(tempPath);
-        err = FormatW(L"无法打开临时文件 (Windows 错误 %lu)", code);
+        err = FormatW(UiText(TextId::ui_0138), code);
         return false;
     }
 
@@ -218,13 +219,13 @@ bool WriteFileBytesAtomic(const std::wstring& path, const std::string& data,
 
     if (!ok) {
         DeleteFileW(tempPath);
-        err = FormatW(L"文件写入未完成 (Windows 错误 %lu),原文件未修改", code);
+        err = FormatW(UiText(TextId::ui_0139), code);
         return false;
     }
     if (!MoveFileExW(tempPath, path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
         code = GetLastError();
         DeleteFileW(tempPath);
-        err = FormatW(L"无法用完整内容替换目标文件 (Windows 错误 %lu),原文件未修改", code);
+        err = FormatW(UiText(TextId::ui_0140), code);
         return false;
     }
     return true;
@@ -249,7 +250,7 @@ bool ReadPathExpand(const std::wstring& path,
         if (extractArchive(buf, entries, archiveErr)) {
             for (auto& entry : entries) {
                 if (observer && !observer(observerContext, textBytes, std::max<std::size_t>(1, buf.size()))) {
-                    chunks.clear(); labels.clear(); textBytes = 0; err = L"操作已取消"; return false;
+                    chunks.clear(); labels.clear(); textBytes = 0; err = UiText(TextId::ui_0032); return false;
                 }
                 std::size_t entryBytes = entry.data.size();
                 std::vector<std::string> lines;
@@ -257,7 +258,7 @@ bool ReadPathExpand(const std::wstring& path,
                 if (lines.empty()) continue;
                 if (entryBytes > kMaxBatchTextBytes - textBytes) {
                     chunks.clear(); labels.clear(); textBytes = 0;
-                    err = L"压缩包展开后的日志文本超过 512 MiB";
+                    err = UiText(TextId::ui_0141);
                     return false;
                 }
                 textBytes += entryBytes;
@@ -266,17 +267,17 @@ bool ReadPathExpand(const std::wstring& path,
                 labels.push_back(inner.empty() ? base : (base + L"!" + inner));
             }
             if (!chunks.empty()) return true;
-            err = L"压缩包内没有非空日志";
+            err = UiText(TextId::ui_0142);
             return false;
         }
-        err = L"压缩包读取失败: " + Utf8ToWide(archiveErr);
+        err = UiText(TextId::ui_0143) + Utf8ToWide(GeneratedText(archiveErr));
         return false;
     }
 
     std::vector<std::string> lines;
     textBytes = buf.size();
     splitTextLines(std::move(buf), lines);
-    if (lines.empty()) { textBytes = 0; err = L"文件为空"; return false; }
+    if (lines.empty()) { textBytes = 0; err = UiText(TextId::ui_0020); return false; }
     chunks.push_back(std::move(lines));
     labels.push_back(base);
     return true;

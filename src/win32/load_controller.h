@@ -12,6 +12,7 @@ constexpr UINT WM_APP_LOAD_PROGRESS = WM_APP + 61;
 constexpr UINT WM_APP_LOAD_COMPLETE = WM_APP + 62;
 
 void RefreshAll();
+void RefreshPresentation();
 void SelectAnalysisTimeRange(long long start, long long end);
 void RestoreAnalysisTimeRange();
 bool HasAnalysisTimeFilter();

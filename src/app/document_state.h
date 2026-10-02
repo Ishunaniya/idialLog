@@ -9,11 +9,20 @@ namespace dl {
 
 struct SourceSummary {
     std::wstring label;
+    std::size_t first = 0, last = 0; // parsed-line range [first,last), including clock segments
     std::size_t parsedLines = 0;
     std::size_t metricRows = 0;
     std::size_t outages = 0;
     int averageRsrp = 0;
     bool hasAverageRsrp = false;
+};
+
+struct SourceComparison {
+    std::size_t source = 0, lines = 0, samples = 0, outages = 0, unrecovered = 0;
+    long long firstTime = 0, lastTime = 0, observedSeconds = 0, outageSeconds = 0;
+    AvailabilityStats availability;
+    int rsrpSamples = 0, rsrpMin = 0, rsrpMax = 0, rsrpAverage = 0;
+    int csqSamples = 0, csqMin = 0, csqMax = 0, csqAverage = 0;
 };
 
 class DocumentState {
@@ -35,6 +44,10 @@ public:
     PlatformInfo platform;
     std::vector<Finding> findings;
     std::vector<SourceSummary> sources;
+    // Independent sources are never paired across files. Continuation requires user selection.
+    enum class SourceMode { Independent, Continuation } sourceMode = SourceMode::Independent;
+    std::size_t selectedSource = 0;
+    std::vector<SourceComparison> comparisons;
 
     DocumentState() = default;
     DocumentState(const DocumentState&) = delete;
@@ -49,6 +62,8 @@ public:
     // 图表选区使用精确时间戳，不经过 HH:MM 输入框，保留跨日/跨年的日期。
     void selectTimeRange(long long start, long long end);
     void restrictToTimeRange(LogView& view) const;
+    void restrictToSource(LogView& view, std::size_t source) const;
+    void rebuildComparisons(const LogView& scoped);
 };
 
 } // namespace dl
