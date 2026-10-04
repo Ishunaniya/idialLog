@@ -2,6 +2,7 @@
 #pragma once
 
 #include <climits>
+#include "rssi_observation.h"
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -256,7 +257,7 @@ struct MetricRow {
 // 指针只在来源 vector<MetricRow> 未清空、未增删、未触发重新分配时有效。
 using MetricView = std::vector<const MetricRow*>;
 
-// 单个小区的观测质量画像。平均值统一保存为原单位的 10 倍，避免核心层引入浮点误差。
+// 单个小区的观测质量画像。工程参考均值保存为原单位的 10 倍；RSSI 保留和、极值及样本数。
 struct CellSummary {
     std::string cellId;
     int pci = -1;
@@ -279,6 +280,7 @@ struct CellSummary {
     int rsrqMin = INT_MAX, rsrqMax = INT_MIN, rsrqAvg10 = 0;
     std::size_t snrSamples = 0;
     int snrMin10 = INT_MAX, snrMax10 = INT_MIN, snrAvg10 = 0;
+    RssiObservation rssi;
     size_t firstEvidenceLine = 0;
     size_t firstOutageLine = 0;
     long long firstOutageTime = 0;

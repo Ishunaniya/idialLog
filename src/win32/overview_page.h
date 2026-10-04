@@ -9,6 +9,7 @@ LRESULT CALLBACK DashProc(HWND window, UINT message, WPARAM wparam, LPARAM lpara
 LRESULT CALLBACK FindingsProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
 LRESULT CALLBACK SummaryProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
 
+bool RouteFindingKeyboardMessage(MSG& message);
 void RenderSummary();
 void RenderFindings();
 void ReleaseOverviewPageData();

@@ -27,6 +27,6 @@ for relative, content in [('src/presentation/text_ids.h', ids), ('src/presentati
     path = ROOT / relative
     if '--check' in sys.argv:
         assert path.read_text() == content, relative + ' is stale'
-    else:
+    elif not path.exists() or path.read_text() != content:
         path.write_text(content)
 print(f'{len(entries)} bilingual UI entries validated')

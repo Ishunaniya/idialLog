@@ -690,12 +690,6 @@ void RenderMetrics() {
     for (const MetricRow* metric : App().document.metricView) {
         const MetricRow& m = *metric;
         g_chartHasInferredTime = g_chartHasInferredTime || m.inferredTime;
-        if (usesLteEngineeringReference(m.rat)) {
-            if (m.csqVal >= 0 && m.csqVal <= 31) g_csq.push_back({ m.t, m.csqVal });
-            if (m.rsrp < 0)    g_rsrp.push_back({ m.t, m.rsrp });
-            if (m.rsrq < 0)    g_rsrq.push_back({ m.t, m.rsrq });
-            if (m.snr10 != 100000) g_snr10.push_back({ m.t, m.snr10 });
-        }
         if (!m.cellId.empty()) {
             visibleCells.insert(m.cellId.str());
             if (!latestCell || m.t > latestCell->t ||
@@ -706,11 +700,9 @@ void RenderMetrics() {
     g_visibleCellCount = visibleCells.size();
     // 合并日志理论上已按时间定序；若单文件内部确有乱序,只排序图表副本，表格与
     // 结论仍保持原始证据顺序。排序一次后悬停即可稳定使用 O(log n) 二分查询。
-    sortChartSeriesByTime(g_csq);
-    sortChartSeriesByTime(g_rsrp);
-    sortChartSeriesByTime(g_rsrq);
-    sortChartSeriesByTime(g_snr10);
-    g_rssi = reportedRssiSeries(App().document.metricView);
+    auto series=reportedSignalSeries(App().document.metricView);
+    g_csq=std::move(series.csq);g_rsrp=std::move(series.rsrp);
+    g_rsrq=std::move(series.rsrq);g_snr10=std::move(series.snr10);g_rssi=std::move(series.rssi);
     g_rssiBounds = rssiDisplayBounds(g_rssi);
     g_csqGaps = chartSampleGaps(g_csq, 600);
     g_rsrpGaps = chartSampleGaps(g_rsrp, 600);

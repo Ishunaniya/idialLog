@@ -1,6 +1,9 @@
 // load_controller.cpp — 日志来源加载、筛选刷新和导出协调
 #include "load_controller.h"
+#include "rssi_summary.h"
 #include "source_workspace.h"
+#include "incident_review.h"
+#include "text_view.h"
 
 #include <windows.h>
 #include <commdlg.h>
@@ -18,6 +21,8 @@
 #include "app_settings.h"
 #include "app_context.h"
 #include "chartmodel.h"
+#include "signal_chart.h"
+#include "report_chart.h"
 #include "log_analysis.h"
 #include "log_filter.h"
 #include "log_parser.h"
@@ -31,6 +36,7 @@
 #include "win_text.h"
 #include "text_catalog.h"
 #include "findingmodel.h"
+#include "version.h"
 
 namespace dl {
 
@@ -88,10 +94,9 @@ static int YearHintFromLabel(const std::wstring& label) {
 
 // 一份新输入默认必须以全量日志分析。筛选只属于当前文档，绝不让隐藏的旧条件影响新文档。
 static void ResetFiltersForNewInput() {
-    App().document.timeRange = DocumentState::TimeRange{};
-    for (HWND edit : {App().hTagBox, App().hGrepBox, App().hSinceBox, App().hUntilBox})
-        if (edit) SetWindowTextW(edit, L"");
-    ClearMetricQuickFilters(false);
+    // WM_SETTEXT emits EN_CHANGE after the new document has been installed.
+    // Use the shell's batched clear so its 450 ms refresh cannot close a new review.
+    ClearMainFilters(false);
     if (App().hFilterToggle) {
         SetWindowTextW(App().hFilterToggle, UiText(TextId::ui_0000));
         SetModernButtonActive(App().hFilterToggle, false);
@@ -138,7 +143,7 @@ static void PresentAnalysis(bool bad) {
 void RefreshPresentation() { PresentAnalysis(g_regexWasBad); }
 
 void RefreshAll() {
-    CloseSourceComparison();
+    CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
     if (App().document.lines.empty() && App().document.sources.empty()) { SetWindowTextW(App().hStatus, UiText(TextId::ui_0011)); return; }
     ResetVirtualTables();
     bool bad = false;
@@ -151,6 +156,7 @@ void RefreshAll() {
         App().document.restrictToSource(App().document.filtered, App().document.selectedSource);
     App().document.outages = collectOutages(App().document.filtered);
     App().document.metrics = buildMetrics(App().document.filtered);
+    App().document.rebuildSignalObservations();
     RebuildMetricQuickFilterView();
     App().document.cellAnalysis = analyzeCells(App().document.filtered, App().document.metrics,
                                                App().document.outages);
@@ -444,8 +450,9 @@ static DWORD WINAPI LoadWorker(void* parameter) {
     reserveHint += std::min<size_t>(plainReserveHint, 1000000);
     bool parseOk = true;
     std::wstring parseErr;
-    struct SourceRange { std::wstring label; size_t first = 0, last = 0; };
+    struct SourceRange { std::wstring label; size_t first = 0, last = 0, rawLineOffset = 0; };
     std::vector<SourceRange> ranges;
+    std::size_t rawLineCount = 0;
     try {
         StreamingLogParser parser(result->document.lines, result->document.sessions, reserveHint);
         for (size_t orderIndex = 0; orderIndex < ord.size(); ++orderIndex) {
@@ -454,6 +461,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
             LoadSource& source = sources[i];
             parser.beginFile(YearHintFromLabel(source.label));
             SourceRange range{source.label, result->document.lines.size(), result->document.lines.size()};
+            range.rawLineOffset = rawLineCount;
             if (source.streamPlain) {
                 WorkerProgress progress{
                     request->owner,
@@ -461,7 +469,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
                     static_cast<int>(48 / std::max<size_t>(1, ord.size())), 2, -1};
                 if (!ReadPlainLines(
                         source.path, std::numeric_limits<size_t>::max(),
-                        [&](std::string line) { parser.pushLine(std::move(line)); },
+                        [&](std::string line) { ++rawLineCount; parser.pushLine(std::move(line)); },
                         nullptr, parseErr, &progress, ObserveRead)) {
                     parseOk = false;
                     break;
@@ -471,7 +479,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
                     if ((lineIndex & 4095U) == 0 && LoadCancelled()) {
                         parseOk = false; parseErr = UiText(TextId::ui_0032); break;
                     }
-                    parser.pushLine(std::move(source.lines[lineIndex]));
+                    ++rawLineCount; parser.pushLine(std::move(source.lines[lineIndex]));
                 }
                 releaseVector(source.lines);
             }
@@ -497,12 +505,14 @@ static DWORD WINAPI LoadWorker(void* parameter) {
     for (const auto& range : ranges) {
         SourceSummary summary; summary.label = range.label;
         summary.first = range.first; summary.last = range.last;
+        summary.rawLineOffset = range.rawLineOffset;
         result->document.sources.push_back(std::move(summary));
     }
     if (ranges.size() > 1) result->document.rebuildComparisons(result->document.filtered);
     result->document.restrictToSource(result->document.filtered, 0);
     result->document.outages = collectOutages(result->document.filtered);
     result->document.metrics = buildMetrics(result->document.filtered);
+    result->document.rebuildSignalObservations();
     result->document.metricView.reserve(result->document.metrics.size());
     for (const MetricRow& metric : result->document.metrics)
         result->document.metricView.push_back(&metric);
@@ -869,6 +879,7 @@ void DoExportReport() {
     try {
         SYSTEMTIME now{}; GetLocalTime(&now);
         add(UiText(TextId::ui_0088)); add();
+        add(L"- dialLog v" DL_VER_WSTR);
         add(FmtW(UiText(TextId::ui_0089),
                  now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond));
         add(); add(UiText(TextId::ui_0090)); add();
@@ -942,6 +953,8 @@ void DoExportReport() {
         add(); add(UiText(TextId::ui_0103)); add();
         add(FmtW(UiText(TextId::ui_0104),
                  static_cast<int>(App().document.metrics.size()), static_cast<int>(cells.size())));
+        add(L"- " + U8ToW(rssiSummaryText(App().document.rssi)));
+        add(L"- " + std::wstring(UiText(TextId::rssi_note)));
         add(UiText(TextId::ui_0105));
         add(UiText(TextId::ui_0106));
         add(UiText(TextId::ui_0107));
@@ -952,13 +965,19 @@ void DoExportReport() {
             add(FmtW(UiText(TextId::ui_0111),
                      snrMin / 10.0, snrTotal / (10.0 * snrCount), snrMax / 10.0, snrCount));
         if (!cells.empty()) {
-            add(); add(UiText(TextId::ui_0112)); add(L"|---|---:|");
+            add(); add(UiText(TextId::ui_0112)); add(L"|---|---:|---|---:|");
+            std::map<std::string, const CellSummary*> observedCells;
+            for (const auto& cell : App().document.cellAnalysis.cells) observedCells.emplace(cell.cellId, &cell);
             std::vector<std::pair<std::string, int>> ranked(cells.begin(), cells.end());
             std::sort(ranked.begin(), ranked.end(), [](const auto& left, const auto& right) {
                 return left.second > right.second;
             });
-            for (const auto& cell : ranked)
-                add(FmtW(L"| %s | %d |", U8ToW(cell.first).c_str(), cell.second));
+            for (const auto& cell : ranked) {
+                const auto found = observedCells.find(cell.first);
+                const RssiObservation rssi = found == observedCells.end() ? RssiObservation{} : found->second->rssi;
+                add(L"| " + U8ToW(cell.first) + L" | " + std::to_wstring(cell.second) + L" | " +
+                    U8ToW(rssiRangeText(rssi)) + L" | " + std::to_wstring(rssi.samples) + L" |");
+            }
         }
 
         add(); add(UiText(TextId::ui_0113)); add();
@@ -1039,7 +1058,7 @@ void DoExportHtml() {
                       now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond);
 
         html = UiText8(TextId::ui_0489) +
-               std::string(generated) + UiText8(TextId::ui_0490);
+               std::string(generated) + " · dialLog v" DL_VER_STR + UiText8(TextId::ui_0490);
 
         html += UiText8(TextId::ui_0491);
         auto kpi = [&](const char* label, const std::string& value) {
@@ -1078,81 +1097,39 @@ void DoExportHtml() {
                     ? "<p>" + escape(GeneratedText(availabilityEvidenceNote(availability))) + "</p>" : "") +
                 (HasAnalysisTimeFilter() ? UiText8(TextId::ui_0516) : "") + "</section>";
 
-        ChartSeries csq, rsrp, rsrq, snr;
-        csq.reserve(App().document.metrics.size()); rsrp.reserve(App().document.metrics.size());
-        rsrq.reserve(App().document.metrics.size()); snr.reserve(App().document.metrics.size());
-        for (const MetricRow& metric : App().document.metrics) {
-            if (!usesLteEngineeringReference(metric.rat)) continue;
-            if (metric.csqVal >= 0) csq.push_back({metric.t, metric.csqVal});
-            if (metric.rsrp < 0) rsrp.push_back({metric.t, metric.rsrp});
-            if (metric.rsrq < 0) rsrq.push_back({metric.t, metric.rsrq});
-            if (metric.snr10 != 100000) snr.push_back({metric.t, metric.snr10});
+        const auto signals=reportedSignalSeries(App().document.metricView);
+        long long signalStart=0,signalEnd=0;bool haveSignalRange=false;
+        for(const auto* series:{&signals.csq,&signals.rsrp,&signals.rsrq,&signals.snr10,&signals.rssi}) {
+            if(series->empty())continue;
+            if(!haveSignalRange){signalStart=series->front().first;signalEnd=series->back().first;haveSignalRange=true;}
+            else{signalStart=std::min(signalStart,series->front().first);signalEnd=std::max(signalEnd,series->back().first);}
         }
-        sortChartSeriesByTime(csq); sortChartSeriesByTime(rsrp);
-        sortChartSeriesByTime(rsrq); sortChartSeriesByTime(snr);
-        auto svg = [&](const char* title, const ChartSeries& input, int low, int high,
-                       const char* color, bool scaled10,
-                       std::initializer_list<std::pair<int, const char*>> guides) {
-            if (input.empty()) return std::string(UiText8(TextId::ui_0517)) + title + UiText8(TextId::ui_0518);
-            const long long t0 = input.front().first, t1 = input.back().first;
-            ChartSeries points; downsampleChartSeries(input, t0, t1, 920, points);
-            auto x = [&](long long time) { return 55 + int(double(time - t0) / std::max(1LL, t1 - t0) * 920); };
-            auto y = [&](int value) {
-                value = std::max(low, std::min(high, value));
-                return 215 - int(double(value - low) / std::max(1, high - low) * 170);
-            };
-            std::string output = "<svg viewBox=\"0 0 1000 250\" role=\"img\" aria-label=\"" +
-                escape(title) + UiText8(TextId::ui_0519) +
-                escape(title) + "</text>";
-            for (int grid = 0; grid < 4; ++grid) {
-                const int value = high - (high - low) * grid / 3, gy = y(value);
-                output += "<line x1=\"55\" y1=\"" + std::to_string(gy) + "\" x2=\"975\" y2=\"" +
-                          std::to_string(gy) + "\" stroke=\"#9aa6b2\" opacity=\".3\"/><text x=\"5\" y=\"" +
-                          std::to_string(gy + 4) + "\" fill=\"currentColor\" opacity=\".7\" font-size=\"12\">" +
-                          (scaled10 ? oneDecimal(value) : std::to_string(value)) + "</text>";
-            }
-            for (const Outage& outage : App().document.outages) {
-                const long long end = outage.recovered ? outage.end : t1;
-                if (end < t0 || outage.start > t1) continue;
-                const int left = x(std::max(t0, outage.start));
-                const int right = x(std::min(t1, end));
-                output += "<rect x=\"" + std::to_string(left) + "\" y=\"45\" width=\"" +
-                          std::to_string(std::max(2, right - left)) +
-                          "\" height=\"170\" fill=\"#c93c43\" opacity=\".12\"/>";
-            }
-            for (const auto& guide : guides) {
-                const int guideY = y(guide.first);
-                output += "<line x1=\"55\" y1=\"" + std::to_string(guideY) +
-                          "\" x2=\"975\" y2=\"" + std::to_string(guideY) +
-                          "\" stroke=\"currentColor\" opacity=\".38\"/>"
-                          "<text x=\"970\" y=\"" + std::to_string(guideY - 4) +
-                          "\" text-anchor=\"end\" fill=\"currentColor\" opacity=\".8\" font-size=\"11\">" +
-                          escape(guide.second) + "</text>";
-            }
-            output += "<polyline fill=\"none\" stroke=\"" + std::string(color) +
-                      "\" stroke-width=\"2\" points=\"";
-            for (const ChartPoint& point : points)
-                output += std::to_string(x(point.first)) + "," + std::to_string(y(point.second)) + " ";
-            output += "\"/><text x=\"55\" y=\"238\" fill=\"currentColor\" opacity=\".7\" font-size=\"12\">" +
-                      escape(fmtTime(t0, "FULL")) + "</text><text x=\"975\" y=\"238\" text-anchor=\"end\" fill=\"currentColor\" opacity=\".7\" font-size=\"12\">" +
-                      escape(fmtTime(t1, "FULL")) + "</text></svg>";
-            return output;
+        if(App().document.timeRange.active){signalStart=App().document.timeRange.start;signalEnd=App().document.timeRange.end;}
+        auto chart=[&](const char* title,const char* unit,const ChartSeries& input,int low,int high,
+                       const char* color,bool scaled10,std::vector<ReportChartGuide> guides) {
+            ReportChartOptions options;options.title=title;options.unit=unit;options.color=color;
+            options.low=low;options.high=high;options.scaled10=scaled10;options.english=IsEnglish();
+            options.start=signalStart;options.end=signalEnd;options.guides=std::move(guides);
+            return renderReportChart(input,App().document.outages,options).html;
         };
+        const auto rssiBounds=rssiDisplayBounds(signals.rssi);
         html += UiText8(TextId::ui_0520) +
-                svg(UiText8(TextId::ui_0521), csq, 0, 31, "#2a78d6", false,
-                    {{kCsqFair, UiText8(TextId::ui_0341)}, {kCsqGood, UiText8(TextId::ui_0342)},
-                     {kCsqExcellent, UiText8(TextId::ui_0343)}}) +
-                svg(UiText8(TextId::ui_0522), rsrp, -140, -40, "#6656c9", false,
-                    {{kRsrpFair, UiText8(TextId::ui_0344)}, {kRsrpGood, UiText8(TextId::ui_0345)},
-                     {kRsrpExcellent, UiText8(TextId::ui_0346)}}) +
-                svg(UiText8(TextId::ui_0523), rsrq, -25, 0, "#eb6834", false,
-                    {{kRsrqFair, UiText8(TextId::ui_0347)}, {kRsrqGood, UiText8(TextId::ui_0348)},
-                     {kRsrqExcellent, UiText8(TextId::ui_0349)}}) +
-                svg(UiText8(TextId::ui_0524), snr, -200, 300, "#1baf7a", true,
-                    {{kSnrFair10, UiText8(TextId::ui_0350)}, {kSnrGood10, UiText8(TextId::ui_0351)},
-                     {kSnrExcellent10, UiText8(TextId::ui_0343)}}) +
+                chart(UiText8(TextId::ui_0521),"",signals.csq,0,31,"#2a78d6",false,
+                    {{kCsqFair,UiText8(TextId::ui_0341),"#9a6700"},{kCsqGood,UiText8(TextId::ui_0342),"#1769d2"},
+                     {kCsqExcellent,UiText8(TextId::ui_0343),"#14805e"}}) +
+                chart(UiText8(TextId::ui_0522),"dBm",signals.rsrp,-140,-40,"#8876df",false,
+                    {{kRsrpFair,UiText8(TextId::ui_0344),"#9a6700"},{kRsrpGood,UiText8(TextId::ui_0345),"#1769d2"},
+                     {kRsrpExcellent,UiText8(TextId::ui_0346),"#14805e"}}) +
+                chart(UiText8(TextId::ui_0523),"dB",signals.rsrq,-25,0,"#8876df",false,
+                    {{kRsrqFair,UiText8(TextId::ui_0347),"#9a6700"},{kRsrqGood,UiText8(TextId::ui_0348),"#1769d2"},
+                     {kRsrqExcellent,UiText8(TextId::ui_0349),"#14805e"}}) +
+                chart(UiText8(TextId::ui_0524),"dB",signals.snr10,-200,300,"#1baf7a",true,
+                    {{kSnrFair10,UiText8(TextId::ui_0350),"#9a6700"},{kSnrGood10,UiText8(TextId::ui_0351),"#1769d2"},
+                     {kSnrExcellent10,UiText8(TextId::ui_0343),"#14805e"}}) +
+                chart(UiText8(TextId::ui_0540),"dBm",signals.rssi,rssiBounds.first,rssiBounds.second,"#eb6834",false,{}) +
                 "</div></section>";
 
+        html += "<p>" + escape(rssiSummaryText(observedRssi(App().document.metricView))) + "</p>";
         html += UiText8(TextId::ui_0525);
         for (const CellSummary& cell : App().document.cellAnalysis.cells) {
             html += "<tr>";
@@ -1160,7 +1137,9 @@ void DoExportHtml() {
                 html += "<td>" + escape(cellSummaryCellText(cell, column)) + "</td>";
             html += "<td>" + std::to_string(cell.switchesIn) + "/" + std::to_string(cell.switchesOut) +
                     "</td><td>" + std::to_string(cell.outageStarts) + "</td><td>" +
-                    escape(GeneratedText(cellSummaryCellText(cell, 14))) + "</td></tr>";
+                    escape(GeneratedText(cellSummaryCellText(cell, 14))) + "</td><td>" +
+                    escape(cellSummaryCellText(cell, 15)) + "</td><td>" +
+                    cellSummaryCellText(cell, 16) + "</td></tr>";
         }
         html += UiText8(TextId::ui_0526);
 

@@ -26,6 +26,8 @@
 #include "app_context.h"
 #include "load_controller.h"
 #include "source_workspace.h"
+#include "incident_review.h"
+#include "text_view.h"
 #include "modern_shell.h"
 #include "theme.h"
 #include "ui_pages.h"
@@ -436,8 +438,10 @@ BOOL CALLBACK RelocalizeControl(HWND child, LPARAM) {
 
 void ApplyLanguage(bool english) {
     if (LoadInProgress()) return;
-    CloseSourceComparison(); ClosePageDetail();
-    MutableAppSettings().english = english; SetEnglish(english); SaveAppSettings();
+    CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText(); ClosePageDetail();
+    MutableAppSettings().english = english; SetEnglish(english);
+    SetWindowTextW(App().hIncidentReview,UiText(TextId::incident_title));
+    SetWindowTextW(App().hSignalGuide,UiText(TextId::signal_guide)); SaveAppSettings();
     EnumChildWindows(App().hMain, RelocalizeControl, 0);
     SendMessageW(App().hTagBox,EM_SETCUEBANNER,TRUE,reinterpret_cast<LPARAM>(UiText(TextId::ui_0177)));
     SendMessageW(App().hGrepBox,EM_SETCUEBANNER,TRUE,reinterpret_cast<LPARAM>(UiText(TextId::ui_0178)));
@@ -474,7 +478,7 @@ void ShowAppearanceMenu() {
 }
 
 void ApplyAppearanceCommand(UINT command) {
-    CloseSourceComparison();
+    CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
     auto& preferences = MutableAppSettings();
     if (command == IDC_FONT_RESET) {
         preferences.uiFont = L"Microsoft YaHei UI"; preferences.logFont = L"Consolas";
@@ -633,7 +637,8 @@ void Layout() {
 
     int pageHeight = height;
     const int pageHintHeight = CurrentPage() == 2 || CurrentPage() == 3 || CurrentPage() == 6 ? S(30) : 0;
-    MoveIf(App().hPageHint, content.left, content.top, width, S(26));
+    MoveIf(App().hPageHint, content.left, content.top, width-(CurrentPage()==3?S(145):0), S(26));
+    MoveIf(App().hIncidentReview,content.right-S(140),content.top,S(136),S(28));
     const bool detailPage = CurrentPage() == 2 || CurrentPage() == 4 || CurrentPage() == 6;
     if (PageDetailVisible() && detailPage) {
         const int minimumDetail = std::min(S(120), std::max(S(60), height / 3));
@@ -676,6 +681,7 @@ void Layout() {
     viewButton(App().hMetricViewSplit, 62);
     viewButton(App().hMetricViewChart, 62);
     viewButton(App().hMetricColumns, 78);
+    viewButton(App().hSignalGuide,IsEnglish()?108:88);
     MoveIf(App().hMetricToolbar, content.left, content.top,
            std::max(1, buttonRight - static_cast<int>(content.left)), toolbarHeight);
     const int metricTop = content.top + toolbarHeight;
@@ -829,7 +835,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                                          0, 0, 10, 10, hwnd,
                                          reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_SUMMARY)),
                                          GetModuleHandleW(nullptr), nullptr);
-        App().hFindings = CreateWindowExW(0, L"dialFindingsCls", L"", WS_CHILD | WS_VSCROLL,
+        App().hFindings = CreateWindowExW(0, L"dialFindingsCls", L"", WS_CHILD | WS_VSCROLL | WS_TABSTOP,
                                           0, 0, 10, 10, hwnd,
                                           reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_FINDINGS)),
                                           GetModuleHandleW(nullptr), nullptr);
@@ -847,7 +853,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         App().hCells = CreateList(IDC_CELLS, {{UiText(TextId::ui_0193), 112}, {L"PCI", 58}, {L"TAC", 72},
             {UiText(TextId::ui_0202), 66}, {UiText(TextId::ui_0203), 76}, {UiText(TextId::ui_0204), 92}, {UiText(TextId::ui_0205), 86},
             {UiText(TextId::ui_0206), 86}, {UiText(TextId::ui_0207), 86}, {UiText(TextId::ui_0208), 82}, {UiText(TextId::ui_0209), 78},
-            {UiText(TextId::ui_0210), 58}, {UiText(TextId::ui_0211), 58}, {UiText(TextId::ui_0212), 82}, {UiText(TextId::ui_0213), 100}}, true);
+            {UiText(TextId::ui_0210), 58}, {UiText(TextId::ui_0211), 58}, {UiText(TextId::ui_0212), 82}, {UiText(TextId::ui_0213), 100},
+            {UiText(TextId::rssi_cell_range), 208}, {UiText(TextId::rssi_samples), 118}}, true);
         App().hChart = CreateWindowExW(0, L"dialChartCls", L"", WS_CHILD | WS_TABSTOP, 0, 0, 10, 10, hwnd,
                                        reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_CHART)),
                                        GetModuleHandleW(nullptr), nullptr);
@@ -855,6 +862,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
                           App().hUnparsed, App().hRaw, App().hCells})
             ConfigurePageList(list);
 
+        App().hIncidentReview=CreateButton(UiText(TextId::incident_title),kIncidentReviewCommand,ModernButtonKind::Neutral,false);
+        App().hSignalGuide=CreateButton(UiText(TextId::signal_guide),kSignalGuideCommand,ModernButtonKind::Neutral,false);
         App().hMetricToolbar = CreateControl(L"STATIC", UiText(TextId::ui_0214),
             SS_LEFT | SS_CENTERIMAGE | SS_ENDELLIPSIS, 0, App().hFontSmall, false);
         App().hMetricColumns = CreateButton(UiText(TextId::ui_0215), IDC_METRIC_COLUMNS, ModernButtonKind::Neutral, false);
@@ -929,7 +938,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
     case WM_DPICHANGED: {
         // The owned comparison uses the shared UI font; release its controls
         // before replacing that font, just as for an explicit font change.
-        CloseSourceComparison();
+        CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
         App().dpi = HIWORD(wparam);
         std::array<HFONT, 8> old{App().hFontUI, App().hFontMono, App().hFontTitle, App().hFontSmall,
                                  App().hFontHero, App().hFontTileVal, App().hFontTileLbl, App().hFontSect};
@@ -965,6 +974,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         if (ApplyMetricColumnCommand(id) || HandleSourceCommand(id)) return 0;
         if (code == EN_CHANGE) ScheduleFilterRefresh(reinterpret_cast<HWND>(lparam));
         switch (id) {
+        case kIncidentReviewCommand: ReviewSelectedOutage(); return 0;
+        case kSignalGuideCommand: ShowSignalGuide(); return 0;
         case IDC_LANGUAGE_ZH: case IDC_LANGUAGE_EN: ApplyLanguage(id==IDC_LANGUAGE_EN); return 0;
         case IDC_APPEARANCE: ShowAppearanceMenu(); return 0;
         case IDC_FONT_UI: case IDC_FONT_LOG: case IDC_FONT_RESET: ApplyAppearanceCommand(id); return 0;
@@ -1009,6 +1020,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         LRESULT result = 0; return HandlePageNotify(lparam, result) ? result : 0;
     }
     case WM_CLOSE:
+        CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
         PersistUiSettings(hwnd);
         ShutdownLoadController();
         DestroyWindow(hwnd);
@@ -1031,9 +1043,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
 
 } // namespace
 
+namespace dl {
+void ClearMainFilters(bool refresh) { ClearFilters(refresh); }
+}
+
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show) {
     LoadAppSettings();
-    INITCOMMONCONTROLSEX common{sizeof(common), ICC_LISTVIEW_CLASSES | ICC_STANDARD_CLASSES};
+    INITCOMMONCONTROLSEX common{sizeof(common), ICC_LISTVIEW_CLASSES | ICC_TAB_CLASSES | ICC_STANDARD_CLASSES};
     InitCommonControlsEx(&common);
     RegisterModernShellClasses(instance);
 
@@ -1096,7 +1112,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
 
     MSG message{};
     while (GetMessageW(&message, nullptr, 0, 0) > 0) {
-        if (RouteSourceComparisonMessage(message)) continue;
+        if (RouteFindingKeyboardMessage(message)) continue;
+        if (RouteSelectableTextMessage(message) || RouteIncidentReviewMessage(message) || RouteSourceComparisonMessage(message)) continue;
         if (message.message == WM_KEYDOWN && (GetKeyState(VK_CONTROL) & 0x8000)) {
             if (message.wParam == 'C') {
                 HWND focus = GetFocus();

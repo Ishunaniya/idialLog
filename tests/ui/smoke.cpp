@@ -19,7 +19,7 @@ std::wstring TextOf(HWND window) {
     // EDIT 的内容需要标准消息封送；其他控件直接读取窗口文字，避免为轮询
     // 后台加载按钮而向目标 UI 线程同步发送消息。
     wchar_t className[32]{}; GetClassNameW(window, className, 32);
-    const bool edit = _wcsicmp(className, L"EDIT") == 0;
+    const bool edit = _wcsicmp(className,L"EDIT")==0 || _wcsicmp(className,L"COMBOBOX")==0;
     const int length = edit ? static_cast<int>(SendMessageW(window, WM_GETTEXTLENGTH, 0, 0))
                             : GetWindowTextLengthW(window);
     std::wstring text(static_cast<size_t>(length) + 1, L'\0');
@@ -144,7 +144,12 @@ bool CheckAppearanceMenu(HWND window,DWORD processId,const wchar_t* captureName)
     if (!search.window) return false;
     RECT menu{}, button{};
     GetWindowRect(search.window,&menu);GetWindowRect(GetDlgItem(window,1135),&button);
-    const bool above=menu.bottom<=button.top && menu.top>=0;
+    bool above=menu.bottom<=button.top && menu.top>=0;
+    const DWORD placement=GetTickCount();
+    while(!above && GetTickCount()-placement<1500) {
+        Sleep(25);GetWindowRect(search.window,&menu);GetWindowRect(GetDlgItem(window,1135),&button);
+        above=menu.bottom<=button.top && menu.top>=0;
+    }
     Capture(window,captureName);
     Capture(search.window,(std::wstring(captureName)+L"-popup").c_str());
     SendMessageW(window,WM_CANCELMODE,0,0);
@@ -250,6 +255,11 @@ HWND FilenameControl(HWND dialog) {
     return control;
 }
 
+BOOL CALLBACK FindInnerEdit(HWND child,LPARAM parameter) {
+    wchar_t cls[64]{};GetClassNameW(child,cls,64);
+    if(_wcsicmp(cls,L"EDIT")==0){*reinterpret_cast<HWND*>(parameter)=child;return FALSE;}return TRUE;
+}
+
 bool ChooseFile(HWND window,DWORD processId,int command,const std::wstring& path) {
     PostMessageW(window,WM_COMMAND,command,0);
     HWND dialog=nullptr;
@@ -261,18 +271,20 @@ bool ChooseFile(HWND window,DWORD processId,int command,const std::wstring& path
         if(!dialog) Sleep(50);
     }
     if(!dialog) {PrintWide("export-dialog-missing",path);return false;}
+    if(command==1310 && IsWindowEnabled(window)){PostMessageW(dialog,WM_COMMAND,IDCANCEL,0);return false;}
     // Explorer dialogs may pump messages while their initial shell folder is still being built.
     Sleep(750);
+    SetForegroundWindow(dialog);
     HWND filename=FilenameControl(dialog);
-    SetWindowTextW(filename,path.c_str());
-    SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(GetDlgCtrlID(filename),CBN_EDITCHANGE),reinterpret_cast<LPARAM>(filename));
+    HWND filenameEdit=nullptr;EnumChildWindows(filename,FindInnerEdit,reinterpret_cast<LPARAM>(&filenameEdit));
+    SetWindowTextW(filenameEdit?filenameEdit:filename,path.c_str());
     Capture(dialog,command==1040?L"open-cancellation-file-dialog":L"english-export-dialog");
     SendMessageW(GetDlgItem(dialog,IDOK),BM_CLICK,0,0);
     const DWORD closing=GetTickCount();
     while(IsWindow(dialog) && GetTickCount()-closing<10000) Sleep(50);
     if(IsWindow(dialog)) {
         Capture(dialog,L"file-dialog-did-not-close");
-        PrintWide("file-dialog-did-not-close",TextOf(filename));
+        PrintWide("file-dialog-did-not-close",TextOf(filenameEdit?filenameEdit:filename));
         PostMessageW(dialog,WM_COMMAND,IDCANCEL,0);return false;
     }
     return true;
@@ -286,6 +298,74 @@ bool ExportTo(HWND window,DWORD processId,int command,const std::wstring& path) 
         Sleep(50);
     }
     PrintWide("export-file-missing",path);return false;
+}
+
+HWND OwnedWindow(DWORD processId,const wchar_t* name) {
+    WindowSearch search{processId,nullptr,name};EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&search));return search.window;
+}
+void SelectFirstRow(HWND list) {
+    RECT header{};POINT origin{};GetWindowRect(ListView_GetHeader(list),&header);ClientToScreen(list,&origin);
+    SendMessageW(list,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(24,header.bottom-origin.y+10));
+    SendMessageW(list,WM_LBUTTONUP,0,MAKELPARAM(24,header.bottom-origin.y+10));
+}
+int CheckIncident(HWND window,DWORD processId,bool secondSource=false) {
+    SendMessageW(window,WM_APP+41,3,0);HWND outages=GetDlgItem(window,1013);SelectFirstRow(outages);
+    SendMessageW(window,WM_COMMAND,1180,0);HWND review=OwnedWindow(processId,L"dialIncidentReview");
+    if(!review)return 140;
+    if(secondSource) {
+        Sleep(650); // New-input clearing must not leave a delayed refresh that closes the review.
+        if(!IsWindow(review)){PrintWide("incident-closed-after-new-load",L"650 ms after opening");return 163;}
+    }
+    HWND list=GetDlgItem(review,1306);
+    const auto summary=TextOf(GetDlgItem(review,1304));
+    if(summary.find(secondSource?L"7s":L"30s")==std::wstring::npos ||
+       summary.find(secondSource?L"原文件行 2 · 合并行 5":L"原文件行 25 · 合并行 25")==std::wstring::npos) {
+        PrintWide("incident-summary",summary);return 141;
+    }
+    if(ListView_GetItemCount(list)!=(secondSource?2:9) || Header_GetItemCount(ListView_GetHeader(list))!=6)return 142;
+    Capture(review,secondSource?L"incident-source-B":L"incident-events-zh");
+    HWND tab=GetDlgItem(review,1305);
+    // Click the actual tab: WM_NOTIFY is restricted to same-process senders.
+    SendMessageW(tab,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(150,12));
+    SendMessageW(tab,WM_LBUTTONUP,0,MAKELPARAM(150,12));
+    if(ListView_GetItemCount(list)!=(secondSource?1:22) || Header_GetItemCount(ListView_GetHeader(list))!=13) {
+        PrintWide("incident-metric-count",std::to_wstring(ListView_GetItemCount(list))+L" columns="+std::to_wstring(Header_GetItemCount(ListView_GetHeader(list))));
+        Capture(review,L"incident-metrics-failure");return 144;
+    }
+    Capture(review,secondSource?L"incident-source-B-metrics":L"incident-metrics-zh");
+    if(!secondSource) {
+        SetWindowPos(review,nullptr,0,0,780,700,SWP_NOMOVE|SWP_NOZORDER);
+        Capture(review,L"incident-metrics-narrow-zh");
+        SetWindowPos(review,nullptr,0,0,1120,880,SWP_NOMOVE|SWP_NOZORDER);
+    }
+    SendMessageW(review,WM_COMMAND,1309,0);const auto copied=ClipboardText();
+    if(copied.find(L"事件复盘")==std::wstring::npos || copied.find(L"不能直接当作单次事故根因")==std::wstring::npos)return 145;
+    if(!secondSource) {
+        SendMessageW(review,WM_COMMAND,1301,0);
+        if(ListView_GetItemCount(list)!=20 || !Contains(GetDlgItem(review,1304),L"原文件行 103"))return 146;
+        SendMessageW(review,WM_COMMAND,1300,0);
+        if(ListView_GetItemCount(list)!=22)return 147;
+        wchar_t path[MAX_PATH]{};
+        if(GetEnvironmentVariableW(L"DIALLOG_UI_EVIDENCE_PATH",path,MAX_PATH)) {
+            DeleteFileW(path);if(!ExportTo(review,processId,1310,path) || !IsWindowEnabled(review))return 148;
+        }
+        // A model refresh must close every borrowed review before replacing data.
+        SendMessageW(window,WM_COMMAND,1003,0);
+        if(IsWindow(review))return 149;
+        SendMessageW(window,WM_APP+41,3,0);SelectFirstRow(outages);
+        SendMessageW(window,WM_COMMAND,1180,0);review=OwnedWindow(processId,L"dialIncidentReview");
+        if(!review)return 157;
+        SendMessageW(review,WM_COMMAND,1311,0);
+        if(IsWindow(review) || !Contains(GetDlgItem(window,1024),L"原始日志"))return 158;
+        SendMessageW(GetDlgItem(window,1016),WM_COPY,0,0);
+        if(ClipboardText().find(L"8\t2026-06-30 00:01:50")==std::wstring::npos)return 159;
+    } else {
+        // Source switching must also invalidate the old review.
+        SendMessageW(window,WM_COMMAND,34000,0);
+        if(IsWindow(review))return 150;
+        SendMessageW(window,WM_COMMAND,34001,0);
+    }
+    return 0;
 }
 
 int MultiSourceSmoke(const std::wstring& executable) {
@@ -336,6 +416,7 @@ int MultiSourceSmoke(const std::wstring& executable) {
     if(ClipboardText().find(L"4\t2026-08-03 10:00:00")==std::wstring::npos || ClipboardText().find(L"OPER:现场")==std::wstring::npos) {
         PrintWide("source-B-raw-copy",ClipboardText());return finish(108);
     }
+    const int reviewResult=CheckIncident(window,process.dwProcessId,true);if(reviewResult)return finish(reviewResult);
     SendMessageW(window,WM_COMMAND,33001,0);
     SendMessageW(window,WM_APP+41,4,0);
     if(ListView_GetItemCount(metrics)!=2) return finish(109);
@@ -360,13 +441,26 @@ int MultiSourceSmoke(const std::wstring& executable) {
     SendMessageW(window,WM_COMMAND,1171,0);
     if(!Contains(signalChart,L"RSSI") || !Contains(signalChart,L"1 points") ||
        !Contains(GetDlgItem(window,1135),L"Language / Fonts")) return finish(126);
+    SendMessageW(window,WM_APP+41,3,0);SelectFirstRow(GetDlgItem(window,1013));SendMessageW(window,WM_COMMAND,1180,0);
+    HWND englishReview=OwnedWindow(process.dwProcessId,L"dialIncidentReview");
+    if(!englishReview || !Contains(GetDlgItem(englishReview,1304),L"Source line 2 · Merged line 5") ||
+       !Contains(GetDlgItem(englishReview,1304),L"7s"))return finish(154);
+    Capture(englishReview,L"incident-events-en");
+    SendMessageW(englishReview,WM_COMMAND,1309,0);
+    if(ClipboardText().find(L"Incident review")==std::wstring::npos || ClipboardText().find(L"_B_现场.log")==std::wstring::npos)return finish(155);
+    SendMessageW(englishReview,WM_CLOSE,0,0);SendMessageW(window,WM_APP+41,4,0);
+    SendMessageW(window,WM_COMMAND,1181,0);HWND englishGuide=OwnedWindow(process.dwProcessId,L"dialSelectableText");
+    if(!englishGuide || !Contains(GetDlgItem(englishGuide,1200),L"not causes of outages"))return finish(156);
+    Capture(englishGuide,L"signal-guide-en");SendMessageW(englishGuide,WM_CLOSE,0,0);
     SendMessageW(window,WM_COMMAND,33000,0);
     WindowSearch search{process.dwProcessId,nullptr,L"dialSourceComparison"};EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&search));
     if(!search.window || SendDlgItemMessageW(search.window,1160,CB_GETCOUNT,0,0)!=2) return finish(112);
     SendMessageW(search.window,WM_COMMAND,1166,0);
     const auto comparison=ClipboardText();
     if(comparison.find(L"-95 / -95 / -95")==std::wstring::npos || comparison.find(L"-115 / -115 / -115")==std::wstring::npos ||
-       comparison.find(L"18 / 18 / 18")==std::wstring::npos || comparison.find(L"8 / 8 / 8")==std::wstring::npos) {
+       comparison.find(L"18 / 18 / 18")==std::wstring::npos || comparison.find(L"8 / 8 / 8")==std::wstring::npos ||
+       comparison.find(L"-65 / -65.0 / -65 dBm")==std::wstring::npos ||
+       comparison.find(L"-100 / -100.0 / -100 dBm")==std::wstring::npos) {
         PrintWide("source-comparison-copy",comparison);return finish(113);
     }
     Capture(search.window,L"english-two-source-comparison");SendMessageW(search.window,WM_CLOSE,0,0);
@@ -381,6 +475,8 @@ int MultiSourceSmoke(const std::wstring& executable) {
     if(!ExportTo(window,process.dwProcessId,1046,base+L".html")) return finish(116);
     const auto html=ReadBytes(base+L".html");
     if(html.find("lang=\"en-US\"")==std::string::npos || html.find("_B_现场.log")==std::string::npos || html.find("检查天线")!=std::string::npos) return finish(117);
+    if(html.find("RSSI") == std::string::npos || html.find("Samples 1 · Drawn 1")==std::string::npos ||
+       html.find("4096 horizontal buckets")==std::string::npos || html.find("dialLog v1.12.0")==std::string::npos) return finish(164);
     if(!ExportTo(window,process.dwProcessId,1045,base+L".csv")) return finish(118);
     const auto csv=ReadBytes(base+L".csv");
     if(csv.find("detailed_at_stage")==std::string::npos || csv.find("现场")==std::string::npos ||
@@ -439,6 +535,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     const std::wstring executable=argv[1];
     std::wstring command = L"\"" + executable + L"\" \"" + argv[2] + L"\"";
     LocalFree(argv);
+    wchar_t multiOnly[4]{};
+    if(GetEnvironmentVariableW(L"DIALLOG_UI_MULTI_ONLY",multiOnly,4))return MultiSourceSmoke(executable);
     std::vector<wchar_t> mutableCommand(command.begin(), command.end());
     mutableCommand.push_back(L'\0');
 
@@ -490,6 +588,37 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
                             page == 5 ? L"tags-wide" : L"raw-wide");
     }
 
+    wchar_t skipNewWindows[4]{};
+    wchar_t focusOnly[4]{};
+    if (GetEnvironmentVariableW(L"DIALLOG_UI_FOCUS_ONLY", focusOnly, 4)) {
+        wchar_t directory[MAX_PATH]{};
+        if (!GetEnvironmentVariableW(L"DIALLOG_UI_CAPTURE", directory, MAX_PATH)) return finish(167);
+        SendMessageW(window, WM_APP + 41, 1, 0);
+        HWND pane = GetDlgItem(window, 1019), edit = GetDlgItem(window, 1007);
+        SendMessageW(edit, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(12, 12));
+        SendMessageW(edit, WM_LBUTTONUP, 0, MAKELPARAM(12, 12));
+        UpdateWindow(pane);
+        Capture(pane, L"findings-focus-top");
+        for (int i = 0; i < 5; ++i) SendMessageW(pane, WM_VSCROLL, SB_PAGEDOWN, 0);
+        UpdateWindow(pane);
+        Capture(pane, L"findings-focus-before");
+        const std::wstring base = std::wstring(directory) + L"\\findings-focus-";
+        const auto scrolled = ReadBytes(base + L"before.bmp");
+        if (scrolled.empty() || scrolled == ReadBytes(base + L"top.bmp")) return finish(168);
+        SendMessageW(pane, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(8, 8));
+        SendMessageW(pane, WM_LBUTTONUP, 0, MAKELPARAM(8, 8));
+        UpdateWindow(pane);
+        Capture(pane, L"findings-focus-after");
+        if (scrolled != ReadBytes(base + L"after.bmp")) {
+            PrintWide("findings-pointer-focus", L"Mouse focus changed the scrolled contents");
+            return finish(169);
+        }
+        return finish(0);
+    }
+    const bool skipNew=GetEnvironmentVariableW(L"DIALLOG_UI_SKIP_NEW_WINDOWS",skipNewWindows,4)!=0;
+    wchar_t newScope[16]{};GetEnvironmentVariableW(L"DIALLOG_UI_NEW_SCOPE",newScope,16);
+    wchar_t reportOnly[4]{};GetEnvironmentVariableW(L"DIALLOG_UI_REPORT_ONLY",reportOnly,4);
+    if(!skipNew && std::wstring(newScope)!=L"text"){const int reviewResult=CheckIncident(window,process.dwProcessId);if(reviewResult)return finish(reviewResult);}
     SendMessageW(window, WM_APP + 41, 2, 0);
     HWND timeline = GetDlgItem(window, 1012);
     RECT timelineHeader{}; POINT timelineOrigin{};
@@ -517,6 +646,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
         overviewText.find(L"全程服务可达率：") == std::wstring::npos ||
         overviewText.find(L"2026-06-30") == std::wstring::npos ||
         overviewText.find(L"1359 个样本") == std::wstring::npos ||
+        overviewText.find(L"RSSI 有效样本: 516") == std::wstring::npos ||
         overviewText.find(L"断网 36 次 · 已恢复事件累计 34m02s · 最长 3m20s") == std::wstring::npos) {
         PrintWide("overview-clipboard", overviewText); return finish(43);
     }
@@ -533,7 +663,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     const std::wstring findingsText = ClipboardText();
     if (findingsText.find(L"诊断结论") != 0 || findingsText.find(L"来源平台：") == std::wstring::npos ||
         findingsText.find(L"依据：") == std::wstring::npos || findingsText.find(L"建议：") == std::wstring::npos ||
-        findingsText.find(L"第 ") == std::wstring::npos) return finish(45);
+        findingsText.find(L"第 ") == std::wstring::npos ||
+        findingsText.find(L"RSSI 有效样本: 516") == std::wstring::npos) return finish(45);
     SCROLLINFO compactFindingsRange{};compactFindingsRange.cbSize=sizeof(compactFindingsRange);compactFindingsRange.fMask=SIF_RANGE;
     const bool haveCompactRange=GetScrollInfo(findings,SB_VERT,&compactFindingsRange)!=FALSE;
     SendMessageW(findings,WM_LBUTTONUP,0,MAKELPARAM(findingsRect.right-210,35));
@@ -553,6 +684,28 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     }
     SendMessageW(findings,WM_LBUTTONUP,0,MAKELPARAM(findingsRect.right-210,35));
     Capture(window,L"findings-compact-restored");
+    if(!skipNew && std::wstring(newScope)!=L"review") {
+    SendMessageW(findings,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(32,250));
+    SendMessageW(findings,WM_KEYDOWN,VK_HOME,0);SendMessageW(findings,WM_KEYDOWN,VK_F2,0);
+    HWND selectable=OwnedWindow(process.dwProcessId,L"dialSelectableText");
+    if(!selectable || TextOf(GetDlgItem(selectable,1200)).find(L"依据：")==std::wstring::npos ||
+       TextOf(GetDlgItem(selectable,1200)).find(L"证据：")==std::wstring::npos)return finish(151);
+    const auto selectedText=TextOf(GetDlgItem(selectable,1200));
+    SendDlgItemMessageW(selectable,1200,EM_SETSEL,0,-1);SendDlgItemMessageW(selectable,1200,WM_COPY,0,0);
+    if(ClipboardText()!=selectedText)return finish(152);
+    Capture(selectable,L"findings-selectable-text");
+    // Real EG25 fixture: the first finding's first evidence is source line 24.
+    if(selectedText.find(L"第 24 行")==std::wstring::npos){PrintWide("selected-finding-jump-text",selectedText);return finish(160);}
+    const unsigned long expectedLine=24;
+    SendMessageW(selectable,WM_COMMAND,1202,0);
+    if(IsWindow(selectable) || !Contains(GetDlgItem(window,1024),L"原始日志"))return finish(161);
+    SendMessageW(GetDlgItem(window,1016),WM_COPY,0,0);
+    if(ClipboardText().find(std::to_wstring(expectedLine)+L"\t")!=0)return finish(162);
+    SendMessageW(window,WM_APP+41,4,0);SendMessageW(window,WM_COMMAND,1181,0);
+    selectable=OwnedWindow(process.dwProcessId,L"dialSelectableText");
+    if(!selectable || !Contains(GetDlgItem(selectable,1200),L"RSSI（dBm）"))return finish(153);
+    Capture(selectable,L"signal-guide-zh");SendMessageW(selectable,WM_CLOSE,0,0);
+    }
 
     SendMessageW(window, WM_APP + 41, 4, 0);
     Capture(window, L"metrics-wide");
@@ -562,6 +715,18 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (!header || Header_GetItemCount(header) != 22) return finish(20);
     if (!IsWindowVisible(chart)) return finish(22);
     if (ListView_GetColumnWidth(metrics, 0) < 180) return finish(46);
+    wchar_t reportBase[MAX_PATH]{};
+    if(GetEnvironmentVariableW(L"DIALLOG_UI_REPORT_BASE",reportBase,MAX_PATH)) {
+        for(bool english:{false,true}) {
+            SendMessageW(window,WM_COMMAND,english?1171:1170,0);
+            const auto path=std::wstring(reportBase)+(english?L".en.html":L".zh.html");
+            DeleteFileW(path.c_str());if(!ExportTo(window,process.dwProcessId,1046,path))return finish(165);
+            const auto report=ReadBytes(path);
+            if(report.find("dialLog v1.12.0")==std::string::npos || report.find("RSSI")==std::string::npos ||
+               report.find("data-samples=\"1359\" data-drawn=\"1359\"")==std::string::npos)return finish(166);
+        }
+        SendMessageW(window,WM_COMMAND,1170,0);
+    }
     RECT chartRect{}; GetClientRect(chart, &chartRect);
     SendMessageW(chart, WM_MOUSEMOVE, 0, MAKELPARAM(chartRect.right - 155, 85));
     Capture(window, L"metrics-hover");
@@ -620,6 +785,15 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
         !Contains(GetDlgItem(window, 1140), L"2026-06-30 00:34:41"))
         return finish(61);
     PrintWide("selected-metric-count", std::to_wstring(selectedMetricCount));
+    if(reportBase[0]) {
+        const auto path=std::wstring(reportBase)+L".range.html";DeleteFileW(path.c_str());
+        if(!ExportTo(window,process.dwProcessId,1046,path))return finish(167);
+        const auto report=ReadBytes(path);
+        // The 68 metric rows include one row without CSQ; it must not become a point.
+        if(report.find("data-samples=\"67\" data-drawn=\"67\"")==std::string::npos ||
+           report.find("2026-06-30 00:34:41")==std::string::npos)return finish(168);
+        if(reportOnly[0])return finish(0);
+    }
     Capture(window, L"range-selected");
     SendMessageW(window, WM_APP + 41, 3, 0);
     if (ListView_GetItemCount(GetDlgItem(window, 1013)) != 3) return finish(62);
@@ -714,8 +888,27 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (IsWindowVisible(detail)) return finish(38);
     SendMessageW(window, WM_APP + 41, 8, 0);
     HWND cells = GetDlgItem(window, 1026);
-    if (!cells || Header_GetItemCount(ListView_GetHeader(cells)) != 15 ||
+    if (!cells || Header_GetItemCount(ListView_GetHeader(cells)) != 17 ||
         ListView_GetItemCount(cells) < 1) return finish(31);
+    RECT cellHeader{}; POINT cellOrigin{}; GetWindowRect(ListView_GetHeader(cells), &cellHeader);
+    ClientToScreen(cells, &cellOrigin);
+    const int cellRowY = cellHeader.bottom - cellOrigin.y + 10;
+    SendMessageW(cells, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(24, cellRowY));
+    SendMessageW(cells, WM_LBUTTONUP, 0, MAKELPARAM(24, cellRowY));
+    SendMessageW(cells, WM_COPY, 0, 0);
+    const auto cellCopy = ClipboardText();
+    std::size_t cellTabs = 0; for (const auto ch : cellCopy) if (ch == L'\t') ++cellTabs;
+    if (cellTabs != 16 || cellCopy.find(L"\t-\t0\r\n") == std::wstring::npos) {
+        PrintWide("cell-rssi-missing-copy", cellCopy); return finish(163);
+    }
+    bool haveRssiCell = false;
+    for (int row = 1; row < ListView_GetItemCount(cells); ++row) {
+        SendMessageW(cells, WM_KEYDOWN, VK_DOWN, 0);
+        SendMessageW(cells, WM_COPY, 0, 0);
+        const auto observedCopy = ClipboardText();
+        if (observedCopy.find(L" / -") != std::wstring::npos) { haveRssiCell = true; break; }
+    }
+    if (!haveRssiCell) return finish(164);
     SetWindowPos(window, nullptr, 0, 0, 860, 640, SWP_NOMOVE | SWP_NOZORDER);
     UpdateWindow(window);
     RECT pageTitle{}, exportButton{};
@@ -828,7 +1021,13 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     SendMessageW(window,WM_COMMAND,32004,0);
     if (ListView_GetColumnWidth(metrics,0)<=0 || ListView_GetColumnWidth(metrics,5)!=0 ||
         ListView_GetColumnWidth(metrics,19)<=0 || Header_GetItemCount(ListView_GetHeader(metrics))!=22 ||
-        ListView_GetItemCount(metrics)!=fullMetricCount) return finish(79);
+        ListView_GetItemCount(metrics)!=fullMetricCount) {
+        PrintWide("column-preset-state",L"time="+std::to_wstring(ListView_GetColumnWidth(metrics,0))+L" csq="+
+            std::to_wstring(ListView_GetColumnWidth(metrics,5))+L" at="+std::to_wstring(ListView_GetColumnWidth(metrics,19))+
+            L" columns="+std::to_wstring(Header_GetItemCount(ListView_GetHeader(metrics)))+L" rows="+
+            std::to_wstring(ListView_GetItemCount(metrics))+L" expected="+std::to_wstring(fullMetricCount));
+        return finish(79);
+    }
     RECT metricHeader{};POINT metricOrigin{};GetWindowRect(ListView_GetHeader(metrics),&metricHeader);ClientToScreen(metrics,&metricOrigin);
     const int metricRowY=metricHeader.bottom-metricOrigin.y+10;
     SendMessageW(metrics,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(24,metricRowY));
@@ -861,7 +1060,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     Capture(window,L"english-overview");
     RECT englishDashRect{};GetClientRect(GetDlgItem(window,1022),&englishDashRect);
     SendMessageW(GetDlgItem(window,1022),WM_LBUTTONUP,0,MAKELPARAM(englishDashRect.right-95,24));
-    if (ClipboardText().find(L"Outages 36")==std::wstring::npos || ClipboardText().find(L"1359 samples")==std::wstring::npos) return finish(84);
+    if (ClipboardText().find(L"Outages 36")==std::wstring::npos || ClipboardText().find(L"1359 samples")==std::wstring::npos ||
+        ClipboardText().find(L"Valid RSSI samples: 516")==std::wstring::npos) return finish(84);
     Capture(window,L"english-overview");
     SetWindowPos(window,nullptr,0,0,860,640,SWP_NOMOVE|SWP_NOZORDER);
     if (!AppearanceFitsNavigation(window) ||
@@ -871,7 +1071,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     SendMessageW(window,WM_COMMAND,33000,0);
     WindowSearch comparisonSearch{process.dwProcessId,nullptr,L"dialSourceComparison"};
     EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&comparisonSearch));
-    if (!comparisonSearch.window || ListView_GetItemCount(GetDlgItem(comparisonSearch.window,1162))!=16) return finish(85);
+    if (!comparisonSearch.window || ListView_GetItemCount(GetDlgItem(comparisonSearch.window,1162))!=18) return finish(85);
     Capture(comparisonSearch.window,L"english-source-comparison");
     SendMessageW(comparisonSearch.window,WM_CLOSE,0,0);
     // A single-source comparison also needs fresh statistics when its time range changes.
@@ -881,7 +1081,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     comparisonSearch.window=nullptr;EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&comparisonSearch));
     if(!comparisonSearch.window) return finish(87);
     SendMessageW(comparisonSearch.window,WM_COMMAND,1166,0);
-    if(ClipboardText().find(L"Metric samples\t68\t68\r\n")==std::wstring::npos) {
+    if(ClipboardText().find(L"Metric samples\t68\t68\r\n")==std::wstring::npos ||
+       ClipboardText().find(L"Valid RSSI samples\t30\t30\r\n")==std::wstring::npos) {
         PrintWide("single-source-range-comparison",ClipboardText());return finish(88);
     }
     SendMessageW(comparisonSearch.window,WM_CLOSE,0,0);

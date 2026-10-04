@@ -22,6 +22,8 @@
 #include "log_time.h"
 #include "load_controller.h"
 #include "source_workspace.h"
+#include "incident_review.h"
+#include "text_view.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "tablemodel.h"
@@ -261,6 +263,12 @@ static void RenderCells() {
         std::stable_sort(g_cellRows.begin(), g_cellRows.end(), [](const CellSummary* a, const CellSummary* b) {
             const std::string av = cellSummaryCellText(*a, static_cast<std::size_t>(g_cellSortColumn));
             const std::string bv = cellSummaryCellText(*b, static_cast<std::size_t>(g_cellSortColumn));
+            if (g_cellSortColumn == 15) {
+                if (bool(a->rssi.samples) != bool(b->rssi.samples)) return bool(a->rssi.samples);
+                return g_cellSortAscending ? a->rssi.mean() < b->rssi.mean() : a->rssi.mean() > b->rssi.mean();
+            }
+            if (g_cellSortColumn == 16)
+                return g_cellSortAscending ? a->rssi.samples < b->rssi.samples : a->rssi.samples > b->rssi.samples;
             if (g_cellSortColumn >= 1 && g_cellSortColumn <= 13) {
                 auto numeric = [](const CellSummary& cell, int column) -> long long {
                     switch (column) {
@@ -514,7 +522,7 @@ void ReleaseLoadedData() {
     if (App().hTags)     ListView_DeleteAllItems(App().hTags);
     if (App().hUnparsed) ListView_DeleteAllItems(App().hUnparsed);
 
-    CloseSourceComparison();
+    CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
     App().document.release();
     UpdateSourceControls();
     g_metricFilter = MetricQuickFilter{};
@@ -543,6 +551,13 @@ void RenderPage(int page) {
     g_pageDirty[page] = false;
 }
 
+void ReviewSelectedOutage() {
+    const int row=ListView_GetNextItem(App().hOutage,-1,LVNI_SELECTED);
+    if(row>=0 && static_cast<std::size_t>(row)<g_outageOrder.size())
+        ShowIncidentReview(App().document.outages[g_outageOrder[row]]);
+    else ShowModernNotice(UiText(TextId::incident_title),UiText(TextId::incident_no_selection),ModernNoticeKind::Info);
+}
+
 void ShowPage(int page) {
     // 页序:0总览 1结论 2时间线 3断网 4指标 5标签 6原始行 7未识别行 8小区分析
     if (page < 0 || page >= 9) return;
@@ -559,6 +574,7 @@ void ShowPage(int page) {
         UiText(TextId::ui_0292);
     SetWindowTextW(App().hPageHint, hint);
     ShowWindow(App().hPageHint, page == 2 || page == 3 || page == 6 ? SW_SHOW : SW_HIDE);
+    ShowWindow(App().hIncidentReview,page==3?SW_SHOW:SW_HIDE);
     SetNavigationPage(page);
     RenderPage(page);   // 页仍隐藏时填充,减少 ListView 大批插入时的可见闪烁
     struct { HWND* h; int page; } items[] = {
@@ -581,7 +597,7 @@ void ShowPage(int page) {
     }
     const bool metrics = page == 4;
     for (HWND control : {App().hMetricToolbar, App().hMetricViewChart,
-                         App().hMetricViewSplit, App().hMetricViewTable, App().hMetricColumns})
+                         App().hMetricViewSplit, App().hMetricViewTable, App().hMetricColumns, App().hSignalGuide})
         if (control) ShowWindow(control, metrics ? SW_SHOW : SW_HIDE);
     ShowWindow(App().hExport, SW_SHOW);
     SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
@@ -830,6 +846,7 @@ static void ShowPageContextMenu(HWND list, POINT screenPoint) {
     const int selected = ListView_GetSelectedCount(list);
     AppendMenuW(menu, MF_STRING, kCopyRowsCommand,
                 selected > 1 ? UiText(TextId::ui_0309) : UiText(TextId::ui_0310));
+    if(list==App().hOutage)AppendMenuW(menu,MF_STRING,kIncidentReviewCommand,UiText(TextId::incident_title));
     if (SupportsFullDetail(list)) {
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(menu, MF_STRING, kShowDetailCommand, UiText(TextId::ui_0311));
@@ -841,7 +858,8 @@ static void ShowPageContextMenu(HWND list, POINT screenPoint) {
     const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
                                         screenPoint.x, screenPoint.y, 0, App().hMain, nullptr);
     DestroyMenu(menu);
-    if (command == kCopyCellCommand) {
+    if(command==kIncidentReviewCommand){ReviewSelectedOutage();}
+    else if (command == kCopyCellCommand) {
         if (CopyTextToClipboard(U8ToW(PageCellText(list, row, column))))
             ShowModernNotice(UiText(TextId::ui_0314), ColumnTitle(list, column).c_str(),
                              ModernNoticeKind::Success, 2500);
@@ -858,6 +876,8 @@ static void ShowPageContextMenu(HWND list, POINT screenPoint) {
 
 static LRESULT CALLBACK PageListSubclass(HWND list, UINT message, WPARAM wparam, LPARAM lparam,
                                          UINT_PTR, DWORD_PTR) {
+    if(message==WM_GETDLGCODE && wparam==VK_RETURN && (SupportsFullDetail(list)||list==App().hOutage))
+        return DefSubclassProc(list,message,wparam,lparam)|DLGC_WANTMESSAGE;
     if (message == WM_COPY) {
         CopySelectedRows(list);
         return 0;
@@ -872,6 +892,7 @@ static LRESULT CALLBACK PageListSubclass(HWND list, UINT message, WPARAM wparam,
         while (steps--) SendMessageW(list, WM_HSCROLL, command, 0);
         return 0;
     }
+    if(message==WM_KEYDOWN && wparam==VK_RETURN && list==App().hOutage){ReviewSelectedOutage();return 0;}
     if (message == WM_KEYDOWN && wparam == VK_RETURN && SupportsFullDetail(list)) {
         const int row = ListView_GetNextItem(list, -1, LVNI_SELECTED);
         if (row >= 0) { ShowPageDetail(list, row); return 0; }

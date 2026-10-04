@@ -10,6 +10,7 @@ namespace dl {
 struct SourceSummary {
     std::wstring label;
     std::size_t first = 0, last = 0; // parsed-line range [first,last), including clock segments
+    std::size_t rawLineOffset = 0; // preceding raw lines in the ordered merged input
     std::size_t parsedLines = 0;
     std::size_t metricRows = 0;
     std::size_t outages = 0;
@@ -21,6 +22,7 @@ struct SourceComparison {
     std::size_t source = 0, lines = 0, samples = 0, outages = 0, unrecovered = 0;
     long long firstTime = 0, lastTime = 0, observedSeconds = 0, outageSeconds = 0;
     AvailabilityStats availability;
+    RssiObservation rssi;
     int rsrpSamples = 0, rsrpMin = 0, rsrpMax = 0, rsrpAverage = 0;
     int csqSamples = 0, csqMin = 0, csqMax = 0, csqAverage = 0;
 };
@@ -63,6 +65,8 @@ public:
     void selectTimeRange(long long start, long long end);
     void restrictToTimeRange(LogView& view) const;
     void restrictToSource(LogView& view, std::size_t source) const;
+    RssiObservation rssi;
+    void rebuildSignalObservations();
     void rebuildComparisons(const LogView& scoped);
 };
 

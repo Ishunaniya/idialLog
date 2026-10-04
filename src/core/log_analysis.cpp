@@ -2177,6 +2177,7 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
             summary.tac = metric.tac;
             summary.tacDigits = metric.tacDigits;
         }
+        summary.rssi.add(metric.rssiVal);
         const bool lteReference = usesLteEngineeringReference(metric.rat);
         if (lteReference && metric.csqVal >= 0) {
             accumulator.csqSum += metric.csqVal;
@@ -3733,6 +3734,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 } else {
                     std::string sig = "心跳 CSQ=" +
                                       (evm->csqRaw >= 0 ? std::to_string(evm->csqRaw) : "-");
+                    if (evm->rssiVal < 0) sig += " RSSI=" + std::to_string(evm->rssiVal) + "dBm";
                     if (evm->rsrp < 0) sig += " RSRP=" + std::to_string(evm->rsrp) + "dBm";
                     if (evm->snr10 != 100000) sig += " SNR=" + fmtSnr10(evm->snr10) + "dB";
                     sig += " ΔRX=" +
@@ -3754,7 +3756,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                   std::to_string(causeCnt[c]) + " 次 / 共 " + std::to_string(outs.size()) + " 次";
         switch (c) {
         case C_WEAK:
-            f.detail = "断网窗口内 LTE 心跳 CSQ 最小值 < 10(≈RSSI<-95dBm),或 RSRP ≤ -110dBm,"
+            f.detail = "断网窗口内 LTE 心跳 CSQ 最小值 < 10,或 RSRP ≤ -110dBm,"
                        "命中本项目的弱覆盖工程观察线；该线不是 3GPP 统一故障等级。";
             f.advice = "查天线连接/馈线/安装位置;确认是否处于覆盖边缘或屏蔽环境。重拨无法解决覆盖问题。";
             break;
@@ -4055,6 +4057,11 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 e.text = "Cell " + cell.cellId + ":断网关联 " + std::to_string(cell.outageStarts) +
                          " 次,RSRP均值 " + (cell.rsrpSamples ? fmtSnr10(cell.rsrpAvg10) : "-") +
                          "dBm,SNR均值 " + (cell.snrSamples ? fmtSnr10(cell.snrAvg10) : "-") + "dB";
+                if (cell.rssi.samples) {
+                    char mean[32]{};
+                    std::snprintf(mean, sizeof(mean), "%.1f", cell.rssi.mean());
+                    e.text += ",RSSI均值 " + std::string(mean) + "dBm (" + std::to_string(cell.rssi.samples) + " 样本)";
+                }
                 f.ev.push_back(std::move(e));
             }
             fs.push_back(std::move(f));

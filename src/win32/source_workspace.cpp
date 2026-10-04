@@ -1,4 +1,5 @@
 #include "source_workspace.h"
+#include "rssi_summary.h"
 #include <commctrl.h>
 #include <algorithm>
 #include <array>
@@ -16,13 +17,13 @@ namespace dl {
 namespace {
 HWND g_comparison = nullptr;
 constexpr int kFirst = 1160, kSecond = 1161, kCompareList = 1162;
-const wchar_t* const* Fields() { static const wchar_t* fields[16]; const wchar_t* values[] = {UiText(TextId::ui_0244), UiText(TextId::ui_0245), UiText(TextId::ui_0246), UiText(TextId::ui_0247), UiText(TextId::ui_0248), UiText(TextId::ui_0249),
+const wchar_t* const* Fields() { static const wchar_t* fields[18]; const wchar_t* values[] = {UiText(TextId::ui_0244), UiText(TextId::ui_0245), UiText(TextId::ui_0246), UiText(TextId::ui_0247), UiText(TextId::ui_0248), UiText(TextId::ui_0249),
     UiText(TextId::ui_0250), UiText(TextId::ui_0251), UiText(TextId::ui_0252), UiText(TextId::ui_0253), UiText(TextId::ui_0254), UiText(TextId::ui_0255),
-    UiText(TextId::ui_0256), UiText(TextId::ui_0257), UiText(TextId::ui_0258), UiText(TextId::ui_0259)}; std::copy(std::begin(values),std::end(values),fields);return fields; }
+    UiText(TextId::ui_0256), UiText(TextId::ui_0257), UiText(TextId::ui_0258), UiText(TextId::ui_0259), UiText(TextId::rssi_cell_range), UiText(TextId::rssi_samples)}; std::copy(std::begin(values),std::end(values),fields);return fields; }
 
-std::array<std::wstring, 16> Values(std::size_t index) {
+std::array<std::wstring, 18> Values(std::size_t index) {
     const auto& doc = App().document;
-    std::array<std::wstring, 16> result;
+    std::array<std::wstring, 18> result;
     result.fill(L"—");
     if (index >= doc.comparisons.size()) return result;
     const auto& stats = doc.comparisons[index];
@@ -44,6 +45,8 @@ std::array<std::wstring, 16> Values(std::size_t index) {
     result[13] = std::to_wstring(stats.rsrpSamples);
     if (stats.csqSamples) result[14] = FmtW(L"%d / %d / %d", stats.csqAverage, stats.csqMin, stats.csqMax);
     result[15] = std::to_wstring(stats.csqSamples);
+    if (stats.rssi.samples) result[16] = U8ToW(rssiRangeText(stats.rssi)) + L" dBm";
+    result[17] = std::to_wstring(stats.rssi.samples);
     return result;
 }
 
@@ -53,7 +56,7 @@ void RenderComparison(HWND window) {
     const auto b = static_cast<std::size_t>(SendDlgItemMessageW(window, kSecond, CB_GETCURSEL, 0, 0));
     const auto left = Values(a), right = Values(b);
     SendMessageW(table, WM_SETREDRAW, FALSE, 0); ListView_DeleteAllItems(table);
-    for (int row = 0; row < 16; ++row) {
+    for (int row = 0; row < 18; ++row) {
         LVITEMW item{}; item.mask = LVIF_TEXT; item.iItem = row; item.pszText = const_cast<wchar_t*>(Fields()[row]);
         ListView_InsertItem(table, &item);
         ListView_SetItemText(table, row, 1, const_cast<wchar_t*>(left[row].c_str()));
@@ -211,7 +214,7 @@ bool CopySourceComparison() {
     if (!SourceComparisonActive()) return false;
     HWND table=GetDlgItem(g_comparison,kCompareList);
     std::wstring text=AnalysisSourceText()+L"\r\n"+AnalysisTimeRangeText()+L"\r\n";
-    for (int row=0;row<16;++row) {
+    for (int row=0;row<18;++row) {
         for (int column=0;column<3;++column) {
             wchar_t value[2048]{};ListView_GetItemText(table,row,column,value,2048);
             if (column) text+=L'\t';

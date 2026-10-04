@@ -8,6 +8,7 @@
 namespace dl {
 
 void DocumentState::swap(DocumentState& other) noexcept {
+    std::swap(rssi, other.rssi);
     std::swap(timeRange, other.timeRange);
     std::swap(sourceMode, other.sourceMode);
     std::swap(selectedSource, other.selectedSource);
@@ -28,6 +29,7 @@ void DocumentState::swap(DocumentState& other) noexcept {
 }
 
 void DocumentState::release() {
+    rssi = RssiObservation{};
     timeRange = TimeRange{};
     sourceMode = SourceMode::Independent;
     selectedSource = 0;
@@ -72,6 +74,11 @@ void DocumentState::restrictToSource(LogView& view, std::size_t source) const {
     }), view.end());
 }
 
+void DocumentState::rebuildSignalObservations() {
+    rssi = RssiObservation{};
+    for (const auto& metric : metrics) rssi.add(metric.rssiVal);
+}
+
 void DocumentState::rebuildComparisons(const LogView& scoped) {
     comparisons.clear();
     // One pass distributes rows; avoid scanning N rows once per source.
@@ -103,6 +110,7 @@ void DocumentState::rebuildComparisons(const LogView& scoped) {
         }
         long long rsrpTotal = 0, csqTotal = 0;
         for (const auto& metric : metricsForSource) {
+            stats.rssi.add(metric.rssiVal);
             if (metric.rsrp < 0) {
                 if (!stats.rsrpSamples) stats.rsrpMin = stats.rsrpMax = metric.rsrp;
                 stats.rsrpMin = std::min(stats.rsrpMin, metric.rsrp);

@@ -1,5 +1,6 @@
 // tablemodel.cpp — 虚拟表格的行选择与单元格格式化。
 #include "tablemodel.h"
+#include "rssi_summary.h"
 
 #include "log_analysis.h"
 #include "log_time.h"
@@ -182,6 +183,8 @@ std::string cellSummaryCellText(const CellSummary& cell, size_t column) {
         if ((cell.rsrpSamples >= 5 && cell.rsrpAvg10 <= -1000) ||
             (cell.snrSamples >= 5 && cell.snrAvg10 <= 0)) return "需关注";
         return "正常";
+    case 15: return rssiRangeText(cell.rssi);
+    case 16: return std::to_string(cell.rssi.samples);
     default: return {};
     }
 }

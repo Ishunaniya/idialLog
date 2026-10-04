@@ -69,8 +69,8 @@ MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 
 CORE_NAMES := log_time log_parser log_analysis log_filter archive_reader
 APP_NAMES := document_state app_context
-PRESENTATION_NAMES := tablemodel chartmodel text_catalog
-WIN32_NAMES := ui modern_shell ui_pages overview_page chart_page load_controller app_settings win_file_io win_text source_workspace
+PRESENTATION_NAMES := tablemodel chartmodel report_chart text_catalog incidentmodel incident_export
+WIN32_NAMES := ui modern_shell ui_pages overview_page chart_page load_controller app_settings win_file_io win_text source_workspace incident_review text_view
 
 CORE_OBJS := $(addprefix $(BUILD_DIR)/core/,$(addsuffix .o,$(CORE_NAMES)))
 APP_OBJS := $(addprefix $(BUILD_DIR)/app/,$(addsuffix .o,$(APP_NAMES)))
@@ -139,20 +139,24 @@ HOST_ARCHIVE_OBJS := $(HOST_CORE_BASE_OBJS) $(HOST_ARCHIVE_FULL_OBJ)
 HOST_TABLE_OBJ := $(HOST_BUILD_DIR)/tablemodel.o
 HOST_LOCALE_OBJ := $(HOST_BUILD_DIR)/text_catalog.o
 HOST_CHART_OBJ := $(HOST_BUILD_DIR)/chartmodel.o
+HOST_REPORT_CHART_OBJ := $(HOST_BUILD_DIR)/report_chart.o
 HOST_DOCUMENT_OBJ := $(HOST_BUILD_DIR)/document_state.o
+HOST_INCIDENT_OBJS := $(HOST_BUILD_DIR)/incidentmodel.o $(HOST_BUILD_DIR)/incident_export.o
 HOST_MINIZ_OBJ := $(HOST_BUILD_DIR)/miniz.o
 HOST_DEPS := $(HOST_LOCALE_OBJ:.o=.d) $(HOST_CORE_OBJS:.o=.d) $(HOST_ARCHIVE_FULL_OBJ:.o=.d) \
-             $(HOST_TABLE_OBJ:.o=.d) $(HOST_CHART_OBJ:.o=.d) $(HOST_DOCUMENT_OBJ:.o=.d) $(HOST_MINIZ_OBJ:.o=.d)
+             $(HOST_INCIDENT_OBJS:.o=.d) $(HOST_TABLE_OBJ:.o=.d) $(HOST_CHART_OBJ:.o=.d) $(HOST_REPORT_CHART_OBJ:.o=.d) $(HOST_DOCUMENT_OBJ:.o=.d) $(HOST_MINIZ_OBJ:.o=.d)
 
 UNIT_BIN_DIR := $(HOST_TEST_DIR)/unit
 REGRESSION_BIN_DIR := $(HOST_TEST_DIR)/regression
 PERF_BIN_DIR := $(HOST_TEST_DIR)/performance
 
+INCIDENTTEST_BIN := $(UNIT_BIN_DIR)/incidenttest
 SELFTEST_BIN := $(UNIT_BIN_DIR)/selftest
 ARCHIVETEST_BIN := $(UNIT_BIN_DIR)/archivetest
 BOUNDARYTEST_BIN := $(UNIT_BIN_DIR)/boundarytest
 TABLETEST_BIN := $(UNIT_BIN_DIR)/tabletest
 CHARTTEST_BIN := $(UNIT_BIN_DIR)/charttest
+REPORTCHARTTEST_BIN := $(UNIT_BIN_DIR)/reportcharttest
 LOCALETEST_BIN := $(UNIT_BIN_DIR)/localetest
 DOCUMENTTEST_BIN := $(UNIT_BIN_DIR)/documenttest
 MODEMV2PARSERTEST_BIN := $(UNIT_BIN_DIR)/modem_v2_parser_test
@@ -166,11 +170,11 @@ RK3506JTEST_BIN := $(REGRESSION_BIN_DIR)/rk3506jtest
 PERF_BIN := $(PERF_BIN_DIR)/perftest
 UI_SMOKE_BIN := $(HOST_TEST_DIR)/ui/smoke.exe
 UI_WINEPREFIX ?= $(abspath $(BUILD_ROOT)/wine-smoke)
-TEST_BINS := $(SELFTEST_BIN) $(SIMTEST_BIN) $(HOSTRUNTEST_BIN) $(BASELINETEST_BIN) \
+TEST_BINS := $(INCIDENTTEST_BIN) $(SELFTEST_BIN) $(SIMTEST_BIN) $(HOSTRUNTEST_BIN) $(BASELINETEST_BIN) \
              $(MERGETEST_BIN) $(MODEMV2TEST_BIN) $(ARCHIVETEST_BIN) $(BOUNDARYTEST_BIN) \
-             $(TABLETEST_BIN) $(CHARTTEST_BIN) $(DOCUMENTTEST_BIN) $(LOCALETEST_BIN) $(MODEMV2PARSERTEST_BIN) $(RK3506JTEST_BIN) $(ARTERYTEST_BIN)
-TEST_TARGETS := selftest simtest hostruntest baselinetest mergetest \
-                modemv2test modemv2parsertest archivetest boundarytest tabletest charttest \
+             $(TABLETEST_BIN) $(CHARTTEST_BIN) $(REPORTCHARTTEST_BIN) $(DOCUMENTTEST_BIN) $(LOCALETEST_BIN) $(MODEMV2PARSERTEST_BIN) $(RK3506JTEST_BIN) $(ARTERYTEST_BIN)
+TEST_TARGETS := incidenttest  selftest simtest hostruntest baselinetest mergetest \
+                modemv2test modemv2parsertest archivetest boundarytest tabletest charttest reportcharttest \
                 documenttest perftest rk3506jtest arterytest
 
 $(HOST_BUILD_DIR) $(UNIT_BIN_DIR) $(REGRESSION_BIN_DIR) $(PERF_BIN_DIR) $(HOST_TEST_DIR)/ui:
@@ -186,10 +190,16 @@ $(HOST_BUILD_DIR)/archive_reader_miniz.o: $(CORE_DIR)/archive_reader.cpp | $(HOS
 $(HOST_BUILD_DIR)/%.o: $(CORE_DIR)/%.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
+$(HOST_INCIDENT_OBJS): $(HOST_BUILD_DIR)/%.o: $(PRESENTATION_DIR)/%.cpp | $(HOST_BUILD_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
+
 $(HOST_TABLE_OBJ): $(PRESENTATION_DIR)/tablemodel.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(HOST_CHART_OBJ): $(PRESENTATION_DIR)/chartmodel.cpp | $(HOST_BUILD_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(HOST_REPORT_CHART_OBJ): $(PRESENTATION_DIR)/report_chart.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(HOST_LOCALE_OBJ): $(PRESENTATION_DIR)/text_catalog.cpp | $(HOST_BUILD_DIR)
@@ -202,6 +212,9 @@ $(HOST_MINIZ_OBJ): $(THIRD_PARTY_DIR)/miniz.c $(THIRD_PARTY_DIR)/miniz.h | $(HOS
 	$(HOST_CC) -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME $(DEPFLAGS) -c $< -o $@
 
 -include $(HOST_DEPS)
+
+$(INCIDENTTEST_BIN): $(TEST_UNIT_DIR)/incidenttest.cpp $(HOST_INCIDENT_OBJS) $(HOST_TABLE_OBJ) $(HOST_LOCALE_OBJ) $(HOST_CORE_OBJS) $(HOST_MINIZ_OBJ) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
 $(SELFTEST_BIN): $(TEST_UNIT_DIR)/selftest.cpp $(HOST_CORE_OBJS) | $(UNIT_BIN_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
@@ -239,6 +252,9 @@ $(TABLETEST_BIN): $(TEST_UNIT_DIR)/tabletest.cpp $(HOST_TABLE_OBJ) $(HOST_CORE_O
 $(CHARTTEST_BIN): $(TEST_UNIT_DIR)/charttest.cpp $(HOST_CHART_OBJ) | $(UNIT_BIN_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
+$(REPORTCHARTTEST_BIN): $(TEST_UNIT_DIR)/reportcharttest.cpp $(HOST_REPORT_CHART_OBJ) $(HOST_CHART_OBJ) $(HOST_CORE_OBJS) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+
 $(LOCALETEST_BIN): $(TEST_UNIT_DIR)/localetest.cpp $(HOST_LOCALE_OBJ) $(HOST_CORE_OBJS) | $(UNIT_BIN_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
@@ -251,6 +267,7 @@ $(MODEMV2PARSERTEST_BIN): $(TEST_UNIT_DIR)/modem_v2_parser_test.cpp $(HOST_CORE_
 $(PERF_BIN): $(TEST_PERF_DIR)/perftest.cpp $(HOST_CHART_OBJ) $(HOST_TABLE_OBJ) $(HOST_CORE_OBJS) | $(PERF_BIN_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
+incidenttest: $(INCIDENTTEST_BIN)
 selftest: $(SELFTEST_BIN)
 simtest: $(SIMTEST_BIN)
 hostruntest: $(HOSTRUNTEST_BIN)
@@ -264,6 +281,7 @@ archivetest: $(ARCHIVETEST_BIN)
 boundarytest: $(BOUNDARYTEST_BIN)
 tabletest: $(TABLETEST_BIN)
 charttest: $(CHARTTEST_BIN)
+reportcharttest: $(REPORTCHARTTEST_BIN)
 documenttest: $(DOCUMENTTEST_BIN)
 perftest: $(PERF_BIN)
 
@@ -286,8 +304,12 @@ check: $(TEST_BINS)
 	$(BOUNDARYTEST_BIN)
 	$(TABLETEST_BIN)
 	$(CHARTTEST_BIN)
+	$(REPORTCHARTTEST_BIN)
+	python3 tests/unit/report_chart_test.py
 	$(DOCUMENTTEST_BIN)
 	$(LOCALETEST_BIN)
+	$(INCIDENTTEST_BIN)
+	python3 tests/unit/incident_export_test.py
 
 check-full: check
 	python3 sim/mutate.py

@@ -11,7 +11,7 @@ namespace dl {
 struct AppContext {
     HWND hMain = nullptr, hNav = nullptr, hStatus = nullptr;
     HWND hPageTitle = nullptr, hFileLbl = nullptr;
-    HWND hPageHint = nullptr;
+    HWND hPageHint = nullptr, hIncidentReview = nullptr, hSignalGuide = nullptr;
     HWND hSources = nullptr, hMetricColumns = nullptr;
     HWND hTimeRangeLabel = nullptr, hTimeRangeReset = nullptr;
     HWND hOpen = nullptr, hPaste = nullptr, hFilterToggle = nullptr, hCloseLog = nullptr;

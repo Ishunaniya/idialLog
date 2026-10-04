@@ -1706,8 +1706,8 @@
   },
   {
     "id": "diag_0341",
-    "zh": "断网窗口内 LTE 心跳 CSQ 最小值 < 10(≈RSSI<-95dBm),或 RSRP ≤ -110dBm,",
-    "en": "Within the outage, LTE heartbeat min CSQ <10 (about RSSI<-95dBm), or RSRP≤-110dBm, "
+    "zh": "断网窗口内 LTE 心跳 CSQ 最小值 < 10,或 RSRP ≤ -110dBm,",
+    "en": "Within the outage, LTE heartbeat min CSQ <10, or RSRP≤-110dBm, "
   },
   {
     "id": "diag_0342",

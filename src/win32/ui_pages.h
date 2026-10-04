@@ -24,6 +24,9 @@ void ResetVirtualTables();
 void ReleaseLoadedData();
 void RenderPage(int page);
 void ShowPage(int page);
+void ReviewSelectedOutage();
+// Clear edit conditions and cancel their deferred refresh as one UI operation.
+void ClearMainFilters(bool refresh = true);
 int CurrentPage();
 void JumpToRawLine(size_t lineNo);
 bool ToggleEvidenceBookmark(size_t lineNo, const std::wstring& text);

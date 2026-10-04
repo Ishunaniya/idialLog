@@ -561,8 +561,8 @@
   },
   {
     "id": "ui_0112",
-    "zh": "| Cell ID | 样本数 |",
-    "en": "| Cell ID | Samples |"
+    "zh": "| Cell ID | 样本 | RSSI 最低/平均/最高 (dBm) | RSSI 有效样本 |",
+    "en": "| Cell ID | Samples | RSSI min/mean/max (dBm) | Valid RSSI samples |"
   },
   {
     "id": "ui_0113",
@@ -2446,8 +2446,8 @@
   },
   {
     "id": "ui_0489",
-    "zh": "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>dialLog 可视化诊断报告</title><style>:root{color-scheme:light dark;--bg:#f5f7fa;--card:#fff;--ink:#161a21;--muted:#596579;--line:#dce2ea;--accent:#1769d2;--bad:#c93c43;--warn:#9a6700;--soft:#eaf2ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}.wrap{max-width:1240px;margin:auto;padding:32px}header,.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:18px}h1{margin:0 0 6px;font-size:30px}h2{font-size:20px;margin:0 0 16px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.kpi{padding:16px;background:var(--soft);border-radius:12px}.kpi b{display:block;font-size:24px}.charts{display:grid;gap:16px}svg{width:100%;height:auto;background:var(--card);border-radius:10px}table{border-collapse:collapse;width:100%;display:block;overflow:auto}th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:var(--card)}.severity2{border-left:5px solid var(--bad)}.severity1{border-left:5px solid var(--warn)}.finding{padding:14px 16px;margin:10px 0;background:var(--soft);border-radius:10px}.finding h3{margin:0 0 8px}.evidence{font-family:ui-monospace,Consolas,monospace;white-space:normal}@media(prefers-color-scheme:dark){:root{--bg:#111419;--card:#1c2026;--ink:#f3f5f8;--muted:#aeb8c7;--line:#38414d;--accent:#65a7f3;--bad:#f06c73;--warn:#f0b945;--soft:#19324f}}@media(forced-colors:active){*{forced-color-adjust:auto}.kpi,.finding{border:1px solid CanvasText}}@media(max-width:700px){.wrap{padding:14px}header,.card{padding:16px;border-radius:10px}h1{font-size:24px}}@media print{body{background:white}.wrap{max-width:none;padding:0}.card,header{break-inside:avoid;box-shadow:none}}</style></head><body><main class=\"wrap\"><header><h1>dialLog 可视化诊断报告</h1><div class=\"muted\">生成于 ",
-    "en": "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>dialLog visual diagnostic report</title><style>:root{color-scheme:light dark;--bg:#f5f7fa;--card:#fff;--ink:#161a21;--muted:#596579;--line:#dce2ea;--accent:#1769d2;--bad:#c93c43;--warn:#9a6700;--soft:#eaf2ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}.wrap{max-width:1240px;margin:auto;padding:32px}header,.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:18px}h1{margin:0 0 6px;font-size:30px}h2{font-size:20px;margin:0 0 16px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.kpi{padding:16px;background:var(--soft);border-radius:12px}.kpi b{display:block;font-size:24px}.charts{display:grid;gap:16px}svg{width:100%;height:auto;background:var(--card);border-radius:10px}table{border-collapse:collapse;width:100%;display:block;overflow:auto}th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:var(--card)}.severity2{border-left:5px solid var(--bad)}.severity1{border-left:5px solid var(--warn)}.finding{padding:14px 16px;margin:10px 0;background:var(--soft);border-radius:10px}.finding h3{margin:0 0 8px}.evidence{font-family:ui-monospace,Consolas,monospace;white-space:normal}@media(prefers-color-scheme:dark){:root{--bg:#111419;--card:#1c2026;--ink:#f3f5f8;--muted:#aeb8c7;--line:#38414d;--accent:#65a7f3;--bad:#f06c73;--warn:#f0b945;--soft:#19324f}}@media(forced-colors:active){*{forced-color-adjust:auto}.kpi,.finding{border:1px solid CanvasText}}@media(max-width:700px){.wrap{padding:14px}header,.card{padding:16px;border-radius:10px}h1{font-size:24px}}@media print{body{background:white}.wrap{max-width:none;padding:0}.card,header{break-inside:avoid;box-shadow:none}}</style></head><body><main class=\"wrap\"><header><h1>dialLog visual diagnostic report</h1><div class=\"muted\">Generated at "
+    "zh": "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>dialLog 可视化诊断报告</title><style>:root{color-scheme:light dark;--bg:#f5f7fa;--card:#fff;--ink:#161a21;--muted:#596579;--line:#dce2ea;--accent:#1769d2;--bad:#c93c43;--warn:#9a6700;--soft:#eaf2ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}.wrap{max-width:1240px;margin:auto;padding:32px}header,.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:18px}h1{margin:0 0 6px;font-size:30px}h2{font-size:20px;margin:0 0 16px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.kpi{min-width:0;overflow-wrap:anywhere;padding:16px;background:var(--soft);border-radius:12px}.kpi b{display:block;font-size:24px}.charts{display:grid;gap:16px}svg{width:100%;height:auto;background:var(--card);border-radius:10px}table{border-collapse:collapse;width:100%;display:block;overflow:auto}th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:var(--card)}.severity2{border-left:5px solid var(--bad)}.severity1{border-left:5px solid var(--warn)}.finding{padding:14px 16px;margin:10px 0;background:var(--soft);border-radius:10px}.finding h3{margin:0 0 8px}.evidence{font-family:ui-monospace,Consolas,monospace;white-space:normal}@media(prefers-color-scheme:dark){:root{--bg:#111419;--card:#1c2026;--ink:#f3f5f8;--muted:#aeb8c7;--line:#38414d;--accent:#65a7f3;--bad:#f06c73;--warn:#f0b945;--soft:#19324f}}@media(forced-colors:active){*{forced-color-adjust:auto}.kpi,.finding{border:1px solid CanvasText}}@media(max-width:700px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wrap{padding:14px}header,.card{padding:16px;border-radius:10px}h1{font-size:24px}}@media(max-width:420px){.grid{grid-template-columns:1fr}}@media print{body{background:white}.wrap{max-width:none;padding:0}.card,header{break-inside:avoid;box-shadow:none}}.signal-chart{min-width:0;margin:0;padding:16px 0;border-top:1px solid var(--line);break-inside:avoid}.signal-chart figcaption{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}.chart-scroll{min-width:0;max-width:100%;overflow-x:auto}.chart-scroll svg{display:block;min-width:880px;font-family:inherit}.chart-label{fill:var(--muted);font-size:13px}.chart-grid{stroke:var(--line);stroke-width:1}.chart-axis{fill:none;stroke:var(--muted);stroke-width:1}.outage-band{fill:var(--bad);opacity:.13}.sample{pointer-events:all}.sample.dense{opacity:0}.sample:hover{opacity:1;r:4}.signal-curve{pointer-events:none}@media print{.chart-scroll{overflow:visible}.chart-scroll svg{min-width:0}.sample.dense{display:none}}</style></head><body><main class=\"wrap\"><header><h1>dialLog 可视化诊断报告</h1><div class=\"muted\">生成于 ",
+    "en": "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>dialLog visual diagnostic report</title><style>:root{color-scheme:light dark;--bg:#f5f7fa;--card:#fff;--ink:#161a21;--muted:#596579;--line:#dce2ea;--accent:#1769d2;--bad:#c93c43;--warn:#9a6700;--soft:#eaf2ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}.wrap{max-width:1240px;margin:auto;padding:32px}header,.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:18px}h1{margin:0 0 6px;font-size:30px}h2{font-size:20px;margin:0 0 16px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.kpi{min-width:0;overflow-wrap:anywhere;padding:16px;background:var(--soft);border-radius:12px}.kpi b{display:block;font-size:24px}.charts{display:grid;gap:16px}svg{width:100%;height:auto;background:var(--card);border-radius:10px}table{border-collapse:collapse;width:100%;display:block;overflow:auto}th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:var(--card)}.severity2{border-left:5px solid var(--bad)}.severity1{border-left:5px solid var(--warn)}.finding{padding:14px 16px;margin:10px 0;background:var(--soft);border-radius:10px}.finding h3{margin:0 0 8px}.evidence{font-family:ui-monospace,Consolas,monospace;white-space:normal}@media(prefers-color-scheme:dark){:root{--bg:#111419;--card:#1c2026;--ink:#f3f5f8;--muted:#aeb8c7;--line:#38414d;--accent:#65a7f3;--bad:#f06c73;--warn:#f0b945;--soft:#19324f}}@media(forced-colors:active){*{forced-color-adjust:auto}.kpi,.finding{border:1px solid CanvasText}}@media(max-width:700px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wrap{padding:14px}header,.card{padding:16px;border-radius:10px}h1{font-size:24px}}@media(max-width:420px){.grid{grid-template-columns:1fr}}@media print{body{background:white}.wrap{max-width:none;padding:0}.card,header{break-inside:avoid;box-shadow:none}}.signal-chart{min-width:0;margin:0;padding:16px 0;border-top:1px solid var(--line);break-inside:avoid}.signal-chart figcaption{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}.chart-scroll{min-width:0;max-width:100%;overflow-x:auto}.chart-scroll svg{display:block;min-width:880px;font-family:inherit}.chart-label{fill:var(--muted);font-size:13px}.chart-grid{stroke:var(--line);stroke-width:1}.chart-axis{fill:none;stroke:var(--muted);stroke-width:1}.outage-band{fill:var(--bad);opacity:.13}.sample{pointer-events:all}.sample.dense{opacity:0}.sample:hover{opacity:1;r:4}.signal-curve{pointer-events:none}@media print{.chart-scroll{overflow:visible}.chart-scroll svg{min-width:0}.sample.dense{display:none}}</style></head><body><main class=\"wrap\"><header><h1>dialLog visual diagnostic report</h1><div class=\"muted\">Generated at "
   },
   {
     "id": "ui_0490",
@@ -2601,8 +2601,8 @@
   },
   {
     "id": "ui_0520",
-    "zh": "<section class=\"card\"><h2>LTE 信号趋势与工程参考线</h2><p class=\"muted\">仅适用于 RAT=LTE（RAT 缺失按兼容的 LTE 日志处理）；分档不是 3GPP 或运营商统一故障等级。综合等级取四项中的最弱项；SNR 为模组上报值，不等同于所有制式的标准化 SINR。</p><div class=\"charts\">",
-    "en": "<section class=\"card\"><h2>LTE signal trends and engineering references</h2><p class=\"muted\">LTE only (missing RAT follows compatible LTE logs). These are not universal 3GPP/operator fault grades. Overall grade uses the weakest metric. SNR is module-reported, not standardized SINR across all technologies.</p><div class=\"charts\">"
+    "zh": "<section class=\"card\"><h2>信号趋势与工程参考线</h2><p class=\"muted\">图表使用当前指标视图，统一时间轴；原始点与绘制点分别计数。较小序列保留全部采样，密集序列按 4096 个横向桶保留峰谷和首尾，不增加测量点。超过 10 分钟的采样空缺断线，红色浅带表示断网；悬停采样点可查看时间和值。窄屏可横向滚动图表。</p><p class=\"muted\">CSQ / RSRP / RSRQ / SNR 的工程分档适用于 RAT=LTE（RAT 缺失按兼容的 LTE 日志处理），不能单凭颜色归因断网；RSSI 使用原始上报值，无通用好坏分档。图内日期按解析时间绘制；逐行时间推定标记见指标表及 CSV。</p><div class=\"charts\">",
+    "en": "<section class=\"card\"><h2>Signal trends and engineering references</h2><p class=\"muted\">Charts use the current metric view and a shared time axis. Sample and drawn counts are separate. Small series retain every sample; dense series retain extrema and endpoints in 4096 horizontal buckets, without adding measurements. Gaps over 10 minutes break the line; red bands mark outages. Hover a sample for its time and value. Narrow screens can scroll charts horizontally.</p><p class=\"muted\">CSQ / RSRP / RSRQ / SNR reference grades apply to LTE (missing RAT follows compatible LTE logs); color alone cannot identify an outage cause. RSSI uses reported values without universal quality grades. Chart dates use parsed timestamps; per-row inferred-time markers are available in the metric table and CSV.</p><div class=\"charts\">"
   },
   {
     "id": "ui_0521",
@@ -2626,8 +2626,8 @@
   },
   {
     "id": "ui_0525",
-    "zh": "<section class=\"card\"><h2>小区质量画像</h2><table><thead><tr><th>Cell ID</th><th>PCI</th><th>TAC</th><th>样本</th><th>占比%</th><th>观测驻留</th><th>平均RSRP</th><th>最低RSRP</th><th>平均RSRQ</th><th>平均SNR</th><th>平均CSQ</th><th>切入/切出</th><th>断网关联</th><th>判断</th></tr></thead><tbody>",
-    "en": "<section class=\"card\"><h2>Cell quality profiles</h2><table><thead><tr><th>Cell ID</th><th>PCI</th><th>TAC</th><th>Samples</th><th>Share%</th><th>Observed dwell</th><th>Mean RSRP</th><th>Min RSRP</th><th>Mean RSRQ</th><th>Mean SNR</th><th>Mean CSQ</th><th>Entries / exits</th><th>Outage association</th><th>Assessment</th></tr></thead><tbody>"
+    "zh": "<section class=\"card\"><h2>小区质量画像</h2><table><thead><tr><th>Cell ID</th><th>PCI</th><th>TAC</th><th>样本</th><th>占比%</th><th>观测驻留</th><th>平均RSRP</th><th>最低RSRP</th><th>平均RSRQ</th><th>平均SNR</th><th>平均CSQ</th><th>切入/切出</th><th>断网关联</th><th>判断</th><th>RSSI 最低/平均/最高 (dBm)</th><th>RSSI 有效样本</th></tr></thead><tbody>",
+    "en": "<section class=\"card\"><h2>Cell quality profiles</h2><table><thead><tr><th>Cell ID</th><th>PCI</th><th>TAC</th><th>Samples</th><th>Share%</th><th>Observed dwell</th><th>Mean RSRP</th><th>Min RSRP</th><th>Mean RSRQ</th><th>Mean SNR</th><th>Mean CSQ</th><th>Entries / exits</th><th>Outage association</th><th>Assessment</th><th>RSSI min/mean/max (dBm)</th><th>Valid RSSI samples</th></tr></thead><tbody>"
   },
   {
     "id": "ui_0526",
@@ -2733,5 +2733,285 @@
     "id": "ui_0547",
     "zh": "信号趋势 · 详情：%s · %d 点",
     "en": "Signal trends · Detail: %s · %d points"
+  },
+  {
+    "id": "incident_title",
+    "zh": "事件复盘",
+    "en": "Incident review"
+  },
+  {
+    "id": "incident_scope",
+    "zh": "复盘使用当前来源完整已载入日志，不受主界面筛选截断。",
+    "en": "Review uses all loaded logs in the current source scope, independent of main filters."
+  },
+  {
+    "id": "incident_evidence_note",
+    "zh": "证据保留已解析正文与来源行号；完整原文件请另附。",
+    "en": "Evidence contains parsed messages and source line references. Attach original files separately."
+  },
+  {
+    "id": "incident_rules_note",
+    "zh": "观察窗口规则汇总（可能包含相邻事件，不能直接当作单次事故根因）。",
+    "en": "Rules for the observation window (may include nearby incidents; not attribution to this incident)."
+  },
+  {
+    "id": "incident_rebuilt",
+    "zh": "完整来源补齐了筛选范围外的故障或恢复边界。",
+    "en": "Full source scope restored incident boundaries outside the filtered view."
+  },
+  {
+    "id": "incident_clock",
+    "zh": "时钟未同步与墙钟记录分开复盘；未据此推定恢复。",
+    "en": "Unsynchronised and wall-clock records are reviewed separately; no recovery is inferred."
+  },
+  {
+    "id": "incident_start",
+    "zh": "故障起点",
+    "en": "Fault onset"
+  },
+  {
+    "id": "incident_end",
+    "zh": "恢复边沿",
+    "en": "Recovery edge"
+  },
+  {
+    "id": "incident_reported",
+    "zh": "起点由设备自报时长推算，未找到独立故障起点行。",
+    "en": "Start derived from device-reported duration; no separate onset line is available."
+  },
+  {
+    "id": "incident_open",
+    "zh": "未找到恢复边沿（截至已载入日志末尾）。",
+    "en": "No recovery edge found through the end of loaded logs."
+  },
+  {
+    "id": "incident_boundary",
+    "zh": "边沿只证明日志记录的联网状态，不代表全部业务恢复。",
+    "en": "Edges reflect logged connectivity state, not recovery of every service."
+  },
+  {
+    "id": "incident_window",
+    "zh": "观察窗口",
+    "en": "Observation window"
+  },
+  {
+    "id": "incident_duration",
+    "zh": "记录时长",
+    "en": "Recorded duration"
+  },
+  {
+    "id": "incident_previous",
+    "zh": "上一事件",
+    "en": "Previous"
+  },
+  {
+    "id": "incident_next",
+    "zh": "下一事件",
+    "en": "Next"
+  },
+  {
+    "id": "incident_before",
+    "zh": "前置观察",
+    "en": "Before"
+  },
+  {
+    "id": "incident_after",
+    "zh": "后置观察",
+    "en": "After"
+  },
+  {
+    "id": "incident_minutes",
+    "zh": "%d 分钟",
+    "en": "%d min"
+  },
+  {
+    "id": "incident_signal",
+    "zh": "查看信号区间",
+    "en": "View signal range"
+  },
+  {
+    "id": "incident_copy",
+    "zh": "复制复盘",
+    "en": "Copy review"
+  },
+  {
+    "id": "incident_export",
+    "zh": "导出证据包",
+    "en": "Export evidence ZIP"
+  },
+  {
+    "id": "incident_events",
+    "zh": "事件与证据",
+    "en": "Events / evidence"
+  },
+  {
+    "id": "incident_metrics",
+    "zh": "信号采样",
+    "en": "Signal samples"
+  },
+  {
+    "id": "incident_rules",
+    "zh": "窗口结论",
+    "en": "Window findings"
+  },
+  {
+    "id": "incident_source",
+    "zh": "来源",
+    "en": "Source"
+  },
+  {
+    "id": "incident_local_line",
+    "zh": "原文件行",
+    "en": "Source line"
+  },
+  {
+    "id": "incident_global_line",
+    "zh": "合并行",
+    "en": "Merged line"
+  },
+  {
+    "id": "incident_jump",
+    "zh": "跳转原始日志",
+    "en": "Open log row"
+  },
+  {
+    "id": "incident_bookmark",
+    "zh": "切换书签",
+    "en": "Toggle bookmark"
+  },
+  {
+    "id": "incident_phase",
+    "zh": "阶段",
+    "en": "Phase"
+  },
+  {
+    "id": "incident_pre",
+    "zh": "故障前",
+    "en": "Before fault"
+  },
+  {
+    "id": "incident_during",
+    "zh": "故障期间",
+    "en": "During fault"
+  },
+  {
+    "id": "incident_post",
+    "zh": "恢复后",
+    "en": "After recovery"
+  },
+  {
+    "id": "incident_no_selection",
+    "zh": "请选择一条断网记录。",
+    "en": "Select an outage record."
+  },
+  {
+    "id": "incident_none",
+    "zh": "当前完整来源中未找到对应事件。",
+    "en": "No matching incident found in the complete source scope."
+  },
+  {
+    "id": "incident_no_rules",
+    "zh": "此观察窗口未触发规则；这不证明设备或业务没有故障。",
+    "en": "No rules triggered in this window; this does not prove the device or service is fault-free."
+  },
+  {
+    "id": "incident_export_done",
+    "zh": "证据包已保存",
+    "en": "Evidence ZIP saved"
+  },
+  {
+    "id": "incident_export_fail",
+    "zh": "证据包保存失败",
+    "en": "Could not save evidence ZIP"
+  },
+  {
+    "id": "incident_export_limit",
+    "zh": "证据包超过 64 MiB，请缩小前后观察范围，或加载更小的日志片段后重试。",
+    "en": "Evidence package exceeds 64 MiB. Reduce context margins or load a smaller log segment and retry."
+  },
+  {
+    "id": "text_select",
+    "zh": "选择正文",
+    "en": "Select text"
+  },
+  {
+    "id": "text_hint",
+    "zh": "正文支持鼠标选择、Ctrl+A 全选、Ctrl+C 复制；下方证据可跳转或加书签。",
+    "en": "Select text with the mouse, Ctrl+A and Ctrl+C. Use evidence rows below to navigate or bookmark."
+  },
+  {
+    "id": "signal_guide",
+    "zh": "指标说明",
+    "en": "Signal guide"
+  },
+  {
+    "id": "signal_guide_body",
+    "zh": "工程分档用于 LTE 可视化参考，不能单凭颜色归因断网。\r\n\r\nCSQ：有效值 0–31，99 为未知；较差 <10，一般 10–14，良好 15–19，优秀 ≥20。\r\nRSRP（dBm）：较差 <-100，一般 -100 至 <-90，良好 -90 至 <-80，优秀 ≥-80。\r\nRSRQ（dB）：较差 <-20，一般 -20 至 <-15，良好 -15 至 <-10，优秀 ≥-10。\r\nSNR（dB）：较差 ≤0，一般 >0 至 <13，良好 13 至 <20，优秀 ≥20；SDK 的 0.1 dB 上报已换算。\r\nRSSI（dBm）：显示日志实际值，不从 CSQ 换算；图轴范围不是通用好坏阈值。\r\n\r\n曲线连接采样点，不插值补造测量值。悬停分别查找每个指标的邻近采样并显示各自时间，超过 10 分钟不作为邻近值。详细射频值可能沿用同来源最近快照，并非每次心跳重新测量。缺失值不补零，明确的非 LTE 制式不套用 LTE 分档。",
+    "en": "Engineering grades are LTE visual references, not causes of outages.\r\n\r\nCSQ: valid 0–31; 99 unknown. Poor <10; fair 10–14; good 15–19; excellent ≥20.\r\nRSRP (dBm): poor <-100; fair -100 to <-90; good -90 to <-80; excellent ≥-80.\r\nRSRQ (dB): poor <-20; fair -20 to <-15; good -15 to <-10; excellent ≥-10.\r\nSNR (dB): poor ≤0; fair >0 to <13; good 13 to <20; excellent ≥20. SDK reports in 0.1 dB are converted.\r\nRSSI (dBm): actual logged values, never derived from CSQ. Chart axes are not universal quality thresholds.\r\n\r\nLines connect samples without inventing interpolated measurements. Hover finds nearby samples independently for each metric and shows their own times; samples more than 10 minutes away are excluded. Detailed RF values may carry forward the latest snapshot from the same source; a heartbeat is not necessarily a new RF measurement. Missing values are not filled with zero. Explicit non-LTE radio types do not use LTE grades."
+  },
+  {
+    "id": "finding_keys",
+    "zh": "↑↓ 选择结论 · Enter 展开 · F2 选择正文 · Ctrl+C 复制当前结论",
+    "en": "↑↓ Select finding · Enter Expand · F2 Select text · Ctrl+C Copy finding"
+  },
+  {
+    "id": "incident_inferred",
+    "zh": "部分时间来自解析器推定，不能当作设备已授时的证明。",
+    "en": "Some timestamps are inferred by the parser; they do not prove that the device clock was synchronised."
+  },
+  {
+    "id": "incident_time",
+    "zh": "时间",
+    "en": "Time"
+  },
+  {
+    "id": "incident_kind",
+    "zh": "事件类型",
+    "en": "Event type"
+  },
+  {
+    "id": "incident_message",
+    "zh": "消息",
+    "en": "Message"
+  },
+  {
+    "id": "incident_signal_note",
+    "zh": "查看信号区间时，主界面的其他筛选条件仍生效。",
+    "en": "Other main-window filters still apply when viewing the signal range."
+  },
+  {
+    "id": "incident_platform_evidence",
+    "zh": "完整来源中的平台依据（可能位于观察窗口外）",
+    "en": "Platform evidence from full source scope (may be outside the observation window)"
+  },
+  {
+    "id": "incident_edge_duration",
+    "zh": "边沿时间差",
+    "en": "Edge elapsed time"
+  },
+  {
+    "id": "rssi_range",
+    "zh": "RSSI 最低 / 平均 / 最高",
+    "en": "RSSI min / mean / max"
+  },
+  {
+    "id": "rssi_samples",
+    "zh": "RSSI 有效样本",
+    "en": "Valid RSSI samples"
+  },
+  {
+    "id": "rssi_no_observation",
+    "zh": "RSSI：当前范围无有效上报",
+    "en": "RSSI: no valid readings in the current scope"
+  },
+  {
+    "id": "rssi_note",
+    "zh": "仅统计实际上报的 RSSI，不单独用于断网归因。",
+    "en": "Reported RSSI only; it does not independently establish an outage cause."
+  },
+  {
+    "id": "rssi_cell_range",
+    "zh": "RSSI 最低/平均/最高 (dBm)",
+    "en": "RSSI min/mean/max (dBm)"
   }
 ]

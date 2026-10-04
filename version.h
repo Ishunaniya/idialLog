@@ -89,11 +89,14 @@
 //           中英文界面、诊断、复制与报告切换，保留日志原文及独立字体设置。
 //   1.11.16 明确语言/字体入口，诊断原文预览与完整展开；新增实际 RSSI 趋势，
 //           抗锯齿直线绘图和分屏自动比例，保留原始采样与完整复制/报告。
+//   1.12.0  事件复盘与证据 ZIP；诊断正文选择与键盘操作，集中指标帮助；
+//           报告图表共享指标取值与时间轴，补齐 RSSI、采样点数、断线及高精度 SVG；
+//           RSSI 实际观测联动概览、诊断证据、来源/小区统计、复盘、复制与报告。
 #pragma once
 
 #define DL_VER_MAJOR 1
-#define DL_VER_MINOR 11
-#define DL_VER_PATCH 16
+#define DL_VER_MINOR 12
+#define DL_VER_PATCH 0
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

@@ -1,5 +1,6 @@
 // overview_page.cpp — 总览仪表盘、摘要卡片与证据结论页
 #include "overview_page.h"
+#include "rssi_summary.h"
 
 #include <commctrl.h>
 #include <windowsx.h>
@@ -18,6 +19,7 @@
 #include "log_time.h"
 #include "load_controller.h"
 #include "source_workspace.h"
+#include "text_view.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "signal_quality.h"
@@ -42,6 +44,10 @@ static RECT g_dashCopyRect{}, g_findCopyRect{}, g_dashTileRects[4]{};
 static RECT g_findExpandAllRect{};
 struct FindingExpandHit { RECT rect{}; std::size_t index = 0; };
 static std::vector<FindingExpandHit> g_findingExpandHits;
+static std::vector<FindingExpandHit> g_selectTextHits;
+static std::size_t g_focusedFinding=0;
+static bool g_findingKeyboardFocus=false;
+static bool g_findingPointerFocus=false;
 static std::set<std::size_t> g_expandedFindings;
 static bool g_expandAllFindings = false;
 struct DashboardStats {
@@ -110,6 +116,13 @@ static std::wstring FindingText(size_t index) {
         text += FmtW(UiText(TextId::ui_0156), static_cast<int>(item.lineNo)) + U8ToW(item.ts) + L"  " + U8ToW(item.text) + L"\r\n";
     return text;
 }
+static void SelectFindingText(std::size_t index) {
+    if(index>=App().document.findings.size())return;
+    std::vector<TextEvidence> evidence;
+    for(const auto& e:App().document.findings[index].ev)
+        evidence.push_back({e.lineNo,U8ToW(e.ts)+L"  "+U8ToW(e.text)});
+    ShowSelectableText(UiText(TextId::text_select),FindingText(index),evidence);
+}
 static std::wstring FindingsMetaText() {
     const auto& doc = App().document;
     std::wstring text = AnalysisSourceText() + L"\r\n" + UiText(TextId::ui_0364) + U8ToW(GeneratedText(doc.platform.name)) + L"\r\n";
@@ -118,6 +131,7 @@ static std::wstring FindingsMetaText() {
     text += FmtW(UiText(TextId::ui_0366),
         static_cast<int>(doc.audit.parsed), static_cast<int>(doc.audit.unparsed), doc.audit.unparsedRatio() * 100.0,
         static_cast<int>(doc.audit.nulBytes), static_cast<int>(doc.audit.nulLines));
+    text += L"\r\n" + U8ToW(rssiSummaryText(doc.rssi)) + L"\r\n";
     if (doc.platform.evidenceLine) text += FmtW(UiText(TextId::ui_0367), static_cast<int>(doc.platform.evidenceLine)) + U8ToW(doc.platform.evidence) + L"\r\n";
     if (doc.audit.clockJump) text += FmtW(UiText(TextId::ui_0368),
         static_cast<int>(doc.audit.jumpAtLine), U8ToW(fmtTime(doc.audit.jumpFromT, "FULL")).c_str(), U8ToW(fmtTime(doc.audit.jumpToT, "FULL")).c_str());
@@ -149,11 +163,13 @@ static bool HandleCopyMenu(HWND hwnd, UINT msg, LPARAM lp, const std::vector<Cop
     for (const auto& hit : hits) if (PtInRect(&hit.rect, client)) { cardText = hit.text; break; }
     HMENU menu = CreatePopupMenu();
     if (!cardText.empty()) AppendMenuW(menu, MF_STRING, 1, page == 0 ? UiText(TextId::ui_0372) : UiText(TextId::ui_0373));
+    if(page==1 && !cardText.empty())AppendMenuW(menu,MF_STRING,3,UiText(TextId::text_select));
     AppendMenuW(menu, MF_STRING, 2, page == 0 ? UiText(TextId::ui_0374) : UiText(TextId::ui_0375));
     const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD, point.x, point.y, 0, hwnd, nullptr);
     DestroyMenu(menu);
     if (command == 1) CopyNotice(cardText);
     if (command == 2) CopyOverviewPage(page);
+    if(command==3)for(std::size_t i=0;i<hits.size();++i)if(hits[i].text==cardText){SelectFindingText(i);break;}
     return true;
 }
 
@@ -431,8 +447,53 @@ static int DrawWrapped(HDC hdc, int x, int y, int maxW, const std::wstring& s,
     return h;
 }
 
+static void EnsureFocusedFinding(HWND hwnd) {
+    UpdateWindow(hwnd);
+    if(g_focusedFinding>=g_findingCopyHits.size())return;
+    RECT client{};GetClientRect(hwnd,&client);const auto rect=g_findingCopyHits[g_focusedFinding].rect;
+    int delta=rect.top<S(12)?rect.top-S(12):rect.bottom>client.bottom?rect.bottom-client.bottom+S(12):0;
+    if(rect.bottom-rect.top>client.bottom-S(24))delta=rect.top-S(12);
+    if(delta) {
+        g_findScroll=std::clamp(g_findScroll+delta,0,std::max(0,g_findContentH-static_cast<int>(client.bottom)));
+        SetScrollPos(hwnd,SB_VERT,g_findScroll,TRUE);
+    }
+    InvalidateRect(hwnd,nullptr,FALSE);
+}
+bool RouteFindingKeyboardMessage(MSG& message) {
+    if(message.message!=WM_KEYDOWN || GetFocus()!=App().hFindings || App().document.findings.empty())return false;
+    const auto last=App().document.findings.size()-1;
+    g_focusedFinding=std::min(g_focusedFinding,last);
+    if(message.wParam=='C' && (GetKeyState(VK_CONTROL)&0x8000)){CopyNotice(FindingText(g_focusedFinding));return true;}
+    if(message.wParam==VK_F2){SelectFindingText(g_focusedFinding);return true;}
+    if(message.wParam==VK_RETURN || message.wParam==VK_SPACE) {
+        if(g_expandedFindings.count(g_focusedFinding))g_expandedFindings.erase(g_focusedFinding);
+        else g_expandedFindings.insert(g_focusedFinding);
+    } else if(message.wParam==VK_UP){if(g_focusedFinding)--g_focusedFinding;}
+    else if(message.wParam==VK_DOWN)g_focusedFinding=std::min(last,g_focusedFinding+1);
+    else if(message.wParam==VK_HOME)g_focusedFinding=0;
+    else if(message.wParam==VK_END)g_focusedFinding=last;
+    else return false;
+    g_findingKeyboardFocus=true;InvalidateRect(App().hFindings,nullptr,FALSE);EnsureFocusedFinding(App().hFindings);return true;
+}
 LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_ERASEBKGND) return 1;
+    if(msg==WM_GETDLGCODE)return DLGC_WANTARROWS|DLGC_WANTCHARS;
+    if(msg==WM_KEYDOWN){MSG key{};key.hwnd=hwnd;key.message=msg;key.wParam=wp;key.lParam=lp;if(RouteFindingKeyboardMessage(key))return 0;}
+    if(msg==WM_SETFOCUS){
+        g_findingKeyboardFocus=!g_findingPointerFocus;
+        if(g_findingKeyboardFocus)EnsureFocusedFinding(hwnd);
+        else InvalidateRect(hwnd,nullptr,FALSE);
+        return 0;
+    }
+    if(msg==WM_KILLFOCUS){InvalidateRect(hwnd,nullptr,FALSE);return 0;}
+    if(msg==WM_LBUTTONDOWN){
+        // Pointer focus must not scroll before hit-testing the clicked card.
+        // Keyboard focus still reveals its selected conclusion.
+        g_findingPointerFocus=true;SetFocus(hwnd);g_findingPointerFocus=false;
+        g_findingKeyboardFocus=false;
+        POINT point{GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
+        for(std::size_t i=0;i<g_findingCopyHits.size();++i)if(PtInRect(&g_findingCopyHits[i].rect,point)){g_focusedFinding=i;break;}
+        InvalidateRect(hwnd,nullptr,FALSE);return 0;}
 
     if (msg == WM_SETCURSOR) {
         POINT point{}; GetCursorPos(&point); ScreenToClient(hwnd, &point);
@@ -440,6 +501,7 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     if (msg == WM_LBUTTONUP) {
         POINT point{GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+        for(const auto& hit:g_selectTextHits)if(PtInRect(&hit.rect,point)){SelectFindingText(hit.index);return 0;}
         if (PtInRect(&g_findExpandAllRect,point)) {
             g_expandAllFindings=!g_expandAllFindings; g_expandedFindings.clear();
             g_findScroll=0; InvalidateRect(hwnd,nullptr,FALSE); return 0;
@@ -540,7 +602,7 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     g_evidenceHits.clear();
     g_findingCopyHits.clear();
     g_findCopyRect = RECT{};
-    g_findingExpandHits.clear(); g_findExpandAllRect=RECT{};
+    g_findingExpandHits.clear(); g_selectTextHits.clear(); g_findExpandAllRect=RECT{};
 
     if (App().document.lines.empty()) {
         DrawPageEmpty(hdc, rc, UiText(TextId::ui_0222),
@@ -605,6 +667,7 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             (int)App().document.audit.nulLines,
             App().document.audit.unparsed == 0 && App().document.audit.nulBytes == 0
                 ? UiText(TextId::ui_0409) : UiText(TextId::ui_0410));
+        coverage += L"\r\n" + U8ToW(rssiSummaryText(App().document.rssi));
         std::wstring evidence;
         if (g_expandAllFindings && App().document.platform.evidenceLine)
             evidence = FmtW(UiText(TextId::ui_0411), (int)App().document.platform.evidenceLine) +
@@ -660,6 +723,8 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         y += h + GAP;
     }
 
+    y+=DrawWrapped(hdc,textX0,y,textW,UiText(TextId::finding_keys),App().hFontSmall,th::inkMuted)+GAP;
+
     // ── 每条结论一张卡(先测高度,再画白底,最后画字)──
     int n = 0;
     for (const auto& f : App().document.findings) {
@@ -705,6 +770,11 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
         // —— 画 pass:白底卡 + 色带,再叠字 ——
         drawCard(y, h, band);
+        if(g_findingKeyboardFocus && GetFocus()==hwnd && g_focusedFinding==static_cast<std::size_t>(n-1)) {
+            HPEN pen=CreatePen(PS_SOLID,S(2),th::accent);HGDIOBJ oldPen=SelectObject(hdc,pen),oldBrush=SelectObject(hdc,GetStockObject(NULL_BRUSH));
+            Rectangle(hdc,M+S(2),y+S(2),M+cardW-S(2),y+h-S(2));
+            SelectObject(hdc,oldBrush);SelectObject(hdc,oldPen);DeleteObject(pen);
+        }
         int ty = y + CARD_PAD;
         DrawPill(hdc, textX0, ty, badge,
                  f.severity == 2 ? th::outageBand : (f.severity == 1 ? th::cellWeak : th::accentSoft),
@@ -731,6 +801,10 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         RECT toggle{textX0,ty,textX0+TextW_(hdc,toggleText,App().hFontSmall)+S(24),ty+S(27)};
         DrawPill(hdc,toggle.left,toggle.top,toggleText,th::accentSoft,th::accent);
         g_findingExpandHits.push_back(FindingExpandHit{toggle,static_cast<std::size_t>(n-1)});
+        const int selectWidth=TextW_(hdc,UiText(TextId::text_select),App().hFontSmall)+S(24);
+        RECT select{M+cardW-CARD_PAD-selectWidth,ty,M+cardW-CARD_PAD,ty+S(27)};
+        DrawPill(hdc,select.left,select.top,UiText(TextId::text_select),th::accentSoft,th::accent);
+        g_selectTextHits.push_back({select,static_cast<std::size_t>(n-1)});
         y += h + GAP;
     }
 
@@ -1035,6 +1109,7 @@ void RenderSummary() {
         }
         add(UiText(TextId::ui_0454), ls, acc);
     }
+    add(L"RSSI", {U8ToW(rssiSummaryText(App().document.rssi)), UiText(TextId::rssi_note)});
     if (!srvs.empty() || !rats.empty() || denyN || !opers.empty()) {
         auto dist = [](const std::map<std::string, int>& xs) {
             std::wstring s;
@@ -1142,9 +1217,10 @@ void RenderSummary() {
 
 void RenderFindings() {
     g_findingCopyHits.clear(); g_evidenceHits.clear();
-    g_findingExpandHits.clear(); g_findExpandAllRect=RECT{};
+    g_findingExpandHits.clear(); g_selectTextHits.clear(); g_findExpandAllRect=RECT{};
     g_expandedFindings.clear();
     g_findScroll = 0;
+    g_focusedFinding=0;g_findingKeyboardFocus=false;
     if (App().hFindings) {
         SetScrollPos(App().hFindings, SB_VERT, 0, TRUE);
         InvalidateRect(App().hFindings, nullptr, FALSE);
@@ -1157,7 +1233,7 @@ void ReleaseOverviewPageData() {
     releaseVector(g_sumCards);
     releaseVector(g_summaryCopyHits);
     releaseVector(g_findingCopyHits);
-    releaseVector(g_findingExpandHits); g_expandedFindings.clear();g_expandAllFindings=false;
+    releaseVector(g_findingExpandHits);releaseVector(g_selectTextHits); g_expandedFindings.clear();g_expandAllFindings=false;
     g_findExpandAllRect=RECT{};
     releaseVector(g_evidenceHits);
     g_dashCopyRect = g_findCopyRect = RECT{};

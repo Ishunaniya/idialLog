@@ -138,6 +138,45 @@ int main() {
     ok(cellSummaryCellText(cell, 4) == "62.5" && cellSummaryCellText(cell, 5) == "2m00s" &&
        cellSummaryCellText(cell, 14) == "疑似弱覆盖", "小区画像虚拟表包含占比、驻留和质量判断");
 
+    cell.rssi.add(-65); cell.rssi.add(-66); cell.rssi.add(1); cell.rssi.add(0);
+    ok(kCellColumnCount == 17 && cellSummaryCellText(cell, 15) == "-66 / -65.5 / -65" &&
+       cellSummaryCellText(cell, 16) == "2" && cellSummaryCellText(CellSummary{}, 15) == "-",
+       "小区 RSSI 显示精确均值、极值及有效样本，缺测不算零");
+    MetricRow nr; nr.cellId = "NR001"; nr.rat = "NR"; nr.rssiVal = -80; nr.lineNo = 1;
+    MetricRow missing = nr; missing.rssiVal = 1; missing.lineNo = 2;
+    auto nrCells = analyzeCells(LogView{}, {nr, missing}, {});
+    ok(nrCells.cells.size() == 1 && nrCells.cells[0].rssi.samples == 1 &&
+       nrCells.cells[0].rssi.mean() == -80 && nrCells.cells[0].rsrpSamples == 0 &&
+       cellSummaryCellText(nrCells.cells[0], 14) == "正常",
+       "非 LTE 原报 RSSI 进入小区统计，不新增工程分档或断网归因");
+    RssiObservation extreme; extreme.add(INT_MIN); extreme.add(-1);
+    ok(extreme.sum == static_cast<long long>(INT_MIN) - 1 && extreme.mean() < 0,
+       "RSSI 累加和使用 64 位，极端有效原值不溢出");
+    for (const int csq : {8, 18}) {
+        std::vector<LogLine> observations; std::vector<std::string> observationSessions;
+        ParseAudit observationAudit;
+        parseLines({"[2026-08-03 10:00:00] [HEARTBEAT] CH:SIM | CSQ:" + std::to_string(csq) +
+                    " | RSRP:" + (csq == 8 ? "-115" : "-95") + " | RSSI:-100",
+                    "[2026-08-03 10:00:01] [SDK] Ping failed, fault timer started",
+                    "[2026-08-03 10:00:03] [SDK] Network recovered after 2s"},
+                   observations, observationSessions, &observationAudit);
+        const auto observationMetrics = buildMetrics(observations);
+        const auto observationOutages = collectOutages(observations);
+        const auto observationFindings = analyze(observations, observationOutages, observationMetrics,
+                                                detectPlatform(observations), observationAudit);
+        bool weakClassification = false, rssiEvidence = false;
+        for (const auto& finding : observationFindings) {
+            if (finding.title.find("断网根因分类:弱信号") != std::string::npos) {
+                weakClassification = true;
+                for (const auto& evidence : finding.ev)
+                    rssiEvidence |= evidence.text.find("RSSI=-100dBm") != std::string::npos;
+                ok(finding.detail.find("≈RSSI") == std::string::npos,
+                   "诊断依据不把 CSQ 换算值写成实测 RSSI");
+            }
+        }
+        ok(observationOutages.size() == 1 && (csq == 8 ? weakClassification && rssiEvidence : !weakClassification),
+           csq == 8 ? "原弱覆盖规则保留，实际 RSSI 补充进证据" : "单独 RSSI 低值不新增弱信号归因");
+    }
     std::puts("== T3 边界与规模 ==");
     LogLine longLine; longLine.t = 0; longLine.msg.assign(250, 'x');
     ok(timelineCellText(longLine, 3).size() == 250, "时间线保留完整消息供滚动、详情与复制");
