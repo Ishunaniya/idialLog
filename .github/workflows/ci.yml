@@ -41,6 +41,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y mingw-w64
       - name: Build x64 and x86 consecutively
         run: make windows-all
+      # build/ 为本任务上一阶段生成的可清理产物，不依赖开发者本地已有文件。
       - name: Verify PE architectures
         run: |
           file build/x64/dialLog_v*.exe | tee /tmp/diallog-x64-file.txt

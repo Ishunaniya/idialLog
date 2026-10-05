@@ -2926,8 +2926,8 @@
   },
   {
     "id": "incident_export_limit",
-    "zh": "证据包超过 64 MiB，请缩小前后观察范围，或加载更小的日志片段后重试。",
-    "en": "Evidence package exceeds 64 MiB. Reduce context margins or load a smaller log segment and retry."
+    "zh": "证据文本超过 64 MiB，或原文件单份超过 256 MiB / 整包超过 512 MiB；未截断，请缩小观察窗口或减少来源。",
+    "en": "Evidence text exceeds 64 MiB, one original exceeds 256 MiB, or the package exceeds 512 MiB. Nothing was truncated; narrow the window or reduce sources."
   },
   {
     "id": "text_select",
@@ -2946,8 +2946,8 @@
   },
   {
     "id": "signal_guide_body",
-    "zh": "工程分档用于 LTE 可视化参考，不能单凭颜色归因断网。\r\n\r\nCSQ：有效值 0–31，99 为未知；较差 <10，一般 10–14，良好 15–19，优秀 ≥20。\r\nRSRP（dBm）：较差 <-100，一般 -100 至 <-90，良好 -90 至 <-80，优秀 ≥-80。\r\nRSRQ（dB）：较差 <-20，一般 -20 至 <-15，良好 -15 至 <-10，优秀 ≥-10。\r\nSNR（dB）：较差 ≤0，一般 >0 至 <13，良好 13 至 <20，优秀 ≥20；SDK 的 0.1 dB 上报已换算。\r\nRSSI（dBm）：显示日志实际值，不从 CSQ 换算；图轴范围不是通用好坏阈值。\r\n\r\n曲线连接采样点，不插值补造测量值。悬停分别查找每个指标的邻近采样并显示各自时间，超过 10 分钟不作为邻近值。详细射频值可能沿用同来源最近快照，并非每次心跳重新测量。缺失值不补零，明确的非 LTE 制式不套用 LTE 分档。",
-    "en": "Engineering grades are LTE visual references, not causes of outages.\r\n\r\nCSQ: valid 0–31; 99 unknown. Poor <10; fair 10–14; good 15–19; excellent ≥20.\r\nRSRP (dBm): poor <-100; fair -100 to <-90; good -90 to <-80; excellent ≥-80.\r\nRSRQ (dB): poor <-20; fair -20 to <-15; good -15 to <-10; excellent ≥-10.\r\nSNR (dB): poor ≤0; fair >0 to <13; good 13 to <20; excellent ≥20. SDK reports in 0.1 dB are converted.\r\nRSSI (dBm): actual logged values, never derived from CSQ. Chart axes are not universal quality thresholds.\r\n\r\nLines connect samples without inventing interpolated measurements. Hover finds nearby samples independently for each metric and shows their own times; samples more than 10 minutes away are excluded. Detailed RF values may carry forward the latest snapshot from the same source; a heartbeat is not necessarily a new RF measurement. Missing values are not filled with zero. Explicit non-LTE radio types do not use LTE grades."
+    "zh": "工程分档用于 LTE 可视化参考，不能单凭颜色归因断网。\r\n\r\nCSQ：有效值 0–31，99 为未知；较差 <10，一般 10–14，良好 15–19，优秀 ≥20。\r\nRSRP（dBm）：较差 <-100，一般 -100 至 <-90，良好 -90 至 <-80，优秀 ≥-80。\r\nRSRQ（dB）：较差 <-20，一般 -20 至 <-15，良好 -15 至 <-10，优秀 ≥-10。\r\nSNR（dB）：较差 ≤0，一般 >0 至 <13，良好 13 至 <20，优秀 ≥20；SDK 的 0.1 dB 上报已换算。\r\nRSSI（dBm）：显示日志实际值，不从 CSQ 换算；图轴范围不是通用好坏阈值。\r\n\r\n曲线连接采样点，不插值补造测量值。悬停分别查找每个指标的邻近采样并显示各自时间，超过 10 分钟不作为邻近值。详细射频值可能沿用同来源最近快照，并非每次心跳重新测量。缺失值不补零，明确的非 LTE 制式不套用 LTE 分档。\n\n图表操作：滚轮围绕鼠标时间缩放；Shift+滚轮或中键拖动平移。时间范围联动各页，Ctrl+0 恢复全范围。",
+    "en": "Engineering grades are LTE visual references, not causes of outages.\r\n\r\nCSQ: valid 0–31; 99 unknown. Poor <10; fair 10–14; good 15–19; excellent ≥20.\r\nRSRP (dBm): poor <-100; fair -100 to <-90; good -90 to <-80; excellent ≥-80.\r\nRSRQ (dB): poor <-20; fair -20 to <-15; good -15 to <-10; excellent ≥-10.\r\nSNR (dB): poor ≤0; fair >0 to <13; good 13 to <20; excellent ≥20. SDK reports in 0.1 dB are converted.\r\nRSSI (dBm): actual logged values, never derived from CSQ. Chart axes are not universal quality thresholds.\r\n\r\nLines connect samples without inventing interpolated measurements. Hover finds nearby samples independently for each metric and shows their own times; samples more than 10 minutes away are excluded. Detailed RF values may carry forward the latest snapshot from the same source; a heartbeat is not necessarily a new RF measurement. Missing values are not filled with zero. Explicit non-LTE radio types do not use LTE grades.\n\nChart navigation: wheel zooms around the pointer time; Shift+wheel or middle-drag pans. The range updates all pages. Ctrl+0 restores the full range."
   },
   {
     "id": "finding_keys",
@@ -3013,5 +3013,295 @@
     "id": "rssi_cell_range",
     "zh": "RSSI 最低/平均/最高 (dBm)",
     "en": "RSSI min/mean/max (dBm)"
+  },
+  {
+    "id": "review_pending",
+    "zh": "待复核",
+    "en": "Pending review"
+  },
+  {
+    "id": "review_confirmed",
+    "zh": "已确认",
+    "en": "Confirmed"
+  },
+  {
+    "id": "review_handled",
+    "zh": "已处理",
+    "en": "Handled"
+  },
+  {
+    "id": "review_manual",
+    "zh": "人工复核",
+    "en": "Manual review"
+  },
+  {
+    "id": "workspace_title",
+    "zh": "工作台记录",
+    "en": "Workspace records"
+  },
+  {
+    "id": "workspace_manage",
+    "zh": "设备、复核与前后对比…",
+    "en": "Devices, reviews and period comparison…"
+  },
+  {
+    "id": "workspace_devices",
+    "zh": "设备归属",
+    "en": "Device assignment"
+  },
+  {
+    "id": "workspace_reviews",
+    "zh": "复核记录",
+    "en": "Reviews"
+  },
+  {
+    "id": "workspace_compare",
+    "zh": "前后 / 设备对比",
+    "en": "Periods / devices"
+  },
+  {
+    "id": "workspace_source",
+    "zh": "来源",
+    "en": "Source"
+  },
+  {
+    "id": "workspace_device",
+    "zh": "设备标识（人工指定）",
+    "en": "Device ID (manual)"
+  },
+  {
+    "id": "workspace_firmware",
+    "zh": "固件版本",
+    "en": "Firmware version"
+  },
+  {
+    "id": "workspace_configuration",
+    "zh": "配置 / 变更说明",
+    "en": "Configuration / change notes"
+  },
+  {
+    "id": "workspace_save",
+    "zh": "保存",
+    "en": "Save"
+  },
+  {
+    "id": "workspace_note",
+    "zh": "人工备注",
+    "en": "Manual notes"
+  },
+  {
+    "id": "workspace_status",
+    "zh": "复核状态",
+    "en": "Review status"
+  },
+  {
+    "id": "workspace_edit_review",
+    "zh": "复核 / 备注…",
+    "en": "Review / notes…"
+  },
+  {
+    "id": "workspace_empty",
+    "zh": "尚未添加人工复核记录。",
+    "en": "No manual reviews yet."
+  },
+  {
+    "id": "workspace_saved",
+    "zh": "工作台记录已保存",
+    "en": "Workspace records saved"
+  },
+  {
+    "id": "workspace_error",
+    "zh": "工作台记录保存失败",
+    "en": "Could not save workspace records"
+  },
+  {
+    "id": "workspace_start",
+    "zh": "起始日期时间",
+    "en": "Start date and time"
+  },
+  {
+    "id": "workspace_end",
+    "zh": "结束日期时间",
+    "en": "End date and time"
+  },
+  {
+    "id": "workspace_run",
+    "zh": "计算并绘制对照",
+    "en": "Compare and plot"
+  },
+  {
+    "id": "workspace_copy",
+    "zh": "复制完整对照",
+    "en": "Copy full comparison"
+  },
+  {
+    "id": "workspace_export",
+    "zh": "导出对照 HTML",
+    "en": "Export comparison HTML"
+  },
+  {
+    "id": "workspace_relative",
+    "zh": "按各自起点对齐",
+    "en": "Align to each period start"
+  },
+  {
+    "id": "workspace_invalid_time",
+    "zh": "请输入完整日期时间 YYYY-MM-DD HH:MM:SS；结束不得早于开始。",
+    "en": "Enter YYYY-MM-DD HH:MM:SS; end must not precede start."
+  },
+  {
+    "id": "workspace_device_hint",
+    "zh": "相同设备标识表示人工确认同设备。空白表示身份未知；不根据文件名推断。保存不修改日志事实。",
+    "en": "Matching IDs mean a manually confirmed device. Blank means unknown; filenames do not identify devices. Saving does not change log facts."
+  },
+  {
+    "id": "workspace_review_hint",
+    "zh": "状态和备注由人工维护，与自动结论分开保存。保存后重开同一内容的日志可恢复。",
+    "en": "Status and notes are manual, separate from automated findings. Reopen the same log content to restore them."
+  },
+  {
+    "id": "workspace_compare_hint",
+    "zh": "可选同一设备的前后区间或两个设备。区间边界可能缺少启动/恢复证据；比较差值不等于变更导致改善。",
+    "en": "Choose before/after periods for one device or two devices. Boundary evidence may be incomplete; differences do not establish causation."
+  },
+  {
+    "id": "workspace_group",
+    "zh": "查看设备组：",
+    "en": "View device group: "
+  },
+  {
+    "id": "package_import",
+    "zh": "导入证据包…",
+    "en": "Import evidence package…"
+  },
+  {
+    "id": "package_import_done",
+    "zh": "证据包已载入",
+    "en": "Evidence package loaded"
+  },
+  {
+    "id": "package_original",
+    "zh": "包含所有已载入来源的完整原文件",
+    "en": "Include complete originals of all loaded sources"
+  },
+  {
+    "id": "package_hash_error",
+    "zh": "原文件已变更或缺失；请重新载入后再导出。",
+    "en": "Original source changed or is missing; reload before export."
+  },
+  {
+    "id": "package_invalid",
+    "zh": "证据包损坏、版本不受支持或完整性校验失败。",
+    "en": "Package is damaged, unsupported, or failed integrity validation."
+  },
+  {
+    "id": "package_no_original",
+    "zh": "此旧版证据包未包含原文件，仅可查看报告，不能完整复算。",
+    "en": "This older package has no originals. Its report can be viewed, but a full reanalysis is unavailable."
+  },
+  {
+    "id": "package_report",
+    "zh": "证据包报告（导入原文）",
+    "en": "Package report (imported text)"
+  },
+  {
+    "id": "compare_scope",
+    "zh": "区间统计对照",
+    "en": "Period statistics comparison"
+  },
+  {
+    "id": "compare_same",
+    "zh": "设备关系：人工确认同一设备",
+    "en": "Device relationship: manually confirmed same device"
+  },
+  {
+    "id": "compare_different",
+    "zh": "设备关系：不同设备或身份未确认",
+    "en": "Device relationship: different or unconfirmed devices"
+  },
+  {
+    "id": "compare_limits",
+    "zh": "仅比较各区间内观测；缺失值为 —。可用率按现有证据口径，差值单位为百分点。百分位按有效样本秩计算，不按时间加权；恢复动作按日志标签计数，不猜测未上报层级。",
+    "en": "Only observed data within each period are compared; missing values are —. Availability follows evidence rules, with differences in percentage points. Percentiles use valid sample ranks, not time weighting. Recovery actions count reported tags; unreported levels are not inferred."
+  },
+  {
+    "id": "compare_field",
+    "zh": "项目",
+    "en": "Field"
+  },
+  {
+    "id": "compare_rows",
+    "zh": "解析记录",
+    "en": "Parsed rows"
+  },
+  {
+    "id": "compare_samples",
+    "zh": "指标样本",
+    "en": "Metric samples"
+  },
+  {
+    "id": "compare_observed",
+    "zh": "观测秒数",
+    "en": "Observed seconds"
+  },
+  {
+    "id": "compare_outages",
+    "zh": "断网次数",
+    "en": "Outages"
+  },
+  {
+    "id": "compare_open",
+    "zh": "未闭合断网",
+    "en": "Open outages"
+  },
+  {
+    "id": "compare_down",
+    "zh": "记录断网秒数",
+    "en": "Recorded outage seconds"
+  },
+  {
+    "id": "compare_runtime",
+    "zh": "运行期可用率 (%)",
+    "en": "Runtime availability (%)"
+  },
+  {
+    "id": "compare_full",
+    "zh": "含启动可用率 (%)",
+    "en": "Full availability (%)"
+  },
+  {
+    "id": "compare_startup",
+    "zh": "最长首次联网等待 (秒)",
+    "en": "Longest startup wait (seconds)"
+  },
+  {
+    "id": "compare_recovery",
+    "zh": "已上报恢复动作（标签 / 次数）",
+    "en": "Reported recovery actions (tag / count)"
+  },
+  {
+    "id": "chart_navigation",
+    "zh": "滚轮缩放 · Shift+滚轮平移 · 中键拖动平移 · Ctrl+0 恢复",
+    "en": "Wheel to zoom · Shift+wheel or middle-drag to pan · Ctrl+0 reset"
+  },
+  {
+    "id": "finding_summary",
+    "zh": "摘要",
+    "en": "Summary"
+  },
+  {
+    "id": "finding_original",
+    "zh": "完整依据与建议",
+    "en": "Complete rationale and actions"
+  },
+  {
+    "id": "finding_evidence_count",
+    "zh": "证据条数",
+    "en": "Evidence count"
+  },
+  {
+    "id": "workspace_compare_empty",
+    "zh": "选择两侧来源和完整起止日期，点击“计算并绘制对照”。",
+    "en": "Choose both sources and full start/end dates, then click Compare and plot."
   }
 ]

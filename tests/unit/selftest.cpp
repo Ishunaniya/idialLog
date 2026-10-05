@@ -1,3 +1,4 @@
+// build/tests/ 下的程序与导出文件是可删除的本地测试产物；make check 会重新生成，不是应用运行依赖。
 // selftest.cpp — 解析/分析层自测:与 tools/diallog.py 的输出对拍。
 // 因为 logmodel.* 不含 Win32 依赖,本机(Linux)g++ 即可编译运行:
 //   make selftest && build/tests/unit/selftest <日志>

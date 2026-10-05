@@ -6,6 +6,8 @@
 #define _UNICODE
 #endif
 
+#include "../../version.h"
+
 #include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
@@ -66,7 +68,10 @@ void Capture(HWND window, const wchar_t* name, bool refresh = true) {
     if (!GetEnvironmentVariableW(L"DIALLOG_UI_CAPTURE", directory, MAX_PATH)) return;
     CreateDirectoryW(directory, nullptr);
     HWND notice = FindWindowW(L"dialModernNotice", nullptr);
-    if (notice && GetWindow(notice, GW_OWNER) == window) SendMessageW(notice, WM_LBUTTONUP, 0, 0);
+    DWORD targetProcess=0,noticeProcess=0;
+    GetWindowThreadProcessId(window,&targetProcess);
+    if(notice)GetWindowThreadProcessId(notice,&noticeProcess);
+    if(notice&&noticeProcess==targetProcess)SendMessageW(notice,WM_LBUTTONUP,0,0);
     if (refresh) {
         Sleep(100);
         RedrawWindow(window, nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
@@ -260,17 +265,45 @@ BOOL CALLBACK FindInnerEdit(HWND child,LPARAM parameter) {
     if(_wcsicmp(cls,L"EDIT")==0){*reinterpret_cast<HWND*>(parameter)=child;return FALSE;}return TRUE;
 }
 
+BOOL CALLBACK FindFileDialog(HWND candidate, LPARAM parameter) {
+    auto& search = *reinterpret_cast<WindowSearch*>(parameter);
+    DWORD processId = 0; GetWindowThreadProcessId(candidate, &processId);
+    wchar_t className[64]{}; GetClassNameW(candidate, className, 64);
+    if (processId == search.processId && IsWindowVisible(candidate) &&
+        lstrcmpW(className, L"#32770") == 0 && FilenameControl(candidate)) {
+        search.window = candidate;
+        return FALSE;
+    }
+    return TRUE;
+}
+
 bool ChooseFile(HWND window,DWORD processId,int command,const std::wstring& path) {
+    if (!IsWindow(window)) {
+        PrintWide("file-dialog-owner-destroyed", path);
+        return false;
+    }
     PostMessageW(window,WM_COMMAND,command,0);
     HWND dialog=nullptr;
     const DWORD start=GetTickCount();
     while(!dialog && GetTickCount()-start<15000) {
         WindowSearch search{processId,nullptr,L"#32770"};
-        EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&search));
-        if(search.window && FilenameControl(search.window)) dialog=search.window;
+        EnumWindows(FindFileDialog,reinterpret_cast<LPARAM>(&search));
+        dialog=search.window;
         if(!dialog) Sleep(50);
     }
-    if(!dialog) {PrintWide("export-dialog-missing",path);return false;}
+    if(!dialog) {
+        PrintWide("export-dialog-missing",path);
+        PrintWide("file-dialog-owner-state", !IsWindow(window) ? L"destroyed" :
+                  IsWindowEnabled(window) ? L"enabled" : L"disabled");
+        if(IsWindow(window)) Capture(window,L"file-dialog-missing-owner");
+        WindowSearch pending{processId,nullptr,L"#32770"};
+        EnumWindows(FindProcessWindow,reinterpret_cast<LPARAM>(&pending));
+        if(pending.window) {
+            PrintWide("file-dialog-pending-title",TextOf(pending.window));
+            Capture(pending.window,L"file-dialog-missing-pending");
+        }
+        return false;
+    }
     if(command==1310 && IsWindowEnabled(window)){PostMessageW(dialog,WM_COMMAND,IDCANCEL,0);return false;}
     // Explorer dialogs may pump messages while their initial shell folder is still being built.
     Sleep(750);
@@ -368,6 +401,49 @@ int CheckIncident(HWND window,DWORD processId,bool secondSource=false) {
     return 0;
 }
 
+
+int WorkspaceSmoke(HWND window,DWORD processId,const std::wstring& base) {
+    SendMessageW(window,WM_COMMAND,33002,0);HWND work=OwnedWindow(processId,L"dialWorkspace");
+    if(!work||ListView_GetItemCount(GetDlgItem(work,1401))!=2)return 180;
+    SelectFirstRow(GetDlgItem(work,1401));
+    SetWindowTextW(GetDlgItem(work,1402),L"现场设备 A");SetWindowTextW(GetDlgItem(work,1403),L"FW-A");SetWindowTextW(GetDlgItem(work,1404),L"APN=before");SendMessageW(work,WM_COMMAND,1405,0);
+    HWND list=GetDlgItem(work,1401);SelectFirstRow(list);SendMessageW(list,WM_KEYDOWN,VK_DOWN,0);SendMessageW(list,WM_KEYUP,VK_DOWN,0);
+    SetWindowTextW(GetDlgItem(work,1402),L"现场设备 B");SetWindowTextW(GetDlgItem(work,1403),L"FW-B");SetWindowTextW(GetDlgItem(work,1404),L"APN=after");SendMessageW(work,WM_COMMAND,1405,0);
+    Capture(work,L"workspace-devices-zh");
+    HWND tabs=GetDlgItem(work,1400);SendMessageW(tabs,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(260,12));SendMessageW(tabs,WM_LBUTTONUP,0,MAKELPARAM(260,12));
+    if(TabCtrl_GetCurSel(tabs)!=2)return 181;
+    SendDlgItemMessageW(work,1411,CB_SETCURSEL,1,0);SendMessageW(work,WM_COMMAND,MAKEWPARAM(1411,CBN_SELCHANGE),reinterpret_cast<LPARAM>(GetDlgItem(work,1411)));
+    SendMessageW(work,WM_COMMAND,1416,0);const auto comparison=TextOf(GetDlgItem(work,1420));PrintWide("workspace-comparison",comparison);
+    if(comparison.find(L"-35.000")==std::wstring::npos||comparison.find(L"FW-A")==std::wstring::npos||comparison.find(L"FW-B")==std::wstring::npos||comparison.find(L"不同设备或身份未确认")==std::wstring::npos)return 182;
+    SendMessageW(work,WM_COMMAND,1417,0);if(ClipboardText()!=comparison)return 183;
+    SendDlgItemMessageW(work,1422,CB_SETCURSEL,4,0);SendMessageW(work,WM_COMMAND,MAKEWPARAM(1422,CBN_SELCHANGE),reinterpret_cast<LPARAM>(GetDlgItem(work,1422)));
+    Capture(work,L"workspace-comparison-rssi-zh");SetWindowPos(work,nullptr,0,0,860,680,SWP_NOMOVE|SWP_NOZORDER);Capture(work,L"workspace-comparison-narrow-zh");
+    if(!ExportTo(work,processId,1418,base+L".comparison.html"))return 184;
+    SendMessageW(work,WM_CLOSE,0,0);SendMessageW(window,WM_COMMAND,30000,0);
+    if(ListView_GetItemCount(GetDlgItem(window,1014))!=1||!Contains(GetDlgItem(window,1010),L"现场设备 A"))return 185;
+    SendMessageW(window,WM_COMMAND,30001,0);if(ListView_GetItemCount(GetDlgItem(window,1014))!=1||!Contains(GetDlgItem(window,1010),L"现场设备 B"))return 186;
+    SendMessageW(window,WM_APP+41,3,0);SelectFirstRow(GetDlgItem(window,1013));SendMessageW(window,WM_COMMAND,1180,0);HWND review=OwnedWindow(processId,L"dialIncidentReview");if(!review)return 187;
+    SendMessageW(review,WM_COMMAND,1315,0);HWND editor=OwnedWindow(processId,L"dialManualReview");if(!editor)return 188;
+    SendDlgItemMessageW(editor,1451,CB_SETCURSEL,1,0);SetWindowTextW(GetDlgItem(editor,1452),L"现场已确认；原始证据未改动 <script> & RSSI=-100");SendMessageW(editor,WM_COMMAND,1453,0);
+    if(IsWindow(editor)||!Contains(GetDlgItem(review,1304),L"现场已确认"))return 189;
+    SendMessageW(review,WM_COMMAND,1309,0);if(ClipboardText().find(L"现场已确认")==std::wstring::npos)return 190;
+    Capture(review,L"workspace-manual-review-zh");
+    SelectFirstRow(GetDlgItem(review,1306));SendMessageW(review,WM_COMMAND,1312,0);
+    const std::wstring zip=base+L".evidence.zip";if(!ExportTo(review,processId,1310,zip))return 191;
+    SendMessageW(review,WM_CLOSE,0,0);
+    if(!ChooseFile(window,processId,33003,zip))return 192;
+    Sleep(1000);if(!WaitForLoad(window,90000))return 193;
+    SendMessageW(window,WM_APP+41,4,0);
+    if(!Contains(GetDlgItem(window,1010),L"现场设备 B")||ListView_GetItemCount(GetDlgItem(window,1014))!=1){PrintWide("workspace-import-label",TextOf(GetDlgItem(window,1010)));PrintWide("workspace-import-count",std::to_wstring(ListView_GetItemCount(GetDlgItem(window,1014))));PrintWide("workspace-import-status",TextOf(GetDlgItem(window,1020)));Capture(window,L"workspace-import-failure");return 194;}
+    SendMessageW(window,WM_APP+41,3,0);SelectFirstRow(GetDlgItem(window,1013));SendMessageW(window,WM_COMMAND,1180,0);review=OwnedWindow(processId,L"dialIncidentReview");
+    if(!review||!Contains(GetDlgItem(review,1304),L"现场已确认")||!Contains(GetDlgItem(review,1304),L"7s"))return 195;
+    SendMessageW(review,WM_CLOSE,0,0);SendMessageW(window,WM_COMMAND,1171,0);
+    SendMessageW(window,WM_COMMAND,33002,0);work=OwnedWindow(processId,L"dialWorkspace");if(!work||!Contains(work,L"Workspace records"))return 196;
+    Capture(work,L"workspace-devices-en");SendMessageW(work,WM_CLOSE,0,0);SendMessageW(window,WM_COMMAND,1170,0);
+    PrintWide("workspace-pass",L"device groups, period deltas, RSSI overlay, manual review persistence, original ZIP import, bookmarks and bilingual windows");
+    return 0;
+}
+
 int MultiSourceSmoke(const std::wstring& executable) {
     wchar_t directory[MAX_PATH]{},temporary[MAX_PATH]{};
     if(!GetTempPathW(MAX_PATH,directory) || !GetTempFileNameW(directory,L"dls",0,temporary)) return 100;
@@ -402,6 +478,7 @@ int MultiSourceSmoke(const std::wstring& executable) {
         return code;
     };
     if(!window || !WaitForLoad(window,90000)) return finish(104);
+    wchar_t workspaceOnly[4]{};if(GetEnvironmentVariableW(L"DIALLOG_UI_WORKSPACE_ONLY",workspaceOnly,4)){int code=WorkspaceSmoke(window,process.dwProcessId,base);return finish(code);}
     HWND metrics=GetDlgItem(window,1014);
     if(ListView_GetItemCount(metrics)!=1 || !Contains(GetDlgItem(window,1010),L"_A.log")) return finish(105);
     SendMessageW(window,WM_COMMAND,34001,0);
@@ -476,7 +553,7 @@ int MultiSourceSmoke(const std::wstring& executable) {
     const auto html=ReadBytes(base+L".html");
     if(html.find("lang=\"en-US\"")==std::string::npos || html.find("_B_现场.log")==std::string::npos || html.find("检查天线")!=std::string::npos) return finish(117);
     if(html.find("RSSI") == std::string::npos || html.find("Samples 1 · Drawn 1")==std::string::npos ||
-       html.find("4096 horizontal buckets")==std::string::npos || html.find("dialLog v1.12.0")==std::string::npos) return finish(164);
+       html.find("4096 horizontal buckets")==std::string::npos || html.find("dialLog v" DL_VER_STR)==std::string::npos) return finish(164);
     if(!ExportTo(window,process.dwProcessId,1045,base+L".csv")) return finish(118);
     const auto csv=ReadBytes(base+L".csv");
     if(csv.find("detailed_at_stage")==std::string::npos || csv.find("现场")==std::string::npos ||
@@ -536,7 +613,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     std::wstring command = L"\"" + executable + L"\" \"" + argv[2] + L"\"";
     LocalFree(argv);
     wchar_t multiOnly[4]{};
-    if(GetEnvironmentVariableW(L"DIALLOG_UI_MULTI_ONLY",multiOnly,4))return MultiSourceSmoke(executable);
+    if(GetEnvironmentVariableW(L"DIALLOG_UI_MULTI_ONLY",multiOnly,4)||GetEnvironmentVariableW(L"DIALLOG_UI_WORKSPACE_ONLY",multiOnly,4))return MultiSourceSmoke(executable);
     std::vector<wchar_t> mutableCommand(command.begin(), command.end());
     mutableCommand.push_back(L'\0');
 
@@ -564,6 +641,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
         return finish(2);
     }
     if (Contains(GetDlgItem(window, 1010), L"未加载")) return finish(3);
+    if (!Contains(window, L"dialLog v" DL_VER_WSTR)) return finish(170);
     SetWindowPos(window, nullptr, 0, 0, 1280, 800, SWP_NOZORDER);
     UpdateWindow(window);
     if (!AppearanceFitsNavigation(window)) return finish(130);
@@ -722,7 +800,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
             const auto path=std::wstring(reportBase)+(english?L".en.html":L".zh.html");
             DeleteFileW(path.c_str());if(!ExportTo(window,process.dwProcessId,1046,path))return finish(165);
             const auto report=ReadBytes(path);
-            if(report.find("dialLog v1.12.0")==std::string::npos || report.find("RSSI")==std::string::npos ||
+            if(report.find("dialLog v" DL_VER_STR)==std::string::npos || report.find("RSSI")==std::string::npos ||
                report.find("data-samples=\"1359\" data-drawn=\"1359\"")==std::string::npos)return finish(166);
         }
         SendMessageW(window,WM_COMMAND,1170,0);
@@ -775,6 +853,29 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     // EG25 真机：按完整时间轴框选前约 34 分钟，包含前三次完整断网。
     const int plotLeft = 58, plotY = 61;
     const int fullMetricCount = ListView_GetItemCount(metrics);
+    SendMessageW(chart,WM_MBUTTONDOWN,MK_MBUTTON,MAKELPARAM(plotLeft+220,plotY));
+    RECT beforeResize{};GetClientRect(chart,&beforeResize);
+    SendMessageW(chart,WM_SIZE,0,MAKELPARAM(beforeResize.right,beforeResize.bottom));
+    SendMessageW(chart,WM_MBUTTONUP,0,MAKELPARAM(plotLeft+250,plotY));
+    if(IsWindowEnabled(GetDlgItem(window,1141))||ListView_GetItemCount(metrics)!=fullMetricCount)return finish(200);
+    UpdateWindow(chart);
+    POINT wheelPoint{plotLeft + 160, plotY};
+    ClientToScreen(chart, &wheelPoint);
+    SendMessageW(chart, WM_MOUSEWHEEL, MAKEWPARAM(0, WHEEL_DELTA), MAKELPARAM(wheelPoint.x, wheelPoint.y));
+    if (!IsWindowEnabled(GetDlgItem(window,1141)) || ListView_GetItemCount(metrics) >= fullMetricCount) return finish(196);
+    const auto zoomRange=TextOf(GetDlgItem(window,1140));
+    UpdateWindow(chart);
+    SendMessageW(chart, WM_MOUSEWHEEL, MAKEWPARAM(MK_SHIFT, -WHEEL_DELTA), MAKELPARAM(wheelPoint.x, wheelPoint.y));
+    if (TextOf(GetDlgItem(window,1140))==zoomRange) return finish(197);
+    UpdateWindow(chart);
+    const auto panRange=TextOf(GetDlgItem(window,1140));
+    SendMessageW(chart, WM_MBUTTONDOWN, MK_MBUTTON, MAKELPARAM(plotLeft+220,plotY));
+    SendMessageW(chart, WM_MOUSEMOVE, MK_MBUTTON, MAKELPARAM(plotLeft+250,plotY));
+    SendMessageW(chart, WM_MBUTTONUP, 0, MAKELPARAM(plotLeft+250,plotY));
+    if (TextOf(GetDlgItem(window,1140))==panRange) return finish(198);
+    SendMessageW(window, WM_COMMAND,1141,0);UpdateWindow(chart);
+    if (ListView_GetItemCount(metrics)!=fullMetricCount || IsWindowEnabled(GetDlgItem(window,1141))) return finish(199);
+    PrintWide("native-wheel-pan-reset",L"PASS linked metric selection and source-bounded range");
     SendMessageW(chart, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(plotLeft, plotY));
     SendMessageW(chart, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(plotLeft + 40, plotY));
     Capture(window, L"range-preview");

@@ -21,6 +21,8 @@ else
 BUILD_FLAVOR ?= cross
 endif
 
+# 本地可清理输出目录，不是发布程序的运行依赖；删除后构建/测试会重新生成。
+# 文档引用的历史日志、截图及 Wine 测试配置不会由编译原样恢复，留档前请勿清理。
 BUILD_ROOT ?= build
 BUILD_DIR  ?= $(BUILD_ROOT)/$(BUILD_FLAVOR)
 HOST_BUILD_DIR := $(BUILD_ROOT)/host
@@ -67,10 +69,10 @@ LIBS     := -lcomctl32 -lgdiplus -lgdi32 -lcomdlg32 -lshell32 -ldwmapi -luxtheme
 MINIZ_DEF := -DDL_HAVE_MINIZ
 MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 
-CORE_NAMES := log_time log_parser log_analysis log_filter archive_reader
-APP_NAMES := document_state app_context
-PRESENTATION_NAMES := tablemodel chartmodel report_chart text_catalog incidentmodel incident_export
-WIN32_NAMES := ui modern_shell ui_pages overview_page chart_page load_controller app_settings win_file_io win_text source_workspace incident_review text_view
+CORE_NAMES := json_value log_time log_parser log_analysis log_filter archive_reader
+APP_NAMES := workspace_state document_state app_context
+PRESENTATION_NAMES := tablemodel chartmodel report_chart report_interaction text_catalog incidentmodel incident_export
+WIN32_NAMES := workspace_window ui modern_shell ui_pages overview_page chart_page load_controller app_settings win_file_io win_text source_workspace incident_review text_view
 
 CORE_OBJS := $(addprefix $(BUILD_DIR)/core/,$(addsuffix .o,$(CORE_NAMES)))
 APP_OBJS := $(addprefix $(BUILD_DIR)/app/,$(addsuffix .o,$(APP_NAMES)))
@@ -130,7 +132,7 @@ release: windows-x64
 	cp $(BUILD_ROOT)/x64/$(EXE_NAME) $(EXE_NAME)
 	@echo "==> 发布产物 $(EXE_NAME)"
 
-HOST_CORE_BASE_NAMES := log_time log_parser log_analysis log_filter
+HOST_CORE_BASE_NAMES := json_value log_time log_parser log_analysis log_filter
 HOST_CORE_BASE_OBJS := $(addprefix $(HOST_BUILD_DIR)/,$(addsuffix .o,$(HOST_CORE_BASE_NAMES)))
 HOST_ARCHIVE_STUB_OBJ := $(HOST_BUILD_DIR)/archive_reader.o
 HOST_ARCHIVE_FULL_OBJ := $(HOST_BUILD_DIR)/archive_reader_miniz.o
@@ -139,12 +141,13 @@ HOST_ARCHIVE_OBJS := $(HOST_CORE_BASE_OBJS) $(HOST_ARCHIVE_FULL_OBJ)
 HOST_TABLE_OBJ := $(HOST_BUILD_DIR)/tablemodel.o
 HOST_LOCALE_OBJ := $(HOST_BUILD_DIR)/text_catalog.o
 HOST_CHART_OBJ := $(HOST_BUILD_DIR)/chartmodel.o
-HOST_REPORT_CHART_OBJ := $(HOST_BUILD_DIR)/report_chart.o
+HOST_REPORT_CHART_OBJ := $(HOST_BUILD_DIR)/report_chart.o $(HOST_BUILD_DIR)/report_interaction.o
+HOST_WORKSPACE_OBJ := $(HOST_BUILD_DIR)/workspace_state.o
 HOST_DOCUMENT_OBJ := $(HOST_BUILD_DIR)/document_state.o
 HOST_INCIDENT_OBJS := $(HOST_BUILD_DIR)/incidentmodel.o $(HOST_BUILD_DIR)/incident_export.o
 HOST_MINIZ_OBJ := $(HOST_BUILD_DIR)/miniz.o
 HOST_DEPS := $(HOST_LOCALE_OBJ:.o=.d) $(HOST_CORE_OBJS:.o=.d) $(HOST_ARCHIVE_FULL_OBJ:.o=.d) \
-             $(HOST_INCIDENT_OBJS:.o=.d) $(HOST_TABLE_OBJ:.o=.d) $(HOST_CHART_OBJ:.o=.d) $(HOST_REPORT_CHART_OBJ:.o=.d) $(HOST_DOCUMENT_OBJ:.o=.d) $(HOST_MINIZ_OBJ:.o=.d)
+             $(HOST_INCIDENT_OBJS:.o=.d) $(HOST_TABLE_OBJ:.o=.d) $(HOST_CHART_OBJ:.o=.d) $(HOST_REPORT_CHART_OBJ:.o=.d) $(HOST_DOCUMENT_OBJ:.o=.d) $(HOST_WORKSPACE_OBJ:.o=.d) $(HOST_MINIZ_OBJ:.o=.d)
 
 UNIT_BIN_DIR := $(HOST_TEST_DIR)/unit
 REGRESSION_BIN_DIR := $(HOST_TEST_DIR)/regression
@@ -170,7 +173,8 @@ RK3506JTEST_BIN := $(REGRESSION_BIN_DIR)/rk3506jtest
 PERF_BIN := $(PERF_BIN_DIR)/perftest
 UI_SMOKE_BIN := $(HOST_TEST_DIR)/ui/smoke.exe
 UI_WINEPREFIX ?= $(abspath $(BUILD_ROOT)/wine-smoke)
-TEST_BINS := $(INCIDENTTEST_BIN) $(SELFTEST_BIN) $(SIMTEST_BIN) $(HOSTRUNTEST_BIN) $(BASELINETEST_BIN) \
+WORKSPACETEST_BIN := $(UNIT_BIN_DIR)/workspacetest
+TEST_BINS := $(WORKSPACETEST_BIN) $(INCIDENTTEST_BIN) $(SELFTEST_BIN) $(SIMTEST_BIN) $(HOSTRUNTEST_BIN) $(BASELINETEST_BIN) \
              $(MERGETEST_BIN) $(MODEMV2TEST_BIN) $(ARCHIVETEST_BIN) $(BOUNDARYTEST_BIN) \
              $(TABLETEST_BIN) $(CHARTTEST_BIN) $(REPORTCHARTTEST_BIN) $(DOCUMENTTEST_BIN) $(LOCALETEST_BIN) $(MODEMV2PARSERTEST_BIN) $(RK3506JTEST_BIN) $(ARTERYTEST_BIN)
 TEST_TARGETS := incidenttest  selftest simtest hostruntest baselinetest mergetest \
@@ -180,7 +184,7 @@ TEST_TARGETS := incidenttest  selftest simtest hostruntest baselinetest mergetes
 $(HOST_BUILD_DIR) $(UNIT_BIN_DIR) $(REGRESSION_BIN_DIR) $(PERF_BIN_DIR) $(HOST_TEST_DIR)/ui:
 	mkdir -p $@
 
-$(UI_SMOKE_BIN): $(TEST_UI_DIR)/smoke.cpp | $(HOST_TEST_DIR)/ui
+$(UI_SMOKE_BIN): $(TEST_UI_DIR)/smoke.cpp version.h | $(HOST_TEST_DIR)/ui
 	x86_64-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -municode -mwindows -static \
 		-static-libgcc -static-libstdc++ -o $@ $< -lcomctl32 -lshell32 -luser32 -lkernel32 -lgdi32
 
@@ -199,7 +203,7 @@ $(HOST_TABLE_OBJ): $(PRESENTATION_DIR)/tablemodel.cpp | $(HOST_BUILD_DIR)
 $(HOST_CHART_OBJ): $(PRESENTATION_DIR)/chartmodel.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
-$(HOST_REPORT_CHART_OBJ): $(PRESENTATION_DIR)/report_chart.cpp | $(HOST_BUILD_DIR)
+$(HOST_REPORT_CHART_OBJ): $(HOST_BUILD_DIR)/%.o: $(PRESENTATION_DIR)/%.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(HOST_LOCALE_OBJ): $(PRESENTATION_DIR)/text_catalog.cpp | $(HOST_BUILD_DIR)
@@ -213,8 +217,14 @@ $(HOST_MINIZ_OBJ): $(THIRD_PARTY_DIR)/miniz.c $(THIRD_PARTY_DIR)/miniz.h | $(HOS
 
 -include $(HOST_DEPS)
 
-$(INCIDENTTEST_BIN): $(TEST_UNIT_DIR)/incidenttest.cpp $(HOST_INCIDENT_OBJS) $(HOST_TABLE_OBJ) $(HOST_LOCALE_OBJ) $(HOST_CORE_OBJS) $(HOST_MINIZ_OBJ) | $(UNIT_BIN_DIR)
-	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
+$(HOST_WORKSPACE_OBJ): $(APP_DIR)/workspace_state.cpp | $(HOST_BUILD_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(WORKSPACETEST_BIN): $(TEST_UNIT_DIR)/workspacetest.cpp version.h $(HOST_WORKSPACE_OBJ) $(HOST_DOCUMENT_OBJ) $(HOST_INCIDENT_OBJS) $(HOST_REPORT_CHART_OBJ) $(HOST_CHART_OBJ) $(HOST_TABLE_OBJ) $(HOST_LOCALE_OBJ) $(HOST_CORE_OBJS) $(HOST_MINIZ_OBJ) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $(filter-out version.h,$^) $(HOST_LDFLAGS)
+
+$(INCIDENTTEST_BIN): $(TEST_UNIT_DIR)/incidenttest.cpp version.h $(HOST_WORKSPACE_OBJ) $(HOST_CHART_OBJ) $(HOST_INCIDENT_OBJS) $(HOST_TABLE_OBJ) $(HOST_LOCALE_OBJ) $(HOST_CORE_OBJS) $(HOST_MINIZ_OBJ) | $(UNIT_BIN_DIR)
+	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $(filter-out version.h,$^) $(HOST_LDFLAGS)
 
 $(SELFTEST_BIN): $(TEST_UNIT_DIR)/selftest.cpp $(HOST_CORE_OBJS) | $(UNIT_BIN_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
@@ -309,6 +319,8 @@ check: $(TEST_BINS)
 	$(DOCUMENTTEST_BIN)
 	$(LOCALETEST_BIN)
 	$(INCIDENTTEST_BIN)
+	$(WORKSPACETEST_BIN)
+	python3 tests/unit/workspace_package_test.py
 	python3 tests/unit/incident_export_test.py
 
 check-full: check
@@ -318,6 +330,7 @@ ui-smoke: windows-x64 $(UI_SMOKE_BIN)
 	WINEPREFIX=$(UI_WINEPREFIX) xvfb-run -a wine $(UI_SMOKE_BIN) \
 		$(abspath $(BUILD_ROOT)/x64/$(EXE_NAME)) $(abspath samples/rtms_eg25/dial_20260630_000026.log)
 
+# 默认清理 build/；包含其中的日志、截图、Wine 配置和备份，根目录发布 exe 不受影响。
 clean:
 	rm -rf $(BUILD_ROOT)
 

@@ -46,8 +46,23 @@ ReportChartResult renderReportChart(const ChartSeries& input,
         "\" data-drawn=\"" + std::to_string(result.drawn) + "\"><figcaption><strong>" + escape(o.title) +
         "</strong><span class=\"muted\">" + (o.english ? "Samples " : "原始点 ") + std::to_string(result.samples) +
         (o.english ? " · Drawn " : " · 绘制点 ") + std::to_string(result.drawn) + "</span></figcaption>";
-    if (visible.empty() || o.high <= o.low) {
-        result.html += "<p class=\"muted\">" + std::string(o.english ? "No samples in this range." : "此区间暂无样本。") + "</p></figure>";
+    const bool comparing = o.comparisonMode || !o.comparison.empty();
+    if (comparing) {
+        const auto countB = std::count_if(o.comparison.begin(), o.comparison.end(), [&](const ChartPoint& point) {
+            return point.first >= o.start && point.first <= o.end;
+        });
+        const std::string labelA = o.english ? "A samples " : "A 采样 ";
+        const std::string labelB = o.english ? "B samples " : "B 采样 ";
+        const auto captionEnd = result.html.find("</figcaption>");
+        result.html.insert(captionEnd, "<span class=\"muted\">" + labelA + std::to_string(visible.size()) +
+            " <i aria-hidden=\"true\" style=\"display:inline-block;width:24px;vertical-align:middle;border-top:2px solid " + escape(o.color) +
+            "\"></i> · " + labelB + std::to_string(countB) +
+            " <i aria-hidden=\"true\" style=\"display:inline-block;width:24px;vertical-align:middle;border-top:2px dashed #008300\"></i></span>");
+    }
+    auto data=[&](const ChartSeries& values){std::string s="[";bool comma=false;for(const auto& p:values){if(p.first<o.start||p.first>o.end)continue;if(comma)s+=',';comma=true;s+="["+std::to_string(p.first)+","+std::to_string(p.second)+"]";}return s+"]";};
+    const std::string payload="<script type=\"application/json\" class=\"chart-data\">{\"start\":"+std::to_string(o.start)+",\"end\":"+std::to_string(o.end)+",\"low\":"+std::to_string(o.low)+",\"high\":"+std::to_string(o.high)+",\"scale\":"+(o.scaled10?std::string("10"):std::string("1"))+",\"compare\":"+(comparing?std::string("true"):std::string("false"))+",\"relative\":"+(o.relative?std::string("true"):std::string("false"))+",\"originalStart\":"+std::to_string(o.originalStart)+",\"secondStart\":"+std::to_string(o.comparisonOriginalStart)+",\"color\":\""+escape(o.color)+"\",\"unit\":\""+escape(o.unit)+"\",\"points\":"+data(visible)+",\"second\":"+data(o.comparison)+"}</script>";
+    if ((visible.empty() && o.comparison.empty()) || o.high <= o.low) {
+        result.html += "<p class=\"muted\">" + std::string(o.english ? "No samples in this range." : "此区间暂无样本。") + "</p>" + payload + "</figure>";
         return result;
     }
     constexpr int left=64, right=814, top=18, bottom=246;
@@ -58,12 +73,12 @@ ReportChartResult renderReportChart(const ChartSeries& input,
     auto valueText=[&](int value){return o.scaled10?number(value/10.0L,1):std::to_string(value);};
     std::string& out=result.html;
     out += "<div class=\"chart-scroll\"><svg viewBox=\"0 0 1000 310\" role=\"img\" aria-label=\"" +
-        escape(o.title) + "\"><title>" + escape(o.title+" · "+fmtTime(o.start,"FULL")+" → "+fmtTime(o.end,"FULL")) + "</title>";
+        escape(o.title) + "\"><title>" + escape(o.title+" · "+(o.relative?std::to_string(o.start)+" s":fmtTime(o.start,"FULL"))+" → "+(o.relative?std::to_string(o.end)+" s":fmtTime(o.end,"FULL"))) + "</title>";
     for (const auto& outage : outages) {
         const long long end=outage.recovered?outage.end:o.end;
         if(end<o.start || outage.start>o.end || end<outage.start)continue;
         const auto a=x(std::max(o.start,outage.start)),b=x(std::min(o.end,end));
-        out += "<rect class=\"outage-band\" x=\""+number(a)+"\" y=\"18\" width=\""+number(std::max(1.5L,b-a))+
+        out += "<rect class=\"outage-band\" data-event-start=\""+std::to_string(outage.start)+"\" data-event-end=\""+std::to_string(end)+"\" tabindex=\"0\" x=\""+number(a)+"\" y=\"18\" width=\""+number(std::max(1.5L,b-a))+
             "\" height=\"228\"><title>"+escape((o.english?"Outage: ":"断网: ")+fmtTime(outage.start,"FULL")+" → "+
             (outage.recovered?fmtTime(outage.end,"FULL"):(o.english?"Unrecovered":"未恢复")))+"</title></rect>";
     }
@@ -74,8 +89,8 @@ ReportChartResult renderReportChart(const ChartSeries& input,
     }
     const auto ticks=chartTimeTicks(o.start,o.end,right-left,135);
     for(std::size_t i=0;i<ticks.size();++i) {
-        const auto time=fmtTime(ticks[i],"FULL");
-        const auto split=time.find(' ');
+        const auto time=o.relative?std::to_string(ticks[i])+" s":fmtTime(ticks[i],"FULL");
+        const auto split=o.relative?std::string::npos:time.find(' ');
         const auto date=split==std::string::npos?time:time.substr(0,split);
         const auto clock=split==std::string::npos?"":time.substr(split+1);
         const auto at=number(x(ticks[i]));
@@ -110,12 +125,15 @@ ReportChartResult renderReportChart(const ChartSeries& input,
         // Hidden dense-point targets reveal the exact retained timestamp/value
         // on hover; sparse and isolated samples are always visible.
         dots += "<circle class=\"sample "+std::string(marker?"visible":"dense")+"\" cx=\""+px+"\" cy=\""+py+
-            "\" r=\""+(points.size()==1?"4":"2.5")+"\"><title>"+escape(fmtTime(point.first,"FULL")+" · "+valueText(point.second)+
+            "\" r=\""+(points.size()==1?"4":"2.5")+"\"><title>"+escape(fmtTime(o.relative?point.first+o.originalStart:point.first,"FULL")+" · "+valueText(point.second)+
             (o.unit.empty()?"":" "+o.unit))+"</title></circle>";
         previous=point.first;
     }
     out += "<g fill=\""+escape(o.color)+"\"><path class=\"signal-curve\" fill=\"none\" stroke=\""+escape(o.color)+
-        "\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\" d=\""+path+"\"/>"+dots+"</g></svg></div></figure>";
+        "\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\" d=\""+path+"\"/>"+dots+"</g>";
+    if(!o.comparison.empty()){auto second=o;second.comparison.clear();second.comparisonMode=false;second.color="#008300";second.originalStart=o.comparisonOriginalStart;auto html=renderReportChart(o.comparison,{},second).html;auto begin=html.find("<g fill=");auto finish=html.find("</g>",begin);if(begin!=std::string::npos&&finish!=std::string::npos){auto curve=html.substr(begin,finish+4-begin);auto dash=curve.find("class=\"signal-curve\"");if(dash!=std::string::npos)curve.insert(dash,"stroke-dasharray=\"7 4\" ");out+=curve;}}
+    out+="</svg></div>";
+    out+=payload+"</figure>";
     return result;
 }
 }

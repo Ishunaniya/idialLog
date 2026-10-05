@@ -9,6 +9,7 @@ namespace dl {
 
 void DocumentState::swap(DocumentState& other) noexcept {
     std::swap(rssi, other.rssi);
+    std::swap(workspace,other.workspace);selectedDevice.swap(other.selectedDevice);
     std::swap(timeRange, other.timeRange);
     std::swap(sourceMode, other.sourceMode);
     std::swap(selectedSource, other.selectedSource);
@@ -30,6 +31,7 @@ void DocumentState::swap(DocumentState& other) noexcept {
 
 void DocumentState::release() {
     rssi = RssiObservation{};
+    workspace = WorkspaceState{};selectedDevice.clear();
     timeRange = TimeRange{};
     sourceMode = SourceMode::Independent;
     selectedSource = 0;
@@ -72,6 +74,18 @@ void DocumentState::restrictToSource(LogView& view, std::size_t source) const {
         const std::size_t index = static_cast<std::size_t>(line - lines.data());
         return index < bounds.first || index >= bounds.last;
     }), view.end());
+}
+
+void DocumentState::restrictToSelection(LogView& view) const {
+    if(sourceMode==SourceMode::Independent){restrictToSource(view,selectedSource);return;}
+    if(sourceMode!=SourceMode::Device)return;
+    view.erase(std::remove_if(view.begin(),view.end(),[&](const LogLine* line){
+        auto index=static_cast<std::size_t>(line-lines.data());
+        auto it=std::upper_bound(sources.begin(),sources.end(),index,[](std::size_t n,const SourceSummary& s){return n<s.last;});
+        if(it==sources.end()||index<it->first)return true;
+        auto d=workspace.devices.find(it->workspaceKey());
+        return selectedDevice.empty()||d==workspace.devices.end()||d->second.device!=selectedDevice;
+    }),view.end());
 }
 
 void DocumentState::rebuildSignalObservations() {

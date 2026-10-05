@@ -2,6 +2,7 @@
 #include <windows.h>
 #include "log_types.h"
 namespace dl {
+void RefreshIncidentAnnotation();
 constexpr UINT kIncidentReviewCommand=1180,kSignalGuideCommand=1181;
 void ShowIncidentReview(const Outage& selected);
 void CloseIncidentReview();

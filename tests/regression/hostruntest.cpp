@@ -1,3 +1,4 @@
+// build/tests/ 下的程序与导出文件是可删除的本地测试产物；make check 会重新生成，不是应用运行依赖。
 // hostruntest.cpp — 对 **真代码产出的日志**(sim/hostrun*/)做结论断言。
 //
 // 与 simtest.cpp 的分工(重要):

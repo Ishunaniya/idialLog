@@ -1,5 +1,7 @@
 # samples/sim/ — 模拟场景与源码输出审计夹具
 
+> 文中的 `build/tests/` 程序是本地编译产物，可删除；使用前运行对应的 `make` 命令会重新生成。样例日志位于 `samples/`，不随 `build/` 清理。
+
 **这些不是真机日志。** 场景夹具由 `../../tests/regression/simtest.cpp` 按源码格式生成；
 `*_all_prints.log` 则由 `../../sim/gen_all_prints.py` 从产品源码输出入口生成。证据等级均为【源码实证】。
 

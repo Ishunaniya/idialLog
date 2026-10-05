@@ -26,6 +26,7 @@
 #include "app_context.h"
 #include "load_controller.h"
 #include "source_workspace.h"
+#include "workspace_window.h"
 #include "incident_review.h"
 #include "text_view.h"
 #include "modern_shell.h"
@@ -211,6 +212,8 @@ void ShowBookmarksMenu() {
 
 void ShowExportMenu() {
     HMENU menu = CreatePopupMenu();
+    AppendMenuW(menu, MF_STRING, 33003, UiText(TextId::package_import));
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, IDC_EXPORT_REPORT, UiText(TextId::ui_0158));
     AppendMenuW(menu, MF_STRING, IDC_EXPORT_HTML, UiText(TextId::ui_0159));
     AppendMenuW(menu, MF_STRING, IDC_EXPORT_CSV, UiText(TextId::ui_0160));
@@ -438,7 +441,7 @@ BOOL CALLBACK RelocalizeControl(HWND child, LPARAM) {
 
 void ApplyLanguage(bool english) {
     if (LoadInProgress()) return;
-    CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText(); ClosePageDetail();
+    CloseWorkspaceWindows(); CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText(); ClosePageDetail();
     MutableAppSettings().english = english; SetEnglish(english);
     SetWindowTextW(App().hIncidentReview,UiText(TextId::incident_title));
     SetWindowTextW(App().hSignalGuide,UiText(TextId::signal_guide)); SaveAppSettings();
@@ -478,7 +481,7 @@ void ShowAppearanceMenu() {
 }
 
 void ApplyAppearanceCommand(UINT command) {
-    CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
+    CloseWorkspaceWindows(); CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
     auto& preferences = MutableAppSettings();
     if (command == IDC_FONT_RESET) {
         preferences.uiFont = L"Microsoft YaHei UI"; preferences.logFont = L"Consolas";
@@ -938,7 +941,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
     case WM_DPICHANGED: {
         // The owned comparison uses the shared UI font; release its controls
         // before replacing that font, just as for an explicit font change.
-        CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
+        CloseWorkspaceWindows(); CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
         App().dpi = HIWORD(wparam);
         std::array<HFONT, 8> old{App().hFontUI, App().hFontMono, App().hFontTitle, App().hFontSmall,
                                  App().hFontHero, App().hFontTileVal, App().hFontTileLbl, App().hFontSect};
@@ -971,6 +974,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         break;
     case WM_COMMAND: {
         const int id = LOWORD(wparam), code = HIWORD(wparam);
+        if(id==33003){ImportEvidencePackage();return 0;}
         if (ApplyMetricColumnCommand(id) || HandleSourceCommand(id)) return 0;
         if (code == EN_CHANGE) ScheduleFilterRefresh(reinterpret_cast<HWND>(lparam));
         switch (id) {
@@ -1020,7 +1024,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
         LRESULT result = 0; return HandlePageNotify(lparam, result) ? result : 0;
     }
     case WM_CLOSE:
-        CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
+        CloseWorkspaceWindows(); CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
         PersistUiSettings(hwnd);
         ShutdownLoadController();
         DestroyWindow(hwnd);
@@ -1113,7 +1117,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int show)
     MSG message{};
     while (GetMessageW(&message, nullptr, 0, 0) > 0) {
         if (RouteFindingKeyboardMessage(message)) continue;
-        if (RouteSelectableTextMessage(message) || RouteIncidentReviewMessage(message) || RouteSourceComparisonMessage(message)) continue;
+        if (RouteWorkspaceMessage(message) || RouteSelectableTextMessage(message) || RouteIncidentReviewMessage(message) || RouteSourceComparisonMessage(message)) continue;
         if (message.message == WM_KEYDOWN && (GetKeyState(VK_CONTROL) & 0x8000)) {
             if (message.wParam == 'C') {
                 HWND focus = GetFocus();

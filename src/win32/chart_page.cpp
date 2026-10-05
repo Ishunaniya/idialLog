@@ -7,6 +7,9 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <windowsx.h>
+#include <cmath>
+#include "log_filter.h"
 #include <initializer_list>
 #include <limits>
 #include <set>
@@ -100,7 +103,7 @@ struct ChartDrawingRuntime {
 static void UpdateChartAccessibleLabel() {
     const wchar_t* name=g_chartDetail==2?L"RSSI":g_chartDetail==1?L"RSRQ":L"RSRP";
     const auto count=g_chartDetail==2?g_rssi.size():g_chartDetail==1?g_rsrq.size():g_rsrp.size();
-    if(App().hChart) SetWindowTextW(App().hChart,FmtW(UiText(TextId::ui_0547),name,static_cast<int>(count)).c_str());
+    if(App().hChart) SetWindowTextW(App().hChart,FmtW(UiText(TextId::ui_0547),name,static_cast<int>(count)).append(L"\r\n").append(UiText(TextId::chart_navigation)).c_str());
 }
 
 static void ResetChartSampleCache() {
@@ -116,12 +119,35 @@ static void ResetChartSampleCache() {
 
 // ============================ ListView 工具 ============================
 
+static bool g_panning=false;
+static int g_panStart=0;
+static ChartTimeWindow g_panWindow;
+static void NavigateRange(ChartTimeWindow current,long long anchor,double zoom,double pan) {
+    auto& doc=App().document;
+    auto rows=applyFilterView(doc.lines,WToU8(GetText(App().hTagBox)),WToU8(GetText(App().hGrepBox)),WToU8(GetText(App().hSinceBox)),WToU8(GetText(App().hUntilBox)));
+    doc.restrictToSelection(rows);
+    bool have=false;ChartTimeWindow bounds;
+    const bool wall=current.start>=946598400LL;
+    for(const auto* row:rows){if((row->t>=946598400LL)!=wall)continue;if(!have){bounds={row->t,row->t};have=true;}else{bounds.start=std::min(bounds.start,row->t);bounds.end=std::max(bounds.end,row->t);}}
+    if(!have||bounds.start==bounds.end)return;
+    auto next=navigateChartWindow(current,bounds,anchor,zoom,pan);
+    if(next.start!=current.start||next.end!=current.end)SelectAnalysisTimeRange(next.start,next.end);
+}
+
 LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     auto detailSeries = [](int mode) -> const ChartSeries& {
         return mode == 2 ? g_rssi : mode == 1 ? g_rsrq : g_rsrp;
     };
+    if(msg==WM_MOUSEWHEEL){POINT p{GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};ScreenToClient(hwnd,&p);bool over=false;for(const auto& rect:g_chartPlotRects)if(PtInRect(&rect,p))over=true;if(!over)return DefWindowProcW(hwnd,msg,wp,lp);
+        const auto anchor=chartTimeAtPixel(g_chartVisibleT0,g_chartVisibleT1,g_chartPlotLeft,g_chartPlotRight,p.x);const double steps=GET_WHEEL_DELTA_WPARAM(wp)/120.0;
+        const bool shift=(GET_KEYSTATE_WPARAM(wp)&MK_SHIFT)!=0;NavigateRange({g_chartVisibleT0,g_chartVisibleT1},anchor,shift?1:std::pow(0.8,steps),shift?-steps*0.15:0);return 0;}
+    if(msg==WM_MBUTTONDOWN){POINT p{GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};for(const auto& rect:g_chartPlotRects)if(PtInRect(&rect,p)){CancelChartSelection();g_panning=true;g_panStart=p.x;g_panWindow={g_chartVisibleT0,g_chartVisibleT1};SetCapture(hwnd);SetCursor(LoadCursorW(nullptr,IDC_SIZEWE));return 0;}}
+    if(msg==WM_MBUTTONUP&&g_panning){g_panning=false;ReleaseCapture();const double delta=double(g_panStart-GET_X_LPARAM(lp))/std::max(1,g_chartPlotRight-g_chartPlotLeft);NavigateRange(g_panWindow,g_panWindow.start,1,delta);return 0;}
+    if(msg==WM_CAPTURECHANGED||msg==WM_CANCELMODE)g_panning=false;
+    if(msg==WM_KEYDOWN&&wp==VK_ESCAPE&&g_panning){g_panning=false;ReleaseCapture();return 0;}
     if (msg == WM_ERASEBKGND) return 1;
     if (msg == WM_SIZE) {
+        if(g_panning){g_panning=false;if(GetCapture()==hwnd)ReleaseCapture();}
         CancelChartSelection();
         // 尺寸变化时旧画面可能被系统复制保留，必须重绘整张图而非仅新增区域。
         g_chartHoverX = g_chartHoverY = -1;
@@ -200,7 +226,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_SETCURSOR) {
         POINT point{}; GetCursorPos(&point); ScreenToClient(hwnd, &point);
         bool overMode = false;
-        for (int mode = 0; mode < 2; ++mode)
+        for (int mode = 0; mode < 3; ++mode)
             if (!detailSeries(mode).empty() && PtInRect(&g_chartModeRects[mode], point)) overMode = true;
         bool overPlot = false;
         for (const RECT& rect : g_chartPlotRects) if (PtInRect(&rect, point)) overPlot = true;
@@ -208,6 +234,7 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return TRUE;
     }
     if (msg == WM_MOUSEMOVE) {
+        if(g_panning){SetCursor(LoadCursorW(nullptr,IDC_SIZEWE));return 0;}
         int mx = (int)(short)LOWORD(lp);
         int my = (int)(short)HIWORD(lp);
         if (g_selectingTime) {
@@ -725,6 +752,8 @@ void RenderMetrics() {
 
 
 void ReleaseChartPageData() {
+    g_panning=false;
+    if(GetCapture()==App().hChart)ReleaseCapture();
     CancelChartSelection();
     releaseVector(g_csq);
     releaseVector(g_rsrp);

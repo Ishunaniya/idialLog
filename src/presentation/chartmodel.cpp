@@ -8,6 +8,17 @@
 #include <limits>
 
 namespace dl {
+ChartTimeWindow navigateChartWindow(ChartTimeWindow current,ChartTimeWindow bounds,long long anchor,double zoom,double pan) {
+    if(bounds.end<=bounds.start||current.end<=current.start||!std::isfinite(zoom)||zoom<=0||!std::isfinite(pan))return bounds;
+    const long double available=static_cast<long double>(bounds.end)-bounds.start;
+    const long double old=static_cast<long double>(current.end)-current.start;
+    const long double width=std::clamp(old*zoom,1.0L,available);
+    const long double ratio=std::clamp((static_cast<long double>(anchor)-current.start)/old,0.0L,1.0L);
+    long double start=static_cast<long double>(anchor)-ratio*width+old*pan;
+    start=std::clamp(start,static_cast<long double>(bounds.start),static_cast<long double>(bounds.end)-width);
+    auto a=static_cast<long long>(std::round(start)),b=static_cast<long long>(std::round(start+width));
+    return {std::max(bounds.start,a),std::min(bounds.end,std::max(a+1,b))};
+}
 
 long long chartTimeAtPixel(long long start, long long end, int left, int right, int pixel) {
     if (end <= start || right <= left || pixel <= left) return start;

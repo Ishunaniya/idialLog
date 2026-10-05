@@ -92,11 +92,13 @@
 //   1.12.0  事件复盘与证据 ZIP；诊断正文选择与键盘操作，集中指标帮助；
 //           报告图表共享指标取值与时间轴，补齐 RSSI、采样点数、断线及高精度 SVG；
 //           RSSI 实际观测联动概览、诊断证据、来源/小区统计、复盘、复制与报告。
+//   1.12.1  设备编组、前后区间与五指标曲线对照；人工复核状态和备注；
+//           完整原字节证据包导入恢复，图表缩放/平移与离线事件交互。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 12
-#define DL_VER_PATCH 0
+#define DL_VER_PATCH 1
 
 #define DL_STRINGIFY2(x) #x
 #define DL_STRINGIFY(x)  DL_STRINGIFY2(x)

@@ -4,11 +4,15 @@
 #include <string>
 
 #include "log_types.h"
+#include "workspace_state.h"
 
 namespace dl {
 
 struct SourceSummary {
     std::wstring label;
+    std::wstring originalPath;
+    std::string originalEntry, originalHash, identity, pastedBytes;
+    const std::string& workspaceKey() const {return identity.empty()?originalHash:identity;}
     std::size_t first = 0, last = 0; // parsed-line range [first,last), including clock segments
     std::size_t rawLineOffset = 0; // preceding raw lines in the ordered merged input
     std::size_t parsedLines = 0;
@@ -46,8 +50,11 @@ public:
     PlatformInfo platform;
     std::vector<Finding> findings;
     std::vector<SourceSummary> sources;
+    WorkspaceState workspace;
+    std::string selectedDevice;
+    void restrictToSelection(LogView& view) const;
     // Independent sources are never paired across files. Continuation requires user selection.
-    enum class SourceMode { Independent, Continuation } sourceMode = SourceMode::Independent;
+    enum class SourceMode { Independent, Continuation, Device } sourceMode = SourceMode::Independent;
     std::size_t selectedSource = 0;
     std::vector<SourceComparison> comparisons;
 

@@ -1,9 +1,15 @@
 """Read exports with independent ZIP/JSON/CSV implementations."""
+# build/ 内的输入由 incidenttest 测试生成，可删除；清理后先运行 make check，再单独执行本脚本。
 import csv
 import io
 import json
+import re
 import zipfile
 from pathlib import Path
+
+version_header = (Path(__file__).resolve().parents[2] / "version.h").read_text()
+expected_version = ".".join(re.search(r"^#define DL_VER_" + part + r"\s+(\d+)$", version_header, re.M).group(1)
+                            for part in ("MAJOR", "MINOR", "PATCH"))
 
 root = Path('build/tests/unit')
 with zipfile.ZipFile(root / 'incident-fixture.zh.zip') as archive:
@@ -13,7 +19,7 @@ with zipfile.ZipFile(root / 'incident-fixture.zh.zip') as archive:
     manifest = json.loads(archive.read('manifest.json'))
     assert (manifest['start_line'], manifest['end_line'], manifest['rows'],
             manifest['events'], manifest['samples']) == (4, 6, 4, 3, 1)
-    assert manifest['version'] == '1.12.0'
+    assert manifest['version'] == expected_version
     assert manifest['language'] == 'zh-CN' and manifest['original_bytes_included'] is False
     assert manifest['sources'] == [{'index': 1, 'label': 'A.log', 'raw_line_offset': 0}]
     raw_evidence = archive.read('parsed-evidence.jsonl')

@@ -22,6 +22,7 @@
 #include "log_time.h"
 #include "load_controller.h"
 #include "source_workspace.h"
+#include "workspace_window.h"
 #include "incident_review.h"
 #include "text_view.h"
 #include "memoryutil.h"
@@ -522,7 +523,7 @@ void ReleaseLoadedData() {
     if (App().hTags)     ListView_DeleteAllItems(App().hTags);
     if (App().hUnparsed) ListView_DeleteAllItems(App().hUnparsed);
 
-    CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
+    CloseWorkspaceWindows(); CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
     App().document.release();
     UpdateSourceControls();
     g_metricFilter = MetricQuickFilter{};

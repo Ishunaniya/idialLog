@@ -1,5 +1,7 @@
 # samples/ — 测试夹具
 
+> 文中的 `build/tests/` 程序是本地编译产物，可删除；使用前运行对应的 `make` 命令会重新生成。样例日志位于 `samples/`，不随 `build/` 清理。
+
 按**日志来源**分目录。`make selftest && build/tests/unit/selftest <文件>` 可逐个跑。
 
 > 尚无真机日志包含 `NETWORK REJECTED`、`LIMITED SERVICE`、`SUSPECTED subscription issue`

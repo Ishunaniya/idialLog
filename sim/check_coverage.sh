@@ -9,6 +9,7 @@ CALLS_MANIFEST="${OUT}.calls.tsv"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
+# 可删除的本地测试程序；不存在时由下一行 make selftest 重新生成。
 SELFTEST="build/tests/unit/selftest"
 test -x "$SELFTEST" || make selftest >/dev/null
 

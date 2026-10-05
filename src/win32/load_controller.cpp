@@ -2,6 +2,9 @@
 #include "load_controller.h"
 #include "rssi_summary.h"
 #include "source_workspace.h"
+#include "workspace_window.h"
+#include "sha256.h"
+#include "incident_export.h"
 #include "incident_review.h"
 #include "text_view.h"
 
@@ -70,6 +73,7 @@ struct LoadResult {
     bool cancelled = false;
     bool badRegex = false;
     bool success = false;
+    ImportedEvidencePackage imported;
 };
 
 // 日志文件名/归档目录通常带 YYYYMMDD。仅提取已经存在于来源名称里的年份，供 Android
@@ -143,7 +147,7 @@ static void PresentAnalysis(bool bad) {
 void RefreshPresentation() { PresentAnalysis(g_regexWasBad); }
 
 void RefreshAll() {
-    CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
+    CloseWorkspaceWindows(); CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
     if (App().document.lines.empty() && App().document.sources.empty()) { SetWindowTextW(App().hStatus, UiText(TextId::ui_0011)); return; }
     ResetVirtualTables();
     bool bad = false;
@@ -152,8 +156,7 @@ void RefreshAll() {
     App().document.restrictToTimeRange(App().document.filtered);
     if (App().document.sources.size() > 1 || !App().document.comparisons.empty())
         App().document.rebuildComparisons(App().document.filtered);
-    if (App().document.sourceMode == DocumentState::SourceMode::Independent)
-        App().document.restrictToSource(App().document.filtered, App().document.selectedSource);
+    App().document.restrictToSelection(App().document.filtered);
     App().document.outages = collectOutages(App().document.filtered);
     App().document.metrics = buildMetrics(App().document.filtered);
     App().document.rebuildSignalObservations();
@@ -164,8 +167,7 @@ void RefreshAll() {
     if (App().document.sources.size() > 1) {
         LogView sourceRows; sourceRows.reserve(App().document.lines.size());
         for (const auto& line : App().document.lines) sourceRows.push_back(&line);
-        if (App().document.sourceMode == DocumentState::SourceMode::Independent)
-            App().document.restrictToSource(sourceRows, App().document.selectedSource);
+        App().document.restrictToSelection(sourceRows);
         App().document.platform = detectPlatform(sourceRows);
     }
 
@@ -230,15 +232,18 @@ void RestoreAnalysisTimeRange() {
 
 // 载入的公共尾段:移动接管原始行,解析后立即释放,不让 raw 与后续分析结果长期共存。
 static void LoadRawLines(std::vector<std::string> raw, const std::wstring& srcLabel,
-                         const std::vector<size_t>& fileBoundaries = {}) {
+                         const std::vector<size_t>& fileBoundaries = {},std::string pastedBytes={}) {
     // raw 已成功读取/合并后才卸载旧日志；读取失败仍保留当前分析。释放旧分析结果后再
     // parse,避免“大旧日志模型 + 新日志原文 + 新分析模型”三者在切换期间重叠。
     ResetFiltersForNewInput();
     ReleaseLoadedData();
+    if(pastedBytes.empty())for(const auto& line:raw){pastedBytes+=line;pastedBytes+='\n';}
     parseLines(raw, App().document.lines, App().document.sessions, &App().document.audit, fileBoundaries);
     releaseVector(raw);
     SourceSummary pastedSource; pastedSource.label = srcLabel; pastedSource.last = App().document.lines.size();
+    pastedSource.pastedBytes=std::move(pastedBytes);pastedSource.originalHash=sha256(pastedSource.pastedBytes);
     App().document.sources.push_back(std::move(pastedSource));
+    LoadWorkspaceRecords();
     App().document.platform = detectPlatform(App().document.lines);   // 平台识别用全量行(不受筛选影响)
     std::wstring lbl = srcLabel;
     lbl += FmtW(UiText(TextId::ui_0018), (int)App().document.lines.size(), (int)App().document.sessions.size(),
@@ -323,6 +328,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
                 LoadSource source;
                 source.streamPlain = true;
                 source.path = p;
+                source.original.path=p;
                 source.label = FileNameOf(p);
                 source.textBytes = pathBytes;
                 loaded = ReadPlainLines(
@@ -345,10 +351,11 @@ static DWORD WINAPI LoadWorker(void* parameter) {
                 // 压缩包仍需先解压，但每个条目随后直接投喂解析器，不再拼出第二份 raw。
                 std::vector<std::vector<std::string>> sub;
                 std::vector<std::wstring> subLabels;
+                std::vector<OriginalSource> originals;
                 size_t subTextBytes = 0;
                 WorkerProgress progress{request->owner, 3, 20, 0, -1};
                 loaded = ReadPathExpand(p, sub, subLabels, subTextBytes, readErr,
-                                        &progress, ObserveRead);
+                                        &progress, ObserveRead, &originals, &result->imported);
                 if (loaded && subTextBytes > kMaxBatchTextBytes - batchTextBytes) {
                     loaded = false;
                     readErr = UiText(TextId::ui_0022);
@@ -358,6 +365,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
                     for (size_t i = 0; i < sub.size(); ++i) {
                         LoadSource source;
                         source.label = subLabels[i];
+                        source.original=originals[i];
                         source.lines = std::move(sub[i]);
                         const size_t n = std::min<size_t>(source.lines.size(), 200);
                         source.probe.assign(source.lines.begin(), source.lines.begin() + n);
@@ -450,7 +458,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
     reserveHint += std::min<size_t>(plainReserveHint, 1000000);
     bool parseOk = true;
     std::wstring parseErr;
-    struct SourceRange { std::wstring label; size_t first = 0, last = 0, rawLineOffset = 0; };
+    struct SourceRange { std::wstring label; OriginalSource original; size_t first = 0, last = 0, rawLineOffset = 0; };
     std::vector<SourceRange> ranges;
     std::size_t rawLineCount = 0;
     try {
@@ -460,7 +468,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
             const size_t i = ord[orderIndex];
             LoadSource& source = sources[i];
             parser.beginFile(YearHintFromLabel(source.label));
-            SourceRange range{source.label, result->document.lines.size(), result->document.lines.size()};
+            SourceRange range{source.label, source.original, result->document.lines.size(), result->document.lines.size()};
             range.rawLineOffset = rawLineCount;
             if (source.streamPlain) {
                 WorkerProgress progress{
@@ -470,7 +478,7 @@ static DWORD WINAPI LoadWorker(void* parameter) {
                 if (!ReadPlainLines(
                         source.path, std::numeric_limits<size_t>::max(),
                         [&](std::string line) { ++rawLineCount; parser.pushLine(std::move(line)); },
-                        nullptr, parseErr, &progress, ObserveRead)) {
+                        nullptr, parseErr, &progress, ObserveRead, &range.original.hash)) {
                     parseOk = false;
                     break;
                 }
@@ -506,6 +514,10 @@ static DWORD WINAPI LoadWorker(void* parameter) {
         SourceSummary summary; summary.label = range.label;
         summary.first = range.first; summary.last = range.last;
         summary.rawLineOffset = range.rawLineOffset;
+        summary.originalPath=range.original.path;summary.originalEntry=range.original.entry;summary.originalHash=range.original.hash;
+        std::size_t occurrence=0;for(const auto& previous:result->document.sources)if(previous.originalHash==summary.originalHash&&previous.label==summary.label)++occurrence;
+        summary.identity=sha256(summary.originalHash+"\n"+WToU8(summary.label)+"\n"+std::to_string(occurrence));
+        for(const auto& original:result->imported.originals)if(original.name==summary.originalEntry&&!original.identity.empty())summary.identity=original.identity;
         result->document.sources.push_back(std::move(summary));
     }
     if (ranges.size() > 1) result->document.rebuildComparisons(result->document.filtered);
@@ -678,10 +690,21 @@ bool HandleLoadControllerMessage(UINT message, WPARAM wparam, LPARAM lparam) {
     ResetVirtualTables();
     ReleaseLoadedData();
     App().document.swap(result->document);
+    LoadWorkspaceRecords();
+    if(!result->imported.originals.empty()){
+        for(const auto& record:result->imported.workspace.devices)App().document.workspace.devices[record.first]=record.second;
+        for(const auto& record:result->imported.workspace.reviews)App().document.workspace.reviews[record.first]=record.second;
+        App().document.sourceMode=result->imported.selectedDevice.empty()?(result->imported.continuation?DocumentState::SourceMode::Continuation:DocumentState::SourceMode::Independent):DocumentState::SourceMode::Device;
+        App().document.selectedDevice=result->imported.selectedDevice;
+        for(std::size_t i=0;i<App().document.sources.size();++i)if(App().document.sources[i].workspaceKey()==result->imported.selectedSourceHash)App().document.selectedSource=i;
+        for(const auto& note:result->imported.bookmarks)for(const auto& source:App().document.sources)if(source.workspaceKey()==note.sourceHash){auto line=source.rawLineOffset+note.line;auto found=std::find_if(App().document.lines.begin()+source.first,App().document.lines.begin()+source.last,[&](const LogLine& l){return l.lineNo==line;});if(found!=App().document.lines.begin()+source.last)ToggleEvidenceBookmark(line,U8ToW(note.text));break;}
+        App().document.selectTimeRange(result->imported.start,result->imported.end);SaveWorkspaceRecords();
+    }
     ResetFiltersForNewInput();
+    if(!result->imported.originals.empty())App().document.selectTimeRange(result->imported.start,result->imported.end);
     RebuildMetricQuickFilterView();
     SetWindowTextW(App().hFileLbl, result->label.c_str());
-    if (App().document.sources.size() > 1) RefreshAll();
+    if (App().document.sources.size() > 1 || !result->imported.originals.empty()) RefreshAll();
     else PresentAnalysis(result->badRegex);
     RememberRecentFiles(result->openedPaths);
     RefreshNavigation();
@@ -751,9 +774,9 @@ void DoPaste() {
     BusyScope busy(UiText(TextId::ui_0072));
 
     // 按行切分(兼容 \r\n / \n / \r 三种换行);与文件读取共用纯 C++ 实现。
-    std::vector<std::string> raw;
+    std::vector<std::string> raw;std::string clipboardBytes;
     try {
-        std::string u8 = WToU8(w);
+        std::string u8 = WToU8(w);clipboardBytes=u8;
         dl::splitTextLines(std::move(u8), raw);
     } catch (const std::bad_alloc&) {
         MessageBoxW(App().hMain, UiText(TextId::ui_0073), UiText(TextId::ui_0043), MB_ICONERROR);
@@ -761,7 +784,7 @@ void DoPaste() {
     }
 
     std::wstring pasteLabel = FmtW(UiText(TextId::ui_0074), (int)raw.size());
-    LoadRawLines(std::move(raw), pasteLabel);
+    LoadRawLines(std::move(raw), pasteLabel,{},std::move(clipboardBytes));
 
     // 粘贴的往往是片段,若一行都没认出来,直接把原因摆出来(而不是让用户对着空界面猜)
     if (App().document.lines.empty()) {
@@ -987,6 +1010,7 @@ void DoExportReport() {
             const wchar_t* level = finding.severity == 2 ? UiText(TextId::ui_0115) : finding.severity == 1 ? UiText(TextId::ui_0116) : UiText(TextId::ui_0117);
             add(FmtW(L"### %d. [%s] %s", static_cast<int>(index + 1), level,
                      AnalysisScopedText(finding.title).c_str())); add();
+            add(std::wstring(UiText(TextId::finding_summary))+L": "+U8ToW(findingBrief(WToU8(AnalysisScopedText(finding.detail)))));
             add(UiText(TextId::ui_0118) + AnalysisScopedText(finding.detail));
             add(UiText(TextId::ui_0119) + U8ToW(GeneratedText(finding.advice)));
             for (const auto& evidence : finding.ev)
@@ -995,6 +1019,7 @@ void DoExportReport() {
             add();
         }
 
+        add();add(UiText(TextId::review_manual));add(U8ToW(WorkspaceReviewText()));
         if (!EvidenceBookmarks().empty()) {
             add(UiText(TextId::ui_0121)); add();
             for (const auto& bookmark : EvidenceBookmarks())
@@ -1146,7 +1171,7 @@ void DoExportHtml() {
         html += UiText8(TextId::ui_0527);
         for (std::size_t i = 0; i < App().document.outages.size(); ++i) {
             const Outage& outage = App().document.outages[i];
-            html += "<tr><td>" + std::to_string(i + 1) + "</td><td>" + escape(fmtTime(outage.start, "FULL")) +
+            html += "<tr data-event-start=\""+std::to_string(outage.start)+"\" data-event-end=\""+std::to_string(outage.recovered?outage.end:signalEnd)+"\"><td>" + std::to_string(i + 1) + "</td><td>" + escape(fmtTime(outage.start, "FULL")) +
                     "</td><td>" + (outage.recovered ? escape(fmtTime(outage.end, "FULL")) :
                                   HasAnalysisTimeFilter() ? UiText8(TextId::ui_0251) : UiText8(TextId::ui_0279)) +
                     "</td><td>" + (outage.recovered ? escape(fmtDur(outage.dur)) : "-") +
@@ -1157,12 +1182,12 @@ void DoExportHtml() {
         if (App().document.findings.empty()) html += UiText8(TextId::ui_0529);
         for (const Finding& finding : App().document.findings) {
             html += "<article class=\"finding severity" + std::to_string(finding.severity) + "\"><h3>" +
-                    escape(WToU8(AnalysisScopedText(finding.title))) + UiText8(TextId::ui_0530) + escape(WToU8(AnalysisScopedText(finding.detail))) +
+                    escape(WToU8(AnalysisScopedText(finding.title))) + "</h3><p>"+escape(findingBrief(WToU8(AnalysisScopedText(finding.detail))))+"</p><p>"+escape(findingBrief(GeneratedText(finding.advice)))+"</p><details><summary>"+escape(UiText8(TextId::finding_original))+"</summary><p>" + escape(WToU8(AnalysisScopedText(finding.detail))) +
                     UiText8(TextId::ui_0531) + escape(GeneratedText(finding.advice)) + "</p>";
             for (const Evidence& evidence : finding.ev)
                 html += UiText8(TextId::ui_0532) + std::to_string(evidence.lineNo) + UiText8(TextId::ui_0533) +
                         escape(evidence.ts) + " · " + escape(evidence.text) + "</p>";
-            html += "</article>";
+            html += "</details></article>";
         }
         if (!EvidenceBookmarks().empty()) {
             html += UiText8(TextId::ui_0534);
@@ -1171,6 +1196,8 @@ void DoExportHtml() {
                         escape(WToU8(bookmark.text)) + "</li>";
             html += "</ul>";
         }
+        html += "<section><h2>"+escape(UiText8(TextId::review_manual))+"</h2><pre>"+escape(WorkspaceReviewText())+"</pre></section>";
+        html += reportChartScript(IsEnglish());
         html += UiText8(TextId::ui_0536);
     } catch (const std::bad_alloc&) {
         MessageBoxW(App().hMain, UiText(TextId::ui_0127), UiText(TextId::ui_0043), MB_ICONERROR); return;

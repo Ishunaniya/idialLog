@@ -1,5 +1,7 @@
 #include "incident_export.h"
 #include "rssi_summary.h"
+#include "sha256.h"
+#include "json_value.h"
 #include "log_time.h"
 #include "tablemodel.h"
 #include "text_catalog.h"
@@ -9,6 +11,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <memory>
+#include <set>
 
 namespace dl {
 namespace {
@@ -82,15 +85,18 @@ std::string incidentSummaryText(const IncidentReview& r,const IncidentExportCont
     if(r.resolvedOutsideFilter)text+=std::string(UiText8(TextId::incident_rebuilt))+"\n";
     if(r.clockLimited)text+=std::string(UiText8(TextId::incident_clock))+"\n";
     if(r.inferredTime)text+=std::string(UiText8(TextId::incident_inferred))+"\n";
+    for(const auto& record:c.reviews)text+=reviewRecordText(record)+"\n";
     text+=std::string(UiText8(TextId::incident_boundary))+"\n"+UiText8(TextId::incident_evidence_note)+"\n"+UiText8(TextId::incident_signal_note)+"\n";
     return text;
 }
 std::string buildIncidentZip(const IncidentReview& r,const IncidentExportContext& c) {
     if(!r.valid)throw std::invalid_argument("Invalid incident");
+    if(c.originals.size()>1000)throw std::invalid_argument("Evidence packages support at most 1000 original sources");
     std::vector<std::pair<std::string,std::string>> files;
     std::size_t total=0;
-    auto addFile=[&](const char* name,std::string bytes) {
-        if(bytes.size()>limit-total)throw std::length_error("incident_export_limit");
+    const std::size_t packageLimit=c.originals.empty()?limit:512ULL*1024*1024;
+    auto addFile=[&](const std::string& name,std::string bytes) {
+        if(bytes.size()>packageLimit-total)throw std::length_error("incident_export_limit");
         total+=bytes.size();files.emplace_back(name,std::move(bytes));
     };
     std::string report="# "+std::string(UiText8(TextId::incident_title))+"\n\n"+block(incidentSummaryText(r,c));
@@ -138,7 +144,7 @@ std::string buildIncidentZip(const IncidentReview& r,const IncidentExportContext
     addFile("bookmarks.jsonl",std::move(notes));
     std::string manifest="{\"schema\":1,\"tool\":\"dialLog\",\"version\":"+json(c.version)+",\"build\":"+json(c.build)+
         ",\"language\":"+json(IsEnglish()?"en-US":"zh-CN")+",\"scope\":"+json(c.scope)+",\"continuation\":"+(c.continuation?"true":"false")+
-        ",\"original_bytes_included\":false,\"metrics_basis\":\"full-source-state-filtered-by-window\",\"evidence_format\":\"parsed-log-lines\",\"start\":"+std::to_string(r.outage.start)+
+        ",\"original_bytes_included\":"+(c.originals.empty()?std::string("false"):std::string("true"))+",\"metrics_basis\":\"full-source-state-filtered-by-window\",\"evidence_format\":\"parsed-log-lines\",\"start\":"+std::to_string(r.outage.start)+
         ",\"end\":"+(r.outage.recovered?std::to_string(r.outage.end):"null")+",\"recovered\":"+(r.outage.recovered?"true":"false")+
         ",\"self_contained_reported_duration\":"+(r.outage.reportedDuration?"true":"false")+",\"duration_seconds\":"+(r.outage.recovered?std::to_string(r.outage.dur):"null")+
         ",\"edge_elapsed_seconds\":"+(r.outage.recovered?std::to_string(r.outage.end-r.outage.start):"null")+
@@ -160,6 +166,25 @@ std::string buildIncidentZip(const IncidentReview& r,const IncidentExportContext
     }
     append(manifest,"]}\n");addFile("manifest.json",std::move(manifest));
     
+    if(!c.originals.empty()) {
+        Json index=Json::dict();index.object["schema"]=Json(2LL);index.object["tool"]=Json("dialLog");
+        index.object["start"]=Json(r.start);index.object["end"]=Json(r.end);index.object["continuation"]=Json::flag(c.continuation);
+        index.object["selected_device"]=Json(c.selectedDevice);index.object["selected_source"]=Json(c.selectedSourceHash);
+        Json bookmarks=Json::list();for(const auto& note:c.bookmarks){const auto origin=evidenceOrigin(c.sources,note.line);if(origin.index<1||origin.index>c.originals.size())continue;Json b=Json::dict();b.object["source_hash"]=Json(c.originals[origin.index-1].identity.empty()?c.originals[origin.index-1].hash:c.originals[origin.index-1].identity);b.object["source_line"]=Json(static_cast<long long>(origin.line));b.object["text"]=Json(note.text);bookmarks.array.push_back(std::move(b));}index.object["bookmarks"]=std::move(bookmarks);
+        Json originals=Json::list(),digests=Json::dict();std::size_t number=0;
+        for(const auto& original:c.originals){
+            if(original.bytes.size()>256ULL*1024*1024)throw std::length_error("Original source exceeds 256 MiB");
+            if(sha256(original.bytes)!=original.hash)throw std::invalid_argument("Original digest mismatch");
+            const std::string path="originals/"+std::to_string(number++)+".log";
+            Json item=Json::dict();item.object["path"]=Json(path);item.object["label"]=Json(original.label);item.object["sha256"]=Json(original.hash);item.object["identity"]=Json(original.identity.empty()?original.hash:original.identity);
+            originals.array.push_back(std::move(item));addFile(path,original.bytes);
+        }
+        addFile("workspace.json",encodeWorkspace(c.workspace));
+        for(const auto& file:files)digests.object[file.first]=Json(sha256(file.second));
+        index.object["originals"]=std::move(originals);index.object["files"]=std::move(digests);
+        addFile("package-index.json",writeJson(index)+"\n");
+    }
+
     mz_zip_archive zip{};
     if(!mz_zip_writer_init_heap(&zip,0,0))throw std::runtime_error("ZIP init failed");
     struct End {mz_zip_archive* zip;~End(){mz_zip_writer_end(zip);}} end{&zip};
@@ -168,7 +193,55 @@ std::string buildIncidentZip(const IncidentReview& r,const IncidentExportContext
     void* bytes=nullptr;std::size_t size=0;
     if(!mz_zip_writer_finalize_heap_archive(&zip,&bytes,&size))throw std::runtime_error("ZIP finalise failed");
     std::unique_ptr<void,decltype(&mz_free)> data(bytes,mz_free);
-    if(size>limit)throw std::length_error("incident_export_limit");
+    if(size>packageLimit)throw std::length_error("incident_export_limit");
     return std::string(static_cast<const char*>(bytes),size);
+}
+ImportedEvidencePackage readEvidencePackage(const std::string& bytes) {
+    constexpr std::size_t max=512ULL*1024*1024;
+    if(bytes.size()>max)throw std::length_error("Package limit");
+    mz_zip_archive zip{};if(!mz_zip_reader_init_mem(&zip,bytes.data(),bytes.size(),0))throw std::invalid_argument("Invalid ZIP");
+    struct End {mz_zip_archive* zip;~End(){mz_zip_reader_end(zip);}} end{&zip};
+    std::map<std::string,std::string> files;std::size_t total=0;const auto n=mz_zip_reader_get_num_files(&zip);
+    if(n>1010)throw std::length_error("Package entries");
+    for(mz_uint i=0;i<n;++i){mz_zip_archive_file_stat stat{};if(!mz_zip_reader_file_stat(&zip,i,&stat)||mz_zip_reader_is_file_a_directory(&zip,i))throw std::invalid_argument("Invalid package entry");
+        std::string name=stat.m_filename;
+        if(name.empty()||name.size()>200||name.front()=='/'||name.find("..")!=std::string::npos||name.find('\\')!=std::string::npos||name.find(':')!=std::string::npos||files.count(name)||stat.m_uncomp_size>max-total)throw std::invalid_argument("Invalid package path or size");
+        std::size_t size=0;void* buffer=mz_zip_reader_extract_to_heap(&zip,i,&size,0);std::unique_ptr<void,decltype(&mz_free)> memory(buffer,mz_free);
+        if(!buffer||size!=stat.m_uncomp_size)throw std::invalid_argument("Package CRC failure");
+        total+=size;files.emplace(name,std::string(static_cast<const char*>(buffer),size));}
+    ImportedEvidencePackage result;auto report=files.find("report.md");if(report==files.end())throw std::invalid_argument("No report");result.report=report->second;
+    const auto found=files.find("package-index.json");
+    if(found==files.end()){auto m=files.find("manifest.json");if(m==files.end()||parseJson(m->second).at("tool").str()!="dialLog")throw std::invalid_argument("Not a dialLog package");return result;}
+    auto index=parseJson(found->second);if(index.at("schema").num()!=2||index.at("tool").str()!="dialLog")throw std::invalid_argument("Unsupported package");
+    const auto& hashes=index.at("files");if(hashes.kind!=Json::Object||hashes.object.size()+1!=files.size())throw std::invalid_argument("Package inventory mismatch");
+    for(const auto& pair:hashes.object){auto f=files.find(pair.first);if(f==files.end()||sha256(f->second)!=pair.second.str())throw std::invalid_argument("Package SHA-256 mismatch");}
+    result.start=index.at("start").num();result.end=index.at("end").num();if(result.start>result.end)throw std::invalid_argument("Invalid package range");result.continuation=index.at("continuation").flag();
+    result.selectedDevice=index.at("selected_device").str();result.selectedSourceHash=index.at("selected_source").str();
+    const auto& originals=index.at("originals");if(originals.kind!=Json::Array||originals.array.empty()||originals.array.size()>1000)throw std::invalid_argument("No originals");
+    std::set<std::string> paths, identities;
+    for (const auto& item : originals.array) {
+        const auto path = item.at("path").str();
+        auto file = files.find(path);
+        if (path.compare(0, 10, "originals/") != 0 || file == files.end() ||
+            !paths.insert(path).second || file->second.size() > 256ULL * 1024 * 1024)
+            throw std::invalid_argument("Invalid original inventory");
+        const auto hash = item.at("sha256").str();
+        if (sha256(file->second) != hash) throw std::invalid_argument("Original hash mismatch");
+        const auto identity = item.at("identity").str();
+        const auto label = item.at("label").str();
+        if (identity.size() != 64 || identity.find_first_not_of("0123456789abcdef") != std::string::npos ||
+            !identities.insert(identity).second || label.size() > 4096 || label.find('\0') != std::string::npos)
+            throw std::invalid_argument("Invalid source identity or label");
+        result.originals.push_back({path, label, std::move(file->second), hash, identity});
+    }
+    auto workspace=files.find("workspace.json");if(workspace==files.end())throw std::invalid_argument("No workspace");result.workspace=decodeWorkspace(workspace->second);
+    for (const auto& device : result.workspace.devices)
+        if (!identities.count(device.first)) throw std::invalid_argument("Unknown device source");
+    if ((!result.selectedSourceHash.empty() && !identities.count(result.selectedSourceHash)) ||
+        (!result.selectedDevice.empty() && !std::any_of(result.workspace.devices.begin(), result.workspace.devices.end(),
+            [&](const auto& device) { return device.second.device == result.selectedDevice; })))
+        throw std::invalid_argument("Unknown selected source or device");
+    const auto& bookmarks=index.at("bookmarks");if(bookmarks.kind!=Json::Array||bookmarks.array.size()>10000)throw std::invalid_argument("Invalid bookmarks");for(const auto& b:bookmarks.array){auto line=b.at("source_line").num();auto hash=b.at("source_hash").str();auto text=b.at("text").str();if(line<=0||text.size()>32768||!std::any_of(result.originals.begin(),result.originals.end(),[&](const IncidentExportContext::Original& o){return o.identity==hash;}))throw std::invalid_argument("Invalid bookmark source");result.bookmarks.push_back({hash,text,static_cast<std::size_t>(line)});}
+    return result;
 }
 } // namespace dl

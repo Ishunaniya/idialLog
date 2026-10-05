@@ -1,6 +1,8 @@
 // win_file_io.cpp — Win32 文件读取、原子写入与压缩日志来源展开
 #include "win_file_io.h"
 #include "text_catalog.h"
+#include "sha256.h"
+#include "incident_export.h"
 
 #include "log_parser.h"
 
@@ -83,7 +85,8 @@ bool ReadFileBytes(const std::wstring& path, std::string& buf, std::wstring& err
 bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
                         void* sinkContext, PlainLineSink sink,
                         std::size_t* fileBytes, std::wstring& err,
-                        void* observerContext, ReadObserver observer) {
+                        void* observerContext, ReadObserver observer, std::string* hash) {
+    Sha256 digest;
     err.clear();
     HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -114,6 +117,7 @@ bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
             DWORD got = 0;
             if (!ReadFile(h, block.data(), want, &got, nullptr) || got == 0) break;
             total += got;
+            if(hash)digest.update(std::string_view(block.data(),got));
             if (observer && !observer(observerContext, total, static_cast<std::size_t>(sz.QuadPart))) {
                 CloseHandle(h); err = UiText(TextId::ui_0032); return false;
             }
@@ -146,6 +150,7 @@ bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
         err = UiText(TextId::ui_0134);
         return false;
     }
+    if(hash)*hash=digest.finish();
     if (!carry.empty() && emitted < maxLines) sink(sinkContext, std::move(carry));
     return true;
 }
@@ -236,7 +241,8 @@ bool ReadPathExpand(const std::wstring& path,
                     std::vector<std::wstring>& labels,
                     std::size_t& textBytes,
                     std::wstring& err,
-                    void* observerContext, ReadObserver observer) {
+                    void* observerContext, ReadObserver observer, std::vector<OriginalSource>* originals, ImportedEvidencePackage* package) {
+    if(originals)originals->clear();
     chunks.clear();
     labels.clear();
     textBytes = 0;
@@ -248,14 +254,21 @@ bool ReadPathExpand(const std::wstring& path,
         std::vector<ArchiveEntry> entries;
         std::string archiveErr;
         if (extractArchive(buf, entries, archiveErr)) {
+            const bool evidencePackage=std::any_of(entries.begin(),entries.end(),[](const ArchiveEntry& e){return e.name=="package-index.json";});
+            if(evidencePackage){
+                try{auto imported=readEvidencePackage(buf);entries.clear();for(auto& o:imported.originals)entries.push_back({o.name,std::move(o.bytes)});if(package)*package=std::move(imported);}
+                catch(const std::exception& e){err=UiText(TextId::package_invalid)+Utf8ToWide(e.what());return false;}
+            }
+            std::size_t entryIndex=0;
             for (auto& entry : entries) {
                 if (observer && !observer(observerContext, textBytes, std::max<std::size_t>(1, buf.size()))) {
                     chunks.clear(); labels.clear(); textBytes = 0; err = UiText(TextId::ui_0032); return false;
                 }
                 std::size_t entryBytes = entry.data.size();
+                OriginalSource origin{path,entry.name,sha256(entry.data)};
                 std::vector<std::string> lines;
                 splitTextLines(std::move(entry.data), lines);
-                if (lines.empty()) continue;
+                if (lines.empty() && !evidencePackage) continue;
                 if (entryBytes > kMaxBatchTextBytes - textBytes) {
                     chunks.clear(); labels.clear(); textBytes = 0;
                     err = UiText(TextId::ui_0141);
@@ -263,8 +276,11 @@ bool ReadPathExpand(const std::wstring& path,
                 }
                 textBytes += entryBytes;
                 chunks.push_back(std::move(lines));
+                if(originals)originals->push_back(std::move(origin));
                 std::wstring inner = Utf8ToWide(entry.name);
-                labels.push_back(inner.empty() ? base : (base + L"!" + inner));
+                if(evidencePackage&&package&&entryIndex<package->originals.size())labels.push_back(Utf8ToWide(package->originals[entryIndex].label));
+                else labels.push_back(inner.empty() ? base : (base + L"!" + inner));
+                ++entryIndex;
             }
             if (!chunks.empty()) return true;
             err = UiText(TextId::ui_0142);
@@ -281,6 +297,23 @@ bool ReadPathExpand(const std::wstring& path,
     chunks.push_back(std::move(lines));
     labels.push_back(base);
     return true;
+}
+
+bool ReadBoundedFile(const std::wstring& path,std::string& bytes,std::wstring& error,std::size_t limit) {
+    HANDLE h=CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+    if(h==INVALID_HANDLE_VALUE){error=UiText(TextId::ui_0130);return false;}
+    LARGE_INTEGER size{};bool ok=GetFileSizeEx(h,&size)&&size.QuadPart>=0&&static_cast<unsigned long long>(size.QuadPart)<=limit;
+    if(ok){try{bytes.resize(static_cast<std::size_t>(size.QuadPart));}catch(...){CloseHandle(h);throw;}
+        std::size_t done=0;while(done<bytes.size()){DWORD got=0;DWORD n=static_cast<DWORD>(std::min<std::size_t>(1024*1024,bytes.size()-done));if(!ReadFile(h,&bytes[done],n,&got,nullptr)||got!=n){ok=false;break;}done+=got;}}
+    CloseHandle(h);if(!ok){bytes.clear();error=UiText(TextId::ui_0134);}return ok;
+}
+bool ReadOriginalBytes(const OriginalSource& source,std::string& bytes,std::wstring& error) {
+    if(!ReadBoundedFile(source.path,bytes,error,kMaxInputBytes))return false;
+    if(!source.entry.empty() || archiveKindOf(bytes)!=ARC_NONE){std::vector<ArchiveEntry> entries;std::string why;
+        if(!extractArchive(bytes,entries,why)){error=Utf8ToWide(why);return false;}
+        bool found=false;for(auto& e:entries)if(e.name==source.entry){if(found){error=UiText(TextId::package_invalid);return false;}bytes=std::move(e.data);found=true;}
+        if(!found){error=UiText(TextId::package_hash_error);return false;}}
+    if(sha256(bytes)!=source.hash){error=UiText(TextId::package_hash_error);bytes.clear();return false;}return true;
 }
 
 std::wstring FileNameOf(const std::wstring& path) {

@@ -20,6 +20,7 @@
 #include "load_controller.h"
 #include "source_workspace.h"
 #include "text_view.h"
+#include "workspace_window.h"
 #include "memoryutil.h"
 #include "modern_shell.h"
 #include "signal_quality.h"
@@ -114,6 +115,8 @@ static std::wstring FindingText(size_t index) {
     text += UiText(TextId::ui_0361) + AnalysisScopedText(finding.detail) + UiText(TextId::ui_0362) + U8ToW(GeneratedText(finding.advice)) + UiText(TextId::ui_0363);
     for (const auto& item : finding.ev)
         text += FmtW(UiText(TextId::ui_0156), static_cast<int>(item.lineNo)) + U8ToW(item.ts) + L"  " + U8ToW(item.text) + L"\r\n";
+    auto found=App().document.workspace.reviews.find(FindingReviewKey(finding));
+    if(found!=App().document.workspace.reviews.end())text+=L"\r\n"+U8ToW(reviewRecordText(found->second));
     return text;
 }
 static void SelectFindingText(std::size_t index) {
@@ -121,7 +124,8 @@ static void SelectFindingText(std::size_t index) {
     std::vector<TextEvidence> evidence;
     for(const auto& e:App().document.findings[index].ev)
         evidence.push_back({e.lineNo,U8ToW(e.ts)+L"  "+U8ToW(e.text)});
-    ShowSelectableText(UiText(TextId::text_select),FindingText(index),evidence);
+    const auto& f=App().document.findings[index];
+    ShowSelectableText(UiText(TextId::text_select),FindingText(index),evidence,FindingReviewKey(f),f.title);
 }
 static std::wstring FindingsMetaText() {
     const auto& doc = App().document;
@@ -735,8 +739,8 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         std::wstring title = FmtW(L"%d. ", n) + U8ToW(findingDisplayTitle(WToU8(AnalysisScopedText(f.title))));
         const std::string detailText=WToU8(AnalysisScopedText(f.detail));
         const std::string adviceText=GeneratedText(f.advice);
-        std::wstring detail=U8ToW(expanded?detailText:findingPreview(detailText,IsEnglish()?320:110));
-        std::wstring advice=U8ToW(expanded?adviceText:findingPreview(adviceText,IsEnglish()?240:85));
+        std::wstring detail=U8ToW(expanded?detailText:findingBrief(detailText));
+        std::wstring advice=U8ToW(expanded?adviceText:findingBrief(adviceText));
         std::vector<std::wstring> evidence;
         evidence.reserve(f.ev.size());
         if(expanded) for (const auto& e : f.ev)
@@ -783,9 +787,9 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         DrawPill(hdc, M + cardW - S(120), ty, UiText(TextId::ui_0418), th::accentSoft, th::accent);
         g_findingCopyHits.push_back(CopyHit{RECT{M, y, M + cardW, y + h}, FindingText(n - 1)});
         ty += titleH + S(8);
-        DrawText_(hdc, textX0, ty, UiText(expanded?TextId::ui_0192:TextId::ui_0545), App().hFontUI, th::inkMuted); ty += lblH;
+        DrawText_(hdc, textX0, ty, UiText(expanded?TextId::ui_0192:TextId::finding_summary), App().hFontUI, th::inkMuted); ty += lblH;
         ty += DrawWrapped(hdc, textX0, ty, textW, detail, App().hFontUI, th::inkPri) + SEC;
-        DrawText_(hdc, textX0, ty, UiText(expanded?TextId::ui_0419:TextId::ui_0546), App().hFontUI, th::inkMuted); ty += lblH;
+        DrawText_(hdc, textX0, ty, UiText(TextId::ui_0419), App().hFontUI, th::inkMuted); ty += lblH;
         ty += DrawWrapped(hdc, textX0, ty, textW, advice, App().hFontUI, th::inkSec) + SEC;
         if(expanded) {DrawText_(hdc, textX0, ty, UiText(TextId::ui_0420), App().hFontUI, th::inkMuted); ty += lblH;}
         for (size_t evidenceIndex = 0; evidenceIndex < evidence.size(); ++evidenceIndex) {
@@ -796,11 +800,13 @@ LRESULT CALLBACK FindingsProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 f.ev[evidenceIndex].lineNo, evidence[evidenceIndex]});
             ty += evidenceH + S(5);
         }
+        auto review=App().document.workspace.reviews.find(FindingReviewKey(f));
         const auto toggleText=expanded?std::wstring(UiText(TextId::ui_0544)):
             FmtW(UiText(TextId::ui_0543),static_cast<int>(f.ev.size()));
         RECT toggle{textX0,ty,textX0+TextW_(hdc,toggleText,App().hFontSmall)+S(24),ty+S(27)};
         DrawPill(hdc,toggle.left,toggle.top,toggleText,th::accentSoft,th::accent);
         g_findingExpandHits.push_back(FindingExpandHit{toggle,static_cast<std::size_t>(n-1)});
+        if(review!=App().document.workspace.reviews.end()){auto status=U8ToW(reviewStatusText(review->second.status));const int statusWidth=TextW_(hdc,status,App().hFontSmall)+S(24);if(toggle.right+statusWidth+S(180)<M+cardW)DrawPill(hdc,toggle.right+S(10),ty,status,th::accentSoft,th::accent);}
         const int selectWidth=TextW_(hdc,UiText(TextId::text_select),App().hFontSmall)+S(24);
         RECT select{M+cardW-CARD_PAD-selectWidth,ty,M+cardW-CARD_PAD,ty+S(27)};
         DrawPill(hdc,select.left,select.top,UiText(TextId::text_select),th::accentSoft,th::accent);

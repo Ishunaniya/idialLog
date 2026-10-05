@@ -1,3 +1,5 @@
+// build/tests/ 下的程序与导出文件是可删除的本地测试产物；make check 会重新生成，不是应用运行依赖。
+#include "version.h"
 #include "incidentmodel.h"
 #include "incident_export.h"
 #include "rssi_summary.h"
@@ -73,7 +75,7 @@ int main() {
     ok(merged.back().lineNo==10 && source.index==2 && source.line==3 && source.label=="B.log",
        "global row 10 maps to source B original row 3, not parsed-row ordinal");
     const auto missing=evidenceOrigin({},10);ok(missing.index==0 && missing.line==0,"missing origin remains unknown");
-    IncidentExportContext context;context.scope="source A";context.version="1.12.0";context.build="test";
+    IncidentExportContext context;context.scope="source A";context.version=DL_VER_STR;context.build="test";
     ok(incidentSummaryText(review,context).find("RSSI：当前范围无有效上报") != std::string::npos &&
        rssiSummaryText(observedRssi(qr.metrics)).find("-65 / -65.0 / -65 dBm") != std::string::npos,
        "review RSSI uses its own window and carries actual QENG values, never outside samples");

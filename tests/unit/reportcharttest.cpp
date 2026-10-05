@@ -1,3 +1,4 @@
+// build/tests/ 下的程序与导出文件是可删除的本地测试产物；make check 会重新生成，不是应用运行依赖。
 #include "report_chart.h"
 #include "signal_chart.h"
 #include "log_parser.h"

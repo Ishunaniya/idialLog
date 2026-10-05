@@ -1,7 +1,12 @@
 """Offline WebKit report layout/DOM smoke; run under Xvfb with system Python."""
 import json
+import re
 import sys
 from pathlib import Path
+
+version_header = (Path(__file__).resolve().parents[2] / "version.h").read_text()
+expected_version = ".".join(re.search(r"^#define DL_VER_" + part + r"\s+(\d+)$", version_header, re.M).group(1)
+                            for part in ("MAJOR", "MINOR", "PATCH"))
 import gi
 
 gi.require_version('Gtk', '3.0')
@@ -56,7 +61,7 @@ def loaded(view, event):
       const charts = [...document.querySelectorAll('.signal-chart')];
       const axes = charts.map(c => [...c.querySelectorAll('svg > text.chart-label')].filter(t => t.querySelector('tspan')).map(t => t.textContent).join('|'));
       window.scrollTo(0, charts[0].getBoundingClientRect().top + window.scrollY - 16);
-      return JSON.stringify({version:document.body.textContent.includes('dialLog v1.12.0'),charts:charts.length,
+      return JSON.stringify({version:document.body.textContent.includes('dialLog vVERSION_EXPECTED'),charts:charts.length,
         counts:charts.map(c=>Number(c.dataset.drawn)),markers:charts.map(c=>c.querySelectorAll('circle.sample').length),
         axesSame:axes.every(a=>a===axes[0]),noBodyOverflow:document.documentElement.scrollWidth<=innerWidth,
         viewport:innerWidth,documentWidth:document.documentElement.scrollWidth,
@@ -69,6 +74,7 @@ def loaded(view, event):
         externalResources:document.querySelectorAll('script[src],link[href],img[src]').length,
         chartScroll:charts[0].querySelector('.chart-scroll').scrollWidth>charts[0].querySelector('.chart-scroll').clientWidth});
     })()'''
+    source = source.replace('VERSION_EXPECTED', expected_version)
     GLib.timeout_add(250, lambda: (view.evaluate_javascript(source, -1, None, None, None, checked, None), False)[1])
 
 web.connect('load-changed', loaded)

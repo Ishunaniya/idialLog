@@ -9,6 +9,7 @@
 #include "incidentmodel.h"
 #include "incident_export.h"
 #include "source_workspace.h"
+#include "workspace_window.h"
 #include "load_controller.h"
 #include "ui_pages.h"
 #include "tablemodel.h"
@@ -19,6 +20,7 @@
 #include "modern_shell.h"
 #include "theme.h"
 #include "version.h"
+#include "log_time.h"
 namespace dl {
 namespace {
 HWND g_window=nullptr;
@@ -109,6 +111,7 @@ void Review() {
     HCURSOR old=SetCursor(LoadCursorW(nullptr,IDC_WAIT));
     g_review=reviewIncident(g_catalog,g_index,minutes[std::clamp(b,0,4)]*60,minutes[std::clamp(a,0,4)]*60);SetCursor(old);
     g_review.resolvedOutsideFilter=g_index==g_restoredIndex;
+    g_context.reviews.clear();auto record=App().document.workspace.reviews.find(IncidentReviewKey(g_review.outage));if(record!=App().document.workspace.reviews.end())g_context.reviews.push_back(record->second);
     SetWindowTextW(GetDlgItem(g_window,summary),SummaryText().c_str());
     EnableWindow(GetDlgItem(g_window,previous),g_index>0);EnableWindow(GetDlgItem(g_window,next),g_index+1<g_catalog.outages.size());
     for(int id:{signal,copy,exportZip})EnableWindow(GetDlgItem(g_window,id),g_review.valid);
@@ -144,8 +147,16 @@ void Export() {
     if(IsWindow(reviewWindow))EnableWindow(reviewWindow,wasEnabled);
     if(!accepted || reviewWindow!=g_window || !g_review.valid)return;
     SetForegroundWindow(reviewWindow);
+    struct ClearOriginals {
+        ~ClearOriginals() { g_context.originals.clear(); }
+    } clearOriginals;
     try {
         g_context.bookmarks.clear();for(const auto& note:EvidenceBookmarks())g_context.bookmarks.push_back({note.lineNo,WToU8(note.text)});
+        g_context.originals.clear();g_context.workspace=App().document.workspace;
+        g_context.reviews.clear();auto record=App().document.workspace.reviews.find(IncidentReviewKey(g_review.outage));if(record!=App().document.workspace.reviews.end())g_context.reviews.push_back(record->second);
+        if(SendDlgItemMessageW(g_window,1316,BM_GETCHECK,0,0)==BST_CHECKED){
+            for(const auto& source:App().document.sources){std::string data;std::wstring why;if(!source.pastedBytes.empty())data=source.pastedBytes;else if(!ReadOriginalBytes({source.originalPath,source.originalEntry,source.originalHash},data,why))throw std::runtime_error(WToU8(why));g_context.originals.push_back({source.originalEntry,WToU8(source.label),std::move(data),source.originalHash,source.workspaceKey()});}
+        }
         const auto bytes=buildIncidentZip(g_review,g_context);std::wstring error;
         if(!WriteFileBytesAtomic(path,bytes,error)){ShowModernNotice(UiText(TextId::incident_export_fail),error.c_str(),ModernNoticeKind::Error);return;}
         ShowModernNotice(UiText(TextId::incident_export_done),path,ModernNoticeKind::Success);
@@ -171,6 +182,8 @@ LRESULT CALLBACK ReviewProc(HWND window,UINT msg,WPARAM wp,LPARAM lp) {
         for(int id:{summary,detail}){HWND edit=control(L"EDIT",L"",ES_READONLY|ES_MULTILINE|ES_AUTOVSCROLL|WS_VSCROLL|WS_TABSTOP,id);SendMessageW(edit,EM_SETLIMITTEXT,0,0);}
         button(TextId::incident_signal,signal);button(TextId::incident_copy,copy);button(TextId::incident_export,exportZip);
         button(TextId::incident_jump,jump);button(TextId::incident_bookmark,bookmark);
+        button(TextId::workspace_edit_review,1315);
+        control(L"BUTTON",UiText(TextId::package_original),BS_AUTOCHECKBOX|WS_TABSTOP,1316);SendDlgItemMessageW(window,1316,BM_SETCHECK,BST_CHECKED,0);
         HWND tab=control(WC_TABCONTROLW,L"",WS_TABSTOP,tabs);
         for(TextId id:{TextId::incident_events,TextId::incident_metrics,TextId::incident_rules}){TCITEMW item{};item.mask=TCIF_TEXT;
             item.pszText=const_cast<wchar_t*>(UiText(id));TabCtrl_InsertItem(tab,TabCtrl_GetItemCount(tab),&item);}
@@ -181,13 +194,15 @@ LRESULT CALLBACK ReviewProc(HWND window,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_SIZE: {
         RECT r{};GetClientRect(window,&r);int width=std::max(1,static_cast<int>(r.right)-S(32));
         auto move=[&](int id,int x,int y,int w,int h){MoveWindow(GetDlgItem(window,id),S(x),S(y),S(w),S(h),TRUE);};
+        move(1315,358,MulDiv(r.bottom,96,App().dpi)-50,200,32);
+        move(1316,16,MulDiv(r.bottom,96,App().dpi)-92,MulDiv(width,96,App().dpi),28);
         move(previous,16,12,105,32);move(next,128,12,105,32);
         move(beforeLabel,250,12,100,32);move(before,352,12,92,240);move(afterLabel,460,12,100,32);move(after,562,12,92,240);
         const int summaryH=std::clamp(static_cast<int>(r.bottom)/4,S(130),S(190));
         MoveWindow(GetDlgItem(window,summary),S(16),S(56),width,summaryH,TRUE);
         const int actions=S(68)+summaryH,tabTop=actions+S(44),tableTop=tabTop+S(34);
         const int detailH=std::clamp(static_cast<int>(r.bottom)/4,S(100),S(180));
-        const int detailTop=static_cast<int>(r.bottom)-detailH-S(62);
+        const int detailTop=static_cast<int>(r.bottom)-detailH-S(100);
         MoveWindow(GetDlgItem(window,signal),S(16),actions,S(170),S(32),TRUE);
         MoveWindow(GetDlgItem(window,copy),S(194),actions,S(145),S(32),TRUE);
         MoveWindow(GetDlgItem(window,exportZip),S(347),actions,S(205),S(32),TRUE);
@@ -201,6 +216,7 @@ LRESULT CALLBACK ReviewProc(HWND window,UINT msg,WPARAM wp,LPARAM lp) {
         const int id=LOWORD(wp);
         if(HIWORD(wp)==CBN_SELCHANGE && (id==before||id==after)){Review();return 0;}
         if(id==previous||id==next){MoveIncident(id==previous?-1:1);return 0;}
+        if(id==1315){EditManualReview(IncidentReviewKey(g_review.outage),std::string(UiText8(TextId::incident_title))+" "+fmtTime(g_review.outage.start,"FULL"));return 0;}
         if(id==copy){CopyReview();return 0;}if(id==exportZip){Export();return 0;}
         if(id==jump||id==bookmark){Follow(id==bookmark);return 0;}
         if(id==signal && g_review.valid){const auto first=g_review.start,last=g_review.end;CloseIncidentReview();
@@ -247,16 +263,17 @@ LRESULT CALLBACK ReviewProc(HWND window,UINT msg,WPARAM wp,LPARAM lp) {
 }
 }
 void CloseIncidentReview(){if(g_window)DestroyWindow(g_window);}
+void RefreshIncidentAnnotation(){if(!g_window||!g_review.valid)return;g_context.reviews.clear();auto record=App().document.workspace.reviews.find(IncidentReviewKey(g_review.outage));if(record!=App().document.workspace.reviews.end())g_context.reviews.push_back(record->second);SetWindowTextW(GetDlgItem(g_window,summary),SummaryText().c_str());}
 void ShowIncidentReview(const Outage& selected) {
     if(LoadInProgress())return;
     CloseIncidentReview();const auto& doc=App().document;
     LogView scope;scope.reserve(doc.lines.size());for(const auto& line:doc.lines)scope.push_back(&line);
-    if(doc.sourceMode==DocumentState::SourceMode::Independent)doc.restrictToSource(scope,doc.selectedSource);
+    doc.restrictToSelection(scope);
     HCURSOR old=SetCursor(LoadCursorW(nullptr,IDC_WAIT));g_catalog=buildIncidentCatalog(std::move(scope));SetCursor(old);
     g_index=findIncident(g_catalog,selected);g_tab=0;
     if(g_index>=g_catalog.outages.size()){g_catalog=IncidentCatalog{};ShowModernNotice(UiText(TextId::incident_title),UiText(TextId::incident_none),ModernNoticeKind::Info);return;}
     g_context.scope=WToU8(AnalysisSourceText());g_context.version=DL_VER_STR;g_context.build=__DATE__ " " __TIME__;
-    g_context.continuation=doc.sourceMode==DocumentState::SourceMode::Continuation;
+    g_context.continuation=doc.sourceMode==DocumentState::SourceMode::Continuation;g_context.selectedDevice=doc.sourceMode==DocumentState::SourceMode::Device?doc.selectedDevice:"";if(doc.selectedSource<doc.sources.size())g_context.selectedSourceHash=doc.sources[doc.selectedSource].workspaceKey();
     for(std::size_t i=0;i<doc.sources.size();++i){const auto& s=doc.sources[i];if(s.first>=s.last || s.last>doc.lines.size())continue;
         std::size_t first=SIZE_MAX,last=0;for(std::size_t row=s.first;row<s.last;++row){first=std::min(first,doc.lines[row].lineNo);last=std::max(last,doc.lines[row].lineNo);}
         g_context.sources.push_back({WToU8(s.label),i+1,first,last,s.rawLineOffset});}
@@ -268,7 +285,8 @@ void ShowIncidentReview(const Outage& selected) {
     g_window=CreateWindowExW(WS_EX_TOOLWINDOW,cls.lpszClassName,UiText(TextId::incident_title),WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT,CW_USEDEFAULT,S(1120),S(880),App().hMain,nullptr,cls.hInstance,nullptr);
     if(!g_window){g_catalog=IncidentCatalog{};g_context=IncidentExportContext{};return;}
-    g_review.resolvedOutsideFilter=restored;SetWindowTextW(GetDlgItem(g_window,summary),SummaryText().c_str());
+    g_review.resolvedOutsideFilter=restored;g_context.reviews.clear();auto record=App().document.workspace.reviews.find(IncidentReviewKey(g_review.outage));if(record!=App().document.workspace.reviews.end())g_context.reviews.push_back(record->second);
+    SetWindowTextW(GetDlgItem(g_window,summary),SummaryText().c_str());
     ShowWindow(g_window,SW_SHOW);SetFocus(GetDlgItem(g_window,table));
 }
 bool RouteIncidentReviewMessage(MSG& message) {

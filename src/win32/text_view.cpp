@@ -3,6 +3,7 @@
 #include <cstring>
 #include <algorithm>
 #include "app_context.h"
+#include "workspace_window.h"
 #include "ui_pages.h"
 #include "modern_shell.h"
 #include "theme.h"
@@ -10,6 +11,7 @@
 namespace dl {
 namespace {
 HWND g_textWindow=nullptr;
+std::string g_reviewKey,g_reviewTitle;
 std::vector<TextEvidence> g_evidence;
 constexpr int body=1200,evidenceList=1201,jump=1202,bookmark=1203,hint=1204;
 void Follow(bool mark) {
@@ -35,21 +37,23 @@ LRESULT CALLBACK TextProc(HWND window,UINT msg,WPARAM wp,LPARAM lp) {
         LvAddCol(list,0,UiText(TextId::incident_global_line),S(100));LvAddCol(list,1,UiText(TextId::incident_events),S(650));
         control(L"BUTTON",UiText(TextId::incident_jump),BS_PUSHBUTTON|WS_TABSTOP,jump);
         control(L"BUTTON",UiText(TextId::incident_bookmark),BS_PUSHBUTTON|WS_TABSTOP,bookmark);
+        control(L"BUTTON",UiText(TextId::workspace_edit_review),BS_PUSHBUTTON|WS_TABSTOP,1205);
         ApplyModernTheme(window);return 0;
     }
     case WM_SIZE: {
         RECT r{};GetClientRect(window,&r);const int width=std::max(1,static_cast<int>(r.right)-S(32));
-        const bool has=!g_evidence.empty();const int listH=has?std::min(S(180),static_cast<int>(r.bottom)/3):0;
+        const bool has=!g_evidence.empty(),review=!g_reviewKey.empty();const int listH=has?std::min(S(180),static_cast<int>(r.bottom)/3):0;
         MoveWindow(GetDlgItem(window,hint),S(16),S(12),width,S(48),TRUE);
-        MoveWindow(GetDlgItem(window,body),S(16),S(68),width,std::max(1,static_cast<int>(r.bottom)-S(84)-(has?listH+S(46):0)),TRUE);
+        MoveWindow(GetDlgItem(window,body),S(16),S(68),width,std::max(1,static_cast<int>(r.bottom)-S(84)-((has||review)?listH+S(46):0)),TRUE);
         const int top=static_cast<int>(r.bottom)-S(62)-listH;
         MoveWindow(GetDlgItem(window,evidenceList),S(16),top,width,listH,TRUE);
         MoveWindow(GetDlgItem(window,jump),S(16),r.bottom-S(50),S(155),S(32),TRUE);
         MoveWindow(GetDlgItem(window,bookmark),S(184),r.bottom-S(50),S(155),S(32),TRUE);
         for(int id:{evidenceList,jump,bookmark})ShowWindow(GetDlgItem(window,id),has?SW_SHOW:SW_HIDE);
+        MoveWindow(GetDlgItem(window,1205),r.right-S(240),r.bottom-S(50),S(224),S(32),TRUE);ShowWindow(GetDlgItem(window,1205),review?SW_SHOW:SW_HIDE);
         ListView_SetColumnWidth(GetDlgItem(window,evidenceList),1,std::max(S(200),width-S(120)));return 0;
     }
-    case WM_COMMAND: if(LOWORD(wp)==jump || LOWORD(wp)==bookmark){Follow(LOWORD(wp)==bookmark);return 0;}break;
+    case WM_COMMAND: if(LOWORD(wp)==1205){EditManualReview(g_reviewKey,g_reviewTitle);return 0;}if(LOWORD(wp)==jump || LOWORD(wp)==bookmark){Follow(LOWORD(wp)==bookmark);return 0;}break;
     case WM_NOTIFY: if(reinterpret_cast<NMHDR*>(lp)->code==NM_DBLCLK){Follow(false);return 0;}break;
     case WM_ERASEBKGND:{RECT r{};GetClientRect(window,&r);FillSolid(reinterpret_cast<HDC>(wp),r,th::surface);return 1;}
     case WM_CTLCOLORSTATIC:case WM_CTLCOLOREDIT:case WM_CTLCOLORLISTBOX:
@@ -71,8 +75,8 @@ bool CopyWindowText(HWND owner,const std::wstring& text) {
     CloseClipboard();return true;
 }
 void CloseSelectableText(){if(g_textWindow)DestroyWindow(g_textWindow);}
-void ShowSelectableText(const std::wstring& title,const std::wstring& text,const std::vector<TextEvidence>& evidence) {
-    CloseSelectableText();g_evidence=evidence;
+void ShowSelectableText(const std::wstring& title,const std::wstring& text,const std::vector<TextEvidence>& evidence,const std::string& reviewKey,const std::string& reviewTitle) {
+    CloseSelectableText();g_evidence=evidence;g_reviewKey=reviewKey;g_reviewTitle=reviewTitle;
     WNDCLASSW cls{};cls.lpfnWndProc=TextProc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"dialSelectableText";
     cls.hCursor=LoadCursorW(nullptr,IDC_ARROW);RegisterClassW(&cls);
     g_textWindow=CreateWindowExW(WS_EX_TOOLWINDOW,cls.lpszClassName,title.c_str(),WS_OVERLAPPEDWINDOW,

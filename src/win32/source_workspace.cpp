@@ -1,9 +1,11 @@
 #include "source_workspace.h"
 #include "rssi_summary.h"
+#include "workspace_window.h"
 #include <commctrl.h>
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <set>
 #include "app_context.h"
 #include "load_controller.h"
 #include "ui_pages.h"
@@ -153,6 +155,7 @@ void ShowComparison() {
 std::wstring AnalysisSourceText() {
     const auto& doc=App().document;
     if (doc.sources.empty()) return UiText(TextId::ui_0268);
+    if(doc.sourceMode==DocumentState::SourceMode::Device)return UiText(TextId::workspace_group)+U8ToW(doc.selectedDevice);
     if (doc.sourceMode==DocumentState::SourceMode::Continuation) return UiText(TextId::ui_0269);
     return UiText(TextId::ui_0270)+doc.sources[std::min(doc.selectedSource,doc.sources.size()-1)].label;
 }
@@ -173,6 +176,10 @@ void CloseSourceComparison() { if (g_comparison) DestroyWindow(g_comparison); }
 void ShowSourceMenu(HWND anchor) {
     const auto& doc=App().document; if (doc.sources.empty() || LoadInProgress()) return;
     HMENU menu=CreatePopupMenu();
+    AppendMenuW(menu,MF_STRING,33002,UiText(TextId::workspace_manage));
+    AppendMenuW(menu,MF_STRING,33003,UiText(TextId::package_import));
+    std::set<std::string> devices;for(const auto& source:doc.sources){auto d=doc.workspace.devices.find(source.workspaceKey());if(d!=doc.workspace.devices.end()&&!d->second.device.empty())devices.insert(d->second.device);}
+    unsigned group=30000;for(const auto& key:devices){auto title=UiText(TextId::workspace_group)+U8ToW(key);AppendMenuW(menu,MF_STRING|(doc.sourceMode==DocumentState::SourceMode::Device&&doc.selectedDevice==key?MF_CHECKED:0),group++,title.c_str());}
     AppendMenuW(menu,MF_STRING,33000,UiText(TextId::ui_0272));
     AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
     AppendMenuW(menu,MF_STRING | (doc.sourceMode==DocumentState::SourceMode::Continuation?MF_CHECKED:0),33001,UiText(TextId::ui_0273));
@@ -191,7 +198,10 @@ void ShowSourceMenu(HWND anchor) {
 bool HandleSourceCommand(UINT command) {
     const auto& doc=App().document;
     if (doc.sources.empty() || LoadInProgress()) return false;
-    if(command==33000) ShowComparison();
+    if(command==33002)ShowWorkspace();
+    else if(command==33003)ImportEvidencePackage();
+    else if(command>=30000&&command<31000){std::set<std::string> groups;for(const auto& source:doc.sources){auto d=doc.workspace.devices.find(source.workspaceKey());if(d!=doc.workspace.devices.end()&&!d->second.device.empty())groups.insert(d->second.device);}auto index=command-30000;if(index>=groups.size())return false;auto it=groups.begin();std::advance(it,index);App().document.selectedDevice=*it;App().document.sourceMode=DocumentState::SourceMode::Device;RefreshAll();}
+    else if(command==33000) ShowComparison();
     else if(command==33001) {
         ClosePageDetail(); App().document.sourceMode=DocumentState::SourceMode::Continuation; RefreshAll();
     } else if(command>=34000 && static_cast<std::size_t>(command-34000)<doc.sources.size()) SelectSource(command-34000);

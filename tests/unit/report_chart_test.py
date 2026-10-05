@@ -1,4 +1,5 @@
 """Validate standalone vector charts with an independent XML parser."""
+# build/ 内的输入由 reportcharttest 测试生成，可删除；清理后先运行 make check，再单独执行本脚本。
 from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET

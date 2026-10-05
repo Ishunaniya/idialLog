@@ -10,6 +10,8 @@ namespace dl {
 using ChartPoint = std::pair<long long, int>; // 时间戳秒,指标原值
 using ChartSeries = std::vector<ChartPoint>;
 using ChartGap = std::pair<long long, long long>;
+struct ChartTimeWindow {long long start=0,end=0;};
+ChartTimeWindow navigateChartWindow(ChartTimeWindow current,ChartTimeWindow bounds,long long anchor,double zoom,double pan);
 // 横向选区使用与绘制相同的时间轴；越界拖动钳制到可见区间。
 long long chartTimeAtPixel(long long start, long long end, int left, int right, int pixel);
 // 在排序后的真实采样上识别空缺；绘图不得跨越这些区间插值连线。
