@@ -49,7 +49,8 @@ static std::string makeLine(size_t i) {
 static bool runOne(size_t n) {
     std::vector<std::string> raw;
     raw.reserve(n);
-    for (size_t i = 0; i < n; ++i) raw.push_back(makeLine(i));
+    for (size_t i = 0; i < n; ++i)
+        raw.push_back(makeLine(i));
 
     std::vector<LogLine> lines;
     std::vector<std::string> sessions;
@@ -77,21 +78,24 @@ static bool runOne(size_t n) {
     ChartSeries chart, sampled;
     chart.reserve(metrics.size());
     for (const auto& m : metrics)
-        if (m.csqVal >= 0) chart.push_back({m.t, m.csqVal});
+        if (m.csqVal >= 0)
+            chart.push_back({m.t, m.csqVal});
     sortChartSeriesByTime(chart);
     if (!chart.empty())
         downsampleChartSeries(chart, chart.front().first, chart.back().first, 1920, sampled);
     long long hoverDistance = 0;
-    const ChartPoint* hover = chart.empty() ? nullptr :
-        nearestChartPoint(chart, chart[chart.size() / 2].first, &hoverDistance);
+    const ChartPoint* hover =
+        chart.empty() ? nullptr : nearestChartPoint(chart, chart[chart.size() / 2].first, &hoverDistance);
     MetricView metricView;
-    for(const auto& metric : metrics) metricView.push_back(&metric);
-    auto rssi=reportedRssiSeries(metricView);
+    for (const auto& metric : metrics)
+        metricView.push_back(&metric);
+    auto rssi = reportedRssiSeries(metricView);
     ChartSeries sampledRssi;
-    if(!rssi.empty()) downsampleChartSeries(rssi,rssi.front().first,rssi.back().first,1920,sampledRssi);
-    const bool compactRssi=rssi.size()==metrics.size() && !rssi.empty() &&
-        rssi.front().second==-65 && rssi.back().second==-65 &&
-        sampledRssi.size()<=1920*2+2 && sampledRssi.front()==rssi.front() && sampledRssi.back()==rssi.back();
+    if (!rssi.empty())
+        downsampleChartSeries(rssi, rssi.front().first, rssi.back().first, 1920, sampledRssi);
+    const bool compactRssi = rssi.size() == metrics.size() && !rssi.empty() && rssi.front().second == -65 &&
+                             rssi.back().second == -65 && sampledRssi.size() <= 1920 * 2 + 2 &&
+                             sampledRssi.front() == rssi.front() && sampledRssi.back() == rssi.back();
 
     // UI 无筛选时是最坏情况:视图含全部行。它只能拥有 N 个指针,不能复制 LogLine/string。
     LogView fullView = applyFilterView(lines, "", "", "", "", nullptr);
@@ -103,39 +107,35 @@ static bool runOne(size_t n) {
         filteredOwnedByLines = view[i] == &lines[i * 10];
     size_t viewBytes = fullView.capacity() * sizeof(LogView::value_type);
     size_t copiedObjectFloor = fullView.size() * sizeof(LogLine);
-    bool compactView = viewBytes <= fullView.size() * sizeof(LogView::value_type) * 2 &&
-                       copiedObjectFloor >= viewBytes * 8;
+    bool compactView =
+        viewBytes <= fullView.size() * sizeof(LogView::value_type) * 2 && copiedObjectFloor >= viewBytes * 8;
 
-    size_t expectedView = (n + 9) / 10;       // HEARTBEAT 恰好每 10 行一条
+    size_t expectedView = (n + 9) / 10;  // HEARTBEAT 恰好每 10 行一条
     size_t expectedOutages = (n + 9999) / 10000;
     size_t expectedTimeline = expectedOutages * 2;
-    size_t avoidedCellWrites = metrics.size() * kMetricColumnCount +
-                               timeline.size() * kTimelineColumnCount;
-    bool compactChart = sampled.size() <= 1920 * 2 + 2 &&
-                        (chart.empty() || (!sampled.empty() && sampled.front() == chart.front() &&
-                                           sampled.back() == chart.back())) &&
-                        (chart.empty() || (hover && hoverDistance == 0));
-    bool ok = lines.size() == n && audit.rawTotal == n && audit.parsed == n &&
-              audit.unparsed == 0 && view.size() == expectedView && !grepBad &&
-              outages.size() == expectedOutages && !metrics.empty() && !findings.empty() &&
-              timeline.size() == expectedTimeline &&
-              viewOwnedByLines && filteredOwnedByLines && compactView && compactChart && compactRssi;
+    size_t avoidedCellWrites = metrics.size() * kMetricColumnCount + timeline.size() * kTimelineColumnCount;
+    bool compactChart =
+        sampled.size() <= 1920 * 2 + 2 &&
+        (chart.empty() || (!sampled.empty() && sampled.front() == chart.front() && sampled.back() == chart.back())) &&
+        (chart.empty() || (hover && hoverDistance == 0));
+    bool ok = lines.size() == n && audit.rawTotal == n && audit.parsed == n && audit.unparsed == 0 &&
+              view.size() == expectedView && !grepBad && outages.size() == expectedOutages && !metrics.empty() &&
+              !findings.empty() && timeline.size() == expectedTimeline && viewOwnedByLines && filteredOwnedByLines &&
+              compactView && compactChart && compactRssi;
 
     std::printf("%8zu 行 | 解析+平台 %6lld ms | 筛选 %6lld ms"
                 " | 断网 %4lld ms 指标 %6lld ms 结论 %6lld ms"
                 " | 视图 %zu 指标 %zu 断网 %zu | %s\n",
-                n, ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5),
-                view.size(), metrics.size(), outages.size(), ok ? "通过" : "失败");
-    std::printf("           全量轻量视图 %.1f MiB | 旧式对象数组下限 %.1f MiB | %s\n",
-                viewBytes / 1048576.0, copiedObjectFloor / 1048576.0,
-                viewOwnedByLines && compactView ? "通过" : "失败");
-    std::printf("           虚拟表 指标 %zu 行 / 时间线 %zu 行 | 免预写 %zu 单元格\n",
-                metrics.size(), timeline.size(), avoidedCellWrites);
-    std::printf("           信号图 原始 %zu 点 -> 1920px 绘制 %zu 点 | 少画 %zu 点 | %s\n",
-                chart.size(), sampled.size(), chart.size() - sampled.size(),
-                compactChart ? "通过" : "失败");
-    std::printf("           RSSI 原始 %zu 点 -> 绘制 %zu 点 | 时间/原值/规模 %s\n",
-        rssi.size(),sampledRssi.size(),compactRssi?"通过":"失败");
+                n, ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5), view.size(), metrics.size(),
+                outages.size(), ok ? "通过" : "失败");
+    std::printf("           全量轻量视图 %.1f MiB | 旧式对象数组下限 %.1f MiB | %s\n", viewBytes / 1048576.0,
+                copiedObjectFloor / 1048576.0, viewOwnedByLines && compactView ? "通过" : "失败");
+    std::printf("           虚拟表 指标 %zu 行 / 时间线 %zu 行 | 免预写 %zu 单元格\n", metrics.size(), timeline.size(),
+                avoidedCellWrites);
+    std::printf("           信号图 原始 %zu 点 -> 1920px 绘制 %zu 点 | 少画 %zu 点 | %s\n", chart.size(),
+                sampled.size(), chart.size() - sampled.size(), compactChart ? "通过" : "失败");
+    std::printf("           RSSI 原始 %zu 点 -> 绘制 %zu 点 | 时间/原值/规模 %s\n", rssi.size(), sampledRssi.size(),
+                compactRssi ? "通过" : "失败");
 
     // 模拟 UI 的“关闭日志”顺序:先释放所有借用 LogLine 的指针视图,最后释放拥有者。
     // 这里只统计 vector 主数组的结构下限；元素内部 string/map 的堆内存还会随析构
@@ -144,11 +144,10 @@ static bool runOne(size_t n) {
         using Vector = std::decay_t<decltype(v)>;
         return v.capacity() * sizeof(typename Vector::value_type);
     };
-    size_t unloadFloor = vectorBytes(timeline) + vectorBytes(fullView) + vectorBytes(view) +
-                         vectorBytes(outages) + vectorBytes(metrics) + vectorBytes(findings) +
-                         vectorBytes(chart) + vectorBytes(sampled) + vectorBytes(rssi) + vectorBytes(sampledRssi) +
-                         vectorBytes(metricView) + vectorBytes(sessions) +
-                         vectorBytes(lines);
+    size_t unloadFloor = vectorBytes(timeline) + vectorBytes(fullView) + vectorBytes(view) + vectorBytes(outages) +
+                         vectorBytes(metrics) + vectorBytes(findings) + vectorBytes(chart) + vectorBytes(sampled) +
+                         vectorBytes(rssi) + vectorBytes(sampledRssi) + vectorBytes(metricView) +
+                         vectorBytes(sessions) + vectorBytes(lines);
     releaseVector(timeline);
     releaseVector(metricView);
     releaseVector(fullView);
@@ -158,15 +157,17 @@ static bool runOne(size_t n) {
     releaseVector(findings);
     releaseVector(chart);
     releaseVector(sampled);
-    releaseVector(rssi);releaseVector(sampledRssi);
+    releaseVector(rssi);
+    releaseVector(sampledRssi);
     releaseVector(sessions);
     releaseVector(lines);
     bool unloaded = timeline.capacity() == 0 && fullView.capacity() == 0 && view.capacity() == 0 &&
                     outages.capacity() == 0 && metrics.capacity() == 0 && findings.capacity() == 0 &&
                     chart.capacity() == 0 && sampled.capacity() == 0 && sessions.capacity() == 0 &&
-                    lines.capacity() == 0 && metricView.capacity()==0 && rssi.capacity()==0 && sampledRssi.capacity()==0;
-    std::printf("           显式卸载 vector 主数组下限 %.1f MiB -> 0 | %s\n",
-                unloadFloor / 1048576.0, unloaded ? "通过" : "失败");
+                    lines.capacity() == 0 && metricView.capacity() == 0 && rssi.capacity() == 0 &&
+                    sampledRssi.capacity() == 0;
+    std::printf("           显式卸载 vector 主数组下限 %.1f MiB -> 0 | %s\n", unloadFloor / 1048576.0,
+                unloaded ? "通过" : "失败");
     return ok && unloaded;
 }
 
@@ -187,10 +188,12 @@ int main(int argc, char** argv) {
         }
         sizes.push_back((size_t)n);
     }
-    if (sizes.empty()) sizes = {100000, 500000, 1000000};
+    if (sizes.empty())
+        sizes = {100000, 500000, 1000000};
 
     std::puts("== 大日志性能基准 ==");
     bool ok = compactRecords;
-    for (size_t n : sizes) ok = runOne(n) && ok;
+    for (size_t n : sizes)
+        ok = runOne(n) && ok;
     return ok ? 0 : 1;
 }

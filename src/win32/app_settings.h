@@ -36,4 +36,4 @@ void ClearRecentFiles();
 void RememberSearchQuery(const std::wstring& query);
 void ClearSearchHistory();
 
-} // namespace dl
+}  // namespace dl

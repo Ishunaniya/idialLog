@@ -8,42 +8,52 @@
 #include <limits>
 
 namespace dl {
-ChartTimeWindow navigateChartWindow(ChartTimeWindow current,ChartTimeWindow bounds,long long anchor,double zoom,double pan) {
-    if(bounds.end<=bounds.start||current.end<=current.start||!std::isfinite(zoom)||zoom<=0||!std::isfinite(pan))return bounds;
-    const long double available=static_cast<long double>(bounds.end)-bounds.start;
-    const long double old=static_cast<long double>(current.end)-current.start;
-    const long double width=std::clamp(old*zoom,1.0L,available);
-    const long double ratio=std::clamp((static_cast<long double>(anchor)-current.start)/old,0.0L,1.0L);
-    long double start=static_cast<long double>(anchor)-ratio*width+old*pan;
-    start=std::clamp(start,static_cast<long double>(bounds.start),static_cast<long double>(bounds.end)-width);
-    auto a=static_cast<long long>(std::round(start)),b=static_cast<long long>(std::round(start+width));
-    return {std::max(bounds.start,a),std::min(bounds.end,std::max(a+1,b))};
+ChartTimeWindow navigateChartWindow(ChartTimeWindow current, ChartTimeWindow bounds, long long anchor, double zoom,
+                                    double pan) {
+    if (bounds.end <= bounds.start || current.end <= current.start || !std::isfinite(zoom) || zoom <= 0 ||
+        !std::isfinite(pan))
+        return bounds;
+    const long double available = static_cast<long double>(bounds.end) - bounds.start;
+    const long double old = static_cast<long double>(current.end) - current.start;
+    const long double width = std::clamp(old * zoom, 1.0L, available);
+    const long double ratio = std::clamp((static_cast<long double>(anchor) - current.start) / old, 0.0L, 1.0L);
+    long double start = static_cast<long double>(anchor) - ratio * width + old * pan;
+    start = std::clamp(start, static_cast<long double>(bounds.start), static_cast<long double>(bounds.end) - width);
+    auto a = static_cast<long long>(std::round(start)), b = static_cast<long long>(std::round(start + width));
+    return {std::max(bounds.start, a), std::min(bounds.end, std::max(a + 1, b))};
 }
 
 long long chartTimeAtPixel(long long start, long long end, int left, int right, int pixel) {
-    if (end <= start || right <= left || pixel <= left) return start;
-    if (pixel >= right) return end;
-    const long double fraction = (static_cast<long double>(pixel) - left) /
-                                 (static_cast<long double>(right) - left);
+    if (end <= start || right <= left || pixel <= left)
+        return start;
+    if (pixel >= right)
+        return end;
+    const long double fraction = (static_cast<long double>(pixel) - left) / (static_cast<long double>(right) - left);
     const long double time = start + fraction * (static_cast<long double>(end) - start);
     return static_cast<long long>(std::clamp(time, static_cast<long double>(start), static_cast<long double>(end)));
 }
 
-std::vector<long long> chartTimeTicks(long long start, long long end,
-                                     size_t pixelWidth, size_t labelWidth) {
-    if (!pixelWidth || end < start) return {};
-    if (end == start) return {start};
+std::vector<long long> chartTimeTicks(long long start, long long end, size_t pixelWidth, size_t labelWidth) {
+    if (!pixelWidth || end < start)
+        return {};
+    if (end == start)
+        return {start};
     const size_t intervals = std::max<size_t>(1, std::min<size_t>(12, pixelWidth / std::max<size_t>(1, labelWidth)));
     const long double span = static_cast<long double>(end) - start;
     const long double minimum = span / intervals;
-    const long long steps[] = {1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800,
-                              3600, 7200, 10800, 21600, 43200, 86400, 172800, 604800};
+    const long long steps[] = {1,   2,    5,    10,   15,    30,    60,    120,   300,    600,
+                               900, 1800, 3600, 7200, 10800, 21600, 43200, 86400, 172800, 604800};
     long double step = 0;
-    for (long long candidate : steps) if (candidate >= minimum) { step = candidate; break; }
+    for (long long candidate : steps)
+        if (candidate >= minimum) {
+            step = candidate;
+            break;
+        }
     if (!step) {
         const long double power = std::pow(10.0L, std::floor(std::log10(minimum)));
         step = power * (minimum <= power * 2 ? 2 : minimum <= power * 5 ? 5 : 10);
     }
+
     std::vector<long long> ticks{start};
     const long double spacing = span * std::min<size_t>(pixelWidth, labelWidth) / pixelWidth;
     long double tick = (std::floor(static_cast<long double>(start) / step) + 1) * step;
@@ -51,6 +61,7 @@ std::vector<long long> chartTimeTicks(long long start, long long end,
         if (tick - ticks.back() >= spacing && end - tick >= spacing)
             ticks.push_back(static_cast<long long>(tick));
     }
+
     ticks.push_back(end);
     return ticks;
 }
@@ -66,8 +77,7 @@ void sortChartSeriesByTime(ChartSeries& series) {
 
 static unsigned long long timeDistance(long long a, long long b) {
     // 转无符号后相减可覆盖 LLONG_MIN..LLONG_MAX 的完整距离，不触发有符号溢出。
-    return a >= b ? (unsigned long long)a - (unsigned long long)b
-                  : (unsigned long long)b - (unsigned long long)a;
+    return a >= b ? (unsigned long long)a - (unsigned long long)b : (unsigned long long)b - (unsigned long long)a;
 }
 
 static long long publicDistance(unsigned long long d) {
@@ -76,24 +86,26 @@ static long long publicDistance(unsigned long long d) {
 
 std::vector<ChartGap> chartSampleGaps(const ChartSeries& series, long long maxInterval) {
     std::vector<ChartGap> gaps;
-    if (maxInterval < 0) return gaps;
+    if (maxInterval < 0)
+        return gaps;
     for (size_t index = 1; index < series.size(); ++index) {
         const long long previous = series[index - 1].first, current = series[index].first;
         if (current > previous && timeDistance(current, previous) > static_cast<unsigned long long>(maxInterval))
             gaps.emplace_back(previous, current);
     }
+
     return gaps;
 }
 
-const ChartPoint* nearestChartPoint(const ChartSeries& series, long long target,
-                                    long long* distance) {
+const ChartPoint* nearestChartPoint(const ChartSeries& series, long long target, long long* distance) {
     if (series.empty()) {
-        if (distance) *distance = LLONG_MAX;
+        if (distance)
+            *distance = LLONG_MAX;
         return nullptr;
     }
 
     auto right = std::lower_bound(series.begin(), series.end(), target,
-        [](const ChartPoint& p, long long t) { return p.first < t; });
+                                  [](const ChartPoint& p, long long t) { return p.first < t; });
     auto chosen = right;
     if (right == series.end()) {
         chosen = std::prev(series.end());
@@ -105,31 +117,34 @@ const ChartPoint* nearestChartPoint(const ChartSeries& series, long long target,
 
     // prev(lower_bound) 可能落在同时间戳的最后一项；旧线性扫描会保留第一项。
     chosen = std::lower_bound(series.begin(), std::next(chosen), chosen->first,
-        [](const ChartPoint& p, long long t) { return p.first < t; });
-    if (distance) *distance = publicDistance(timeDistance(chosen->first, target));
+                              [](const ChartPoint& p, long long t) { return p.first < t; });
+    if (distance)
+        *distance = publicDistance(timeDistance(chosen->first, target));
     return &*chosen;
 }
 
-void downsampleChartSeries(const ChartSeries& input,
-                           long long rangeStart, long long rangeEnd,
-                           size_t pixelWidth, ChartSeries& output) {
+void downsampleChartSeries(const ChartSeries& input, long long rangeStart, long long rangeEnd, size_t pixelWidth,
+                           ChartSeries& output) {
     output.clear();
-    if (input.empty() || pixelWidth == 0) return;
+    if (input.empty() || pixelWidth == 0)
+        return;
 
     const size_t maxSize = std::numeric_limits<size_t>::max();
-    const size_t limit = pixelWidth > (maxSize - 2) / 2
-        ? maxSize : pixelWidth * 2 + 2;
+    const size_t limit = pixelWidth > (maxSize - 2) / 2 ? maxSize : pixelWidth * 2 + 2;
     if (input.size() <= limit) {
         output = input;
         return;
     }
+
     output.reserve(std::min(input.size(), limit));
 
     auto bucketOf = [&](long long t) -> size_t {
-        if (rangeEnd <= rangeStart || t <= rangeStart) return 0;
-        if (t >= rangeEnd) return pixelWidth - 1;
-        const long double pos = ((long double)t - (long double)rangeStart) /
-                                ((long double)rangeEnd - (long double)rangeStart);
+        if (rangeEnd <= rangeStart || t <= rangeStart)
+            return 0;
+        if (t >= rangeEnd)
+            return pixelWidth - 1;
+        const long double pos =
+            ((long double)t - (long double)rangeStart) / ((long double)rangeEnd - (long double)rangeStart);
         size_t bucket = (size_t)(pos * (long double)pixelWidth);
         return std::min(bucket, pixelWidth - 1);
     };
@@ -141,6 +156,7 @@ void downsampleChartSeries(const ChartSeries& input,
             lastIndex = index;
         }
     };
+
     auto flush = [&](size_t minIndex, size_t maxIndex) {
         if (minIndex <= maxIndex) {
             append(minIndex);
@@ -162,11 +178,15 @@ void downsampleChartSeries(const ChartSeries& input,
             minIndex = maxIndex = i;
             continue;
         }
-        if (input[i].second < input[minIndex].second) minIndex = i;
-        if (input[i].second > input[maxIndex].second) maxIndex = i;
+
+        if (input[i].second < input[minIndex].second)
+            minIndex = i;
+        if (input[i].second > input[maxIndex].second)
+            maxIndex = i;
     }
+
     flush(minIndex, maxIndex);
     append(input.size() - 1);
 }
 
-} // namespace dl
+}  // namespace dl

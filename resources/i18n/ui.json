@@ -3303,5 +3303,385 @@
     "id": "workspace_compare_empty",
     "zh": "选择两侧来源和完整起止日期，点击“计算并绘制对照”。",
     "en": "Choose both sources and full start/end dates, then click Compare and plot."
+  },
+  {
+    "id": "wb_title",
+    "zh": "复核工作台",
+    "en": "Review workbench"
+  },
+  {
+    "id": "wb_nav_hint",
+    "zh": "事件、对比与会话",
+    "en": "Events, comparison and sessions"
+  },
+  {
+    "id": "wb_events",
+    "zh": "事件复核",
+    "en": "Event review"
+  },
+  {
+    "id": "wb_compare",
+    "zh": "设备对比",
+    "en": "Device comparison"
+  },
+  {
+    "id": "wb_sessions",
+    "zh": "工作会话",
+    "en": "Work sessions"
+  },
+  {
+    "id": "wb_assign",
+    "zh": "设备归属",
+    "en": "Device assignments"
+  },
+  {
+    "id": "wb_period",
+    "zh": "前后对比",
+    "en": "A/B periods"
+  },
+  {
+    "id": "wb_trends",
+    "zh": "多时期趋势",
+    "en": "Period trends"
+  },
+  {
+    "id": "wb_all",
+    "zh": "全部来源 / 设备",
+    "en": "All sources / devices"
+  },
+  {
+    "id": "wb_all_status",
+    "zh": "全部复核状态",
+    "en": "All review statuses"
+  },
+  {
+    "id": "wb_sort_time",
+    "zh": "按事件时间",
+    "en": "By event time"
+  },
+  {
+    "id": "wb_sort_duration",
+    "zh": "按断网时长",
+    "en": "By outage duration"
+  },
+  {
+    "id": "wb_search",
+    "zh": "检索设备、来源、时间或备注",
+    "en": "Search device, source, time or notes"
+  },
+  {
+    "id": "wb_review",
+    "zh": "复盘选中事件",
+    "en": "Review selected event"
+  },
+  {
+    "id": "wb_note",
+    "zh": "编辑备注",
+    "en": "Edit note"
+  },
+  {
+    "id": "wb_pending",
+    "zh": "标记待复核",
+    "en": "Mark pending"
+  },
+  {
+    "id": "wb_confirmed",
+    "zh": "标记已确认",
+    "en": "Mark confirmed"
+  },
+  {
+    "id": "wb_handled",
+    "zh": "标记已处理",
+    "en": "Mark handled"
+  },
+  {
+    "id": "wb_copy_events",
+    "zh": "复制可见事件",
+    "en": "Copy visible events"
+  },
+  {
+    "id": "wb_export_events",
+    "zh": "导出事件 CSV",
+    "en": "Export events CSV"
+  },
+  {
+    "id": "wb_export_chain",
+    "zh": "导出证据链 HTML",
+    "en": "Export evidence chain HTML"
+  },
+  {
+    "id": "wb_copy_chain",
+    "zh": "复制证据链",
+    "en": "Copy evidence chain"
+  },
+  {
+    "id": "wb_board_basis",
+    "zh": "展示完整来源范围内的事故；筛选只影响本看板。复核状态由人工保存，双击进入复盘，F2 编辑备注。",
+    "en": "Events use full source scopes; filters affect this board only. Review status is manual. Double-click to review; F2 edits notes."
+  },
+  {
+    "id": "wb_no_event",
+    "zh": "当前条件下没有事件。",
+    "en": "No events match the current filters."
+  },
+  {
+    "id": "wb_event_start",
+    "zh": "异常起点",
+    "en": "Fault onset"
+  },
+  {
+    "id": "wb_event_end",
+    "zh": "恢复边沿",
+    "en": "Recovery edge"
+  },
+  {
+    "id": "wb_duration",
+    "zh": "断网秒数",
+    "en": "Outage seconds"
+  },
+  {
+    "id": "wb_recovery",
+    "zh": "网络恢复",
+    "en": "Network recovery"
+  },
+  {
+    "id": "wb_device_unknown",
+    "zh": "设备身份未确认",
+    "en": "Device identity unconfirmed"
+  },
+  {
+    "id": "wb_chain",
+    "zh": "复盘证据链",
+    "en": "Incident evidence chain"
+  },
+  {
+    "id": "wb_chain_fault",
+    "zh": "异常起点",
+    "en": "Fault onset"
+  },
+  {
+    "id": "wb_chain_action",
+    "zh": "恢复动作",
+    "en": "Recovery actions"
+  },
+  {
+    "id": "wb_chain_network",
+    "zh": "网络恢复",
+    "en": "Network recovery"
+  },
+  {
+    "id": "wb_chain_business",
+    "zh": "业务恢复证据",
+    "en": "Business recovery evidence"
+  },
+  {
+    "id": "wb_no_evidence",
+    "zh": "缺少明确证据",
+    "en": "No explicit evidence"
+  },
+  {
+    "id": "wb_chain_basis",
+    "zh": "节点只展示实际日志证据；恢复动作不等于恢复成功，网络恢复不代表业务恢复。点击有证据的节点或表格行可跳转原文。",
+    "en": "Nodes use actual log evidence. Recovery actions do not prove success; network recovery does not prove business recovery. Click an evidenced node or table row to open the original log."
+  },
+  {
+    "id": "wb_chain_line",
+    "zh": "证据行",
+    "en": "Evidence line"
+  },
+  {
+    "id": "wb_chain_time",
+    "zh": "证据时间",
+    "en": "Evidence time"
+  },
+  {
+    "id": "wb_chain_role",
+    "zh": "阶段",
+    "en": "Stage"
+  },
+  {
+    "id": "wb_reset_plot",
+    "zh": "恢复图表范围",
+    "en": "Reset chart range"
+  },
+  {
+    "id": "wb_apply_a",
+    "zh": "用选区查看 A",
+    "en": "View A in selected range"
+  },
+  {
+    "id": "wb_apply_b",
+    "zh": "用选区查看 B",
+    "en": "View B in selected range"
+  },
+  {
+    "id": "wb_plot_help",
+    "zh": "滚轮缩放；Shift+滚轮或中键平移；拖动框选；Ctrl+0 恢复。悬停显示 A/B 原时间及五项指标，差值为 B−A。",
+    "en": "Wheel zooms; Shift+wheel or middle-drag pans; drag selects; Ctrl+0 resets. Hover shows original A/B times and five metrics; differences are B−A."
+  },
+  {
+    "id": "wb_near_missing",
+    "zh": "附近无采样",
+    "en": "No nearby sample"
+  },
+  {
+    "id": "wb_session_name",
+    "zh": "会话名称",
+    "en": "Session name"
+  },
+  {
+    "id": "wb_session_save",
+    "zh": "保存工作会话 ZIP",
+    "en": "Save work session ZIP"
+  },
+  {
+    "id": "wb_session_open",
+    "zh": "打开工作会话 ZIP",
+    "en": "Open work session ZIP"
+  },
+  {
+    "id": "wb_session_basis",
+    "zh": "会话保存全部已载入原文、来源身份、设备与复核记录、筛选、范围、书签和对比配置。打开后校验完整性并恢复；不覆盖当前语言或字体。",
+    "en": "Sessions include all loaded originals, source identities, device/review records, filters, range, bookmarks and comparison settings. Opening verifies integrity and restores the session without changing language or fonts."
+  },
+  {
+    "id": "wb_session_empty",
+    "zh": "可先打开日志，或直接打开已保存的工作会话。",
+    "en": "Open logs first, or open a saved work session directly."
+  },
+  {
+    "id": "wb_session_saved",
+    "zh": "工作会话已保存",
+    "en": "Work session saved"
+  },
+  {
+    "id": "wb_session_loaded",
+    "zh": "工作会话已恢复",
+    "en": "Work session restored"
+  },
+  {
+    "id": "wb_session_files",
+    "zh": "已载入来源",
+    "en": "Loaded sources"
+  },
+  {
+    "id": "wb_session_state",
+    "zh": "当前排障现场",
+    "en": "Current analysis session"
+  },
+  {
+    "id": "wb_trend_step",
+    "zh": "分期长度",
+    "en": "Period length"
+  },
+  {
+    "id": "wb_step_hour",
+    "zh": "每小时",
+    "en": "Hourly"
+  },
+  {
+    "id": "wb_step_day",
+    "zh": "每天",
+    "en": "Daily"
+  },
+  {
+    "id": "wb_step_week",
+    "zh": "每 7 天",
+    "en": "Every 7 days"
+  },
+  {
+    "id": "wb_step_custom",
+    "zh": "自定义秒数",
+    "en": "Custom seconds"
+  },
+  {
+    "id": "wb_trend_run",
+    "zh": "计算时期趋势",
+    "en": "Calculate period trends"
+  },
+  {
+    "id": "wb_trend_copy",
+    "zh": "复制完整趋势",
+    "en": "Copy full trends"
+  },
+  {
+    "id": "wb_trend_export",
+    "zh": "导出趋势 HTML",
+    "en": "Export trends HTML"
+  },
+  {
+    "id": "wb_trend_basis",
+    "zh": "各期使用本期日志证据，空时期保留缺失。跨期事故分别列出起始与承接数量；本期断网/可用率沿用独立区间口径，不拼接缺失恢复。图表为每期 P50，不是逐条测量；变化不证明配置或固件导致。",
+    "en": "Each period uses its own logged evidence; empty periods remain missing. Outage starts and carry-over counts are separate. Window downtime/availability use independent-period rules without inventing missing recovery. Curves show period P50, not individual measurements; changes do not prove configuration or firmware causation."
+  },
+  {
+    "id": "wb_trend_invalid",
+    "zh": "日期或分期长度无效，最多支持 3660 个时期。",
+    "en": "Invalid dates or period length; at most 3660 periods are supported."
+  },
+  {
+    "id": "wb_trend_p50",
+    "zh": "每期 P50",
+    "en": "Period P50"
+  },
+  {
+    "id": "wb_session_error",
+    "zh": "会话保存或恢复失败",
+    "en": "Session save or restore failed"
+  },
+  {
+    "id": "wb_session_scope_invalid",
+    "zh": "会话引用了不存在的来源或设备。",
+    "en": "The session references a missing source or device."
+  },
+  {
+    "id": "wb_visible",
+    "zh": "可见事件",
+    "en": "Visible events"
+  },
+  {
+    "id": "wb_open_outage",
+    "zh": "尚未恢复",
+    "en": "Not recovered"
+  },
+  {
+    "id": "wb_selection_empty",
+    "zh": "请先计算对比并选择有效时间范围。",
+    "en": "Calculate a comparison and select a valid time range first."
+  },
+  {
+    "id": "wb_min_duration",
+    "zh": "最短时长（秒）",
+    "en": "Min. duration (s)"
+  },
+  {
+    "id": "wb_session_kind_missing",
+    "zh": "所选文件不是完整工作会话。请使用“打开日志”或“导入证据包”查看其他文件。",
+    "en": "This is not a complete work session. Use Open logs or Import evidence package for other files."
+  },
+  {
+    "id": "wb_session_single_input",
+    "zh": "工作会话需要单独打开，不能和其他日志合并载入。当前文档未替换。",
+    "en": "Open a work session on its own rather than alongside other logs. The current document was retained."
+  },
+  {
+    "id": "window_minimize",
+    "zh": "最小化",
+    "en": "Minimize"
+  },
+  {
+    "id": "window_maximize",
+    "zh": "最大化",
+    "en": "Maximize"
+  },
+  {
+    "id": "window_restore",
+    "zh": "还原",
+    "en": "Restore"
+  },
+  {
+    "id": "window_close",
+    "zh": "关闭",
+    "en": "Close"
   }
 ]

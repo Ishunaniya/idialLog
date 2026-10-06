@@ -22,10 +22,10 @@ int main(int argc, char** argv) {
 
     const char* scale = getenv("SIM_TIME_SCALE");
     double sc = scale ? atof(scale) : 1.0;
-    fprintf(stderr, "[driver] 逻辑运行 %ds(%.0f 分钟),加速 ×%.0f → 真实约 %.1fs\n",
-            run_sec, run_sec / 60.0, sc, run_sec / sc);
+    fprintf(stderr, "[driver] 逻辑运行 %ds(%.0f 分钟),加速 ×%.0f → 真实约 %.1fs\n", run_sec, run_sec / 60.0, sc,
+            run_sec / sc);
 
-    EC200ADialer dial;                       // ← 真类
+    EC200ADialer dial;  // ← 真类
 
     // 到点置 isExist,让真 dial_loop 自己走正常退出路径(而非 kill),收尾日志也是真的。
     // set_isExist 是类成员(dialer.hpp:301),不是全局函数。
@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     }).detach();
 
     std::string ifname = "ccinet1";
-    dial.dial_loop(nullptr, ifname, [](){}); // ← 真循环
+    dial.dial_loop(nullptr, ifname, []() {});  // ← 真循环
 
     fprintf(stderr, "[driver] dial_loop 已返回\n");
     return 0;

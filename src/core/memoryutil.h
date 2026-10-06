@@ -9,10 +9,9 @@
 
 namespace dl {
 
-template <typename T, typename Alloc>
-void releaseVector(std::vector<T, Alloc>& values) {
+template <typename T, typename Alloc> void releaseVector(std::vector<T, Alloc>& values) {
     std::vector<T, Alloc> empty(values.get_allocator());
     values.swap(empty);
 }
 
-} // namespace dl
+}  // namespace dl

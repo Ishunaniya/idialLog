@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <string>
+
 namespace dl {
 void ShowSourceMenu(HWND anchor);
 void UpdateSourceControls();
@@ -10,4 +11,4 @@ bool SourceComparisonActive();
 bool RouteSourceComparisonMessage(MSG& message);
 void CloseSourceComparison();
 std::wstring AnalysisSourceText();
-}
+}  // namespace dl

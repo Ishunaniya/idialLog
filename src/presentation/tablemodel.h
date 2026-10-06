@@ -32,4 +32,4 @@ std::string cellSummaryCellText(const CellSummary& cell, size_t column);
 // CSV 中只有文本列需要防公式注入；数值列（含负 RSRP/RSRQ）保持可计算。
 std::string metricCsvCellText(const MetricRow& metric, size_t column);
 
-} // namespace dl
+}  // namespace dl

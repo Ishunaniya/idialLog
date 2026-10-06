@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  <assemblyIdentity version="1.0.0.0" processorArchitecture="*" name="dialLog" type="win32"/>
+  <!-- Makefile 从 version.h 同步此版本并生成 build/ 清单，随后嵌入 exe。 -->
+  <assemblyIdentity version="1.12.2.0" processorArchitecture="*" name="dialLog" type="win32"/>
   <description>modem_mng 日志排查工具</description>
 
   <!-- 启用 comctl32 v6:现代外观的页签/列表/状态栏 -->

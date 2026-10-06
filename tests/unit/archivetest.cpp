@@ -21,9 +21,11 @@
 using namespace dl;
 
 static int g_fail = 0;
+
 static void ok(bool c, const char* what) {
     std::printf("  %s %s\n", c ? "[通过]" : "[失败]", what);
-    if (!c) g_fail++;
+    if (!c)
+        g_fail++;
 }
 
 static std::string readFile(const char* p) {
@@ -53,18 +55,21 @@ static void t1_kind() {
 static void t2_bom() {
     std::printf("== T2 stripBom ==\n");
     std::string withBom = "\xEF\xBB\xBF[2026-06-30 00:00:26] head";
-    std::string noBom    = "[2026-06-30 00:00:26] head";
-    std::string a = withBom; stripBom(a);
+    std::string noBom = "[2026-06-30 00:00:26] head";
+    std::string a = withBom;
+    stripBom(a);
     ok(a == noBom, "EF BB BF 被剥掉,内容不变");
-    std::string b = noBom; stripBom(b);
+    std::string b = noBom;
+    stripBom(b);
     ok(b == noBom, "无 BOM 时不误删");
-    std::string tiny = "\xEF\xBB"; stripBom(tiny);
+    std::string tiny = "\xEF\xBB";
+    stripBom(tiny);
     ok(tiny == "\xEF\xBB", "不足 3 字节不误动");
 
     // 真机夹具:带 BOM 的日志,剥离后首行必须能被 firstTimestamp 认出
     std::string bomFile = readFile("samples/archive/with_bom.log");
     ok(!bomFile.empty(), "with_bom.log 读到");
-    auto lines = splitLines(bomFile);   // splitLines 内部已 stripBom
+    auto lines = splitLines(bomFile);  // splitLines 内部已 stripBom
     long long t = 0;
     ok(!lines.empty() && firstTimestamp(lines, &t), "剥 BOM 后首行时间戳恢复可识别");
     ok(timeBaseOf(lines) == TB_WALL, "剥 BOM 后时基正确判为 TB_WALL(而非 BOM 导致的 NONE)");
@@ -75,11 +80,13 @@ static void t3_gz() {
     std::printf("== T3 单文件 .gz 解压 ==\n");
     std::string buf = readFile("samples/archive/single.log.gz");
     ok(!buf.empty() && archiveKindOf(buf) == ARC_GZIP, "single.log.gz 判为 ARC_GZIP");
-    std::vector<ArchiveEntry> es; std::string err;
+    std::vector<ArchiveEntry> es;
+    std::string err;
     bool r = extractArchive(buf, es, err);
     ok(r, r ? "解压成功" : ("解压失败: " + err).c_str());
     ok(es.size() == 1, ("单文件 gz → 1 个条目(实得 " + std::to_string(es.size()) + ")").c_str());
-    if (es.empty()) return;
+    if (es.empty())
+        return;
     auto lines = splitLines(es[0].data);
     ok(lines.size() == 200, ("解压出 200 行(实得 " + std::to_string(lines.size()) + ")").c_str());
     long long t = 0;
@@ -92,11 +99,13 @@ static void t4_targz() {
     std::printf("== T4 .tar.gz 拆成多条目 ==\n");
     std::string buf = readFile("samples/archive/two_logs.tar.gz");
     ok(!buf.empty() && archiveKindOf(buf) == ARC_GZIP, "two_logs.tar.gz 判为 ARC_GZIP(gzip 外层)");
-    std::vector<ArchiveEntry> es; std::string err;
+    std::vector<ArchiveEntry> es;
+    std::string err;
     bool r = extractArchive(buf, es, err);
     ok(r, r ? "解压成功" : ("解压失败: " + err).c_str());
     ok(es.size() == 2, ("tar 内 2 个文件 → 2 条目(实得 " + std::to_string(es.size()) + ")").c_str());
-    if (es.size() < 2) return;
+    if (es.size() < 2)
+        return;
     // tar 保序:a_early 在前
     ok(es[0].name == "a_early.log" && es[1].name == "b_late.log",
        ("条目名与顺序正确(实得 " + es[0].name + ", " + es[1].name + ")").c_str());
@@ -109,11 +118,13 @@ static void t5_zip() {
     std::printf("== T5 .zip 解压 ==\n");
     std::string buf = readFile("samples/archive/two_logs.zip");
     ok(!buf.empty() && archiveKindOf(buf) == ARC_ZIP, "two_logs.zip 判为 ARC_ZIP");
-    std::vector<ArchiveEntry> es; std::string err;
+    std::vector<ArchiveEntry> es;
+    std::string err;
     bool r = extractArchive(buf, es, err);
     ok(r, r ? "解压成功" : ("解压失败: " + err).c_str());
     ok(es.size() == 2, ("zip 内 2 文件 → 2 条目(实得 " + std::to_string(es.size()) + ")").c_str());
-    if (es.size() < 2) return;
+    if (es.size() < 2)
+        return;
     // 两个条目都要能解析出 200 行(不依赖顺序,zip 目录顺序不保证)
     size_t total = splitLines(es[0].data).size() + splitLines(es[1].data).size();
     ok(total == 400, ("两条目合计 400 行(实得 " + std::to_string(total) + ")").c_str());
@@ -122,7 +133,8 @@ static void t5_zip() {
 // ============================ T6:非压缩内容拒绝 ============================
 static void t6_reject() {
     std::printf("== T6 非压缩内容 extractArchive 返回 false ==\n");
-    std::vector<ArchiveEntry> es; std::string err;
+    std::vector<ArchiveEntry> es;
+    std::string err;
     std::string plain = "[2026-06-30 00:00:00] this is a plain log line\n";
     ok(!extractArchive(plain, es, err), "普通日志 → false(调用方应按普通日志读)");
     ok(es.empty(), "失败时不产出条目");
@@ -133,9 +145,11 @@ static void t7_damaged_gzip() {
     std::printf("== T7 损坏 gzip 被明确拒绝 ==\n");
     std::string src = readFile("samples/archive/single.log.gz");
     ok(src.size() >= 18, "损坏测试基准 gzip 可用");
-    if (src.size() < 18) return;
+    if (src.size() < 18)
+        return;
 
-    std::vector<ArchiveEntry> es; std::string err;
+    std::vector<ArchiveEntry> es;
+    std::string err;
     std::string badCrc = src;
     badCrc[badCrc.size() - 8] ^= 1;
     ok(!extractArchive(badCrc, es, err) && err.find("CRC32") != std::string::npos,
@@ -145,15 +159,19 @@ static void t7_damaged_gzip() {
     std::string tooLarge = src;
     size_t n = tooLarge.size();
     // ISIZE=0x10000001=256MiB+1,在分配前即应被上限挡住。
-    tooLarge[n-4] = 0x01; tooLarge[n-3] = 0x00;
-    tooLarge[n-2] = 0x00; tooLarge[n-1] = 0x10;
-    ok(!extractArchive(tooLarge, es, err) && err.find("256MiB") != std::string::npos,
-       "ISIZE 超过 256MiB → 分配前拒绝");
+    tooLarge[n - 4] = 0x01;
+    tooLarge[n - 3] = 0x00;
+    tooLarge[n - 2] = 0x00;
+    tooLarge[n - 1] = 0x10;
+    ok(!extractArchive(tooLarge, es, err) && err.find("256MiB") != std::string::npos, "ISIZE 超过 256MiB → 分配前拒绝");
 
     // 20 字节伪 gzip:声明 FNAME,终止 NUL 恰落在 8 字节 trailer 起点。
     // 旧实现会让 p 越过 trailer 后做 size-p-8 无符号下溢。
     std::string badHeader(20, 'A');
-    badHeader[0] = 0x1F; badHeader[1] = (char)0x8B; badHeader[2] = 8; badHeader[3] = 0x08;
+    badHeader[0] = 0x1F;
+    badHeader[1] = (char)0x8B;
+    badHeader[2] = 8;
+    badHeader[3] = 0x08;
     badHeader[12] = '\0';
     ok(!extractArchive(badHeader, es, err) && err.find("FNAME") != std::string::npos,
        "FNAME 侵入 trailer → 边界检查拒绝");

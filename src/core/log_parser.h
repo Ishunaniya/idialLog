@@ -13,10 +13,8 @@ namespace dl {
 //   真机 72 种拼接组合虽未触发(日志通常正常结束),但机制真实,此为零风险防御。
 //   留空 = 单文件/剪贴板,无边界约束(行为与旧版完全一致)。
 class StreamingLogParser {
-public:
-    StreamingLogParser(std::vector<LogLine>& out,
-                       std::vector<std::string>& sessions,
-                       size_t reserveHint = 0);
+  public:
+    StreamingLogParser(std::vector<LogLine>& out, std::vector<std::string>& sessions, size_t reserveHint = 0);
     ~StreamingLogParser();
     StreamingLogParser(const StreamingLogParser&) = delete;
     StreamingLogParser& operator=(const StreamingLogParser&) = delete;
@@ -31,16 +29,13 @@ public:
     // 完成会话去重并取回审计。finish 后不再接受新行。
     void finish(ParseAudit* audit = nullptr);
 
-private:
+  private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };
 
-void parseLines(const std::vector<std::string>& raw,
-                std::vector<LogLine>& out,
-                std::vector<std::string>& sessions,
-                ParseAudit* audit = nullptr,
-                const std::vector<size_t>& fileBoundaries = {});
+void parseLines(const std::vector<std::string>& raw, std::vector<LogLine>& out, std::vector<std::string>& sessions,
+                ParseAudit* audit = nullptr, const std::vector<size_t>& fileBoundaries = {});
 
 // ---- 多文件合并定序 ----
 // 取一批原始行中**第一条带时间戳的行**的 epoch 秒。只扫前 scanLimit 行
@@ -68,9 +63,9 @@ std::vector<size_t> orderByTime(const std::vector<std::vector<std::string>>& chu
 // 一旦混合拼接,跨度会被撑成几十年(实测 495212h),可用率从"差"翻成"良好",边界处还
 // 多算一次假断网。这不是显示问题,是把两把不同的尺当同一把用。
 enum TimeBase {
-    TB_NONE = 0,   // 扫不到首时间戳(无法判定)
-    TB_WALL,       // 真实墙钟(年份 >= 2000)
-    TB_UNSYNCED    // 时钟未同步(年份 < 2000,RTC 未授时的 epoch/uptime)
+    TB_NONE = 0,  // 扫不到首时间戳(无法判定)
+    TB_WALL,      // 真实墙钟(年份 >= 2000)
+    TB_UNSYNCED   // 时钟未同步(年份 < 2000,RTC 未授时的 epoch/uptime)
 };
 
 // 判定一批原始行属于哪种时基。判据:首时间戳年份 —— 年份 < 2000 视为未同步。
@@ -82,13 +77,14 @@ TimeBase timeBaseOf(const std::vector<std::string>& raw);
 // 方案 A(拒绝混合):合并时**排除**未同步那批,只用墙钟批出结论,并把被排除的
 // 下标交给调用方去提示用户(列出文件名/份数)。未同步批未被销毁,可单独再分析。
 struct MixReport {
-    bool mixed = false;                 // 是否检测到跨时基混合
-    std::vector<size_t> wallIdx;        // 墙钟批的下标(保留参与合并)
-    std::vector<size_t> unsyncedIdx;    // 未同步批的下标(方案A下被排除)
-    std::vector<size_t> noneIdx;        // 扫不到时间戳的下标
+    bool mixed = false;               // 是否检测到跨时基混合
+    std::vector<size_t> wallIdx;      // 墙钟批的下标(保留参与合并)
+    std::vector<size_t> unsyncedIdx;  // 未同步批的下标(方案A下被排除)
+    std::vector<size_t> noneIdx;      // 扫不到时间戳的下标
 };
+
 MixReport detectMix(const std::vector<std::vector<std::string>>& chunks);
 // 剥离 ANSI 转义码(CSI 序列)
 std::string stripAnsi(const std::string& s);
 
-} // namespace dl
+}  // namespace dl

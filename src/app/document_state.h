@@ -12,9 +12,13 @@ struct SourceSummary {
     std::wstring label;
     std::wstring originalPath;
     std::string originalEntry, originalHash, identity, pastedBytes;
-    const std::string& workspaceKey() const {return identity.empty()?originalHash:identity;}
-    std::size_t first = 0, last = 0; // parsed-line range [first,last), including clock segments
-    std::size_t rawLineOffset = 0; // preceding raw lines in the ordered merged input
+
+    const std::string& workspaceKey() const {
+        return identity.empty() ? originalHash : identity;
+    }
+
+    std::size_t first = 0, last = 0;  // parsed-line range [first,last), including clock segments
+    std::size_t rawLineOffset = 0;    // preceding raw lines in the ordered merged input
     std::size_t parsedLines = 0;
     std::size_t metricRows = 0;
     std::size_t outages = 0;
@@ -32,20 +36,20 @@ struct SourceComparison {
 };
 
 class DocumentState {
-public:
+  public:
     struct TimeRange {
         bool active = false;
         long long start = 0, end = 0;
     } timeRange;
 
     std::vector<LogLine> lines;
-    LogView filtered;                 // 借用 lines
+    LogView filtered;  // 借用 lines
     std::vector<std::string> sessions;
     std::vector<Outage> outages;
     std::vector<MetricRow> metrics;
-    MetricView metricView;              // 借用 metrics；UI 快捷筛选/排序结果
+    MetricView metricView;  // 借用 metrics；UI 快捷筛选/排序结果
     CellAnalysis cellAnalysis;
-    LogView timelineRows;             // 借用 lines
+    LogView timelineRows;  // 借用 lines
     ParseAudit audit;
     PlatformInfo platform;
     std::vector<Finding> findings;
@@ -77,4 +81,4 @@ public:
     void rebuildComparisons(const LogView& scoped);
 };
 
-} // namespace dl
+}  // namespace dl

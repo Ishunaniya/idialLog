@@ -23,9 +23,9 @@ void splitTextLines(std::string buf, std::vector<std::string>& out);
 // 现场日志多为打包回传(.zip/.tar.gz)。这里在内存中解压,免去手工先解压再拖入。
 // 只解压、不落地临时文件;逻辑纯 buffer→buffer,可单元测试。
 enum ArchiveKind {
-    ARC_NONE = 0,   // 不是已知压缩格式(按普通日志处理)
-    ARC_GZIP,       // .gz / .tar.gz(gzip 魔数 1F 8B)
-    ARC_ZIP         // .zip(魔数 PK\x03\x04)
+    ARC_NONE = 0,  // 不是已知压缩格式(按普通日志处理)
+    ARC_GZIP,      // .gz / .tar.gz(gzip 魔数 1F 8B)
+    ARC_ZIP        // .zip(魔数 PK\x03\x04)
 };
 
 // 按内容魔数(不是扩展名)判定压缩格式。扩展名可能被改过,魔数是事实。
@@ -33,8 +33,8 @@ ArchiveKind archiveKindOf(const std::string& buf);
 
 // 解压结果:一个压缩包里可能有多个日志文件(尤其 .zip / .tar)。
 struct ArchiveEntry {
-    std::string name;    // 包内文件名(用于提示/排序)
-    std::string data;    // 解压后的原始字节
+    std::string name;  // 包内文件名(用于提示/排序)
+    std::string data;  // 解压后的原始字节
 };
 
 // 解压缓冲区。成功返回 true 并填入 entries(至少一个);失败返回 false 并把原因写入 err。
@@ -44,4 +44,4 @@ struct ArchiveEntry {
 // 非压缩内容(ARC_NONE)返回 false —— 调用方应把它当普通日志直接读。
 bool extractArchive(const std::string& buf, std::vector<ArchiveEntry>& entries, std::string& err);
 
-} // namespace dl
+}  // namespace dl

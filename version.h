@@ -94,27 +94,29 @@
 //           RSSI 实际观测联动概览、诊断证据、来源/小区统计、复盘、复制与报告。
 //   1.12.1  设备编组、前后区间与五指标曲线对照；人工复核状态和备注；
 //           完整原字节证据包导入恢复，图表缩放/平移与离线事件交互。
+//   1.12.2  左侧复核工作台、事件看板与证据链、A/B 原生交互、多时期趋势；
+//           完整工作会话保存恢复，按 LLVM 派生配置整理手写源码。
 #pragma once
 
 #define DL_VER_MAJOR 1
 #define DL_VER_MINOR 12
-#define DL_VER_PATCH 1
+#define DL_VER_PATCH 2
 
 #define DL_STRINGIFY2(x) #x
-#define DL_STRINGIFY(x)  DL_STRINGIFY2(x)
+#define DL_STRINGIFY(x) DL_STRINGIFY2(x)
 
 // "1.2.0"
-#define DL_VER_STR   DL_STRINGIFY(DL_VER_MAJOR) "." DL_STRINGIFY(DL_VER_MINOR) "." DL_STRINGIFY(DL_VER_PATCH)
+#define DL_VER_STR DL_STRINGIFY(DL_VER_MAJOR) "." DL_STRINGIFY(DL_VER_MINOR) "." DL_STRINGIFY(DL_VER_PATCH)
 // "1.2.0.0" —— Windows 版本资源惯例是四段
-#define DL_VER_STR4  DL_VER_STR ".0"
+#define DL_VER_STR4 DL_VER_STR ".0"
 
 #define DL_WIDE2(x) L##x
-#define DL_WIDE(x)  DL_WIDE2(x)
+#define DL_WIDE(x) DL_WIDE2(x)
 // L"1.2.0"
 #define DL_VER_WSTR DL_WIDE(DL_VER_STR)
 
-#define DL_APP_NAME   "dialLog"
+#define DL_APP_NAME "dialLog"
 #define DL_APP_NAME_W L"dialLog"
 
 // "dialLog_v1.2.0.exe" —— 与 Makefile 生成的文件名保持一致(Makefile 从上面三个数字解析)
-#define DL_EXE_NAME   DL_APP_NAME "_v" DL_VER_STR ".exe"
+#define DL_EXE_NAME DL_APP_NAME "_v" DL_VER_STR ".exe"

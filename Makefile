@@ -70,9 +70,9 @@ MINIZ_DEF := -DDL_HAVE_MINIZ
 MINIZ_CFLAGS := -std=c11 -O2 -DMINIZ_NO_STDIO -DMINIZ_NO_TIME
 
 CORE_NAMES := json_value log_time log_parser log_analysis log_filter archive_reader
-APP_NAMES := workspace_state document_state app_context
+APP_NAMES := workspace_tools workspace_state document_state app_context
 PRESENTATION_NAMES := tablemodel chartmodel report_chart report_interaction text_catalog incidentmodel incident_export
-WIN32_NAMES := workspace_window ui modern_shell ui_pages overview_page chart_page load_controller app_settings win_file_io win_text source_workspace incident_review text_view
+WIN32_NAMES := workspace_window ui modern_shell main_frame ui_pages overview_page chart_page load_controller app_settings win_file_io win_text source_workspace incident_review text_view
 
 CORE_OBJS := $(addprefix $(BUILD_DIR)/core/,$(addsuffix .o,$(CORE_NAMES)))
 APP_OBJS := $(addprefix $(BUILD_DIR)/app/,$(addsuffix .o,$(APP_NAMES)))
@@ -80,6 +80,7 @@ PRESENTATION_OBJS := $(addprefix $(BUILD_DIR)/presentation/,$(addsuffix .o,$(PRE
 WIN32_OBJS := $(addprefix $(BUILD_DIR)/win32/,$(addsuffix .o,$(WIN32_NAMES)))
 MINIZ_OBJ := $(BUILD_DIR)/third_party/miniz.o
 RESOURCE_OBJ := $(BUILD_DIR)/resource.o
+GENERATED_MANIFEST := $(BUILD_DIR)/app.manifest
 OBJS := $(WIN32_OBJS) $(APP_OBJS) $(CORE_OBJS) $(PRESENTATION_OBJS) $(MINIZ_OBJ) $(RESOURCE_OBJ)
 DEPS := $(filter %.d,$(OBJS:.o=.d))
 
@@ -110,11 +111,16 @@ $(BUILD_DIR)/win32/%.o: $(WIN32_DIR)/%.cpp | $(BUILD_DIR)/win32
 $(MINIZ_OBJ): $(THIRD_PARTY_DIR)/miniz.c $(THIRD_PARTY_DIR)/miniz.h | $(BUILD_DIR)/third_party
 	$(CC) $(MINIZ_CFLAGS) $(DEPFLAGS) -c $< -o $@
 
+$(GENERATED_MANIFEST): $(WINDOWS_RESOURCE_DIR)/app.manifest version.h
+	mkdir -p $(dir $@)
+	sed 's/<assemblyIdentity version="[^"]*"/<assemblyIdentity version="$(VER).0"/' $< > $@
+
+# build/ 中的清单只在编译时使用；它已嵌入 exe，删除 build/ 不影响程序运行。
 $(RESOURCE_OBJ): $(WINDOWS_RESOURCE_DIR)/resource.rc \
-                 $(WINDOWS_RESOURCE_DIR)/app.manifest \
+                 $(GENERATED_MANIFEST) \
                  $(WINDOWS_RESOURCE_DIR)/dialLog.ico version.h
 	mkdir -p $(dir $@)
-	$(WINDRES) -I. -c 65001 $< -O coff -o $@
+	$(WINDRES) -I. -c 65001 -D'DL_APP_MANIFEST_PATH="$(GENERATED_MANIFEST)"' $< -O coff -o $@
 
 -include $(DEPS)
 
@@ -142,7 +148,7 @@ HOST_TABLE_OBJ := $(HOST_BUILD_DIR)/tablemodel.o
 HOST_LOCALE_OBJ := $(HOST_BUILD_DIR)/text_catalog.o
 HOST_CHART_OBJ := $(HOST_BUILD_DIR)/chartmodel.o
 HOST_REPORT_CHART_OBJ := $(HOST_BUILD_DIR)/report_chart.o $(HOST_BUILD_DIR)/report_interaction.o
-HOST_WORKSPACE_OBJ := $(HOST_BUILD_DIR)/workspace_state.o
+HOST_WORKSPACE_OBJ := $(HOST_BUILD_DIR)/workspace_state.o $(HOST_BUILD_DIR)/workspace_tools.o
 HOST_DOCUMENT_OBJ := $(HOST_BUILD_DIR)/document_state.o
 HOST_INCIDENT_OBJS := $(HOST_BUILD_DIR)/incidentmodel.o $(HOST_BUILD_DIR)/incident_export.o
 HOST_MINIZ_OBJ := $(HOST_BUILD_DIR)/miniz.o
@@ -217,7 +223,7 @@ $(HOST_MINIZ_OBJ): $(THIRD_PARTY_DIR)/miniz.c $(THIRD_PARTY_DIR)/miniz.h | $(HOS
 
 -include $(HOST_DEPS)
 
-$(HOST_WORKSPACE_OBJ): $(APP_DIR)/workspace_state.cpp | $(HOST_BUILD_DIR)
+$(HOST_WORKSPACE_OBJ): $(HOST_BUILD_DIR)/%.o: $(APP_DIR)/%.cpp | $(HOST_BUILD_DIR)
 	$(HOST_CXX) $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(WORKSPACETEST_BIN): $(TEST_UNIT_DIR)/workspacetest.cpp version.h $(HOST_WORKSPACE_OBJ) $(HOST_DOCUMENT_OBJ) $(HOST_INCIDENT_OBJS) $(HOST_REPORT_CHART_OBJ) $(HOST_CHART_OBJ) $(HOST_TABLE_OBJ) $(HOST_LOCALE_OBJ) $(HOST_CORE_OBJS) $(HOST_MINIZ_OBJ) | $(UNIT_BIN_DIR)
@@ -321,7 +327,19 @@ check: $(TEST_BINS)
 	$(INCIDENTTEST_BIN)
 	$(WORKSPACETEST_BIN)
 	python3 tests/unit/workspace_package_test.py
+	python3 tests/unit/workspace_session_test.py
 	python3 tests/unit/incident_export_test.py
+
+# Generated translation tables and third-party code have their own formatting.
+CLANG_FORMAT ?= clang-format
+FORMAT_SOURCES := $(filter-out src/presentation/text_catalog.inc src/presentation/text_ids.h,\
+    $(shell rg --files src tests sim resources -g '*.cpp' -g '*.c' -g '*.h' -g '*.inc')) version.h
+
+format:
+	$(CLANG_FORMAT) -i --style=file $(FORMAT_SOURCES)
+
+format-check:
+	$(CLANG_FORMAT) --dry-run --Werror --style=file $(FORMAT_SOURCES)
 
 check-full: check
 	python3 sim/mutate.py
@@ -337,4 +355,4 @@ clean:
 version:
 	@echo $(VER)
 
-.PHONY: all clean version check check-full perf ui-smoke windows-x64 windows-x86 windows-all release $(TEST_TARGETS)
+.PHONY: all clean version format format-check check check-full perf ui-smoke windows-x64 windows-x86 windows-all release $(TEST_TARGETS)

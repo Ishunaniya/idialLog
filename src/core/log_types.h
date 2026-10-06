@@ -15,26 +15,39 @@ namespace dl {
 
 // 行格式
 enum Fmt : unsigned char {
-    FMT_UNKNOWN = 0, FMT_SD, FMT_SEAS, FMT_ANDROID, FMT_SYSLOG, FMT_CONSOLE,
+    FMT_UNKNOWN = 0,
+    FMT_SD,
+    FMT_SEAS,
+    FMT_ANDROID,
+    FMT_SYSLOG,
+    FMT_CONSOLE,
     // dmesg 只有单调 uptime，不能和墙钟日志混排；仍作为内核快照保留原文和相对时间。
     FMT_KERNEL
 };
 
 // seas_log 级别来自固定枚举,不必让每一行都常驻一个 32B std::string。
 enum LogLevel : unsigned char {
-    LEVEL_NONE = 0, LEVEL_ALL, LEVEL_DEBUG, LEVEL_INFO, LEVEL_NOTICE,
-    LEVEL_WARNING, LEVEL_ERROR, LEVEL_FATAL, LEVEL_CRITICAL, LEVEL_OTHER
+    LEVEL_NONE = 0,
+    LEVEL_ALL,
+    LEVEL_DEBUG,
+    LEVEL_INFO,
+    LEVEL_NOTICE,
+    LEVEL_WARNING,
+    LEVEL_ERROR,
+    LEVEL_FATAL,
+    LEVEL_CRITICAL,
+    LEVEL_OTHER
 };
 
 // 日志来源平台
 enum Platform {
     PLAT_UNKNOWN = 0,
-    PLAT_EC200A,    // modem_mng EC200A 或 open_dial(上游,格式相同)
-    PLAT_AG35,      // modem_mng AG35(EC200A 源码路径 + [SLOT] 双卡)
-    PLAT_EG25,      // modem_mng EG25
-    PLAT_ARTERY,    // open_dial_for_artery(seas_log)
-    PLAT_IMX,       // modem_mng IMX6ULL（新版可由 rtms_imx6ull 展示版本直接识别）
-    PLAT_RK3506J,   // modem_mng RK3506J（可由 rtms_rk3506j 展示版本直接识别）
+    PLAT_EC200A,   // modem_mng EC200A 或 open_dial(上游,格式相同)
+    PLAT_AG35,     // modem_mng AG35(EC200A 源码路径 + [SLOT] 双卡)
+    PLAT_EG25,     // modem_mng EG25
+    PLAT_ARTERY,   // open_dial_for_artery(seas_log)
+    PLAT_IMX,      // modem_mng IMX6ULL（新版可由 rtms_imx6ull 展示版本直接识别）
+    PLAT_RK3506J,  // modem_mng RK3506J（可由 rtms_rk3506j 展示版本直接识别）
     // RK3576 重构版使用 syslog/控制台文本，状态机和恢复策略均不同于旧 modem_mng；
     // 单列平台，避免把 v2 的事件套入旧 EG25/EC200A 恢复阶梯阈值。
     PLAT_MODEM_MNG_V2
@@ -42,19 +55,19 @@ enum Platform {
 
 // 一条已解析的日志行
 struct LogLine {
-    long long   t = 0;      // epoch 秒(按字面时间解释,不做时区换算)
-    size_t lineNo = 0;      // 原始文件行号(1 基),供结论证据溯源
-    std::string ts;         // 原始时间戳 "YYYY-MM-DD HH:MM:SS"
-    std::string msg;        // 标签之后的正文(UTF-8,已剥离 ANSI 转义码)
+    long long t = 0;    // epoch 秒(按字面时间解释,不做时区换算)
+    size_t lineNo = 0;  // 原始文件行号(1 基),供结论证据溯源
+    std::string ts;     // 原始时间戳 "YYYY-MM-DD HH:MM:SS"
+    std::string msg;    // 标签之后的正文(UTF-8,已剥离 ANSI 转义码)
     // 常见标签存字典 ID；只有未知/新标签才分配字符串。不会使用进程级永久池，关闭日志
     // 后自定义标签照常释放。func/srcfile/srcline 解析后从未被消费,不再逐行保存。
     std::unique_ptr<std::string> customTag;
-    int  ms = -1;           // 毫秒;SEAS/Android/syslog 可有,-1=无
+    int ms = -1;  // 毫秒;SEAS/Android/syslog 可有,-1=无
     std::uint16_t tagId = 0;
-    std::uint16_t sourceId = 0; // 合并来源编号；防止 Cell ID 等状态跨文件串联
-    Fmt  fmt = FMT_UNKNOWN;
+    std::uint16_t sourceId = 0;  // 合并来源编号；防止 Cell ID 等状态跨文件串联
+    Fmt fmt = FMT_UNKNOWN;
     LogLevel level = LEVEL_NONE;
-    bool inferredTime = false; // 时间含推定成分：RFC3164 缺年份，或裸控制台沿用相邻时间
+    bool inferredTime = false;  // 时间含推定成分：RFC3164 缺年份，或裸控制台沿用相邻时间
 
     LogLine() = default;
     ~LogLine() = default;
@@ -82,31 +95,32 @@ struct UnparsedLine {
 // 解析审计:证明"没漏消息"的硬证据。
 // 自洽等式:rawTotal = parsed + session + blank + continuation + unparsed
 struct ParseAudit {
-    size_t rawTotal      = 0;
-    size_t parsed        = 0;   // 成功解析为 LogLine
-    size_t session       = 0;   // "=== Dial Log Opened/Program Exit ===" 会话标记
-    size_t blank         = 0;   // 空行/纯空白
-    size_t continuation  = 0;   // 多行条目的续行(无时间戳,已并入上一条;非丢弃)
-    size_t unparsed      = 0;   // 未识别 ← 审计目标
-    size_t logOpened     = 0;   // Dial Log Opened：日志文件打开/轮转，不等价于进程启动
+    size_t rawTotal = 0;
+    size_t parsed = 0;          // 成功解析为 LogLine
+    size_t session = 0;         // "=== Dial Log Opened/Program Exit ===" 会话标记
+    size_t blank = 0;           // 空行/纯空白
+    size_t continuation = 0;    // 多行条目的续行(无时间戳,已并入上一条;非丢弃)
+    size_t unparsed = 0;        // 未识别 ← 审计目标
+    size_t logOpened = 0;       // Dial Log Opened：日志文件打开/轮转，不等价于进程启动
     size_t programStarted = 0;  // 版本横幅或 Dial Program Started 提供的启动证据（原始信号数）
     size_t programExited = 0;   // Program Exit 正常退出标记
-    size_t nulBytes      = 0;   // 输入中的 NUL 字节；文本解析成功也必须单独暴露完整性损伤
-    size_t nulLines      = 0;   // 含 NUL 的逻辑行数
+    size_t nulBytes = 0;        // 输入中的 NUL 字节；文本解析成功也必须单独暴露完整性损伤
+    size_t nulLines = 0;        // 含 NUL 的逻辑行数
     // 时钟跳变检测(问题①):一份日志内部时间戳大幅跳跃 —— 通常是设备开机 RTC 未授时
     // (1970 起点)后中途联网授时,时间从 1970 跳到真实年份。此时该日志的时间轴前后
     // 不在同一坐标系,断网时长/可用率跨越跳变点会算错。
     // 【无真机样本】现有 33 份夹具无一含此跳变(两份 unsynced 全程 1970,设备整段未授时)。
     // 故此处**只检测并报告,不臆测正确行为**(修复需知道正确时间,只能靠猜)——与"未识别行
     // 审计"同路子:诚实暴露异常,由用户判断,不假装解决。
-    bool   clockJump     = false;  // 是否检测到跳变
-    long long jumpFromT  = 0;      // 跳变前一行的时间
-    long long jumpToT    = 0;      // 跳变后一行的时间
-    size_t jumpAtLine    = 0;      // 跳变发生的原始行号(1-based)
-    std::vector<UnparsedLine> samples;              // 未识别样例(上限 kMaxSamples)
-    std::map<std::string, size_t> unparsedKinds;    // 未识别行的粗分类 → 计数
+    bool clockJump = false;                       // 是否检测到跳变
+    long long jumpFromT = 0;                      // 跳变前一行的时间
+    long long jumpToT = 0;                        // 跳变后一行的时间
+    size_t jumpAtLine = 0;                        // 跳变发生的原始行号(1-based)
+    std::vector<UnparsedLine> samples;            // 未识别样例(上限 kMaxSamples)
+    std::map<std::string, size_t> unparsedKinds;  // 未识别行的粗分类 → 计数
     static const size_t kMaxSamples = 200;
-    double unparsedRatio() const {                  // 占原始行比例(0..1)
+
+    double unparsedRatio() const {  // 占原始行比例(0..1)
         return rawTotal ? double(unparsed) / double(rawTotal) : 0.0;
     }
 };
@@ -114,22 +128,22 @@ struct ParseAudit {
 // 平台识别结果
 struct PlatformInfo {
     Platform plat = PLAT_UNKNOWN;
-    std::string name;       // 展示名,如 "EG25 (modem_mng)"
-    std::string evidence;   // 判定依据(实证的日志片段)
+    std::string name;      // 展示名,如 "EG25 (modem_mng)"
+    std::string evidence;  // 判定依据(实证的日志片段)
     size_t evidenceLine = 0;
 };
 
 // 一次断网。recovered=false 表示日志结束时仍未恢复(end/dur 无效)
 struct Outage {
     long long start = 0;
-    long long end   = 0;
-    int  dur        = 0;
-    bool recovered  = false;
+    long long end = 0;
+    int dur = 0;
+    bool recovered = false;
     // true=设备在恢复行自报 Down:N；没有独立的原始故障起点，展示和统计必须明确其证据等级。
     bool reportedDuration = false;
-    bool l0Recovered = false;            // true=SDK 在 L0 阶段自愈(短断网,链路抖动);
-                                         // false=走了 L1+ 恢复阶梯或普通恢复
-    size_t startLine = 0, endLine = 0;   // 证据行号
+    bool l0Recovered = false;           // true=SDK 在 L0 阶段自愈(短断网,链路抖动);
+                                        // false=走了 L1+ 恢复阶梯或普通恢复
+    size_t startLine = 0, endLine = 0;  // 证据行号
 };
 
 // DataCall 断开事件按产品明确给出的 initiator/reason 分类。
@@ -139,7 +153,7 @@ struct DataCallStats {
     size_t disconnected = 0;
     size_t appStop = 0;
     size_t sdkUrc = 0;
-    size_t unsolicited = 0;       // initiator=SDK_URC 且 reason=UNSOLICITED
+    size_t unsolicited = 0;  // initiator=SDK_URC 且 reason=UNSOLICITED
     size_t legacy = 0;
     size_t otherInitiator = 0;
     std::map<std::string, size_t> reasons;
@@ -151,6 +165,7 @@ struct ArteryStateStall {
     size_t entryLine = 0, lastLine = 0, redialLine = 0, sdkConnectedLine = 0;
     size_t heartbeatCount = 0;
 };
+
 struct ArteryDiagnostics {
     std::vector<ArteryStateStall> startCallStalls;
     std::vector<size_t> legacyDisconnectEvidence;
@@ -164,37 +179,48 @@ struct ObservationStats {
     long long calendarSpan = 0;
     long long observedSpan = 0;
     std::size_t sourceCount = 0;
-    std::size_t clockDiscontinuities = 0; // 同一 source 内跨 2000 年边界，观测区间在此切断
+    std::size_t clockDiscontinuities = 0;  // 同一 source 内跨 2000 年边界，观测区间在此切断
     double coveragePercent = 0.0;
 };
 
 // 服务可达性与传统“已联网后断网率”分开统计。只有看到明确的进程启动横幅
 // 才将该段纳入全程口径，避免把截取到运行中段的日志误判为启动失败。
 struct AvailabilityStats {
-    long long fullObservedSeconds = 0;       // 启动横幅至该会话末尾的已知观测时长
-    long long fullUnavailableSeconds = 0;    // 首次联网前 + 已知断网（含末尾未恢复）
-    long long runtimeObservedSeconds = 0;    // 首次明确联网之后的观测时长
-    long long runtimeUnavailableSeconds = 0; // 首次联网后的已知断网（含末尾未恢复）
-    long long longestStartupSeconds = 0;     // 启动横幅至首次明确联网的最长等待
-    std::size_t startupSegments = 0;         // 有启动横幅的会话数
+    long long fullObservedSeconds = 0;        // 启动横幅至该会话末尾的已知观测时长
+    long long fullUnavailableSeconds = 0;     // 首次联网前 + 已知断网（含末尾未恢复）
+    long long runtimeObservedSeconds = 0;     // 首次明确联网之后的观测时长
+    long long runtimeUnavailableSeconds = 0;  // 首次联网后的已知断网（含末尾未恢复）
+    long long longestStartupSeconds = 0;      // 启动横幅至首次明确联网的最长等待
+    std::size_t startupSegments = 0;          // 有启动横幅的会话数
     std::size_t connectedStartupSegments = 0;
     std::size_t neverConnectedStartupSegments = 0;
-    std::size_t terminalOutages = 0;         // 日志结束前未见恢复的断网数
+    std::size_t terminalOutages = 0;  // 日志结束前未见恢复的断网数
 
     // 百分比仍是“已识别事件”口径；以下证据缺口禁止把数值标成业务正常。
     bool legacyArteryEvents = false, arteryStateStall = false, mixedArteryStates = false;
+
     bool evidenceLimited() const {
         return legacyArteryEvents || arteryStateStall || mixedArteryStates;
     }
-    bool fullValid() const { return startupSegments > 0 && fullObservedSeconds > 0; }
-    bool runtimeValid() const { return connectedStartupSegments > 0 && runtimeObservedSeconds > 0; }
+
+    bool fullValid() const {
+        return startupSegments > 0 && fullObservedSeconds > 0;
+    }
+
+    bool runtimeValid() const {
+        return connectedStartupSegments > 0 && runtimeObservedSeconds > 0;
+    }
+
     double fullPercent() const {
         return fullValid() ? 100.0 * (1.0 - static_cast<double>(fullUnavailableSeconds) /
-                                      static_cast<double>(fullObservedSeconds)) : 0.0;
+                                                static_cast<double>(fullObservedSeconds))
+                           : 0.0;
     }
+
     double runtimePercent() const {
         return runtimeValid() ? 100.0 * (1.0 - static_cast<double>(runtimeUnavailableSeconds) /
-                                         static_cast<double>(runtimeObservedSeconds)) : 0.0;
+                                                   static_cast<double>(runtimeObservedSeconds))
+                              : 0.0;
     }
 };
 
@@ -205,22 +231,45 @@ struct Stall {
 };
 
 // 小区 ID 是高频短字段；用定长内联文本避免每个指标样本再常驻一个 32B std::string。
-template <std::size_t Capacity>
-struct SmallText {
+template <std::size_t Capacity> struct SmallText {
     char data[Capacity]{};
 
     void assign(std::string_view value) {
         const std::size_t count = value.size() < Capacity - 1 ? value.size() : Capacity - 1;
-        for (std::size_t index = 0; index < count; ++index) data[index] = value[index];
+        for (std::size_t index = 0; index < count; ++index)
+            data[index] = value[index];
         data[count] = '\0';
     }
-    SmallText& operator=(std::string_view value) { assign(value); return *this; }
-    SmallText& operator=(const char* value) { assign(value ? std::string_view(value) : std::string_view{}); return *this; }
-    bool empty() const { return data[0] == '\0'; }
-    std::string str() const { return data; }
-    std::string_view view() const { return data; }
-    bool operator==(std::string_view value) const { return view() == value; }
-    bool operator==(const SmallText& value) const { return view() == value.view(); }
+
+    SmallText& operator=(std::string_view value) {
+        assign(value);
+        return *this;
+    }
+
+    SmallText& operator=(const char* value) {
+        assign(value ? std::string_view(value) : std::string_view{});
+        return *this;
+    }
+
+    bool empty() const {
+        return data[0] == '\0';
+    }
+
+    std::string str() const {
+        return data;
+    }
+
+    std::string_view view() const {
+        return data;
+    }
+
+    bool operator==(std::string_view value) const {
+        return view() == value;
+    }
+
+    bool operator==(const SmallText& value) const {
+        return view() == value.view();
+    }
 };
 
 // 心跳指标行(供“指标”页)
@@ -231,26 +280,26 @@ struct MetricRow {
     size_t lineNo = 0;
     // CH/RAT/OPER 不是可靠的固定枚举，保留原文；Cell ID 内联，PCI/TAC 数值化。
     std::string ch, rat, oper;
-    SmallText<12> cellId;       // LTE ECI / NR NCI，最多保留 11 个原始字符
-    int pci = -1;               // 物理小区 ID；-1=无效
-    std::uint32_t tac = UINT32_MAX; // 跟踪区码（按十六进制展示）
-    std::uint8_t tacDigits = 0; // 保留 TAC 的前导零位数
-    bool inferredTime = false; // 保留原始行的推定年份/相邻时间标记；使用现有对齐空隙
-    int  csqRaw  = -1;      // 原始数值；99=AT+CSQ 未知，-1=缺失/非法
-    int  csqVal  = -1;      // -1=无效/99
-    int  tempMax = INT_MIN; // 多温度字段最大值；INT_MIN=无效
-    int  consecFail = INT_MIN;
+    SmallText<12> cellId;            // LTE ECI / NR NCI，最多保留 11 个原始字符
+    int pci = -1;                    // 物理小区 ID；-1=无效
+    std::uint32_t tac = UINT32_MAX;  // 跟踪区码（按十六进制展示）
+    std::uint8_t tacDigits = 0;      // 保留 TAC 的前导零位数
+    bool inferredTime = false;       // 保留原始行的推定年份/相邻时间标记；使用现有对齐空隙
+    int csqRaw = -1;                 // 原始数值；99=AT+CSQ 未知，-1=缺失/非法
+    int csqVal = -1;                 // -1=无效/99
+    int tempMax = INT_MIN;           // 多温度字段最大值；INT_MIN=无效
+    int consecFail = INT_MIN;
     // IMX6ULL 1.25.1 AT 健康收敛。-1=该心跳未提供，atProbe: 0=fail,1=ok,2=not_run。
-    int  atTelemetryTimeout = -1;
-    int  atBasicProbe = -1;
-    int  detailedAtTimeout = -1;
+    int atTelemetryTimeout = -1;
+    int atBasicProbe = -1;
+    int detailedAtTimeout = -1;
     SmallText<24> detailedAtStage;
-    int  rsrp    = 1;       // dBm,负值(约-70~-120,越大越好);1=无效(正数不可能是真值)
-    int  rsrq    = 1;       // dB,负值(约-3~-20);1=无效
-    int  snr10   = 100000;  // SDK 原值,单位 0.1dB;100000=无效(超出 int16_t 范围)
-    int  rssiVal = 1;       // dBm,负值;1=无效
-    int  srvVal  = -1;      // SDK 服务状态:0=NONE,1=LIMITED,2=FULL;-1=无效
-    int  denyVal = -1;      // SDK 原始拒绝码;两套 SDK 编码不同,-1=无效
+    int rsrp = 1;        // dBm,负值(约-70~-120,越大越好);1=无效(正数不可能是真值)
+    int rsrq = 1;        // dB,负值(约-3~-20);1=无效
+    int snr10 = 100000;  // SDK 原值,单位 0.1dB;100000=无效(超出 int16_t 范围)
+    int rssiVal = 1;     // dBm,负值;1=无效
+    int srvVal = -1;     // SDK 服务状态:0=NONE,1=LIMITED,2=FULL;-1=无效
+    int denyVal = -1;    // SDK 原始拒绝码;两套 SDK 编码不同,-1=无效
 };
 
 // 指标的轻量借用视图。用于 UI 快捷筛选/排序，不复制高频指标字符串。
@@ -311,16 +360,17 @@ struct CellAnalysis {
 
 // ---- 结论引擎(第 4 节)----
 struct Evidence {
-    size_t lineNo = 0;      // 原始行号
-    std::string ts;         // 时间戳
-    std::string text;       // 证据原文(截断)
-};
-struct Finding {
-    int severity = 0;               // 0=信息 1=告警 2=严重
-    std::string title;              // 结论
-    std::string detail;             // 依据说明
-    std::string advice;             // 处置建议
-    std::vector<Evidence> ev;       // 支撑证据(无证据不得输出)
+    size_t lineNo = 0;  // 原始行号
+    std::string ts;     // 时间戳
+    std::string text;   // 证据原文(截断)
 };
 
-} // namespace dl
+struct Finding {
+    int severity = 0;          // 0=信息 1=告警 2=严重
+    std::string title;         // 结论
+    std::string detail;        // 依据说明
+    std::string advice;        // 处置建议
+    std::vector<Evidence> ev;  // 支撑证据(无证据不得输出)
+};
+
+}  // namespace dl

@@ -23,12 +23,13 @@ struct AppContext {
     HWND hMetricFilter = nullptr;
     HWND hSummary = nullptr, hTimeline = nullptr, hOutage = nullptr, hMetric = nullptr;
     HWND hTags = nullptr, hRaw = nullptr, hChart = nullptr, hExport = nullptr, hDash = nullptr;
-    HWND hFindings = nullptr, hUnparsed = nullptr, hCells = nullptr;
+    HWND hFindings = nullptr, hUnparsed = nullptr, hCells = nullptr, hReviewWorkbench = nullptr;
     HWND hMetricToolbar = nullptr, hMetricViewChart = nullptr, hMetricViewSplit = nullptr;
     HWND hMetricViewTable = nullptr, hMetricSplitter = nullptr;
     HWND hDetailSplitter = nullptr, hDetailLabel = nullptr, hDetailText = nullptr, hDetailClose = nullptr;
     HIMAGELIST hTableRows = nullptr;
 
+    unsigned long long fontRevision = 0;
     HFONT hFontUI = nullptr, hFontMono = nullptr, hFontTitle = nullptr, hFontSmall = nullptr;
     HFONT hFontHero = nullptr, hFontTileVal = nullptr, hFontTileLbl = nullptr, hFontSect = nullptr;
 
@@ -38,11 +39,20 @@ struct AppContext {
 
 AppContext& App();
 
-inline int Scale(int logical) { return MulDiv(logical, App().dpi, 96); }
+inline int Scale(int logical) {
+    return MulDiv(logical, App().dpi, 96);
+}
+
 inline int ScaleFont(int logicalNegative) {
     return -MulDiv(-logicalNegative, App().dpi, 96);
 }
-inline int S(int logical) { return Scale(logical); }
-inline int SF(int logicalNegative) { return ScaleFont(logicalNegative); }
 
-} // namespace dl
+inline int S(int logical) {
+    return Scale(logical);
+}
+
+inline int SF(int logicalNegative) {
+    return ScaleFont(logicalNegative);
+}
+
+}  // namespace dl

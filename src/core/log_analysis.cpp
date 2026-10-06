@@ -21,12 +21,15 @@ namespace dl {
 static constexpr long long kSaneClockEpoch = 946598400LL;
 
 static std::string fmtDuration(long long seconds) {
-    if (seconds < 0) return "-";
+    if (seconds < 0)
+        return "-";
     const long long hours = seconds / 3600;
     const long long minutes = (seconds % 3600) / 60;
     const long long remain = seconds % 60;
-    if (hours > 0) return std::to_string(hours) + "h" + std::to_string(minutes) + "m" + std::to_string(remain) + "s";
-    if (minutes > 0) return std::to_string(minutes) + "m" + std::to_string(remain) + "s";
+    if (hours > 0)
+        return std::to_string(hours) + "h" + std::to_string(minutes) + "m" + std::to_string(remain) + "s";
+    if (minutes > 0)
+        return std::to_string(minutes) + "m" + std::to_string(remain) + "s";
     return std::to_string(remain) + "s";
 }
 
@@ -35,41 +38,60 @@ static bool crossesClockBase(long long first, long long second) {
 }
 
 static std::string_view trimView(std::string_view s) {
-    while (!s.empty() && (unsigned char)s.front() <= ' ') s.remove_prefix(1);
-    while (!s.empty() && (unsigned char)s.back() <= ' ') s.remove_suffix(1);
+    while (!s.empty() && (unsigned char)s.front() <= ' ')
+        s.remove_prefix(1);
+    while (!s.empty() && (unsigned char)s.back() <= ' ')
+        s.remove_suffix(1);
     return s;
 }
 
-template <typename Fn>
-static bool scanHbFields(const std::string& msg, Fn&& fn) {
-    if (msg.find(':') == std::string::npos && msg.find('=') == std::string::npos) return false;
+template <typename Fn> static bool scanHbFields(const std::string& msg, Fn&& fn) {
+    if (msg.find(':') == std::string::npos && msg.find('=') == std::string::npos)
+        return false;
     bool found = false;
     size_t i = 0;
     while (i < msg.size()) {
-        if (!isIdentChar(msg[i])) { i++; continue; }
+        if (!isIdentChar(msg[i])) {
+            i++;
+            continue;
+        }
+
         size_t j = i;
-        while (j < msg.size() && isIdentChar(msg[j])) j++;
-        if (j >= msg.size() || (msg[j] != ':' && msg[j] != '=')) { i = j; continue; }
+        while (j < msg.size() && isIdentChar(msg[j]))
+            j++;
+        if (j >= msg.size() || (msg[j] != ':' && msg[j] != '=')) {
+            i = j;
+            continue;
+        }
 
         size_t k = j + 1;
         size_t e = msg.size();
         size_t bar = msg.find('|', k);
-        if (bar != std::string::npos) e = bar;
+        if (bar != std::string::npos)
+            e = bar;
         for (size_t q = k; q + 1 < e; ++q) {
-            if (msg[q] != ' ' && msg[q] != '\t') continue;
+            if (msg[q] != ' ' && msg[q] != '\t')
+                continue;
             size_t r = q + 1;
-            while (r < e && (msg[r] == ' ' || msg[r] == '\t')) r++;
+            while (r < e && (msg[r] == ' ' || msg[r] == '\t'))
+                r++;
             size_t t2 = r;
-            while (t2 < e && isIdentChar(msg[t2])) t2++;
-            if (t2 > r && t2 < e && (msg[t2] == ':' || msg[t2] == '=')) { e = q; break; }
+            while (t2 < e && isIdentChar(msg[t2]))
+                t2++;
+            if (t2 > r && t2 < e && (msg[t2] == ':' || msg[t2] == '=')) {
+                e = q;
+                break;
+            }
         }
+
         if (e > k) {
-            fn(std::string_view(msg.data() + i, j - i),
-               trimView(std::string_view(msg.data() + k, e - k)));
+            fn(std::string_view(msg.data() + i, j - i), trimView(std::string_view(msg.data() + k, e - k)));
             found = true;
         }
+
         i = (e > k) ? e : j;
     }
+
     return found;
 }
 
@@ -77,12 +99,19 @@ static bool scanHbFields(const std::string& msg, Fn&& fn) {
 // 只接受完整的 online=0/1，避免正文中的普通数字或诊断说明误触发断网边沿。
 static bool imxHeartbeatOnline(const LogLine& line, bool& online) {
     const std::string& tag = line.tagText();
-    if (tag != "HB30" && tag != "HB300") return false;
+    if (tag != "HB30" && tag != "HB300")
+        return false;
     bool found = false;
     scanHbFields(line.msg, [&](std::string_view key, std::string_view value) {
-        if (found || key != "online" || value.size() != 1) return;
-        if (value[0] == '0') { online = false; found = true; }
-        else if (value[0] == '1') { online = true; found = true; }
+        if (found || key != "online" || value.size() != 1)
+            return;
+        if (value[0] == '0') {
+            online = false;
+            found = true;
+        } else if (value[0] == '1') {
+            online = true;
+            found = true;
+        }
     });
     return found;
 }
@@ -91,10 +120,12 @@ static bool imxHeartbeatOnline(const LogLine& line, bool& online) {
 // 只有原先 CHECK_CONNECTION 成功路径输出的 downtime_s 才能关闭 online=0
 // 断网，不能把首次 "action=enter" 误当成恢复完成。
 static bool imxRecoveryComplete(const LogLine& line) {
-    if (line.tagText() != "RECOVERY") return false;
+    if (line.tagText() != "RECOVERY")
+        return false;
     bool complete = false;
     scanHbFields(line.msg, [&](std::string_view key, std::string_view value) {
-        if (key != "downtime_s") return;
+        if (key != "downtime_s")
+            return;
         long long seconds = 0;
         const char* first = value.data();
         const char* last = first + value.size();
@@ -106,23 +137,23 @@ static bool imxRecoveryComplete(const LogLine& line) {
 
 static bool isImxHeartbeatDiagnostic(const LogLine& line) {
     const std::string& tag = line.tagText();
-    if (tag != "HB" && tag != "HB300") return false;
+    if (tag != "HB" && tag != "HB300")
+        return false;
     return icontains(line.msg, "snapshot stale") || icontains(line.msg, "snapshot delayed") ||
            icontains(line.msg, "diagnostic snapshot pending");
 }
 
 std::map<std::string, std::string> hbFields(const std::string& msg) {
     std::map<std::string, std::string> d;
-    scanHbFields(msg, [&](std::string_view key, std::string_view value) {
-        d[std::string(key)] = std::string(value);
-    });
+    scanHbFields(msg, [&](std::string_view key, std::string_view value) { d[std::string(key)] = std::string(value); });
     return d;
 }
 
 static std::string dataCallField(const std::string& msg, std::string_view wanted) {
     std::string value;
     scanHbFields(msg, [&](std::string_view key, std::string_view fieldValue) {
-        if (key == wanted && value.empty()) value.assign(fieldValue.data(), fieldValue.size());
+        if (key == wanted && value.empty())
+            value.assign(fieldValue.data(), fieldValue.size());
     });
     return value;
 }
@@ -133,37 +164,55 @@ static std::string_view rkField(const std::string& msg, std::string_view wanted)
     const std::string_view text(msg);
     size_t pos = 0;
     while (pos < text.size()) {
-        while (pos < text.size() && (text[pos] <= ' ' || text[pos] == '|')) ++pos;
+        while (pos < text.size() && (text[pos] <= ' ' || text[pos] == '|'))
+            ++pos;
         const size_t keyBegin = pos;
-        while (pos < text.size() && isIdentChar(text[pos])) ++pos;
+        while (pos < text.size() && isIdentChar(text[pos]))
+            ++pos;
         if (pos == keyBegin || pos == text.size() || text[pos] != '=') {
-            while (pos < text.size() && text[pos] > ' ' && text[pos] != '|') ++pos;
+            while (pos < text.size() && text[pos] > ' ' && text[pos] != '|')
+                ++pos;
             continue;
         }
+
         const auto key = text.substr(keyBegin, pos - keyBegin);
-        if (key == "response" || key == "last") return {};
+        if (key == "response" || key == "last")
+            return {};
         const size_t valueBegin = ++pos;
         bool quoted = false;
         while (pos < text.size()) {
-            if (text[pos] == '"') quoted = !quoted;
-            if (quoted && text[pos] == '\\' && pos + 1 < text.size()) { pos += 2; continue; }
+            if (text[pos] == '"')
+                quoted = !quoted;
+            if (quoted && text[pos] == '\\' && pos + 1 < text.size()) {
+                pos += 2;
+                continue;
+            }
+
             if (!quoted && (text[pos] <= ' ' || text[pos] == '|')) {
                 size_t next = pos;
-                while (next < text.size() && (text[next] <= ' ' || text[next] == '|')) ++next;
+                while (next < text.size() && (text[next] <= ' ' || text[next] == '|'))
+                    ++next;
                 size_t end = next;
-                while (end < text.size() && isIdentChar(text[end])) ++end;
-                if (text[pos] == '|' || (end > next && end < text.size() && text[end] == '=')) break;
+                while (end < text.size() && isIdentChar(text[end]))
+                    ++end;
+                if (text[pos] == '|' || (end > next && end < text.size() && text[end] == '='))
+                    break;
             }
+
             ++pos;
         }
+
         if (key == wanted) {
             auto value = trimView(text.substr(valueBegin, pos - valueBegin));
             if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
-                value.remove_prefix(1); value.remove_suffix(1);
+                value.remove_prefix(1);
+                value.remove_suffix(1);
             }
+
             return value;
         }
     }
+
     return {};
 }
 
@@ -177,10 +226,11 @@ static bool rkDialTag(const std::string& tag) {
 
 // e15a5232 的流量监控为各 modem_mng 平台共用，不是 RK 专属故障。
 static bool modemTrafficSkipped(const LogLine& line) {
-    if (line.tagText() != "TRAFFIC" ||
-        !startsWith(line.msg, "sample/persist skipped count=")) return false;
+    if (line.tagText() != "TRAFFIC" || !startsWith(line.msg, "sample/persist skipped count="))
+        return false;
     const auto field = rkField(line.msg, "count");
-    if (field.empty() || rkField(line.msg, "reason").empty()) return false;
+    if (field.empty() || rkField(line.msg, "reason").empty())
+        return false;
     std::uint32_t count = 0;
     const auto result = std::from_chars(field.data(), field.data() + field.size(), count);
     return result.ec == std::errc{} && result.ptr == field.data() + field.size();
@@ -190,9 +240,9 @@ static bool rkHistorySelectionVerified(const std::string& message) {
     constexpr std::string_view prefix = "history PLMN verified=";
     constexpr std::string_view suffix = " -> WRITE_TO_MODEM";
     if (!startsWith(message, prefix) || message.size() < prefix.size() + suffix.size() ||
-        std::string_view(message).substr(message.size() - suffix.size()) != suffix) return false;
-    const auto plmn = std::string_view(message).substr(prefix.size(),
-        message.size() - prefix.size() - suffix.size());
+        std::string_view(message).substr(message.size() - suffix.size()) != suffix)
+        return false;
+    const auto plmn = std::string_view(message).substr(prefix.size(), message.size() - prefix.size() - suffix.size());
     return (plmn.size() == 5 || plmn.size() == 6) &&
            std::all_of(plmn.begin(), plmn.end(), [](char c) { return c >= '0' && c <= '9'; });
 }
@@ -200,33 +250,35 @@ static bool rkHistorySelectionVerified(const std::string& message) {
 static bool rkInternetUp(const LogLine& line) {
     const auto& tag = line.tagText();
     if (tag == "INTERNET-READY") {
-        return startsWith(line.msg, "===== PUBLIC PING OK ===== ") &&
-               rkField(line.msg, "target") == "223.5.5.5" &&
+        return startsWith(line.msg, "===== PUBLIC PING OK ===== ") && rkField(line.msg, "target") == "223.5.5.5" &&
                !rkField(line.msg, "if").empty();
     }
+
     if (tag == "STARTUP" && rkField(line.msg, "phase") == "internet_ready") {
         // 该阶段只在首次公网成功公告内打印；USB/ECM/主机就绪不算公网成功。
         const auto elapsed = rkField(line.msg, "process_elapsed_ms");
         const auto boot = rkField(line.msg, "boot_ms");
-        if (elapsed.empty() || boot.empty()) return false;
+        if (elapsed.empty() || boot.empty())
+            return false;
         long long elapsedMs = -1, bootMs = -1;
         const auto a = std::from_chars(elapsed.data(), elapsed.data() + elapsed.size(), elapsedMs);
         const auto b = std::from_chars(boot.data(), boot.data() + boot.size(), bootMs);
-        return a.ec == std::errc{} && b.ec == std::errc{} &&
-               a.ptr == elapsed.data() + elapsed.size() && b.ptr == boot.data() + boot.size() &&
-               elapsedMs >= 0 && bootMs >= 0;
+        return a.ec == std::errc{} && b.ec == std::errc{} && a.ptr == elapsed.data() + elapsed.size() &&
+               b.ptr == boot.data() + boot.size() && elapsedMs >= 0 && bootMs >= 0;
     }
+
     if (tag == "FAST-BOOT" && startsWith(line.msg, "adopted retained=")) {
         const auto retained = rkField(line.msg, "retained");
-        return (retained == "active-pdp" || retained == "connected-mqtt") &&
-               !rkField(line.msg, "if").empty() && rkField(line.msg, "ip") == "1" &&
-               rkField(line.msg, "route") == "1" && rkField(line.msg, "internet") == "1";
+        return (retained == "active-pdp" || retained == "connected-mqtt") && !rkField(line.msg, "if").empty() &&
+               rkField(line.msg, "ip") == "1" && rkField(line.msg, "route") == "1" &&
+               rkField(line.msg, "internet") == "1";
     }
+
     if (tag == "STARTUP" && startsWith(line.msg, "adopted existing PDP ")) {
         return !rkField(line.msg, "if").empty() && rkField(line.msg, "internet") == "1";
     }
-    return rkDialTag(tag) && (line.msg == "connectivity restored" ||
-                              line.msg == "startup adopted existing network");
+
+    return rkDialTag(tag) && (line.msg == "connectivity restored" || line.msg == "startup adopted existing network");
 }
 
 static bool rkTimedInternetUp(const LogLine& line) {
@@ -242,7 +294,10 @@ struct RkEvidence {
     bool powerUnconfirmed = false;
     bool selectionFailed = false, selectionVerified = false, eg912Cycle = false;
     bool queryFallback = false, hostFallback = false, event = false;
-    bool failed() const { return sim || cpinDeadline || registration || pdp || host || at || retry || powerUnconfirmed || selectionFailed; }
+
+    bool failed() const {
+        return sim || cpinDeadline || registration || pdp || host || at || retry || powerUnconfirmed || selectionFailed;
+    }
 };
 
 static RkEvidence rkEvidence(const LogLine& line) {
@@ -250,112 +305,102 @@ static RkEvidence rkEvidence(const LogLine& line) {
     const auto& tag = line.tagText();
     const auto& msg = line.msg;
     if (rkDialTag(tag)) {
-        e.selectionFailed = msg == "history PLMN verification failed -> operator scan" ||
-                            startsWith(msg, "set operator FAIL -> ");
+        e.selectionFailed =
+            msg == "history PLMN verification failed -> operator scan" || startsWith(msg, "set operator FAIL -> ");
+
         // 旧版本候选分支的 set operator OK 只检查字符串 COPS；不把它提升为严格验证。
         e.selectionVerified = tag == "FULL-DIAL" && rkHistorySelectionVerified(msg);
-        e.eg912Cycle = tag == "EG912" && startsWith(msg,
-            "escalate: redial stage 4/4: restart EG912 recovery cycle -> state=");
+        e.eg912Cycle =
+            tag == "EG912" && startsWith(msg, "escalate: redial stage 4/4: restart EG912 recovery cycle -> state=");
+
         e.retry = icontains(msg, "state=FAILURE_RETRY") || icontains(msg, "-> FAILURE_RETRY");
-        e.ping = startsWith(msg, "Unable to ping google, attempt ") ||
-                 startsWith(msg, "ping failed, attempt ");
+        e.ping = startsWith(msg, "Unable to ping google, attempt ") || startsWith(msg, "ping failed, attempt ");
         e.sim = icontains(msg, "SIM is not ready");
         e.registration = icontains(msg, "LTE/EPS is not registered");
-        e.pdp = icontains(msg, "PDP profile configuration failed") ||
-                startsWith(msg, "CGACT activate failed:") ||
+        e.pdp = icontains(msg, "PDP profile configuration failed") || startsWith(msg, "CGACT activate failed:") ||
                 startsWith(msg, "QNETDEVCTL activate failed:") ||
                 icontains(msg, "QNETDEVCTL did not reach connected state");
+
         // 全 AT 失败转移可以直接携带 bringup 失败原因。
         e.at = icontains(msg, "adapterAT failed") || startsWith(msg, "AT redial failed") ||
                (msg.find(" failed: ") != std::string::npos &&
-                (msg.find("read_timed_out") != std::string::npos ||
-                 msg.find("write_timed_out") != std::string::npos ||
-                 msg.find("open_failed") != std::string::npos ||
-                 msg.find("configure_failed") != std::string::npos ||
-                 msg.find("drain_failed") != std::string::npos ||
-                 msg.find("write_failed") != std::string::npos ||
-                 msg.find("read_failed") != std::string::npos ||
-                 msg.find("response_too_large") != std::string::npos ||
+                (msg.find("read_timed_out") != std::string::npos || msg.find("write_timed_out") != std::string::npos ||
+                 msg.find("open_failed") != std::string::npos || msg.find("configure_failed") != std::string::npos ||
+                 msg.find("drain_failed") != std::string::npos || msg.find("write_failed") != std::string::npos ||
+                 msg.find("read_failed") != std::string::npos || msg.find("response_too_large") != std::string::npos ||
                  msg.find("disconnected") != std::string::npos));
+
         e.host = icontains(msg, "not found after ECM bringup");
-        e.event = startsWith(msg, "state=") || startsWith(msg, "escalate:") ||
-                  startsWith(msg, "family=") || startsWith(msg, "full dial startup ") ||
-                  startsWith(msg, "dial_loop") || icontains(msg, "operator") ||
+        e.event = startsWith(msg, "state=") || startsWith(msg, "escalate:") || startsWith(msg, "family=") ||
+                  startsWith(msg, "full dial startup ") || startsWith(msg, "dial_loop") || icontains(msg, "operator") ||
                   icontains(msg, "->") || rkInternetUp(line);
     } else if (tag == "COPS" && startsWith(msg, "command=")) {
         const auto command = rkField(msg, "command");
+
         // QNETDEVCTL=0 在 ECM 已停止时可被拒绝；它不阻止后续 CFUN/选网。
-        const bool required = command == "AT+CFUN=0" || command == "AT+CFUN=1" ||
-                              command == "AT+COPS?" || startsWith(command, "AT+COPS=1,2,");
-        e.selectionFailed = required && rkField(msg, "ok") == "0" &&
-                            !rkField(msg, "status").empty();
+        const bool required = command == "AT+CFUN=0" || command == "AT+CFUN=1" || command == "AT+COPS?" ||
+                              startsWith(command, "AT+COPS=1,2,");
+        e.selectionFailed = required && rkField(msg, "ok") == "0" && !rkField(msg, "status").empty();
     } else if (tag == "AT-READY") {
         e.cpinDeadline = startsWith(msg, "CPIN not ready ");
         e.sim = startsWith(msg, "CPIN attempt=") && rkField(msg, "class") == "permanent" &&
                 rkField(msg, "state") != "<none>" && !rkField(msg, "state").empty();
         e.at = startsWith(msg, "basic AT not ready ") || startsWith(msg, "CFUN not ready ");
         e.queryFallback = startsWith(msg, "CGACT query unavailable ");
+
         // 完整状态行而终端超时是合法容错。留下容错和异常查询证据，正常轮询不进时间线。
-        e.event = rkField(msg, "ok") == "0" ||
-                  startsWith(msg, "accept exact CPIN READY ") ||
+        e.event = rkField(msg, "ok") == "0" || startsWith(msg, "accept exact CPIN READY ") ||
                   rkField(msg, "class") == "permanent";
     } else if (tag == "FAST-BOOT") {
         e.pdp = icontains(msg, "ECM attach failed");
         e.host = startsWith(msg, "ECM connected but interface ") && icontains(msg, "is absent");
         e.at = startsWith(msg, "no AT port after ");
-        e.ping = startsWith(msg, "adopted retained=") && rkField(msg, "internet") == "0" &&
-                 rkField(msg, "ip") == "1" && rkField(msg, "route") == "1";
-        e.host = e.host || (startsWith(msg, "adopted retained=") &&
-                           (rkField(msg, "ip") == "0" || rkField(msg, "route") == "0"));
-        e.event = true; // 有界启动探测，与 30s/300s 周期心跳不同。
+        e.ping = startsWith(msg, "adopted retained=") && rkField(msg, "internet") == "0" && rkField(msg, "ip") == "1" &&
+                 rkField(msg, "route") == "1";
+        e.host = e.host ||
+                 (startsWith(msg, "adopted retained=") && (rkField(msg, "ip") == "0" || rkField(msg, "route") == "0"));
+        e.event = true;  // 有界启动探测，与 30s/300s 周期心跳不同。
     } else if (tag == "STARTUP") {
         e.host = startsWith(msg, "DHCP incomplete;");
         e.ping = startsWith(msg, "adopted existing PDP ") && rkField(msg, "action") == "none" &&
                  rkField(msg, "internet") == "0";
-        e.event = rkField(msg, "phase") == "dialer_started" ||
-                  rkField(msg, "phase") == "usb_topology_ready" ||
-                  rkField(msg, "phase") == "ecm_ready" ||
-                  rkField(msg, "phase") == "host_network_ready" ||
-                  rkField(msg, "phase") == "internet_ready" ||
-                  startsWith(msg, "adopted existing PDP ") || startsWith(msg, "existing ECM ");
+        e.event = rkField(msg, "phase") == "dialer_started" || rkField(msg, "phase") == "usb_topology_ready" ||
+                  rkField(msg, "phase") == "ecm_ready" || rkField(msg, "phase") == "host_network_ready" ||
+                  rkField(msg, "phase") == "internet_ready" || startsWith(msg, "adopted existing PDP ") ||
+                  startsWith(msg, "existing ECM ");
     } else if (tag == "WAKE") {
-        e.guard = startsWith(msg, "destructive_recovery=forbidden ") ||
-                  startsWith(msg, "hard_recovery=forbidden ") || icontains(msg, "blocked") ||
-                  icontains(msg, "forbids");
+        e.guard = startsWith(msg, "destructive_recovery=forbidden ") || startsWith(msg, "hard_recovery=forbidden ") ||
+                  icontains(msg, "blocked") || icontains(msg, "forbids");
         e.host = startsWith(msg, "DHCP failed; skip CGCONTRDP fallback ");
         e.event = true;
     } else if (tag == "AT-CACHE") {
         e.cacheRejected = startsWith(msg, "ignore ");
         e.cacheWriteFailed = startsWith(msg, "cannot store ");
-        e.event = e.cacheRejected || e.cacheWriteFailed || startsWith(msg, "accepted ") ||
-                  startsWith(msg, "stored ") ||
+        e.event = e.cacheRejected || e.cacheWriteFailed || startsWith(msg, "accepted ") || startsWith(msg, "stored ") ||
                   (startsWith(msg, "validate result ") && rkField(msg, "ok") == "0");
     } else if (tag == "adopt") {
         e.event = true;
     } else if (tag == "bringup") {
         e.sim = icontains(msg, "SIM is not ready");
-        e.registration = icontains(msg, "LTE/EPS is not registered") ||
-                         startsWith(msg, "CEREG wait timed out ");
-        e.pdp = icontains(msg, "PDP profile configuration failed") ||
-                icontains(msg, "failed to configure PDP") ||
+        e.registration = icontains(msg, "LTE/EPS is not registered") || startsWith(msg, "CEREG wait timed out ");
+        e.pdp = icontains(msg, "PDP profile configuration failed") || icontains(msg, "failed to configure PDP") ||
                 (icontains(msg, "CGACT activate") && icontains(msg, "failed")) ||
-                icontains(msg, "QNETDEVCTL did not reach") ||
-                startsWith(msg, "QNETDEVCTL wait timed out ") ||
+                icontains(msg, "QNETDEVCTL did not reach") || startsWith(msg, "QNETDEVCTL wait timed out ") ||
                 startsWith(msg, "invalid MODEM_PDP_APN or MODEM_PDP_TYPE");
         e.host = startsWith(msg, "DHCP and CGCONTRDP fallback did not provide ") ||
-                 startsWith(msg, "static IP configuration failed") ||
-                 startsWith(msg, "failed to parse CGCONTRDP");
+                 startsWith(msg, "static IP configuration failed") || startsWith(msg, "failed to parse CGCONTRDP");
+
         e.hostFallback = startsWith(msg, "DHCP failed, trying static IP ");
         e.queryFallback = startsWith(msg, "CGACT state unavailable after ") ||
                           startsWith(msg, "CGACT active state not observable ") ||
                           startsWith(msg, "QNETDEVCTL start not confirmed;");
+
         e.at = startsWith(msg, "ERROR: ") &&
                (icontains(msg, "not found") || icontains(msg, "failed") || icontains(msg, "not ready"));
         e.event = e.hostFallback || e.queryFallback || startsWith(msg, "static IP ");
     } else if (tag == "DEVICE" || tag == "AT" || tag == "usb" || tag == "redial") {
-        e.at = icontains(msg, "missing") || icontains(msg, "failed") ||
-               icontains(msg, "not found") || icontains(msg, "unavailable") ||
-               (tag == "AT" && startsWith(msg, "ATE0 retry timed out ")) ||
+        e.at = icontains(msg, "missing") || icontains(msg, "failed") || icontains(msg, "not found") ||
+               icontains(msg, "unavailable") || (tag == "AT" && startsWith(msg, "ATE0 retry timed out ")) ||
                (tag == "redial" && startsWith(msg, "no AT character device;"));
         e.event = tag == "redial" || tag == "usb";
     } else if (tag == "udhcpc") {
@@ -372,22 +417,22 @@ static RkEvidence rkEvidence(const LogLine& line) {
                              startsWith(msg, "physical PWRKEY shutdown disabled; CFUN=0 was not confirmed") ||
                              startsWith(msg, "module power-off not confirmed;");
     }
+
     if (tag == "WAKE" || tag == "FAST-BOOT" || rkDialTag(tag)) {
-        e.softRecovery = icontains(msg, "enter SOFT_RECOVERY") ||
-                         startsWith(msg, "adoption failed; enter SOFT_RECOVERY");
+        e.softRecovery =
+            icontains(msg, "enter SOFT_RECOVERY") || startsWith(msg, "adoption failed; enter SOFT_RECOVERY");
         e.hardRecovery = icontains(msg, "enter HARD_RECOVERY");
     }
-    e.event = e.event || e.failed() || e.ping || e.softRecovery || e.hardRecovery ||
-              e.selectionVerified || e.eg912Cycle ||
-              e.queryFallback || e.hostFallback ||
-              (tag == "INTERNET-READY" && rkInternetUp(line));
+
+    e.event = e.event || e.failed() || e.ping || e.softRecovery || e.hardRecovery || e.selectionVerified ||
+              e.eg912Cycle || e.queryFallback || e.hostFallback || (tag == "INTERNET-READY" && rkInternetUp(line));
     return e;
 }
 
 static bool isUnsolicitedDataCallDisconnect(const LogLine& line) {
-    if (line.msg.find("DataCall disconnected") == std::string::npos) return false;
-    return dataCallField(line.msg, "initiator") == "SDK_URC" &&
-           dataCallField(line.msg, "reason") == "UNSOLICITED";
+    if (line.msg.find("DataCall disconnected") == std::string::npos)
+        return false;
+    return dataCallField(line.msg, "initiator") == "SDK_URC" && dataCallField(line.msg, "reason") == "UNSOLICITED";
 }
 
 // ============================ 平台识别 ============================
@@ -395,18 +440,17 @@ static bool isUnsolicitedDataCallDisconnect(const LogLine& line) {
 // 特征均是 v2 源码中的固定原文；既支持 parser 识别出的应用标签，也支持
 // 裁剪后只剩正文的控制台日志。
 static bool isModemMngV2Envelope(const LogLine& line) {
-    if (line.tagText() == "MODEM_MNG_V2") return true;
+    if (line.tagText() == "MODEM_MNG_V2")
+        return true;
     const std::string& msg = line.msg;
     return msg.find("===== modem_mng_v2 start =====") != std::string::npos ||
-           (msg.find("status update: phase=") != std::string::npos &&
-            msg.find(" tty=") != std::string::npos && msg.find(" online=") != std::string::npos &&
-            msg.find(" csq=") != std::string::npos && msg.find(" reg=") != std::string::npos) ||
+           (msg.find("status update: phase=") != std::string::npos && msg.find(" tty=") != std::string::npos &&
+            msg.find(" online=") != std::string::npos && msg.find(" csq=") != std::string::npos &&
+            msg.find(" reg=") != std::string::npos) ||
            (msg.find("phase: ") != std::string::npos && msg.find(" -> ") != std::string::npos &&
             msg.find(" tty=") != std::string::npos && msg.find(" module=") != std::string::npos) ||
-           (msg.find("Found AT port: ") != std::string::npos &&
-            msg.find("(module=") != std::string::npos) ||
-           (msg.find("Module detected: ") != std::string::npos &&
-            msg.find("(type=") != std::string::npos) ||
+           (msg.find("Found AT port: ") != std::string::npos && msg.find("(module=") != std::string::npos) ||
+           (msg.find("Module detected: ") != std::string::npos && msg.find("(type=") != std::string::npos) ||
            msg.find("===== modem READY =====") != std::string::npos;
 }
 
@@ -417,9 +461,12 @@ static const char* modemMngV2Module(const LogLine& line) {
         (msg.find("Found AT port: ") != std::string::npos && msg.find("(module=") != std::string::npos) ||
         msg.find("===== modem READY =====") != std::string::npos ||
         (msg.find("phase: ") != std::string::npos && msg.find(" module=") != std::string::npos);
-    if (!carriesModule) return nullptr;
-    if (msg.find("EC200A") != std::string::npos) return "EC200A";
-    if (msg.find("EG25") != std::string::npos) return "EG25";
+    if (!carriesModule)
+        return nullptr;
+    if (msg.find("EC200A") != std::string::npos)
+        return "EC200A";
+    if (msg.find("EG25") != std::string::npos)
+        return "EG25";
     return nullptr;
 }
 
@@ -431,16 +478,13 @@ static bool isModemMngV2Event(const LogLine& line) {
            msg.find("status update: phase=") != std::string::npos ||
            (msg.find("phase: ") != std::string::npos && msg.find(" -> ") != std::string::npos &&
             msg.find(" tty=") != std::string::npos) ||
-           msg.find("Module detected: ") != std::string::npos ||
-           msg.find("Found AT port: ") != std::string::npos ||
-           msg.find("SIM not inserted (CME ") != std::string::npos ||
-           msg.find("sim ok") != std::string::npos ||
+           msg.find("Module detected: ") != std::string::npos || msg.find("Found AT port: ") != std::string::npos ||
+           msg.find("SIM not inserted (CME ") != std::string::npos || msg.find("sim ok") != std::string::npos ||
            msg.find("===== modem READY =====") != std::string::npos ||
            msg.find("already online (ping OK), skip dial -> READY monitor") != std::string::npos ||
            msg.find("WAN ping OK -> network_online=1") != std::string::npos ||
            msg.find("WAN ping fail -> network_online=0") != std::string::npos ||
-           (msg.find("ping failed ") != std::string::npos &&
-            msg.find(" times, reinit modem!") != std::string::npos) ||
+           (msg.find("ping failed ") != std::string::npos && msg.find(" times, reinit modem!") != std::string::npos) ||
            msg.find("No registered so long, reset modem") != std::string::npos ||
            msg.find("modem err in reading, reset modem") != std::string::npos ||
            msg.find("soft-reset module AT+CFUN=1,1") != std::string::npos ||
@@ -449,15 +493,13 @@ static bool isModemMngV2Event(const LogLine& line) {
 
 static bool isModemMngV2Failure(const LogLine& line) {
     const std::string& msg = line.msg;
-    const bool structuredFailure = line.tagText() == "MODEM_MNG_V2" &&
-        (line.level == LEVEL_ERROR || line.level == LEVEL_WARNING ||
-         line.level == LEVEL_FATAL || line.level == LEVEL_CRITICAL);
-    return structuredFailure ||
-           msg.find("modem init failed, phase ") != std::string::npos ||
+    const bool structuredFailure =
+        line.tagText() == "MODEM_MNG_V2" && (line.level == LEVEL_ERROR || line.level == LEVEL_WARNING ||
+                                             line.level == LEVEL_FATAL || line.level == LEVEL_CRITICAL);
+    return structuredFailure || msg.find("modem init failed, phase ") != std::string::npos ||
            msg.find("CSQ query failed (sim_present=") != std::string::npos ||
            msg.find("ping failed (") != std::string::npos ||
-           (msg.find("ping failed ") != std::string::npos &&
-            msg.find(" times, reinit modem!") != std::string::npos) ||
+           (msg.find("ping failed ") != std::string::npos && msg.find(" times, reinit modem!") != std::string::npos) ||
            msg.find("No registered so long, reset modem") != std::string::npos ||
            msg.find("modem err in reading, reset modem") != std::string::npos ||
            msg.find("failed to registered. Reset modem") != std::string::npos ||
@@ -470,25 +512,24 @@ static bool isModemMngV2Failure(const LogLine& line) {
 // 核心单元测试/旧调用者也可能直接提供已经拆掉 where 的正文。两种表示都
 // 只接受完整固定文本，避免普通的 "ping fail" 消息误触发断网统计。
 static bool v2BodyEquals(const std::string& message, const char* expected) {
-    if (message == expected) return true;
-    if (message.empty() || message.front() != '[') return false;
+    if (message == expected)
+        return true;
+    if (message.empty() || message.front() != '[')
+        return false;
     const size_t close = message.find("] ");
     return close != std::string::npos && message.compare(close + 2, std::string::npos, expected) == 0;
 }
 
 static bool isModemMngV2WanDown(const LogLine& line) {
-    return line.tagText() == "MODEM_MNG_V2" &&
-           v2BodyEquals(line.msg, "WAN ping fail -> network_online=0");
+    return line.tagText() == "MODEM_MNG_V2" && v2BodyEquals(line.msg, "WAN ping fail -> network_online=0");
 }
 
 static bool isModemMngV2WanUp(const LogLine& line) {
-    return line.tagText() == "MODEM_MNG_V2" &&
-           v2BodyEquals(line.msg, "WAN ping OK -> network_online=1");
+    return line.tagText() == "MODEM_MNG_V2" && v2BodyEquals(line.msg, "WAN ping OK -> network_online=1");
 }
 
 static bool isModemMngV2Start(const LogLine& line) {
-    return line.tagText() == "MODEM_MNG_V2" &&
-           v2BodyEquals(line.msg, "===== modem_mng_v2 start =====");
+    return line.tagText() == "MODEM_MNG_V2" && v2BodyEquals(line.msg, "===== modem_mng_v2 start =====");
 }
 
 // 全部基于源码实证的判别特征:
@@ -510,32 +551,32 @@ struct DisplayVersionPlatform {
 
 static const DisplayVersionPlatform* displayVersionPlatform(const std::string& message) {
     static constexpr DisplayVersionPlatform kPlatforms[] = {
-        {"dial version: dial_eg25_",         PLAT_ARTERY,    "artery (open_dial_for_artery, EG25)"},
-        {"dial version: dial_ec200a_",       PLAT_EC200A,    "EC200A (open_dial)"},
-        {"modem_mng version: rtms_ag35_",    PLAT_AG35,      "AG35 (modem_mng, rtms)"},
-        {"modem_mng version: rtms_ec200a_",  PLAT_EC200A,    "EC200A (modem_mng, rtms)"},
-        {"modem_mng version: rtms_eg25_",    PLAT_EG25,      "EG25 (modem_mng, rtms)"},
-        {"modem_mng version: rtms_imx6ull_", PLAT_IMX,       "IMX6ULL (modem_mng, rtms)"},
-        {"modem_mng version: rtms_rk3506j_", PLAT_RK3506J,   "RK3506J (modem_mng, rtms)"},
+        {"dial version: dial_eg25_", PLAT_ARTERY, "artery (open_dial_for_artery, EG25)"},
+        {"dial version: dial_ec200a_", PLAT_EC200A, "EC200A (open_dial)"},
+        {"modem_mng version: rtms_ag35_", PLAT_AG35, "AG35 (modem_mng, rtms)"},
+        {"modem_mng version: rtms_ec200a_", PLAT_EC200A, "EC200A (modem_mng, rtms)"},
+        {"modem_mng version: rtms_eg25_", PLAT_EG25, "EG25 (modem_mng, rtms)"},
+        {"modem_mng version: rtms_imx6ull_", PLAT_IMX, "IMX6ULL (modem_mng, rtms)"},
+        {"modem_mng version: rtms_rk3506j_", PLAT_RK3506J, "RK3506J (modem_mng, rtms)"},
     };
+
     const std::string normalized = lower(message);
     for (const auto& platform : kPlatforms)
-        if (normalized.find(platform.marker) != std::string::npos) return &platform;
+        if (normalized.find(platform.marker) != std::string::npos)
+            return &platform;
     return nullptr;
 }
 
 static bool rkIdentityLine(const LogLine& line) {
     const auto& tag = line.tagText();
     return ((tag == "INTERNET-READY" || tag == "STARTUP") && rkInternetUp(line)) ||
-           (tag == "FAST-BOOT" && startsWith(line.msg, "adopted retained=") &&
-            !rkField(line.msg, "retained").empty() && !rkField(line.msg, "if").empty()) ||
-           (tag == "FULL-DIAL" && startsWith(line.msg, "family=") &&
-            !rkField(line.msg, "port").empty()) ||
+           (tag == "FAST-BOOT" && startsWith(line.msg, "adopted retained=") && !rkField(line.msg, "retained").empty() &&
+            !rkField(line.msg, "if").empty()) ||
+           (tag == "FULL-DIAL" && startsWith(line.msg, "family=") && !rkField(line.msg, "port").empty()) ||
            (tag == "FULL-DIAL" && rkHistorySelectionVerified(line.msg));
 }
 
-template <typename Lines>
-static std::map<std::uint16_t, Platform> sourceDisplayPlatforms(const Lines& lines) {
+template <typename Lines> static std::map<std::uint16_t, Platform> sourceDisplayPlatforms(const Lines& lines) {
     std::map<std::uint16_t, Platform> platforms;
     for (const auto& item : lines) {
         const auto& line = lineRef(item);
@@ -543,15 +584,17 @@ static std::map<std::uint16_t, Platform> sourceDisplayPlatforms(const Lines& lin
             if (const auto* display = displayVersionPlatform(line.msg))
                 platforms.emplace(line.sourceId, display->platform);
     }
+
     for (const auto& item : lines) {
         const auto& line = lineRef(item);
-        if (rkIdentityLine(line)) platforms.emplace(line.sourceId, PLAT_RK3506J);
+        if (rkIdentityLine(line))
+            platforms.emplace(line.sourceId, PLAT_RK3506J);
     }
+
     return platforms;
 }
 
-static Platform sourcePlatformAt(std::map<std::uint16_t, Platform>& platforms,
-                                 const LogLine& line) {
+static Platform sourcePlatformAt(std::map<std::uint16_t, Platform>& platforms, const LogLine& line) {
     auto& platform = platforms[line.sourceId];
     if (isProgramStartBanner(line.msg)) {
         const auto* display = displayVersionPlatform(line.msg);
@@ -561,11 +604,11 @@ static Platform sourcePlatformAt(std::map<std::uint16_t, Platform>& platforms,
     } else if (platform == PLAT_UNKNOWN && rkIdentityLine(line)) {
         platform = PLAT_RK3506J;
     }
+
     return platform;
 }
 
-template<class Lines>
-static PlatformInfo detectPlatformImpl(const Lines& lines) {
+template <class Lines> static PlatformInfo detectPlatformImpl(const Lines& lines) {
     PlatformInfo pi;
     size_t seas = 0;
     const LogLine* seasEv = nullptr;
@@ -581,8 +624,10 @@ static PlatformInfo detectPlatformImpl(const Lines& lines) {
 
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
-        if (!rkEv && rkIdentityLine(l)) rkEv = &l;
-        if (!v2Ev && isModemMngV2Envelope(l)) v2Ev = &l;
+        if (!rkEv && rkIdentityLine(l))
+            rkEv = &l;
+        if (!v2Ev && isModemMngV2Envelope(l))
+            v2Ev = &l;
         if (const char* module = modemMngV2Module(l)) {
             // 明确的模组检测行比启动时的 UNKNOWN 提示更有证据力。
             if (!v2ModuleEv || l.msg.find("Module detected: ") != std::string::npos) {
@@ -590,61 +635,82 @@ static PlatformInfo detectPlatformImpl(const Lines& lines) {
                 v2Module = module;
             }
         }
+
         if (!displayVersion) {
             if (const DisplayVersionPlatform* p = displayVersionPlatform(l.msg)) {
                 displayVersion = p;
                 displayVersionEv = &l;
             }
         }
-        if (l.fmt == FMT_SEAS) { seas++; if (!seasEv) seasEv = &l; }
-        if (!ag35Ev && (l.tagText() == "SLOT" || l.msg.find("SLOT:") != std::string::npos)) ag35Ev = &l;
-        if (!ec200Ev && l.msg.find("SIM_AT:") != std::string::npos &&
-            l.msg.find("SIM_CB:") != std::string::npos) ec200Ev = &l;
-        if (!eg25Ev && (l.tagText() == "ROAMLINK" ||
-                        l.msg.find("CH:ROAMLINK") != std::string::npos ||
-                        l.msg.find("CH:SIM") != std::string::npos ||
-                        l.msg.find("RL_FAIL:") != std::string::npos)) eg25Ev = &l;
+
+        if (l.fmt == FMT_SEAS) {
+            seas++;
+            if (!seasEv)
+                seasEv = &l;
+        }
+
+        if (!ag35Ev && (l.tagText() == "SLOT" || l.msg.find("SLOT:") != std::string::npos))
+            ag35Ev = &l;
+        if (!ec200Ev && l.msg.find("SIM_AT:") != std::string::npos && l.msg.find("SIM_CB:") != std::string::npos)
+            ec200Ev = &l;
+        if (!eg25Ev && (l.tagText() == "ROAMLINK" || l.msg.find("CH:ROAMLINK") != std::string::npos ||
+                        l.msg.find("CH:SIM") != std::string::npos || l.msg.find("RL_FAIL:") != std::string::npos))
+            eg25Ev = &l;
     }
 
     auto set = [&](Platform p, const char* nm, const LogLine* l, const char* why) {
-        pi.plat = p; pi.name = nm;
-        if (l) { pi.evidenceLine = l->lineNo; pi.evidence = std::string(why) + ":  " + l->msg.substr(0, 90); }
-        else   { pi.evidence = why; }
+        pi.plat = p;
+        pi.name = nm;
+        if (l) {
+            pi.evidenceLine = l->lineNo;
+            pi.evidence = std::string(why) + ":  " + l->msg.substr(0, 90);
+        } else {
+            pi.evidence = why;
+        }
     };
 
     if (v2Ev || v2ModuleEv) {
         const LogLine* evidence = v2ModuleEv ? v2ModuleEv : v2Ev;
         pi.plat = PLAT_MODEM_MNG_V2;
-        pi.name = std::string("modem_mng_v2") +
-                  (v2Module ? " (" + std::string(v2Module) + ")" : " (模组待识别)");
+        pi.name = std::string("modem_mng_v2") + (v2Module ? " (" + std::string(v2Module) + ")" : " (模组待识别)");
         pi.evidenceLine = evidence ? evidence->lineNo : 0;
-        pi.evidence = std::string(v2Module ? "v2 原文明确给出模组:  " :
-                                             "出现 modem_mng_v2 固定启动/状态机特征:  ") +
+        pi.evidence = std::string(v2Module ? "v2 原文明确给出模组:  " : "出现 modem_mng_v2 固定启动/状态机特征:  ") +
                       (evidence ? evidence->msg.substr(0, 90) : "");
-    }
-    else if (displayVersion) {
+    } else if (displayVersion) {
         pi.plat = displayVersion->platform;
         pi.name = displayVersion->name;
         pi.evidenceLine = displayVersionEv ? displayVersionEv->lineNo : 0;
-        pi.evidence = std::string("新版展示版本标识:  ") +
-                      (displayVersionEv ? displayVersionEv->msg.substr(0, 90) : "");
-    }
-    else if (seas > 0) set(PLAT_ARTERY, "artery (open_dial_for_artery, seas_log)", seasEv, "行格式为 seas_log(时间带毫秒+级别+函数名)");
-    else if (ag35Ev)   set(PLAT_AG35,   "AG35 (modem_mng, 双卡)",                  ag35Ev, "出现 AG35 专有的 SLOT 切卡痕迹");
-    else if (eg25Ev)   set(PLAT_EG25,   "EG25 (modem_mng)",                        eg25Ev, "出现 EG25 专有的 ROAMLINK/CH 通道字段");
-    else if (ec200Ev)  set(PLAT_EC200A, "EC200A (modem_mng 或 open_dial 上游)",    ec200Ev, "心跳为 SIM_AT/SIM_CB 格式且无 SLOT");
-    else if (rkEv)     set(PLAT_RK3506J, "RK3506J (modem_mng, rtms)", rkEv, "RK3506J 公网成功/保留网络/完整拨号固定日志");
-    else               set(PLAT_UNKNOWN, "未识别", nullptr, "无任何平台特征字段");
+        pi.evidence =
+            std::string("新版展示版本标识:  ") + (displayVersionEv ? displayVersionEv->msg.substr(0, 90) : "");
+    } else if (seas > 0)
+        set(PLAT_ARTERY, "artery (open_dial_for_artery, seas_log)", seasEv,
+            "行格式为 seas_log(时间带毫秒+级别+函数名)");
+    else if (ag35Ev)
+        set(PLAT_AG35, "AG35 (modem_mng, 双卡)", ag35Ev, "出现 AG35 专有的 SLOT 切卡痕迹");
+    else if (eg25Ev)
+        set(PLAT_EG25, "EG25 (modem_mng)", eg25Ev, "出现 EG25 专有的 ROAMLINK/CH 通道字段");
+    else if (ec200Ev)
+        set(PLAT_EC200A, "EC200A (modem_mng 或 open_dial 上游)", ec200Ev, "心跳为 SIM_AT/SIM_CB 格式且无 SLOT");
+    else if (rkEv)
+        set(PLAT_RK3506J, "RK3506J (modem_mng, rtms)", rkEv, "RK3506J 公网成功/保留网络/完整拨号固定日志");
+    else
+        set(PLAT_UNKNOWN, "未识别", nullptr, "无任何平台特征字段");
     return pi;
 }
 
-PlatformInfo detectPlatform(const std::vector<LogLine>& lines) { return detectPlatformImpl(lines); }
-PlatformInfo detectPlatform(const LogView& lines) { return detectPlatformImpl(lines); }
+PlatformInfo detectPlatform(const std::vector<LogLine>& lines) {
+    return detectPlatformImpl(lines);
+}
+
+PlatformInfo detectPlatform(const LogView& lines) {
+    return detectPlatformImpl(lines);
+}
 
 // ============================ 判定 ============================
 bool isFaultStart(const std::string& msg) {
     return (icontains(msg, "Ping failed") && icontains(msg, "fault timer started")) ||
            icontains(msg, "Network outage started") ||
+
            // open_dial 1.28.13 的数据面监视器在 10 秒无下行时打印这一固定告警；
            // 它是已创建接口上的直接故障边沿，不把普通 RX_IDLE 心跳当作断网。
            (icontains(msg, "Interface has no RX data for") && icontains(msg, "IF="));
@@ -653,8 +719,8 @@ bool isFaultStart(const std::string& msg) {
 // 来自 CP/SEH 的直接异常标志。它只证明基带通信异常或断言发生过；没有厂商符号表和
 // 原始 dump，绝不把它扩展解释为固件、供电、射频或网络侧的唯一根因。
 static bool isCpCrashEvidence(const std::string& msg) {
-    return icontains(msg, "CP down") || icontains(msg, "DSP_COM_ERR=") ||
-           icontains(msg, "MSOCKET_DOWN") || icontains(msg, "CP-ASSERT");
+    return icontains(msg, "CP down") || icontains(msg, "DSP_COM_ERR=") || icontains(msg, "MSOCKET_DOWN") ||
+           icontains(msg, "CP-ASSERT");
 }
 
 // open_dial 的联网通知没有自报 Down: Ns，不能复用 isRecovered()；它仍是
@@ -666,25 +732,31 @@ static bool isNetworkConnectedNotification(const std::string& msg) {
 // [HEARTBEAT-NET] 是 EC200A/open_dial 的数据面状态快照。IF=(none) 表示
 // 没有可用数据接口；IF=ccinetX 表示接口已创建。它不能与“已注册”混为一谈。
 static bool netHeartbeatInterface(const LogLine& line, bool& interfaceUp) {
-    if (line.tagText() != "HEARTBEAT-NET") return false;
+    if (line.tagText() != "HEARTBEAT-NET")
+        return false;
     const auto fields = hbFields(line.msg);
     const auto it = fields.find("IF");
-    if (it == fields.end() || it->second.empty()) return false;
+    if (it == fields.end() || it->second.empty())
+        return false;
     const std::string value = lower(trim(it->second));
     interfaceUp = value != "(none)" && value != "none" && value != "(unknown)" && value != "unknown";
     return true;
 }
 
 static bool netHeartbeatTxWithoutRx(const LogLine& line) {
-    if (line.tagText() != "HEARTBEAT-NET") return false;
+    if (line.tagText() != "HEARTBEAT-NET")
+        return false;
     const auto fields = hbFields(line.msg);
     const auto tx = fields.find("TX_PKT");
     const auto rxIdle = fields.find("RX_IDLE");
-    if (tx == fields.end() || rxIdle == fields.end()) return false;
+    if (tx == fields.end() || rxIdle == fields.end())
+        return false;
+
     // 30 秒普通心跳带有 RX_IDLE=0s；只有本窗口确有 TX 增量且连续 10 秒无 RX，
     // 才是与固件 IF_TRAFFIC_IDLE_WARN_MS 一致的数据面异常样本。
     const size_t plus = tx->second.find("(+");
-    if (plus == std::string::npos) return false;
+    if (plus == std::string::npos)
+        return false;
     long long txDelta = 0, idleSeconds = 0;
     const char* txFirst = tx->second.data() + plus + 2;
     const char* txLast = tx->second.data() + tx->second.size();
@@ -692,34 +764,43 @@ static bool netHeartbeatTxWithoutRx(const LogLine& line) {
     const char* idleFirst = rxIdle->second.data();
     const char* idleLast = idleFirst + rxIdle->second.size();
     const auto idleParsed = std::from_chars(idleFirst, idleLast, idleSeconds);
-    return txParsed.ec == std::errc{} && txDelta > 0 &&
-           idleParsed.ec == std::errc{} && idleSeconds >= 10;
+    return txParsed.ec == std::errc{} && txDelta > 0 && idleParsed.ec == std::errc{} && idleSeconds >= 10;
 }
 
 static int loggedL3ThresholdSeconds(const std::string& message) {
     const std::string text = lower(message);
     const size_t marker = text.find("threshold ");
-    if (marker == std::string::npos) return -1;
+    if (marker == std::string::npos)
+        return -1;
     size_t first = marker + std::strlen("threshold ");
     size_t last = first;
-    while (last < text.size() && std::isdigit(static_cast<unsigned char>(text[last]))) ++last;
-    if (last == first || last >= text.size() || text[last] != 's') return -1;
+    while (last < text.size() && std::isdigit(static_cast<unsigned char>(text[last])))
+        ++last;
+    if (last == first || last >= text.size() || text[last] != 's')
+        return -1;
     const long long value = std::strtoll(text.substr(first, last - first).c_str(), nullptr, 10);
     return value > 0 && value <= INT_MAX ? static_cast<int>(value) : -1;
 }
 
 bool isRecovered(const std::string& msg, int* durSec) {
     std::string lo = lower(msg);
+
     // 形态一(modem_mng):"Network recovered after Ns" —— 时长在 after 后。
     {
         const char* key = "network recovered after ";
         size_t p = lo.find(key);
         if (p != std::string::npos) {
             size_t q = p + std::strlen(key), st = q;
-            while (q < msg.size() && std::isdigit((unsigned char)msg[q])) q++;
-            if (q > st) { if (durSec) *durSec = std::atoi(msg.substr(st, q - st).c_str()); return true; }
+            while (q < msg.size() && std::isdigit((unsigned char)msg[q]))
+                q++;
+            if (q > st) {
+                if (durSec)
+                    *durSec = std::atoi(msg.substr(st, q - st).c_str());
+                return true;
+            }
         }
     }
+
     // 形态二(open_dial/SDK):"Network Recovered ... Down: Ns" —— 恢复行自报停机时长。
     //   覆盖 "Network Recovered. Down: Ns" / "...in SDK phase (L0). Down: Ns" /
     //        "...via card-switch (now X). Down: Ns"。真机实证 3 变体。
@@ -728,12 +809,19 @@ bool isRecovered(const std::string& msg, int* durSec) {
         size_t d = lo.find("down:");
         if (d != std::string::npos) {
             size_t q = d + 5;
-            while (q < msg.size() && msg[q] == ' ') q++;
+            while (q < msg.size() && msg[q] == ' ')
+                q++;
             size_t st = q;
-            while (q < msg.size() && std::isdigit((unsigned char)msg[q])) q++;
-            if (q > st) { if (durSec) *durSec = std::atoi(msg.substr(st, q - st).c_str()); return true; }
+            while (q < msg.size() && std::isdigit((unsigned char)msg[q]))
+                q++;
+            if (q > st) {
+                if (durSec)
+                    *durSec = std::atoi(msg.substr(st, q - st).c_str());
+                return true;
+            }
         }
     }
+
     return false;
 }
 
@@ -745,14 +833,15 @@ static bool hasCopsMode(const std::string& msg, char wanted) {
     size_t p = lo.find("+cops:");
     while (p != std::string::npos) {
         p += 6;
-        while (p < lo.size() && (lo[p] == ' ' || lo[p] == '\t')) ++p;
+        while (p < lo.size() && (lo[p] == ' ' || lo[p] == '\t'))
+            ++p;
         if (p < lo.size() && lo[p] == wanted &&
-            (p + 1 == lo.size() || lo[p + 1] == ',' ||
-             lo[p + 1] == ' ' || lo[p + 1] == '\t' ||
-             lo[p + 1] == '\r' || lo[p + 1] == '\n'))
+            (p + 1 == lo.size() || lo[p + 1] == ',' || lo[p + 1] == ' ' || lo[p + 1] == '\t' || lo[p + 1] == '\r' ||
+             lo[p + 1] == '\n'))
             return true;
         p = lo.find("+cops:", p);
     }
+
     return false;
 }
 
@@ -761,7 +850,7 @@ static bool hasCopsMode(const std::string& msg, char wanted) {
 static bool isCopsAutoRestoreOk(const std::string& msg) {
     const std::string lo = lower(msg);
     if (lo.find("reg timeout: at+cops=0 unlock ok") != std::string::npos)
-        return true;                              // artery (seas_log)
+        return true;  // artery (seas_log)
     return lo.find("at+cops=0 rsp:") != std::string::npos &&
            lo.find("ok") != std::string::npos;  // RTMS EG25 ([REG TIMEOUT])
 }
@@ -771,12 +860,10 @@ static bool isCopsAutoRestoreOk(const std::string& msg) {
 static bool isRegistrationRecovered(const std::string& msg) {
     const std::string lo = lower(msg);
     return lo.find("state: reg_check -> cereg_check") != std::string::npos ||
-           lo.find("reg_check -> cereg_check") != std::string::npos ||
-           lo.find("net connected") != std::string::npos ||
+           lo.find("reg_check -> cereg_check") != std::string::npos || lo.find("net connected") != std::string::npos ||
            lo.find("datacall connected") != std::string::npos ||
            lo.find("network recovered after ") != std::string::npos ||
-           (lo.find("network recovered") != std::string::npos &&
-            lo.find("down:") != std::string::npos);
+           (lo.find("network recovered") != std::string::npos && lo.find("down:") != std::string::npos);
 }
 
 static bool isRegCheckEntered(const std::string& msg) {
@@ -787,8 +874,7 @@ static bool isRegCheckEntered(const std::string& msg) {
  * external AT client.  Absence is deliberately reported as "source unknown". */
 static bool isManualSelectionCommand(const std::string& msg) {
     const std::string lo = lower(msg);
-    return lo.find("at+cops=1,2,") != std::string::npos ||
-           lo.find("[oper] selected operator") != std::string::npos;
+    return lo.find("at+cops=1,2,") != std::string::npos || lo.find("[oper] selected operator") != std::string::npos;
 }
 
 // open_dial 的 "Network Recovered ... Down: Ns" 是自包含事件：产品在恢复行中
@@ -796,10 +882,8 @@ static bool isManualSelectionCommand(const std::string& msg) {
 // "recovered after Ns" 不是该语义，仍必须与 fault start 配对。
 static bool isSelfContainedRecovery(const std::string& msg) {
     const std::string lo = lower(msg);
-    return lo.find("network recovered") != std::string::npos &&
-           lo.find("down:") != std::string::npos;
+    return lo.find("network recovered") != std::string::npos && lo.find("down:") != std::string::npos;
 }
-
 
 // 时间线保留的“状态变化类”标签。取自三仓库 dial_log/SEAS_LOG 首参的穷举
 // (modem_mng 357 处、open_dial 107 处、artery 4 处内嵌标签),多词标签按首段匹配:
@@ -807,79 +891,105 @@ static bool isSelfContainedRecovery(const std::string& msg) {
 //   "PING OUT/FAIL/ERROR"→PING、"ZERO ADDR"→ZERO、"CELL CHANGE"→CELL(不在表内=噪声)
 // 刻意排除:HEARTBEAT/CELL/CELL CHANGE(高频噪声,另有专门统计)、
 //           LOGMIGR/LOGCLEAN/CLEANUP(日志自身维护,与网络无关)
-static const char* kEventTags[] = {
-    "STATE","SDK","ROAMLINK","SLOT","OPER","LED","CFUN","SIM","APN","INIT","MODEM",
-    "RECOVERY","OUTAGE","ERROR","WARN","WARNING","FATAL","INFO","EVENT","STATUS","ALARM","TZ","NANOMSG","SYSTEM",
-    "LOG_E","LOG_I","LOG_D",
-    // 以下为本次按源码穷举补齐(此前被静默丢弃)
-    "PING","REG","ZERO","CPDUMP","COPS","SM","DIAG",
-    // IMX6ULL 状态机：HB30/HB300 是高频指标，不放时间线；其余均为阶段或故障动作。
-    "FAILURE","RETRY","PDP","NET","DHCP","DEVICE","USB","POWER","EXIT","SERVICE","PLMN","AT","VERSION", nullptr
-};
-static const char* kErrTags[] = { "ERROR","WARN","WARNING","FATAL","ALARM","LOG_E","FAILURE", nullptr };
+static const char* kEventTags[] = {"STATE", "SDK", "ROAMLINK", "SLOT", "OPER", "LED", "CFUN", "SIM", "APN", "INIT",
+                                   "MODEM", "RECOVERY", "OUTAGE", "ERROR", "WARN", "WARNING", "FATAL", "INFO", "EVENT",
+                                   "STATUS", "ALARM", "TZ", "NANOMSG", "SYSTEM", "LOG_E", "LOG_I", "LOG_D",
+
+                                   // 以下为本次按源码穷举补齐(此前被静默丢弃)
+                                   "PING", "REG", "ZERO", "CPDUMP", "COPS", "SM", "DIAG",
+
+                                   // IMX6ULL 状态机：HB30/HB300 是高频指标，不放时间线；其余均为阶段或故障动作。
+                                   "FAILURE", "RETRY", "PDP", "NET", "DHCP", "DEVICE", "USB", "POWER", "EXIT",
+                                   "SERVICE", "PLMN", "AT", "VERSION", nullptr};
+static const char* kErrTags[] = {"ERROR", "WARN", "WARNING", "FATAL", "ALARM", "LOG_E", "FAILURE", nullptr};
 
 static bool inList(const char* const* list, const std::string& tag) {
     std::string t = lower(tag);
-    for (int i = 0; list[i]; ++i) if (t == lower(list[i])) return true;
+    for (int i = 0; list[i]; ++i)
+        if (t == lower(list[i]))
+            return true;
     return false;
 }
 
 bool isEventTag(const std::string& tag) {
-    if (inList(kEventTags, tag)) return true;
-    size_t sp = tag.find(' ');                      // "CELL CHANGE" → 取首段再判一次
-    if (sp != std::string::npos) return inList(kEventTags, tag.substr(0, sp));
+    if (inList(kEventTags, tag))
+        return true;
+    size_t sp = tag.find(' ');  // "CELL CHANGE" → 取首段再判一次
+    if (sp != std::string::npos)
+        return inList(kEventTags, tag.substr(0, sp));
     return false;
 }
-bool isErrTag(const std::string& tag) { return inList(kErrTags, tag); }
+
+bool isErrTag(const std::string& tag) {
+    return inList(kErrTags, tag);
+}
 
 // seas_log 的严重度在 level 字段(seas_log.c:239),不在标签里。
 // 级别取值见 seas_log.h:66-121:[ALL]/[DEBUG]/[INFO]/[NOTICE]/[WARNING]/[ERROR]/[FATAL]
 bool isErrLine(const LogLine& l) {
-    if (modemTrafficSkipped(l)) return true;
+    if (modemTrafficSkipped(l))
+        return true;
     const auto rk = rkEvidence(l);
-    if (rk.failed() || rk.ping || rk.cacheWriteFailed) return true;
-    if (isErrTag(l.tagText())) return true;
-    if (isModemMngV2Failure(l)) return true;
-    if (isUnsolicitedDataCallDisconnect(l)) return true;
-    if (l.tagText() == "SYSTEM" &&
-        l.msg.find("uptime read failed") != std::string::npos) return true;
+    if (rk.failed() || rk.ping || rk.cacheWriteFailed)
+        return true;
+    if (isErrTag(l.tagText()))
+        return true;
+    if (isModemMngV2Failure(l))
+        return true;
+    if (isUnsolicitedDataCallDisconnect(l))
+        return true;
+    if (l.tagText() == "SYSTEM" && l.msg.find("uptime read failed") != std::string::npos)
+        return true;
     if (l.tagText() == "MODEM_MNG_V2" || l.fmt == FMT_CONSOLE) {
-        return l.level == LEVEL_ERROR || l.level == LEVEL_WARNING ||
-               l.level == LEVEL_FATAL || l.level == LEVEL_CRITICAL;
+        return l.level == LEVEL_ERROR || l.level == LEVEL_WARNING || l.level == LEVEL_FATAL ||
+               l.level == LEVEL_CRITICAL;
     }
+
     if (l.fmt == FMT_SEAS) {
-        return l.level == LEVEL_ERROR || l.level == LEVEL_WARNING ||
-               l.level == LEVEL_FATAL || l.level == LEVEL_CRITICAL;
+        return l.level == LEVEL_ERROR || l.level == LEVEL_WARNING || l.level == LEVEL_FATAL ||
+               l.level == LEVEL_CRITICAL;
     }
+
     return false;
 }
 
 // 时间线保留:事件类标签,或 seas 的报错行(artery 大量日志无内嵌标签,
 // 只按标签过滤会让 artery 的时间线几乎全空)
 bool isEventLine(const LogLine& l) {
-    if (rkEvidence(l).event) return true;
-    if (isCpCrashEvidence(l.msg)) return true;
-    if (isModemMngV2Event(l) || isModemMngV2Failure(l)) return true;
-    if (isImxHeartbeatDiagnostic(l)) return true;
+    if (rkEvidence(l).event)
+        return true;
+    if (isCpCrashEvidence(l.msg))
+        return true;
+    if (isModemMngV2Event(l) || isModemMngV2Failure(l))
+        return true;
+    if (isImxHeartbeatDiagnostic(l))
+        return true;
+
     // RK3506J 1.28.1 只在运营商/PLMN 实际变化时输出这条 INIT 记录；它不是
     // 周期快照，保留到时间线可直接定位切网证据。
-    if (l.tagText() == "INIT" && icontains(l.msg, "operator changed:")) return true;
+    if (l.tagText() == "INIT" && icontains(l.msg, "operator changed:"))
+        return true;
+
     // [HEARTBEAT-NET] 是高频采样；只在接口消失或有发无收时进入时间线，
     // 既保留数据面故障证据，又不让正常心跳淹没事件。
     bool netInterfaceUp = false;
-    if (netHeartbeatInterface(l, netInterfaceUp) && !netInterfaceUp) return true;
-    if (netHeartbeatTxWithoutRx(l)) return true;
-    if (isEventTag(l.tagText())) return true;
-    if (isErrLine(l)) return true;
+    if (netHeartbeatInterface(l, netInterfaceUp) && !netInterfaceUp)
+        return true;
+    if (netHeartbeatTxWithoutRx(l))
+        return true;
+    if (isEventTag(l.tagText()))
+        return true;
+    if (isErrLine(l))
+        return true;
     if (l.fmt == FMT_SEAS) {
         return l.level == LEVEL_NOTICE;
     }
+
     return false;
 }
 
 // ============================ 分析 ============================
-template <typename Lines>
-static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
+template <typename Lines> static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
     std::vector<Outage> outs;
     bool have = false;
     long long start = 0;
@@ -887,28 +997,32 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
     std::uint16_t source = 0;
     bool legacySeenInterface = false;
     bool legacyInterfaceDown = false;
+
     struct V2Open {
         long long start = 0;
         size_t line = 0;
     };
+
     std::map<std::uint16_t, V2Open> v2Open;
     std::map<std::uint16_t, bool> v2SeenOnline;
+
     // IMX6ULL 1.25 使用 [HB30]/[HB300] 的 online 边沿。与 v2 一样，必须先
     // 观察到在线，才把后续 online=0 视为“掉线”，避免把启动拨号阶段误算断网。
     struct ImxOpen {
         long long start = 0;
         size_t line = 0;
     };
+
     std::map<std::uint16_t, ImxOpen> imxOpen;
     std::map<std::uint16_t, bool> imxSeenOnline;
     auto sourcePlatforms = sourceDisplayPlatforms(lines);
     std::map<std::uint16_t, long long> previousClock;
     auto closeImxOutage = [&](std::uint16_t sourceId, const LogLine& end) {
         const auto down = imxOpen.find(sourceId);
-        if (down == imxOpen.end()) return;
+        if (down == imxOpen.end())
+            return;
         const long long duration = end.t - down->second.start;
-        if (end.t > 0 && duration >= 0 && duration <= INT_MAX &&
-            !crossesClockBase(down->second.start, end.t)) {
+        if (end.t > 0 && duration >= 0 && duration <= INT_MAX && !crossesClockBase(down->second.start, end.t)) {
             Outage outage;
             outage.start = down->second.start;
             outage.startLine = down->second.line;
@@ -918,8 +1032,10 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
             outage.recovered = true;
             outs.push_back(outage);
         }
+
         imxOpen.erase(down);
     };
+
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
         const bool rkSource = sourcePlatformAt(sourcePlatforms, l) == PLAT_RK3506J;
@@ -942,14 +1058,15 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
                 outs.push_back(outage);
                 v2Open.erase(stale);
             }
+
             v2SeenOnline[l.sourceId] = false;
         }
+
         if (usableV2Clock && isModemMngV2WanUp(l)) {
             auto down = v2Open.find(l.sourceId);
             if (down != v2Open.end()) {
                 const long long duration = l.t - down->second.start;
-                if (l.t > 0 && duration >= 0 && duration <= INT_MAX &&
-                    !crossesClockBase(down->second.start, l.t)) {
+                if (l.t > 0 && duration >= 0 && duration <= INT_MAX && !crossesClockBase(down->second.start, l.t)) {
                     Outage outage;
                     outage.start = down->second.start;
                     outage.startLine = down->second.line;
@@ -959,10 +1076,12 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
                     outage.recovered = true;
                     outs.push_back(outage);
                 }
+
                 // 即使时钟无效，这条 up 也终止该状态周期；不能拿旧 down 与
                 // 更晚的另一次 up 勉强配出一个看似合理的时长。
                 v2Open.erase(down);
             }
+
             v2SeenOnline[l.sourceId] = true;
         } else if (usableV2Clock && isModemMngV2WanDown(l) && v2SeenOnline[l.sourceId]) {
             v2Open.emplace(l.sourceId, V2Open{l.t, l.lineNo});
@@ -970,8 +1089,7 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
 
         // 新启动不能让上个 IMX 进程的 offline 状态跨会话延续。
         const auto previous = previousClock.find(l.sourceId);
-        const bool clockSplit = previous != previousClock.end() &&
-                                crossesClockBase(previous->second, l.t);
+        const bool clockSplit = previous != previousClock.end() && crossesClockBase(previous->second, l.t);
         previousClock[l.sourceId] = l.t;
         if (isProgramStartBanner(l.msg) || clockSplit) {
             const auto stale = imxOpen.find(l.sourceId);
@@ -983,8 +1101,10 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
                 outs.push_back(outage);
                 imxOpen.erase(stale);
             }
+
             imxSeenOnline[l.sourceId] = false;
         }
+
         bool imxOnline = false;
         if (imxHeartbeatOnline(l, imxOnline)) {
             if (imxOnline) {
@@ -1006,24 +1126,35 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
             // 同一进程再次声明 fault start，保持旧行为：上一状态已被内部重置，
             // 新起点才能同本进程恢复行配对。跨文件/重拉则保留原始设备级起点。
             if (!have || l.sourceId == source) {
-                have = true; start = l.t; startLine = l.lineNo; source = l.sourceId;
+                have = true;
+                start = l.t;
+                startLine = l.lineNo;
+                source = l.sourceId;
                 legacyInterfaceDown = false;
             }
         }
+
         bool netInterfaceUp = false;
         const bool hasNetHeartbeat = netHeartbeatInterface(l, netInterfaceUp);
-        if (hasNetHeartbeat && netInterfaceUp) legacySeenInterface = true;
+        if (hasNetHeartbeat && netInterfaceUp)
+            legacySeenInterface = true;
         if (!have && hasNetHeartbeat && !netInterfaceUp) {
             // 只在此前已观察到接口在线时，才将 IF=(none) 作为事故起点；避免把
             // 单独截取的冷启动拨号阶段误判为“从在线掉线”。
             if (legacySeenInterface) {
-                have = true; start = l.t; startLine = l.lineNo; source = l.sourceId;
+                have = true;
+                start = l.t;
+                startLine = l.lineNo;
+                source = l.sourceId;
                 legacyInterfaceDown = true;
             }
         }
-        if (have && hasNetHeartbeat && !netInterfaceUp) legacyInterfaceDown = true;
+
+        if (have && hasNetHeartbeat && !netInterfaceUp)
+            legacyInterfaceDown = true;
         int dur = 0;
         const bool reportedRecovery = isRecovered(l.msg, &dur);
+
         // 故障开始同一秒的末尾心跳仍可能带旧 IF=ccinetX；它只能说明接口当时
         // 还存在，不能关闭刚刚由“无 RX”打开的事故。只有本事故已明确见过
         // IF=(none) 后，后续 IF 回来才是接口恢复边沿。
@@ -1031,18 +1162,26 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
         const bool notificationRecovery = isNetworkConnectedNotification(l.msg);
         if (reportedRecovery || interfaceRecovery || notificationRecovery) {
             const bool selfContained = isSelfContainedRecovery(l.msg);
-            if (!have && !selfContained) continue;
+            if (!have && !selfContained)
+                continue;
             const long long wallDuration = have ? l.t - start : dur;
             const long long duration = have && reportedRecovery && l.sourceId == source ? dur : wallDuration;
             const bool sameClockBase = !have || !crossesClockBase(start, l.t);
-            const bool plausible = sameClockBase && duration >= 0 && duration <= INT_MAX &&
-                                   (!reportedRecovery || dur >= 0);
-            if (!plausible) { have = false; continue; }
+            const bool plausible =
+                sameClockBase && duration >= 0 && duration <= INT_MAX && (!reportedRecovery || dur >= 0);
+            if (!plausible) {
+                have = false;
+                continue;
+            }
+
             Outage o;
             o.start = have ? start : l.t - dur;
             o.startLine = have ? startLine : l.lineNo;
-            o.end = l.t; o.dur = static_cast<int>(duration); o.recovered = true;
+            o.end = l.t;
+            o.dur = static_cast<int>(duration);
+            o.recovered = true;
             o.endLine = l.lineNo;
+
             // SDK L0 自愈:恢复行含 "(L0)"(open_dial "Network Recovered in SDK phase (L0)")。
             // 这类是短断网、链路抖动,设备自愈,与走 L1+ 阶梯的深层恢复区分。
             o.l0Recovered = (l.msg.find("(L0)") != std::string::npos);
@@ -1052,10 +1191,15 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
             legacyInterfaceDown = false;
         }
     }
+
     if (have) {
-        Outage o; o.start = start; o.startLine = startLine; o.recovered = false;
+        Outage o;
+        o.start = start;
+        o.startLine = startLine;
+        o.recovered = false;
         outs.push_back(o);
     }
+
     for (const auto& entry : v2Open) {
         Outage outage;
         outage.start = entry.second.start;
@@ -1063,6 +1207,7 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
         outage.recovered = false;
         outs.push_back(outage);
     }
+
     for (const auto& entry : imxOpen) {
         Outage outage;
         outage.start = entry.second.start;
@@ -1070,10 +1215,9 @@ static std::vector<Outage> collectOutagesImpl(const Lines& lines) {
         outage.recovered = false;
         outs.push_back(outage);
     }
+
     std::stable_sort(outs.begin(), outs.end(),
-                     [](const Outage& a, const Outage& b) {
-                         return a.startLine < b.startLine;
-                     });
+                     [](const Outage& a, const Outage& b) { return a.startLine < b.startLine; });
     return outs;
 }
 
@@ -1085,8 +1229,7 @@ std::vector<Outage> collectOutages(const LogView& lines) {
     return collectOutagesImpl(lines);
 }
 
-template <typename Lines>
-static DataCallStats collectDataCallStatsImpl(const Lines& lines) {
+template <typename Lines> static DataCallStats collectDataCallStatsImpl(const Lines& lines) {
     DataCallStats stats;
     for (const auto& item : lines) {
         const LogLine& line = lineRef(item);
@@ -1094,25 +1237,30 @@ static DataCallStats collectDataCallStatsImpl(const Lines& lines) {
             ++stats.stopRequested;
             continue;
         }
-        if (line.msg.find("DataCall disconnected") == std::string::npos &&
-            !arteryLegacyDisconnected(line)) continue;
+
+        if (line.msg.find("DataCall disconnected") == std::string::npos && !arteryLegacyDisconnected(line))
+            continue;
 
         ++stats.disconnected;
         const std::string initiator = dataCallField(line.msg, "initiator");
-        const std::string reason = arteryLegacyDisconnected(line)
-            ? line.msg.substr(line.msg.rfind("0x")) : dataCallField(line.msg, "reason");
+        const std::string reason =
+            arteryLegacyDisconnected(line) ? line.msg.substr(line.msg.rfind("0x")) : dataCallField(line.msg, "reason");
         if (initiator.empty()) {
             ++stats.legacy;
         } else if (initiator == "APP_STOP") {
             ++stats.appStop;
         } else if (initiator == "SDK_URC") {
             ++stats.sdkUrc;
-            if (reason == "UNSOLICITED") ++stats.unsolicited;
+            if (reason == "UNSOLICITED")
+                ++stats.unsolicited;
         } else {
             ++stats.otherInitiator;
         }
-        if (!reason.empty()) ++stats.reasons[reason];
+
+        if (!reason.empty())
+            ++stats.reasons[reason];
     }
+
     return stats;
 }
 
@@ -1124,16 +1272,18 @@ DataCallStats collectDataCallStats(const LogView& lines) {
     return collectDataCallStatsImpl(lines);
 }
 
-template <typename Lines>
-static ObservationStats observationStatsImpl(const Lines& lines) {
+template <typename Lines> static ObservationStats observationStatsImpl(const Lines& lines) {
     ObservationStats stats;
-    if (lines.empty()) return stats;
+    if (lines.empty())
+        return stats;
+
     struct SourceWindow {
         bool have = false;
         long long first = 0;
         long long last = 0;
         long long previous = 0;
     };
+
     std::map<std::uint16_t, SourceWindow> windows;
     bool haveCalendar = false;
     long long calendarFirst = 0, calendarLast = 0;
@@ -1146,6 +1296,7 @@ static ObservationStats observationStatsImpl(const Lines& lines) {
             calendarFirst = std::min(calendarFirst, line.t);
             calendarLast = std::max(calendarLast, line.t);
         }
+
         SourceWindow& window = windows[line.sourceId];
         if (!window.have) {
             window.have = true;
@@ -1160,13 +1311,14 @@ static ObservationStats observationStatsImpl(const Lines& lines) {
             window.previous = line.t;
         }
     }
+
     stats.calendarSpan = std::max(0LL, calendarLast - calendarFirst);
     stats.sourceCount = windows.size();
     for (const auto& item : windows)
         stats.observedSpan += std::max(0LL, item.second.last - item.second.first);
     if (stats.calendarSpan > 0)
-        stats.coveragePercent = 100.0 * static_cast<double>(stats.observedSpan) /
-                               static_cast<double>(stats.calendarSpan);
+        stats.coveragePercent =
+            100.0 * static_cast<double>(stats.observedSpan) / static_cast<double>(stats.calendarSpan);
     return stats;
 }
 
@@ -1178,31 +1330,38 @@ ObservationStats observationStats(const LogView& lines) {
     return observationStatsImpl(lines);
 }
 
-std::vector<Stall> detectRxStall(const std::vector<std::pair<long long,long long>>& rxs,
-                                 long long minStallSec)
-{
+std::vector<Stall> detectRxStall(const std::vector<std::pair<long long, long long>>& rxs, long long minStallSec) {
     std::vector<Stall> stalls;
     bool haveRun = false;
     long long runStart = 0;
     bool haveLast = false;
-    std::pair<long long,long long> last{0,0};
+    std::pair<long long, long long> last{0, 0};
 
     for (const auto& cur : rxs) {
         if (haveLast && cur.second == last.second) {
-            if (!haveRun) { haveRun = true; runStart = last.first; }
+            if (!haveRun) {
+                haveRun = true;
+                runStart = last.first;
+            }
         } else {
             if (haveRun) {
                 long long dur = last.first - runStart;
-                if (dur >= minStallSec) stalls.push_back(Stall{runStart, last.first, dur});
+                if (dur >= minStallSec)
+                    stalls.push_back(Stall{runStart, last.first, dur});
                 haveRun = false;
             }
         }
-        last = cur; haveLast = true;
+
+        last = cur;
+        haveLast = true;
     }
+
     if (haveRun && haveLast) {
         long long dur = last.first - runStart;
-        if (dur >= minStallSec) stalls.push_back(Stall{runStart, last.first, dur});
+        if (dur >= minStallSec)
+            stalls.push_back(Stall{runStart, last.first, dur});
     }
+
     return stalls;
 }
 
@@ -1230,50 +1389,86 @@ struct HeartbeatFields {
 static HeartbeatFields heartbeatFields(const std::string& msg) {
     HeartbeatFields f;
     f.any = scanHbFields(msg, [&](std::string_view k, std::string_view v) {
-        if      (k == "CH")          f.ch = v;
-        else if (k == "SLOT")        f.slot = v;
-        else if (k == "state")       f.state = v;
-        else if (k == "CSQ")         f.csqUpper = v;
-        else if (k == "csq")         f.csqLower = v;
-        else if (k == "Temp")        f.tempTitle = v;
-        else if (k == "TEMP")        f.tempUpper = v;
-        else if (k == "temp_c")      f.tempImx = v;
-        else if (k == "ConsecFail")  f.failTitle = v;
-        else if (k == "tcp_fail")    f.failLower = v;
-        else if (k == "fail_streak") f.failImx = v;
-        else if (k == "RX_PKT")      f.rxUpper = v;
-        else if (k == "rx_packets")  f.rxLower = v;
-        else if (k == "RSRP")        f.rsrpUpper = v;
-        else if (k == "rsrp")        f.rsrpLower = v;
-        else if (k == "RSRQ")        f.rsrqUpper = v;
-        else if (k == "rsrq")        f.rsrqLower = v;
-        else if (k == "SNR")         f.snrUpper = v;
-        else if (k == "snr")         f.snrLower = v;
-        else if (k == "RSSI")        f.rssiUpper = v;
-        else if (k == "rssi")        f.rssiLower = v;
-        else if (k == "SRV")         f.srv = v;
-        else if (k == "RAT")         f.rat = v;
-        else if (k == "DENY")        f.deny = v;
-        else if (k == "OPER")        f.oper = v;
+        if (k == "CH")
+            f.ch = v;
+        else if (k == "SLOT")
+            f.slot = v;
+        else if (k == "state")
+            f.state = v;
+        else if (k == "CSQ")
+            f.csqUpper = v;
+        else if (k == "csq")
+            f.csqLower = v;
+        else if (k == "Temp")
+            f.tempTitle = v;
+        else if (k == "TEMP")
+            f.tempUpper = v;
+        else if (k == "temp_c")
+            f.tempImx = v;
+        else if (k == "ConsecFail")
+            f.failTitle = v;
+        else if (k == "tcp_fail")
+            f.failLower = v;
+        else if (k == "fail_streak")
+            f.failImx = v;
+        else if (k == "RX_PKT")
+            f.rxUpper = v;
+        else if (k == "rx_packets")
+            f.rxLower = v;
+        else if (k == "RSRP")
+            f.rsrpUpper = v;
+        else if (k == "rsrp")
+            f.rsrpLower = v;
+        else if (k == "RSRQ")
+            f.rsrqUpper = v;
+        else if (k == "rsrq")
+            f.rsrqLower = v;
+        else if (k == "SNR")
+            f.snrUpper = v;
+        else if (k == "snr")
+            f.snrLower = v;
+        else if (k == "RSSI")
+            f.rssiUpper = v;
+        else if (k == "rssi")
+            f.rssiLower = v;
+        else if (k == "SRV")
+            f.srv = v;
+        else if (k == "RAT")
+            f.rat = v;
+        else if (k == "DENY")
+            f.deny = v;
+        else if (k == "OPER")
+            f.oper = v;
+
         // 同一含义在各平台日志里的名字并不统一：EG25 使用 Cell/cellid，
         // EC200A、AG35 真机心跳使用 CID；部分模组版本使用 CellID/ECI/NCI。
         // 统一落入 cell，保证指标表、概览、小区分析与导出使用同一取值。
-        else if (k == "Cell" || k == "cell" || k == "cellid" || k == "CellID" ||
-                 k == "CELLID" || k == "cell_id" || k == "CELL_ID" ||
-                 k == "CID" || k == "cid" || k == "ECI" || k == "eci" ||
-                 k == "NCI" || k == "nci") f.cell = v;
-        else if (k == "pci")         f.pci = v;
-        else if (k == "tac")         f.tac = v;
-        else if (k == "serving_cell") f.servingCell = v;
-        else if (k == "traffic_valid") f.trafficValid = v;
-        else if (k == "sample_age_ms") f.sampleAge = v;
+        else if (k == "Cell" || k == "cell" || k == "cellid" || k == "CellID" || k == "CELLID" || k == "cell_id" ||
+                 k == "CELL_ID" || k == "CID" || k == "cid" || k == "ECI" || k == "eci" || k == "NCI" || k == "nci")
+            f.cell = v;
+        else if (k == "pci")
+            f.pci = v;
+        else if (k == "tac")
+            f.tac = v;
+        else if (k == "serving_cell")
+            f.servingCell = v;
+        else if (k == "traffic_valid")
+            f.trafficValid = v;
+        else if (k == "sample_age_ms")
+            f.sampleAge = v;
+
         // RK3506J RTMS 1.28.1 将详细快照的时效字段改为本轮采样耗时。遗漏它会
         // 令新版 HB300 的 rx_packets 被静默排除在流量分析之外。
-        else if (k == "sample_ms") f.sampleMs = v;
-        else if (k == "at_timeout") f.atTimeout = v;
-        else if (k == "at_probe") f.atProbe = v;
-        else if (k == "detailed_at_timeout") f.detailedAtTimeout = v;
-        else if (k == "detailed_at_stage") f.detailedAtStage = v;
+        else if (k == "sample_ms")
+            f.sampleMs = v;
+        else if (k == "at_timeout")
+            f.atTimeout = v;
+        else if (k == "at_probe")
+            f.atProbe = v;
+        else if (k == "detailed_at_timeout")
+            f.detailedAtTimeout = v;
+        else if (k == "detailed_at_stage")
+            f.detailedAtStage = v;
     });
     return f;
 }
@@ -1283,13 +1478,17 @@ static std::string_view firstOf(std::string_view a, std::string_view b) {
 }
 
 static bool parseLong(std::string_view text, long long& value, bool requireWhole = false) {
-    if (text.empty()) return false;
+    if (text.empty())
+        return false;
     const char* first = text.data();
     const char* last = first + text.size();
+
     // std::strtoll 接受显式正号；from_chars 不接受。保留旧解析器对 "+20" 的兼容。
     if (*first == '+') {
-        if (++first == last) return false;
+        if (++first == last)
+            return false;
     }
+
     auto result = std::from_chars(first, last, value, 10);
     return result.ptr != first && result.ec == std::errc{} && (!requireWhole || result.ptr == last);
 }
@@ -1304,70 +1503,94 @@ static bool parseImxSnr10(std::string_view text, int& value) {
         negative = text[pos] == '-';
         ++pos;
     }
+
     const size_t wholeBegin = pos;
-    while (pos < text.size() && std::isdigit(static_cast<unsigned char>(text[pos]))) ++pos;
-    if (pos == wholeBegin) return false;
+    while (pos < text.size() && std::isdigit(static_cast<unsigned char>(text[pos])))
+        ++pos;
+    if (pos == wholeBegin)
+        return false;
     long long whole = 0;
-    if (!parseLong(text.substr(wholeBegin, pos - wholeBegin), whole, true)) return false;
+    if (!parseLong(text.substr(wholeBegin, pos - wholeBegin), whole, true))
+        return false;
     int tenth = 0;
     if (pos < text.size() && text[pos] == '.') {
         ++pos;
-        if (pos >= text.size() || !std::isdigit(static_cast<unsigned char>(text[pos]))) return false;
+        if (pos >= text.size() || !std::isdigit(static_cast<unsigned char>(text[pos])))
+            return false;
         tenth = text[pos++] - '0';
-        while (pos < text.size() && std::isdigit(static_cast<unsigned char>(text[pos]))) ++pos;
+        while (pos < text.size() && std::isdigit(static_cast<unsigned char>(text[pos])))
+            ++pos;
     }
-    if (text.substr(pos) != "dB") return false;
+
+    if (text.substr(pos) != "dB")
+        return false;
     const long long scaled = whole * 10 + tenth;
     const long long signedScaled = negative ? -scaled : scaled;
-    if (signedScaled < -32768 || signedScaled > 32767) return false;
+    if (signedScaled < -32768 || signedScaled > 32767)
+        return false;
     value = static_cast<int>(signedScaled);
     return true;
 }
 
 static bool viewContainsIgnoreCase(std::string_view text, std::string_view needle) {
-    if (needle.size() > text.size()) return false;
+    if (needle.size() > text.size())
+        return false;
     for (size_t i = 0; i + needle.size() <= text.size(); ++i) {
         bool match = true;
         for (size_t j = 0; j < needle.size(); ++j) {
-            if (std::tolower((unsigned char)text[i + j]) !=
-                std::tolower((unsigned char)needle[j])) { match = false; break; }
+            if (std::tolower((unsigned char)text[i + j]) != std::tolower((unsigned char)needle[j])) {
+                match = false;
+                break;
+            }
         }
-        if (match) return true;
+
+        if (match)
+            return true;
     }
+
     return false;
 }
 
 static void assignView(std::string& out, std::string_view value) {
-    if (!value.empty()) out.assign(value.data(), value.size());
+    if (!value.empty())
+        out.assign(value.data(), value.size());
 }
 
 static bool usableCell(std::string_view value) {
     value = trimView(value);
     auto equalsIgnoreCase = [&](std::string_view expected) {
-        if (value.size() != expected.size()) return false;
+        if (value.size() != expected.size())
+            return false;
         for (size_t index = 0; index < value.size(); ++index)
             if (std::tolower(static_cast<unsigned char>(value[index])) !=
-                std::tolower(static_cast<unsigned char>(expected[index]))) return false;
+                std::tolower(static_cast<unsigned char>(expected[index])))
+                return false;
         return true;
     };
+
     return !value.empty() && value != "-" && !equalsIgnoreCase("N/A") && !equalsIgnoreCase("NA") &&
            !equalsIgnoreCase("FFFFFFFF") && !equalsIgnoreCase("init");
 }
 
 static bool parseUnsignedField(std::string_view value, unsigned base, std::uint32_t& output) {
     value = trimView(value);
-    if (value.empty()) return false;
+    if (value.empty())
+        return false;
     if (base == 16 && value.size() > 2 && value[0] == '0' && (value[1] == 'x' || value[1] == 'X'))
         value.remove_prefix(2);
-    if (value.empty()) return false;
+    if (value.empty())
+        return false;
     std::uint32_t result = 0;
     for (char character : value) {
-        unsigned digit = character >= '0' && character <= '9' ? static_cast<unsigned>(character - '0') :
-                         character >= 'a' && character <= 'f' ? static_cast<unsigned>(character - 'a' + 10) :
-                         character >= 'A' && character <= 'F' ? static_cast<unsigned>(character - 'A' + 10) : base;
-        if (digit >= base || result > (UINT32_MAX - digit) / base) return false;
+        unsigned digit = character >= '0' && character <= '9'   ? static_cast<unsigned>(character - '0')
+                         : character >= 'a' && character <= 'f' ? static_cast<unsigned>(character - 'a' + 10)
+                         : character >= 'A' && character <= 'F' ? static_cast<unsigned>(character - 'A' + 10)
+                                                                : base;
+        if (digit >= base || result > (UINT32_MAX - digit) / base)
+            return false;
         result = result * base + digit;
     }
+
     output = result;
     return true;
 }
@@ -1376,22 +1599,27 @@ static std::string_view modemMngV2Payload(const std::string& message) {
     std::string_view payload(message);
     if (!payload.empty() && payload.front() == '[') {
         const size_t close = payload.find("] ");
-        if (close != std::string_view::npos) payload.remove_prefix(close + 2);
+        if (close != std::string_view::npos)
+            payload.remove_prefix(close + 2);
     }
+
     return payload;
 }
 
 static bool consumeV2Literal(std::string_view text, size_t& pos, std::string_view literal) {
-    if (pos > text.size() || text.substr(pos, literal.size()) != literal) return false;
+    if (pos > text.size() || text.substr(pos, literal.size()) != literal)
+        return false;
     pos += literal.size();
     return true;
 }
 
 static bool consumeV2Integer(std::string_view text, size_t& pos, long long& value) {
     const size_t first = pos;
-    if (pos < text.size() && (text[pos] == '-' || text[pos] == '+')) ++pos;
+    if (pos < text.size() && (text[pos] == '-' || text[pos] == '+'))
+        ++pos;
     const size_t digits = pos;
-    while (pos < text.size() && text[pos] >= '0' && text[pos] <= '9') ++pos;
+    while (pos < text.size() && text[pos] >= '0' && text[pos] <= '9')
+        ++pos;
     return pos > digits && parseLong(text.substr(first, pos - first), value, true);
 }
 
@@ -1402,15 +1630,13 @@ static bool parseModemMngV2Csq(const std::string& message, int& csq) {
     const std::string_view text = modemMngV2Payload(message);
     size_t pos = 0;
     long long parsedCsq = 0, simPresent = 0, online = 0;
-    if (!consumeV2Literal(text, pos, "CSQ: ") ||
-        !consumeV2Integer(text, pos, parsedCsq) ||
-        !consumeV2Literal(text, pos, " (sim_present=") ||
-        !consumeV2Integer(text, pos, simPresent) ||
-        !consumeV2Literal(text, pos, " online=") ||
-        !consumeV2Integer(text, pos, online) ||
-        !consumeV2Literal(text, pos, ")") || pos != text.size()) return false;
-    if (parsedCsq < 0 || parsedCsq > 99 || (simPresent != 0 && simPresent != 1) ||
-        (online != 0 && online != 1)) return false;
+    if (!consumeV2Literal(text, pos, "CSQ: ") || !consumeV2Integer(text, pos, parsedCsq) ||
+        !consumeV2Literal(text, pos, " (sim_present=") || !consumeV2Integer(text, pos, simPresent) ||
+        !consumeV2Literal(text, pos, " online=") || !consumeV2Integer(text, pos, online) ||
+        !consumeV2Literal(text, pos, ")") || pos != text.size())
+        return false;
+    if (parsedCsq < 0 || parsedCsq > 99 || (simPresent != 0 && simPresent != 1) || (online != 0 && online != 1))
+        return false;
     csq = static_cast<int>(parsedCsq);
     return true;
 }
@@ -1426,55 +1652,86 @@ static const char* modemMngV2Rat(int act) {
     // Quectel +CEREG/+CGREG 的 AcT 枚举。只映射语义稳定的制式；未知扩展值
     // 留空，避免把厂商未来新增枚举套成错误的 LTE 工程阈值。
     switch (act) {
-        case 0: return "GSM";
-        case 1: return "GSM Compact";
-        case 2: return "UMTS";
-        case 3: return "EDGE";
-        case 4: return "HSDPA";
-        case 5: return "HSUPA";
-        case 6: return "HSPA";
-        case 7: return "LTE";
-        case 8: return "EC-GSM-IoT";
-        case 9: return "NB-IoT";
-        default: return "";
+
+    case 0:
+        return "GSM";
+
+    case 1:
+        return "GSM Compact";
+
+    case 2:
+        return "UMTS";
+
+    case 3:
+        return "EDGE";
+
+    case 4:
+        return "HSDPA";
+
+    case 5:
+        return "HSUPA";
+
+    case 6:
+        return "HSPA";
+
+    case 7:
+        return "LTE";
+
+    case 8:
+        return "EC-GSM-IoT";
+
+    case 9:
+        return "NB-IoT";
+
+    default:
+        return "";
     }
 }
 
 // log_info("CEREG stat=%d lac=%s ci=%s act=%d", ...) / CGREG 同形态。
 // 只有 stat=1/5 的已注册结果才继承 Cell；未注册结果会清空旧状态。
-static bool updateModemMngV2Registration(const std::string& message,
-                                         ModemMngV2Registration& state) {
+static bool updateModemMngV2Registration(const std::string& message, ModemMngV2Registration& state) {
     const std::string_view text = modemMngV2Payload(message);
     const bool cereg = text.compare(0, 11, "CEREG stat=") == 0;
     const bool cgreg = text.compare(0, 11, "CGREG stat=") == 0;
-    if (!cereg && !cgreg) return false;
+    if (!cereg && !cgreg)
+        return false;
     size_t pos = 11;
     long long stat = 0, act = 0;
-    if (!consumeV2Integer(text, pos, stat) || !consumeV2Literal(text, pos, " lac=")) return false;
+    if (!consumeV2Integer(text, pos, stat) || !consumeV2Literal(text, pos, " lac="))
+        return false;
     const size_t lacFirst = pos;
     const size_t ciMarker = text.find(" ci=", lacFirst);
-    if (ciMarker == std::string_view::npos) return false;
+    if (ciMarker == std::string_view::npos)
+        return false;
     const std::string_view lac = text.substr(lacFirst, ciMarker - lacFirst);
     pos = ciMarker;
-    if (!consumeV2Literal(text, pos, " ci=")) return false;
+    if (!consumeV2Literal(text, pos, " ci="))
+        return false;
     const size_t ciFirst = pos;
     const size_t actMarker = text.find(" act=", ciFirst);
-    if (actMarker == std::string_view::npos) return false;
+    if (actMarker == std::string_view::npos)
+        return false;
     const std::string_view ci = text.substr(ciFirst, actMarker - ciFirst);
     pos = actMarker;
-    if (!consumeV2Literal(text, pos, " act=") ||
-        !consumeV2Integer(text, pos, act) || pos != text.size() ||
-        stat < 0 || stat > INT_MAX || act < -1 || act > INT_MAX) return false;
+    if (!consumeV2Literal(text, pos, " act=") || !consumeV2Integer(text, pos, act) || pos != text.size() || stat < 0 ||
+        stat > INT_MAX || act < -1 || act > INT_MAX)
+        return false;
 
     state.cell.clear();
     state.rat.clear();
     state.tac = UINT32_MAX;
     state.tacDigits = 0;
-    if (stat != 1 && stat != 5) return true;
-    if (act < 0) return true;
+    if (stat != 1 && stat != 5)
+        return true;
+    if (act < 0)
+        return true;
     state.rat = modemMngV2Rat(static_cast<int>(act));
-    if (state.rat.empty()) return true;
-    if (usableCell(ci)) state.cell.assign(ci.data(), ci.size());
+    if (state.rat.empty())
+        return true;
+    if (usableCell(ci))
+        state.cell.assign(ci.data(), ci.size());
+
     // CEREG 的 lac 字段是 LTE/EPS TAC；CGREG 在非 LTE 制式下是 LAC，不能
     // 冒充 MetricRow::tac。只有已注册且 AcT 已知时才继承，避免错配制式。
     std::uint32_t tac = 0;
@@ -1485,6 +1742,7 @@ static bool updateModemMngV2Registration(const std::string& message,
             digits.remove_prefix(2);
         state.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(digits.size(), 8));
     }
+
     return true;
 }
 
@@ -1497,15 +1755,26 @@ struct CellState {
     long long signalT = 0;
 
     void clear() {
-        id.clear(); pci = -1; tac = UINT32_MAX; tacDigits = 0;
-        rsrp = rsrq = rssi = 1; snr10 = 100000; signalT = 0;
+        id.clear();
+        pci = -1;
+        tac = UINT32_MAX;
+        tacDigits = 0;
+        rsrp = rsrq = rssi = 1;
+        snr10 = 100000;
+        signalT = 0;
     }
+
     void setId(std::string_view value) {
         value = trimView(value);
         if (id.size() != value.size() || !std::equal(id.begin(), id.end(), value.begin())) {
-            pci = -1; tac = UINT32_MAX; tacDigits = 0;
-            rsrp = rsrq = rssi = 1; snr10 = 100000; signalT = 0;
+            pci = -1;
+            tac = UINT32_MAX;
+            tacDigits = 0;
+            rsrp = rsrq = rssi = 1;
+            snr10 = 100000;
+            signalT = 0;
         }
+
         id.assign(value.data(), value.size());
     }
 };
@@ -1513,8 +1782,10 @@ struct CellState {
 static std::string_view unquote(std::string_view value) {
     value = trimView(value);
     if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
-        value.remove_prefix(1); value.remove_suffix(1);
+        value.remove_prefix(1);
+        value.remove_suffix(1);
     }
+
     return value;
 }
 
@@ -1526,33 +1797,44 @@ static void updateImxServingCell(std::string_view value, CellState& state) {
     size_t first = 0;
     while (first <= value.size()) {
         const size_t last = value.find(';', first);
-        const std::string_view part = trimView(value.substr(first,
-            (last == std::string_view::npos ? value.size() : last) - first));
+        const std::string_view part =
+            trimView(value.substr(first, (last == std::string_view::npos ? value.size() : last) - first));
         const size_t equal = part.find('=');
         if (equal != std::string_view::npos) {
             const std::string_view key = trimView(part.substr(0, equal));
             const std::string_view field = trimView(part.substr(equal + 1));
-            if (key == "cell_id") cell = field;
-            else if (key == "pci") pci = field;
-            else if (key == "tac") tac = field;
+            if (key == "cell_id")
+                cell = field;
+            else if (key == "pci")
+                pci = field;
+            else if (key == "tac")
+                tac = field;
         }
-        if (last == std::string_view::npos) break;
+
+        if (last == std::string_view::npos)
+            break;
         first = last + 1;
     }
+
     if (!cell.empty()) {
-        if (usableCell(cell)) state.setId(cell);
-        else state.clear();
+        if (usableCell(cell))
+            state.setId(cell);
+        else
+            state.clear();
     }
+
     std::uint32_t parsed = 0;
     if (!pci.empty())
         state.pci = parseUnsignedField(pci, 10, parsed) && parsed <= static_cast<std::uint32_t>(INT_MAX)
-                        ? static_cast<int>(parsed) : -1;
+                        ? static_cast<int>(parsed)
+                        : -1;
     if (!tac.empty()) {
         state.tac = UINT32_MAX;
         state.tacDigits = 0;
         if (parseUnsignedField(tac, 16, parsed)) {
             state.tac = parsed;
-            if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X')) tac.remove_prefix(2);
+            if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X'))
+                tac.remove_prefix(2);
             state.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(tac.size(), 8));
         }
     }
@@ -1563,23 +1845,32 @@ static void updateImxServingCell(std::string_view value, CellState& state) {
 // 位于第 9 个字段。这里只接纳明确的 servingcell 证据，不从邻区或数字位置猜测。
 static bool qengCellState(const std::string& message, long long sampleTime, CellState& state) {
     const size_t marker = message.find("+QENG:");
-    if (marker == std::string::npos) return false;
+    if (marker == std::string::npos)
+        return false;
     std::array<std::string_view, 24> fields{};
     size_t count = 0, first = marker + 6;
     bool quoted = false;
     for (size_t index = first; index <= message.size() && count < fields.size(); ++index) {
         const char character = index < message.size() ? message[index] : ',';
-        if (character == '"') quoted = !quoted;
+        if (character == '"')
+            quoted = !quoted;
         if (character == ',' && !quoted) {
             fields[count++] = unquote(std::string_view(message.data() + first, index - first));
             first = index + 1;
         }
     }
-    if (count <= 6 || !viewContainsIgnoreCase(fields[0], "servingcell")) return false;
-    if (!usableCell(fields[6])) { state.clear(); return true; }
+
+    if (count <= 6 || !viewContainsIgnoreCase(fields[0], "servingcell"))
+        return false;
+    if (!usableCell(fields[6])) {
+        state.clear();
+        return true;
+    }
 
     state.setId(fields[6]);
-    state.pci = -1; state.tac = UINT32_MAX; state.tacDigits = 0;
+    state.pci = -1;
+    state.tac = UINT32_MAX;
+    state.tacDigits = 0;
     std::uint32_t parsed = 0;
     const bool lte = fields[2] == "LTE";
     const bool nrSa = fields[2] == "NR5G-SA";
@@ -1590,9 +1881,11 @@ static bool qengCellState(const std::string& message, long long sampleTime, Cell
     if (tacIndex < count && parseUnsignedField(fields[tacIndex], 16, parsed)) {
         state.tac = parsed;
         std::string_view tac = trimView(fields[tacIndex]);
-        if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X')) tac.remove_prefix(2);
+        if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X'))
+            tac.remove_prefix(2);
         state.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(tac.size(), 8));
     }
+
     // LTE QENG: fields[13..16] = RSRP/RSRQ/RSSI/SINR，SINR 原始单位为 dB；
     // MetricRow 统一保存 0.1dB，故乘 10。仅在字段完整且数值语义有效时继承。
     long long signal = 0;
@@ -1607,18 +1900,24 @@ static bool qengCellState(const std::string& message, long long sampleTime, Cell
             state.snr10 = static_cast<int>(signal * 10);
         state.signalT = sampleTime;
     }
+
     return true;
 }
 
 static bool cellAfterChange(const LogLine& line, std::string& cell) {
-    if (line.tagText() != "CELL CHANGE") return false;
+    if (line.tagText() != "CELL CHANGE")
+        return false;
     const size_t arrow = line.msg.find("->");
-    if (arrow == std::string::npos) return false;
+    if (arrow == std::string::npos)
+        return false;
     size_t first = arrow + 2;
-    while (first < line.msg.size() && static_cast<unsigned char>(line.msg[first]) <= ' ') ++first;
+    while (first < line.msg.size() && static_cast<unsigned char>(line.msg[first]) <= ' ')
+        ++first;
     size_t last = line.msg.find('|', first);
-    if (last == std::string::npos) last = line.msg.size();
-    while (last > first && static_cast<unsigned char>(line.msg[last - 1]) <= ' ') --last;
+    if (last == std::string::npos)
+        last = line.msg.size();
+    while (last > first && static_cast<unsigned char>(line.msg[last - 1]) <= ' ')
+        --last;
     const std::string_view value(line.msg.data() + first, last - first);
     cell = usableCell(value) ? std::string(value) : std::string{};
     return true;
@@ -1627,22 +1926,27 @@ static bool cellAfterChange(const LogLine& line, std::string& cell) {
 static void updateCellState(const LogLine& line, CellState& state) {
     std::string changed;
     if (cellAfterChange(line, changed)) {
-        if (changed.empty()) state.clear();
-        else state.setId(changed);
+        if (changed.empty())
+            state.clear();
+        else
+            state.setId(changed);
     }
-    if (qengCellState(line.msg, line.t, state)) return;
+
+    if (qengCellState(line.msg, line.t, state))
+        return;
     if (line.tagText() == "DIAG") {
         const HeartbeatFields fields = heartbeatFields(line.msg);
         const std::string_view cell = fields.cell;
         if (!cell.empty()) {
-            if (usableCell(cell)) state.setId(cell);
-            else state.clear();
+            if (usableCell(cell))
+                state.setId(cell);
+            else
+                state.clear();
         }
     }
 }
 
-template <typename Lines>
-static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
+template <typename Lines> static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
     std::vector<MetricRow> rows;
     bool haveLastRx = false;
     long long lastRx = 0;
@@ -1655,6 +1959,7 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
         sourcePlatformAt(platformBySource, l);
+
         // 版本横幅是进程启动的直接证据。即使日志文件把多次启动串在一起，
         // 新进程的网卡计数器、小区驻留状态也不能继承给上一会话；否则首个
         // HEARTBEAT 会凭旧 rx_packets 算出假的 ΔRX=0/负增量，进而误报数据停滞。
@@ -1663,6 +1968,7 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
             haveLastRx = false;
             lastRx = 0;
         }
+
         ModemMngV2Registration& registration = v2Registration[l.sourceId];
         if (l.msg.find("===== modem_mng_v2 start =====") != std::string::npos)
             registration = ModemMngV2Registration{};
@@ -1675,44 +1981,53 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
             metric.inferredTime = l.inferredTime;
             metric.ch = "MODEM_V2";
             metric.rat = registration.rat;
-            if (!registration.cell.empty()) metric.cellId.assign(registration.cell);
+            if (!registration.cell.empty())
+                metric.cellId.assign(registration.cell);
             if (registration.tac != UINT32_MAX) {
                 metric.tac = registration.tac;
                 metric.tacDigits = registration.tacDigits;
             }
+
             metric.csqRaw = v2Csq;
-            if (v2Csq >= 0 && v2Csq <= 31) metric.csqVal = v2Csq;
+            if (v2Csq >= 0 && v2Csq <= 31)
+                metric.csqVal = v2Csq;
             rows.push_back(std::move(metric));
             continue;
         }
+
         if (haveSource && l.sourceId != currentSource) {
             currentCell.clear();
             haveLastRx = false;
             lastRx = 0;
         }
+
         currentSource = l.sourceId;
         haveSource = true;
         updateCellState(l, currentCell);
         const bool imxHeartbeat = l.tagText() == "HB30" || l.tagText() == "HB300";
-        if (l.tagText().compare(0, 9, "HEARTBEAT") != 0 && !imxHeartbeat) continue;
+        if (l.tagText().compare(0, 9, "HEARTBEAT") != 0 && !imxHeartbeat)
+            continue;
         HeartbeatFields f = heartbeatFields(l.msg);
-        if (!f.any) continue;
+        if (!f.any)
+            continue;
 
         MetricRow m;
-        m.t  = l.t;
+        m.t = l.t;
         m.lineNo = l.lineNo;
         m.inferredTime = l.inferredTime;
         if (imxHeartbeat) {
             // HB30/HB300 的 state=CHECK_CONNECTION/SUCCESS 不是数据通道；它们
             // 必须优先显示所属 RTMS 平台，而不能被 artery 的 state→SIM 规则截获。
             m.ch = platformBySource[l.sourceId] == PLAT_RK3506J ? "RK3506J" : "IMX6ULL";
-        } else if (!f.ch.empty()) assignView(m.ch, f.ch);
-        else if (!f.slot.empty()) {                                    // AG35
+        } else if (!f.ch.empty())
+            assignView(m.ch, f.ch);
+        else if (!f.slot.empty()) {  // AG35
             m.ch = "SLOT";
             m.ch.append(f.slot.data(), f.slot.size());
-        } else if (!f.state.empty()) {                                 // artery
+        } else if (!f.state.empty()) {  // artery
             m.ch = viewContainsIgnoreCase(f.state, "roamlink") ? "ROAMLINK" : "SIM";
         }
+
         assignView(m.rat, f.rat);
         assignView(m.oper, f.oper);
         const std::string_view explicitCell = f.cell;
@@ -1722,40 +2037,48 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
             // 明确上报无效小区时清空驻留状态，避免把旧 Cell ID 错带到后续样本。
             currentCell.clear();
         }
+
         std::uint32_t compact = 0;
         if (!f.pci.empty()) {
-            currentCell.pci = parseUnsignedField(f.pci, 10, compact) &&
-                              compact <= static_cast<std::uint32_t>(INT_MAX)
-                                  ? static_cast<int>(compact) : -1;
+            currentCell.pci = parseUnsignedField(f.pci, 10, compact) && compact <= static_cast<std::uint32_t>(INT_MAX)
+                                  ? static_cast<int>(compact)
+                                  : -1;
         }
+
         if (!f.tac.empty()) {
-            currentCell.tac = UINT32_MAX; currentCell.tacDigits = 0;
+            currentCell.tac = UINT32_MAX;
+            currentCell.tacDigits = 0;
             if (parseUnsignedField(f.tac, 16, compact)) {
                 currentCell.tac = compact;
                 std::string_view tac = trimView(f.tac);
-                if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X')) tac.remove_prefix(2);
+                if (tac.size() > 2 && tac[0] == '0' && (tac[1] == 'x' || tac[1] == 'X'))
+                    tac.remove_prefix(2);
                 currentCell.tacDigits = static_cast<std::uint8_t>(std::min<std::size_t>(tac.size(), 8));
             }
         }
-        if (!currentCell.id.empty()) m.cellId.assign(currentCell.id);
+
+        if (!currentCell.id.empty())
+            m.cellId.assign(currentCell.id);
         m.pci = currentCell.pci;
         if (currentCell.tac != UINT32_MAX) {
             m.tac = currentCell.tac;
             m.tacDigits = currentCell.tacDigits;
         }
 
-        if (imxHeartbeat && !f.servingCell.empty()) updateImxServingCell(f.servingCell, currentCell);
-        if (!currentCell.id.empty()) m.cellId.assign(currentCell.id);
+        if (imxHeartbeat && !f.servingCell.empty())
+            updateImxServingCell(f.servingCell, currentCell);
+        if (!currentCell.id.empty())
+            m.cellId.assign(currentCell.id);
         m.pci = currentCell.pci;
         if (currentCell.tac != UINT32_MAX) {
             m.tac = currentCell.tac;
             m.tacDigits = currentCell.tacDigits;
         }
 
-        std::string_view temp = !f.tempTitle.empty() ? f.tempTitle :
-                                !f.tempUpper.empty() ? f.tempUpper : f.tempImx;
+        std::string_view temp = !f.tempTitle.empty() ? f.tempTitle : !f.tempUpper.empty() ? f.tempUpper : f.tempImx;
         if (!temp.empty()) {
-            int best = INT_MIN; bool ok = false;
+            int best = INT_MIN;
+            bool ok = false;
             size_t a = 0;
             while (a <= temp.size()) {
                 size_t b = temp.find(',', a);
@@ -1763,20 +2086,27 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
                 if (!piece.empty()) {
                     long long value = 0;
                     if (parseLong(piece, value) && value >= INT_MIN && value <= INT_MAX) {
-                        if ((int)value > best) best = (int)value;
+                        if ((int)value > best)
+                            best = (int)value;
                         ok = true;
                     }
                 }
-                if (b == std::string_view::npos) break;
+
+                if (b == std::string_view::npos)
+                    break;
                 a = b + 1;
             }
-            if (ok) m.tempMax = best;
+
+            if (ok)
+                m.tempMax = best;
         }
+
         long long number = 0;
-        const std::string_view fail = !f.failTitle.empty() ? f.failTitle :
-                                      !f.failLower.empty() ? f.failLower : f.failImx;
-        if (parseLong(fail, number) &&
-            number >= INT_MIN && number <= INT_MAX) m.consecFail = (int)number;
+        const std::string_view fail = !f.failTitle.empty()   ? f.failTitle
+                                      : !f.failLower.empty() ? f.failLower
+                                                             : f.failImx;
+        if (parseLong(fail, number) && number >= INT_MIN && number <= INT_MAX)
+            m.consecFail = (int)number;
 
         // RX_PKT 与 rx_packets 是**同一个计数器**的两个打印点,故合并为一条序列:
         // 两者都来自 nw_get_rmnet_rx_packets_sum()(遍历 /sys/.../rmnet_data*/statistics/rx_packets
@@ -1795,60 +2125,79 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
         bool imxFreshTraffic = true;
         if (imxHeartbeat) {
             long long sampleAge = 0;
+
             // IMX6ULL 使用 sample_age_ms；RK3506J 1.28.1 改为 sample_ms（本轮
             // 采样耗时）。旧 RK3506J 日志仍优先使用 sample_age_ms。
-            const std::string_view freshness = !f.sampleAge.empty() ? f.sampleAge :
-                (platformBySource[l.sourceId] == PLAT_RK3506J ? f.sampleMs : std::string_view{});
+            const std::string_view freshness =
+                !f.sampleAge.empty() ? f.sampleAge
+                                     : (platformBySource[l.sourceId] == PLAT_RK3506J ? f.sampleMs : std::string_view{});
             imxFreshTraffic = parseLong(f.trafficValid, number, true) && number == 1 &&
                               parseLong(freshness, sampleAge, true) && sampleAge >= 0 && sampleAge <= 45000;
         }
+
         bool haveRx = imxFreshTraffic && parseLong(firstOf(f.rxUpper, f.rxLower), m.rx);
         if (haveRx && haveLastRx) {
-            const bool overflow = (lastRx > 0 && m.rx < LLONG_MIN + lastRx) ||
-                                  (lastRx < 0 && m.rx > LLONG_MAX + lastRx);
-            if (!overflow) m.drx = m.rx - lastRx;
+            const bool overflow =
+                (lastRx > 0 && m.rx < LLONG_MIN + lastRx) || (lastRx < 0 && m.rx > LLONG_MAX + lastRx);
+            if (!overflow)
+                m.drx = m.rx - lastRx;
         }
-        if (haveRx) { lastRx = m.rx; haveLastRx = true; }
 
-        if (parseLong(firstOf(f.csqUpper, f.csqLower), number) &&
-            number >= INT_MIN && number <= INT_MAX) {
-            m.csqRaw = (int)number;
-            if (number != 99) m.csqVal = (int)number;               // 99 = AT+CSQ 未知
+        if (haveRx) {
+            lastRx = m.rx;
+            haveLastRx = true;
         }
+
+        if (parseLong(firstOf(f.csqUpper, f.csqLower), number) && number >= INT_MIN && number <= INT_MAX) {
+            m.csqRaw = (int)number;
+            if (number != 99)
+                m.csqVal = (int)number;  // 99 = AT+CSQ 未知
+        }
+
         if (imxHeartbeat) {
             if (parseLong(f.atTimeout, number, true) && (number == 0 || number == 1))
                 m.atTelemetryTimeout = static_cast<int>(number);
             if (parseLong(f.detailedAtTimeout, number, true) && (number == 0 || number == 1))
                 m.detailedAtTimeout = static_cast<int>(number);
-            if (!f.detailedAtStage.empty()) m.detailedAtStage.assign(f.detailedAtStage);
-            if (f.atProbe == "ok") m.atBasicProbe = 1;
-            else if (f.atProbe == "fail") m.atBasicProbe = 0;
-            else if (f.atProbe == "not_run") m.atBasicProbe = 2;
+            if (!f.detailedAtStage.empty())
+                m.detailedAtStage.assign(f.detailedAtStage);
+            if (f.atProbe == "ok")
+                m.atBasicProbe = 1;
+            else if (f.atProbe == "fail")
+                m.atBasicProbe = 0;
+            else if (f.atProbe == "not_run")
+                m.atBasicProbe = 2;
         }
+
         // RSRP/RSRQ:dBm 精确信号值(负数)。真机两种分隔 hbFields 均能切出:
         //   open_dial "RSRP:-94 | RSRQ:-18"(竖线) / modem_mng "RSRP:-104 RSRQ:-10"(空格)。
         // 只接受负值,正数视为异常(1=无效标记)。
-        if (parseLong(firstOf(f.rsrpUpper, f.rsrpLower), number) &&
-            number >= INT_MIN && number < 0) m.rsrp = (int)number;
-        if (parseLong(firstOf(f.rsrqUpper, f.rsrqLower), number) &&
-            number >= INT_MIN && number < 0) m.rsrq = (int)number;
+        if (parseLong(firstOf(f.rsrpUpper, f.rsrpLower), number) && number >= INT_MIN && number < 0)
+            m.rsrp = (int)number;
+        if (parseLong(firstOf(f.rsrqUpper, f.rsrqLower), number) && number >= INT_MIN && number < 0)
+            m.rsrq = (int)number;
+
         // 两套 SDK 的 LTE SNR 都是 int16_t 原值,单位 0.1dB(真头示例:246=24.6dB)。
         // 0 与正值均有效,不能沿用 RSRP/RSRQ 的“只收负值”规则。
         if (imxHeartbeat) {
             int snr10 = 0;
-            if (parseImxSnr10(firstOf(f.snrUpper, f.snrLower), snr10)) m.snr10 = snr10;
-        } else if (parseLong(firstOf(f.snrUpper, f.snrLower), number, true) &&
-                   number >= -32768 && number <= 32767) m.snr10 = (int)number;
-        if (parseLong(firstOf(f.rssiUpper, f.rssiLower), number, true) &&
-            number >= INT_MIN && number < 0)
+            if (parseImxSnr10(firstOf(f.snrUpper, f.snrLower), snr10))
+                m.snr10 = snr10;
+        } else if (parseLong(firstOf(f.snrUpper, f.snrLower), number, true) && number >= -32768 && number <= 32767)
+            m.snr10 = (int)number;
+        if (parseLong(firstOf(f.rssiUpper, f.rssiLower), number, true) && number >= INT_MIN && number < 0)
             m.rssiVal = (int)number;
+
         // 1.31.15 等旧固件的普通心跳不带完整 LTE 四元组，但紧邻的 QENG 已提供；
         // 只有心跳字段缺失时才继承，绝不覆盖新版固件的明确值。
-        const bool adjacentQeng = currentCell.signalT > 0 && m.t >= currentCell.signalT &&
-                                  m.t - currentCell.signalT <= 2;
-        if (adjacentQeng && m.rsrp >= 0 && currentCell.rsrp < 0) m.rsrp = currentCell.rsrp;
-        if (adjacentQeng && m.rsrq >= 0 && currentCell.rsrq < 0) m.rsrq = currentCell.rsrq;
-        if (adjacentQeng && m.rssiVal >= 0 && currentCell.rssi < 0) m.rssiVal = currentCell.rssi;
+        const bool adjacentQeng =
+            currentCell.signalT > 0 && m.t >= currentCell.signalT && m.t - currentCell.signalT <= 2;
+        if (adjacentQeng && m.rsrp >= 0 && currentCell.rsrp < 0)
+            m.rsrp = currentCell.rsrp;
+        if (adjacentQeng && m.rsrq >= 0 && currentCell.rsrq < 0)
+            m.rsrq = currentCell.rsrq;
+        if (adjacentQeng && m.rssiVal >= 0 && currentCell.rssi < 0)
+            m.rssiVal = currentCell.rssi;
         if (adjacentQeng && m.snr10 == 100000 && currentCell.snr10 != 100000)
             m.snr10 = currentCell.snr10;
         if (parseLong(f.srv, number, true) && number >= 0 && number <= 2)
@@ -1857,6 +2206,7 @@ static std::vector<MetricRow> buildMetricsImpl(const Lines& lines) {
             m.denyVal = (int)number;
         rows.push_back(std::move(m));
     }
+
     return rows;
 }
 
@@ -1875,11 +2225,11 @@ std::vector<MetricRow> buildMetrics(const LogView& lines) {
 static Evidence mkEv(const LogLine& l) {
     Evidence e;
     e.lineNo = l.lineNo;
-    e.ts     = l.ts;
+    e.ts = l.ts;
     const std::string& tag = l.tagText();
+
     // 公网公告的时序字段位于行尾，保留其完整短记录供结论复制和跳转审计。
-    e.text   = (tag.empty() ? "" : "[" + tag + "] ") +
-               l.msg.substr(0, tag == "INTERNET-READY" ? 512 : 160);
+    e.text = (tag.empty() ? "" : "[" + tag + "] ") + l.msg.substr(0, tag == "INTERNET-READY" ? 512 : 160);
     return e;
 }
 
@@ -1900,24 +2250,22 @@ struct CellAccumulator {
 };
 
 template <typename Lines>
-static std::vector<std::uint16_t> metricSourceIds(const Lines& lines,
-                                                   const std::vector<MetricRow>& metrics) {
+static std::vector<std::uint16_t> metricSourceIds(const Lines& lines, const std::vector<MetricRow>& metrics) {
     std::vector<std::uint16_t> result(metrics.size(), 0);
     std::size_t lineIndex = 0;
     for (std::size_t metricIndex = 0; metricIndex < metrics.size(); ++metricIndex) {
-        while (lineIndex < lines.size() &&
-               lineRef(lines[lineIndex]).lineNo < metrics[metricIndex].lineNo) ++lineIndex;
-        if (lineIndex < lines.size() &&
-            lineRef(lines[lineIndex]).lineNo == metrics[metricIndex].lineNo)
+        while (lineIndex < lines.size() && lineRef(lines[lineIndex]).lineNo < metrics[metricIndex].lineNo)
+            ++lineIndex;
+        if (lineIndex < lines.size() && lineRef(lines[lineIndex]).lineNo == metrics[metricIndex].lineNo)
             result[metricIndex] = lineRef(lines[lineIndex]).sourceId;
     }
+
     return result;
 }
 
-template <typename Lines>
-static std::uint16_t sourceIdAtLine(const Lines& lines, std::size_t lineNo) {
+template <typename Lines> static std::uint16_t sourceIdAtLine(const Lines& lines, std::size_t lineNo) {
     auto it = std::lower_bound(lines.begin(), lines.end(), lineNo,
-        [](const auto& item, std::size_t number) { return lineRef(item).lineNo < number; });
+                               [](const auto& item, std::size_t number) { return lineRef(item).lineNo < number; });
     return it != lines.end() && lineRef(*it).lineNo == lineNo ? lineRef(*it).sourceId : 0;
 }
 
@@ -1925,23 +2273,26 @@ static std::uint16_t sourceIdAtLine(const Lines& lines, std::size_t lineNo) {
 // 或旧产品的 Network Recovered 事件。这个标志既用于全程服务可达率，也用于
 // 将首次联网前的失败与运行期掉线分开。
 static bool isDataPathUp(const LogLine& line, bool rkSource) {
-    if (rkSource && rkTimedInternetUp(line)) return true;
-    if (isModemMngV2WanUp(line) || imxRecoveryComplete(line)) return true;
+    if (rkSource && rkTimedInternetUp(line))
+        return true;
+    if (isModemMngV2WanUp(line) || imxRecoveryComplete(line))
+        return true;
     bool imxOnline = false;
-    if (imxHeartbeatOnline(line, imxOnline) && imxOnline) return true;
+    if (imxHeartbeatOnline(line, imxOnline) && imxOnline)
+        return true;
     int recoveredSeconds = 0;
-    if (isRecovered(line.msg, &recoveredSeconds)) return true;
+    if (isRecovered(line.msg, &recoveredSeconds))
+        return true;
     const std::string lo = lower(line.msg);
-    return lo.find("net connected") != std::string::npos ||
-           lo.find("data call connected") != std::string::npos ||
+    return lo.find("net connected") != std::string::npos || lo.find("data call connected") != std::string::npos ||
            lo.find("datacall connected") != std::string::npos ||
            lo.find("wait_for_connect -> net_connected") != std::string::npos;
 }
 
 // 仅判定有连续心跳支持的应用状态停留；300/120 秒是观察阈值，不是拨号协议超时。
-template <typename Lines>
-static ArteryDiagnostics collectArteryDiagnosticsImpl(const Lines& lines) {
+template <typename Lines> static ArteryDiagnostics collectArteryDiagnosticsImpl(const Lines& lines) {
     ArteryDiagnostics result;
+
     struct Progress {
         std::string state;
         long long lastTime = 0, transitionTime = 0, mismatchTime = 0;
@@ -1949,48 +2300,62 @@ static ArteryDiagnostics collectArteryDiagnosticsImpl(const Lines& lines) {
         bool haveTime = false, conflictReported = false;
         ArteryStateStall span;
     };
+
     std::map<std::uint16_t, Progress> progress;
     auto finish = [&](Progress& p) {
         if (p.span.heartbeatCount >= 3 && p.span.end - p.span.start >= 300)
             result.startCallStalls.push_back(p.span);
         p.span = ArteryStateStall{};
     };
+
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
-        if (l.fmt != FMT_SEAS) continue;
+        if (l.fmt != FMT_SEAS)
+            continue;
         Progress& p = progress[l.sourceId];
-        if (isProgramStartBanner(l.msg) ||
-            (p.haveTime && (l.t < p.lastTime || crossesClockBase(p.lastTime, l.t)))) {
-            finish(p); p = Progress{};
+        if (isProgramStartBanner(l.msg) || (p.haveTime && (l.t < p.lastTime || crossesClockBase(p.lastTime, l.t)))) {
+            finish(p);
+            p = Progress{};
         }
-        p.haveTime = true; p.lastTime = l.t;
+
+        p.haveTime = true;
+        p.lastTime = l.t;
         if (arteryLegacyDisconnected(l)) {
             ++result.legacyDisconnected;
             if (result.legacyDisconnectEvidence.size() < 3)
                 result.legacyDisconnectEvidence.push_back(l.lineNo);
         }
+
         if (l.msg == "policy=force_sim: SIM failed, redialing" ||
             l.msg.find("license pending: SIM TCP failed, redialing SIM") == 0)
             p.redialLine = l.lineNo;
         std::string to;
         if (arteryStateTransition(l, nullptr, &to)) {
             finish(p);
-            p.state = to; p.transitionTime = l.t; p.transitionLine = l.lineNo;
-            p.mismatchLine = 0; p.conflictReported = false;
-            if (to == "net_connected") p.redialLine = 0;
+            p.state = to;
+            p.transitionTime = l.t;
+            p.transitionLine = l.lineNo;
+            p.mismatchLine = 0;
+            p.conflictReported = false;
+            if (to == "net_connected")
+                p.redialLine = 0;
             if (to == "start_call") {
                 p.span.start = p.span.end = l.t;
                 p.span.entryLine = p.span.lastLine = l.lineNo;
                 p.span.redialLine = p.redialLine;
             }
+
             continue;
         }
+
         // SDK 成功回调不能代替应用状态迁移，不能提前结束 start_call 停留。
         if (arteryLegacyConnected(l) && p.span.entryLine)
             p.span.sdkConnectedLine = l.lineNo;
-        if (l.tagText() != "HEARTBEAT") continue;
+        if (l.tagText() != "HEARTBEAT")
+            continue;
         const std::string_view state = heartbeatFields(l.msg).state;
-        if (state.empty()) continue;
+        if (state.empty())
+            continue;
         const bool conflict = (p.state == "net_connected" && state == "start_call") ||
                               (p.state == "start_call" && state == "net_connected");
         if (conflict && l.t - p.transitionTime >= 15 && !p.conflictReported) {
@@ -1998,26 +2363,42 @@ static ArteryDiagnostics collectArteryDiagnosticsImpl(const Lines& lines) {
                 if (result.contradictoryStateEvidence.empty())
                     result.contradictoryStateEvidence = {p.transitionLine, p.mismatchLine, l.lineNo};
                 p.conflictReported = true;
-            } else { p.mismatchLine = l.lineNo; p.mismatchTime = l.t; }
+            } else {
+                p.mismatchLine = l.lineNo;
+                p.mismatchTime = l.t;
+            }
         }
-        if (state != "start_call") { finish(p); continue; }
+
+        if (state != "start_call") {
+            finish(p);
+            continue;
+        }
+
         // 明确迁移到别的状态后出现的旧心跳只作冲突证据，不能归到新进程的停留区间。
-        if (!p.state.empty() && p.state != "start_call") continue;
-        if (p.span.entryLine && l.t - p.span.end > 120) finish(p);
+        if (!p.state.empty() && p.state != "start_call")
+            continue;
+        if (p.span.entryLine && l.t - p.span.end > 120)
+            finish(p);
         if (!p.span.entryLine) {
-            p.span.start = l.t; p.span.entryLine = l.lineNo;
+            p.span.start = l.t;
+            p.span.entryLine = l.lineNo;
             p.span.redialLine = p.redialLine;
         }
-        p.span.end = l.t; p.span.lastLine = l.lineNo; ++p.span.heartbeatCount;
+
+        p.span.end = l.t;
+        p.span.lastLine = l.lineNo;
+        ++p.span.heartbeatCount;
     }
-    for (auto& entry : progress) finish(entry.second);
+
+    for (auto& entry : progress)
+        finish(entry.second);
     return result;
 }
 
 template <typename Lines>
-static AvailabilityStats availabilityStatsImpl(const Lines& lines,
-                                               const std::vector<Outage>& outages) {
+static AvailabilityStats availabilityStatsImpl(const Lines& lines, const std::vector<Outage>& outages) {
     AvailabilityStats stats;
+
     struct Segment {
         std::uint16_t sourceId = 0;
         long long begin = 0;
@@ -2026,6 +2407,7 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
         bool startKnown = false;
         size_t beginLine = 0, endLine = 0;
     };
+
     std::vector<Segment> segments;
     std::map<std::uint16_t, std::size_t> active;
     auto sourcePlatforms = sourceDisplayPlatforms(lines);
@@ -2034,11 +2416,11 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
         const LogLine& line = lineRef(item);
         const bool rkSource = sourcePlatformAt(sourcePlatforms, line) == PLAT_RK3506J;
         auto it = active.find(line.sourceId);
+
         // v2 的 syslog 启动记录没有传统 Version 文案，但 isModemMngV2Start()
         // 已严格限定应用身份和完整正文，是与版本横幅等价的进程边界证据。
         const bool banner = isProgramStartBanner(line.msg) || isModemMngV2Start(line);
-        const bool clockSplit = it != active.end() &&
-                                crossesClockBase(segments[it->second].end, line.t);
+        const bool clockSplit = it != active.end() && crossesClockBase(segments[it->second].end, line.t);
         if (it == active.end() || banner || clockSplit) {
             Segment segment;
             segment.sourceId = line.sourceId;
@@ -2049,10 +2431,12 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
             active[line.sourceId] = segments.size() - 1;
             it = active.find(line.sourceId);
         }
+
         Segment& segment = segments[it->second];
         segment.end = std::max(segment.end, line.t);
         segment.endLine = line.lineNo;
-        if (segment.firstUp < 0 && isDataPathUp(line, rkSource)) segment.firstUp = line.t;
+        if (segment.firstUp < 0 && isDataPathUp(line, rkSource))
+            segment.firstUp = line.t;
     }
 
     std::vector<long long> outageSeconds(segments.size(), 0);
@@ -2061,24 +2445,30 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
         bool countedTerminal = false;
         for (std::size_t i = 0; i < segments.size(); ++i) {
             const Segment& segment = segments[i];
-            if (segment.sourceId != sourceId || segment.firstUp < 0) continue;
+            if (segment.sourceId != sourceId || segment.firstUp < 0)
+                continue;
+
             // 未恢复事件属于打开它的启动/时基会话，不可在重启后的会话重复累加。
-            if (!outage.recovered && (outage.startLine < segment.beginLine ||
-                                     outage.startLine > segment.endLine)) continue;
+            if (!outage.recovered && (outage.startLine < segment.beginLine || outage.startLine > segment.endLine))
+                continue;
             const long long outageEnd = outage.recovered ? outage.end : segment.end;
             const long long begin = std::max(std::max(outage.start, segment.begin), segment.firstUp);
             const long long end = std::min(outageEnd, segment.end);
             if (end > begin) {
                 outageSeconds[i] += end - begin;
-                if (!outage.recovered) countedTerminal = true;
+                if (!outage.recovered)
+                    countedTerminal = true;
             }
         }
-        if (countedTerminal) ++stats.terminalOutages;
+
+        if (countedTerminal)
+            ++stats.terminalOutages;
     }
 
     for (std::size_t i = 0; i < segments.size(); ++i) {
         const Segment& segment = segments[i];
-        if (!segment.startKnown || segment.end <= segment.begin) continue;
+        if (!segment.startKnown || segment.end <= segment.begin)
+            continue;
         const long long span = segment.end - segment.begin;
         ++stats.startupSegments;
         stats.fullObservedSeconds += span;
@@ -2087,17 +2477,17 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
             stats.fullUnavailableSeconds += span;
             continue;
         }
+
         ++stats.connectedStartupSegments;
         const long long startup = std::max(0LL, segment.firstUp - segment.begin);
         stats.longestStartupSeconds = std::max(stats.longestStartupSeconds, startup);
         stats.runtimeObservedSeconds += std::max(0LL, segment.end - segment.firstUp);
-        stats.runtimeUnavailableSeconds += std::min(outageSeconds[i],
-                                                    std::max(0LL, segment.end - segment.firstUp));
+        stats.runtimeUnavailableSeconds += std::min(outageSeconds[i], std::max(0LL, segment.end - segment.firstUp));
         stats.fullUnavailableSeconds += std::min(span, startup + outageSeconds[i]);
     }
+
     stats.fullUnavailableSeconds = std::min(stats.fullUnavailableSeconds, stats.fullObservedSeconds);
-    stats.runtimeUnavailableSeconds = std::min(stats.runtimeUnavailableSeconds,
-                                               stats.runtimeObservedSeconds);
+    stats.runtimeUnavailableSeconds = std::min(stats.runtimeUnavailableSeconds, stats.runtimeObservedSeconds);
     const ArteryDiagnostics artery = collectArteryDiagnosticsImpl(lines);
     stats.legacyArteryEvents = artery.legacyDisconnected > 0;
     stats.arteryStateStall = !artery.startCallStalls.empty();
@@ -2106,12 +2496,12 @@ static AvailabilityStats availabilityStatsImpl(const Lines& lines,
 }
 
 template <typename Lines>
-static CellAnalysis analyzeCellsImpl(const Lines& lines,
-                                     const std::vector<MetricRow>& metrics,
+static CellAnalysis analyzeCellsImpl(const Lines& lines, const std::vector<MetricRow>& metrics,
                                      const std::vector<Outage>& outages) {
     CellAnalysis result;
     result.totalSamples = metrics.size();
-    if (metrics.empty()) return result;
+    if (metrics.empty())
+        return result;
 
     const auto sourceIds = metricSourceIds(lines, metrics);
     std::vector<CellAccumulator> accumulators;
@@ -2121,7 +2511,8 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
     auto cellIndex = [&](std::string_view id) -> std::size_t {
         const std::string key(id);
         auto found = cellIndexes.find(key);
-        if (found != cellIndexes.end()) return found->second;
+        if (found != cellIndexes.end())
+            return found->second;
         const std::size_t index = accumulators.size();
         CellAccumulator accumulator;
         accumulator.summary.cellId = key;
@@ -2133,7 +2524,8 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
     auto transitionIndex = [&](const std::string& from, const std::string& to) -> std::size_t {
         const auto key = std::make_pair(from, to);
         auto found = transitionIndexes.find(key);
-        if (found != transitionIndexes.end()) return found->second;
+        if (found != transitionIndexes.end())
+            return found->second;
         const std::size_t index = result.transitions.size();
         CellTransition transition;
         transition.fromCell = from;
@@ -2150,12 +2542,18 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
         const MetricRow& metric = metrics[index];
         if (metric.cellId.empty()) {
             // 未知小区终止连续观测，不能拼出 A→未知→B 的确定切换/乒乓。
-            previousCell.clear(); cellBeforePrevious.clear(); previousSwitchTime = 0;
+            previousCell.clear();
+            cellBeforePrevious.clear();
+            previousSwitchTime = 0;
             continue;
         }
+
         if (!previousCell.empty() && (metric.t < previousTime || metric.t - previousTime > 600)) {
-            previousCell.clear(); cellBeforePrevious.clear(); previousSwitchTime = 0;
+            previousCell.clear();
+            cellBeforePrevious.clear();
+            previousSwitchTime = 0;
         }
+
         const std::string id = metric.cellId.str();
         CellAccumulator& accumulator = accumulators[cellIndex(id)];
         CellSummary& summary = accumulator.summary;
@@ -2166,17 +2564,22 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
             summary.tac = metric.tac;
             summary.tacDigits = metric.tacDigits;
         }
+
         summary.last = metric.t;
         summary.samples++;
         result.samplesWithCell++;
-        if (result.first == 0 || metric.t < result.first) result.first = metric.t;
-        if (metric.t > result.last) result.last = metric.t;
+        if (result.first == 0 || metric.t < result.first)
+            result.first = metric.t;
+        if (metric.t > result.last)
+            result.last = metric.t;
 
-        if (metric.pci >= 0) summary.pci = metric.pci;
+        if (metric.pci >= 0)
+            summary.pci = metric.pci;
         if (metric.tac != UINT32_MAX) {
             summary.tac = metric.tac;
             summary.tacDigits = metric.tacDigits;
         }
+
         summary.rssi.add(metric.rssiVal);
         const bool lteReference = usesLteEngineeringReference(metric.rat);
         if (lteReference && metric.csqVal >= 0) {
@@ -2185,18 +2588,21 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
             summary.csqMin = std::min(summary.csqMin, metric.csqVal);
             summary.csqMax = std::max(summary.csqMax, metric.csqVal);
         }
+
         if (lteReference && metric.rsrp < 0) {
             accumulator.rsrpSum += metric.rsrp;
             summary.rsrpSamples++;
             summary.rsrpMin = std::min(summary.rsrpMin, metric.rsrp);
             summary.rsrpMax = std::max(summary.rsrpMax, metric.rsrp);
         }
+
         if (lteReference && metric.rsrq < 0) {
             accumulator.rsrqSum += metric.rsrq;
             summary.rsrqSamples++;
             summary.rsrqMin = std::min(summary.rsrqMin, metric.rsrq);
             summary.rsrqMax = std::max(summary.rsrqMax, metric.rsrq);
         }
+
         if (lteReference && metric.snr10 != 100000) {
             accumulator.snrSum10 += metric.snr10;
             summary.snrSamples++;
@@ -2210,6 +2616,7 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
             cellBeforePrevious.clear();
             previousSwitchTime = 0;
         }
+
         if (!previousCell.empty() && id == previousCell) {
             // 相邻同小区样本才累加观测驻留；超过 10 分钟的采样空洞不冒充连续驻留。
             const long long delta = metric.t - previousTime;
@@ -2225,21 +2632,23 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
                 transition.first = metric.t;
                 transition.firstEvidenceLine = metric.lineNo;
             }
+
             transition.last = metric.t;
             transition.count++;
 
             // A→B 后 5 分钟内又 B→A 记为一次乒乓；这是工程观察规则，不等同网络根因。
-            if (!cellBeforePrevious.empty() && id == cellBeforePrevious &&
-                previousSwitchTime > 0 && metric.t >= previousSwitchTime &&
-                metric.t - previousSwitchTime <= 300) {
+            if (!cellBeforePrevious.empty() && id == cellBeforePrevious && previousSwitchTime > 0 &&
+                metric.t >= previousSwitchTime && metric.t - previousSwitchTime <= 300) {
                 transition.pingPongCount++;
                 transition.pingPongEvidenceLine = metric.lineNo;
                 transition.pingPongEvidenceTime = metric.t;
                 result.pingPongCount++;
             }
+
             cellBeforePrevious = previousCell;
             previousSwitchTime = metric.t;
         }
+
         previousCell = id;
         previousSource = sourceIds[index];
         previousTime = metric.t;
@@ -2249,30 +2658,37 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
     // 按证据行归并推进，避免“每次断网倒扫全部指标”的 O(断网×指标) 开销。
     std::vector<const Outage*> orderedOutages;
     orderedOutages.reserve(outages.size());
-    for (const Outage& outage : outages) orderedOutages.push_back(&outage);
+    for (const Outage& outage : outages)
+        orderedOutages.push_back(&outage);
     std::stable_sort(orderedOutages.begin(), orderedOutages.end(),
-        [](const Outage* a, const Outage* b) { return a->startLine < b->startLine; });
+                     [](const Outage* a, const Outage* b) { return a->startLine < b->startLine; });
     std::map<std::uint16_t, std::size_t> latestMetric;
     std::size_t metricCursor = 0;
     for (const Outage* outagePtr : orderedOutages) {
         const Outage& outage = *outagePtr;
         while (metricCursor < metrics.size() && metrics[metricCursor].lineNo <= outage.startLine) {
-            if (!metrics[metricCursor].cellId.empty()) latestMetric[sourceIds[metricCursor]] = metricCursor;
-            else latestMetric.erase(sourceIds[metricCursor]);
+            if (!metrics[metricCursor].cellId.empty())
+                latestMetric[sourceIds[metricCursor]] = metricCursor;
+            else
+                latestMetric.erase(sourceIds[metricCursor]);
             ++metricCursor;
         }
+
         const std::uint16_t sourceId = sourceIdAtLine(lines, outage.startLine);
         auto latest = latestMetric.find(sourceId);
         if (latest != latestMetric.end()) {
             const std::size_t index = latest->second;
             const MetricRow& metric = metrics[index];
             const long long age = outage.start - metric.t;
+
             // 行号在前但时钟略晚时，退回同来源更早样本，不能让未来样本遮住有效关联。
             std::size_t fallback = index;
             while (age < 0 && fallback > 0) {
                 --fallback;
-                if (sourceIds[fallback] != sourceId) continue;
-                if (metrics[fallback].cellId.empty()) break;
+                if (sourceIds[fallback] != sourceId)
+                    continue;
+                if (metrics[fallback].cellId.empty())
+                    break;
                 const long long fallbackAge = outage.start - metrics[fallback].t;
                 if (fallbackAge >= 0) {
                     const MetricRow& candidate = metrics[fallback];
@@ -2284,9 +2700,11 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
                             summary.firstOutageTime = outage.start;
                         }
                     }
+
                     break;
                 }
             }
+
             if (age >= 0 && age <= 600) {
                 CellSummary& summary = accumulators[cellIndex(metric.cellId.view())].summary;
                 summary.outageStarts++;
@@ -2301,178 +2719,191 @@ static CellAnalysis analyzeCellsImpl(const Lines& lines,
     result.cells.reserve(accumulators.size());
     for (CellAccumulator& accumulator : accumulators) {
         CellSummary& summary = accumulator.summary;
-        if (summary.csqSamples) summary.csqAvg10 = int(accumulator.csqSum * 10 /
-            static_cast<long long>(summary.csqSamples));
-        if (summary.rsrpSamples) summary.rsrpAvg10 = int(accumulator.rsrpSum * 10 /
-            static_cast<long long>(summary.rsrpSamples));
-        if (summary.rsrqSamples) summary.rsrqAvg10 = int(accumulator.rsrqSum * 10 /
-            static_cast<long long>(summary.rsrqSamples));
-        if (summary.snrSamples) summary.snrAvg10 = int(accumulator.snrSum10 /
-            static_cast<long long>(summary.snrSamples));
+        if (summary.csqSamples)
+            summary.csqAvg10 = int(accumulator.csqSum * 10 / static_cast<long long>(summary.csqSamples));
+        if (summary.rsrpSamples)
+            summary.rsrpAvg10 = int(accumulator.rsrpSum * 10 / static_cast<long long>(summary.rsrpSamples));
+        if (summary.rsrqSamples)
+            summary.rsrqAvg10 = int(accumulator.rsrqSum * 10 / static_cast<long long>(summary.rsrqSamples));
+        if (summary.snrSamples)
+            summary.snrAvg10 = int(accumulator.snrSum10 / static_cast<long long>(summary.snrSamples));
         if (result.samplesWithCell)
             summary.sampleSharePermille = int(summary.samples * 1000 / result.samplesWithCell);
         result.cells.push_back(std::move(summary));
     }
+
     std::stable_sort(result.cells.begin(), result.cells.end(), [](const CellSummary& a, const CellSummary& b) {
-        if (a.outageStarts != b.outageStarts) return a.outageStarts > b.outageStarts;
+        if (a.outageStarts != b.outageStarts)
+            return a.outageStarts > b.outageStarts;
         return a.samples > b.samples;
     });
     std::stable_sort(result.transitions.begin(), result.transitions.end(),
-        [](const CellTransition& a, const CellTransition& b) {
-            if (a.pingPongCount != b.pingPongCount) return a.pingPongCount > b.pingPongCount;
-            return a.count > b.count;
-        });
+                     [](const CellTransition& a, const CellTransition& b) {
+                         if (a.pingPongCount != b.pingPongCount)
+                             return a.pingPongCount > b.pingPongCount;
+                         return a.count > b.count;
+                     });
     return result;
 }
 
-} // namespace
+}  // namespace
 
 ArteryDiagnostics collectArteryDiagnostics(const std::vector<LogLine>& lines) {
     return collectArteryDiagnosticsImpl(lines);
 }
+
 ArteryDiagnostics collectArteryDiagnostics(const LogView& lines) {
     return collectArteryDiagnosticsImpl(lines);
 }
+
 std::string availabilityEvidenceNote(const AvailabilityStats& stats) {
-    if (!stats.evidenceLimited()) return {};
+    if (!stats.evidenceLimited())
+        return {};
     std::string note = "证据不足：";
-    if (stats.legacyArteryEvents) note += "旧版 SDK 断开回调未计入业务断网区间；";
-    if (stats.arteryStateStall) note += "应用长期停留 start_call，后续监测状态不能确认；";
-    if (stats.mixedArteryStates) note += "状态证据冲突，可能混入多个实例/日志流；";
+    if (stats.legacyArteryEvents)
+        note += "旧版 SDK 断开回调未计入业务断网区间；";
+    if (stats.arteryStateStall)
+        note += "应用长期停留 start_call，后续监测状态不能确认；";
+    if (stats.mixedArteryStates)
+        note += "状态证据冲突，可能混入多个实例/日志流；";
     return note + "百分比仅按已识别事件计算，不能据此确认业务 100% 可用。";
 }
 
-AvailabilityStats availabilityStats(const std::vector<LogLine>& lines,
-                                    const std::vector<Outage>& outages) {
+AvailabilityStats availabilityStats(const std::vector<LogLine>& lines, const std::vector<Outage>& outages) {
     return availabilityStatsImpl(lines, outages);
 }
 
-AvailabilityStats availabilityStats(const LogView& lines,
-                                    const std::vector<Outage>& outages) {
+AvailabilityStats availabilityStats(const LogView& lines, const std::vector<Outage>& outages) {
     return availabilityStatsImpl(lines, outages);
 }
 
-CellAnalysis analyzeCells(const std::vector<LogLine>& lines,
-                          const std::vector<MetricRow>& metrics,
+CellAnalysis analyzeCells(const std::vector<LogLine>& lines, const std::vector<MetricRow>& metrics,
                           const std::vector<Outage>& outages) {
     return analyzeCellsImpl(lines, metrics, outages);
 }
 
-CellAnalysis analyzeCells(const LogView& lines,
-                          const std::vector<MetricRow>& metrics,
+CellAnalysis analyzeCells(const LogView& lines, const std::vector<MetricRow>& metrics,
                           const std::vector<Outage>& outages) {
     return analyzeCellsImpl(lines, metrics, outages);
 }
 
 // 断网根因分类(取值即 Finding 的分组键)
 enum Cause { C_WEAK, C_DATADEAD, C_SWITCHING, C_DENIED, C_NOTREADY, C_SDK_L0, C_UNKNOWN, C_N };
-static const char* kCauseName[C_N] = {
-    "弱信号", "数据假死(RX_PKT 停滞)", "切卡/选网/CFUN 期间",
-    "注册被拒/受限/疑似账户问题", "数据服务未就绪",
-    "SDK 短断网(链路抖动,非设备故障)", "未能归类"
-};
+
+static const char* kCauseName[C_N] = {"弱信号",
+                                      "数据假死(RX_PKT 停滞)",
+                                      "切卡/选网/CFUN 期间",
+                                      "注册被拒/受限/疑似账户问题",
+                                      "数据服务未就绪",
+                                      "SDK 短断网(链路抖动,非设备故障)",
+                                      "未能归类"};
 
 static bool linePtrTimesSorted(const std::vector<const LogLine*>& v) {
-    return std::is_sorted(v.begin(), v.end(),
-                          [](const LogLine* a, const LogLine* b) { return a->t < b->t; });
+    return std::is_sorted(v.begin(), v.end(), [](const LogLine* a, const LogLine* b) { return a->t < b->t; });
 }
 
 // 正常日志按时间单调,可二分到断网窗口；若检测到时钟倒退,退回原顺序全扫，
 // 保持旧行为及证据选择顺序。sorted 由调用方预先算一次,不在每次断网里重复 O(N)。
-static const LogLine* firstLineInWindow(const std::vector<const LogLine*>& v,
-                                        long long lo, long long hi, bool sorted) {
+static const LogLine* firstLineInWindow(const std::vector<const LogLine*>& v, long long lo, long long hi, bool sorted) {
     if (sorted) {
-        auto it = std::lower_bound(v.begin(), v.end(), lo,
-                                   [](const LogLine* l, long long t) { return l->t < t; });
+        auto it = std::lower_bound(v.begin(), v.end(), lo, [](const LogLine* l, long long t) { return l->t < t; });
         return it != v.end() && (*it)->t <= hi ? *it : nullptr;
     }
+
     for (const auto* l : v)
-        if (l->t >= lo && l->t <= hi) return l;
+        if (l->t >= lo && l->t <= hi)
+            return l;
     return nullptr;
 }
 
 template <typename Lines>
-static std::vector<Finding> analyzeImpl(const Lines& lines,
-                                        const std::vector<Outage>& outs,
-                                        const std::vector<MetricRow>& mets,
-                                        const PlatformInfo& pi,
-                                        const ParseAudit& audit,
-                                        const CellAnalysis* precomputedCells)
-{
+static std::vector<Finding> analyzeImpl(const Lines& lines, const std::vector<Outage>& outs,
+                                        const std::vector<MetricRow>& mets, const PlatformInfo& pi,
+                                        const ParseAudit& audit, const CellAnalysis* precomputedCells) {
     std::vector<Finding> fs;
-    if (lines.empty()) return fs;
+    if (lines.empty())
+        return fs;
     const bool v2Platform = pi.plat == PLAT_MODEM_MNG_V2;
     const ArteryDiagnostics artery = collectArteryDiagnosticsImpl(lines);
     auto addLineEvidence = [&](Finding& f, size_t number) {
-        if (!number) return;
+        if (!number)
+            return;
         auto it = std::lower_bound(lines.begin(), lines.end(), number,
-            [](const auto& item, size_t n) { return lineRef(item).lineNo < n; });
-        if (it != lines.end() && lineRef(*it).lineNo == number) f.ev.push_back(mkEv(lineRef(*it)));
+                                   [](const auto& item, size_t n) { return lineRef(item).lineNo < n; });
+        if (it != lines.end() && lineRef(*it).lineNo == number)
+            f.ev.push_back(mkEv(lineRef(*it)));
     };
+
     if (!artery.startCallStalls.empty()) {
         const ArteryStateStall* longest = &artery.startCallStalls.front();
         for (const auto& s : artery.startCallStalls)
-            if (s.end - s.start > longest->end - longest->start) longest = &s;
+            if (s.end - s.start > longest->end - longest->start)
+                longest = &s;
         Finding f;
-        f.severity = 2; f.title = "artery 应用长期停留 start_call";
+        f.severity = 2;
+        f.title = "artery 应用长期停留 start_call";
         f.detail = "【日志直证】连续心跳支持 " + std::to_string(artery.startCallStalls.size()) +
-            " 段 start_call 停留，最长 " + fmtDuration(longest->end - longest->start) +
-            "，" + std::to_string(longest->heartbeatCount) +
-            " 条心跳。观察规则为至少 300 秒、3 条心跳且相邻间隔不超过 120 秒，非协议超时。";
-        if (longest->redialLine) f.detail += " 该段前记录了 SIM TCP 失败重拨。";
-        if (longest->sdkConnectedLine) f.detail += " 期间 SDK 仍报告联网；SDK 连通不代表应用恢复 net_connected。";
+                   " 段 start_call 停留，最长 " + fmtDuration(longest->end - longest->start) + "，" +
+                   std::to_string(longest->heartbeatCount) +
+                   " 条心跳。观察规则为至少 300 秒、3 条心跳且相邻间隔不超过 120 秒，非协议超时。";
+        if (longest->redialLine)
+            f.detail += " 该段前记录了 SIM TCP 失败重拨。";
+        if (longest->sdkConnectedLine)
+            f.detail += " 期间 SDK 仍报告联网；SDK 连通不代表应用恢复 net_connected。";
         f.detail += " 这是应用状态推进/后续监测异常证据，不能折算成整段业务断网。";
-        f.advice = "核对重拨后的 DataCall Stop/Start 与状态门控；日志未打印门控变量，具体代码原因需结合对应固件源码确认。补充 PID、业务探测和单调时间，勿以 tcp_fail=0 证明健康。";
+        f.advice =
+            "核对重拨后的 DataCall Stop/Start 与状态门控；日志未打印门控变量，具体代码原因需结合对应固件源码确认。补充 "
+            "PID、业务探测和单调时间，勿以 tcp_fail=0 证明健康。";
         addLineEvidence(f, longest->redialLine);
         addLineEvidence(f, longest->entryLine);
         addLineEvidence(f, longest->sdkConnectedLine);
         addLineEvidence(f, longest->lastLine);
         fs.push_back(std::move(f));
     }
+
     if (!artery.contradictoryStateEvidence.empty()) {
         Finding f;
-        f.severity = 1; f.title = "artery 状态证据冲突，疑似混合实例/日志流";
-        f.detail = "【日志直证】明确状态迁移后，超过 15 秒仍重复出现相反的 start_call/net_connected 心跳（180 秒内至少两次）。【推断】可能有多个实例/日志流；无 PID，无法确定实例数量或逐行归属。";
-        f.advice = "按 PID/启动标识分别采集日志，并核对守护进程是否重复拉起；不要把这些心跳解释成同一实例反复迁移，也不要跨启动拼接停留时长。";
-        for (size_t number : artery.contradictoryStateEvidence) addLineEvidence(f, number);
+        f.severity = 1;
+        f.title = "artery 状态证据冲突，疑似混合实例/日志流";
+        f.detail = "【日志直证】明确状态迁移后，超过 15 秒仍重复出现相反的 start_call/net_connected 心跳（180 "
+                   "秒内至少两次）。【推断】可能有多个实例/日志流；无 PID，无法确定实例数量或逐行归属。";
+        f.advice = "按 "
+                   "PID/"
+                   "启动标识分别采集日志，并核对守护进程是否重复拉起；不要把这些心跳解释成同一实例反复迁移，也不要跨启"
+                   "动拼接停留时长。";
+        for (size_t number : artery.contradictoryStateEvidence)
+            addLineEvidence(f, number);
         fs.push_back(std::move(f));
     }
+
     if (artery.legacyDisconnected) {
         Finding f;
-        f.severity = 1; f.title = "artery 旧版 SDK 断开回调 " + std::to_string(artery.legacyDisconnected) + " 次";
-        f.detail = "【日志直证】Net disconnected 回调已纳入旧格式未归因计数；原始原因码不能证明是应用主动停止或 SDK 自发断开，回调区间也不等于业务中断区间。";
-        f.advice = "结合对应 Net Connected、业务探测和 RX 判断恢复；未识别业务断网不意味着业务 100% 可用，概览和报告按证据不足展示。";
-        for (size_t number : artery.legacyDisconnectEvidence) addLineEvidence(f, number);
+        f.severity = 1;
+        f.title = "artery 旧版 SDK 断开回调 " + std::to_string(artery.legacyDisconnected) + " 次";
+        f.detail = "【日志直证】Net disconnected 回调已纳入旧格式未归因计数；原始原因码不能证明是应用主动停止或 SDK "
+                   "自发断开，回调区间也不等于业务中断区间。";
+        f.advice = "结合对应 Net Connected、业务探测和 RX 判断恢复；未识别业务断网不意味着业务 100% "
+                   "可用，概览和报告按证据不足展示。";
+        for (size_t number : artery.legacyDisconnectEvidence)
+            addLineEvidence(f, number);
         fs.push_back(std::move(f));
     }
 
     // ---- 预扫:各类特征行(全部留证据指针)----
-    std::vector<const LogLine*> evNeverConn, evPolicy, evRecL1, evRecL2, evRecL3,
-                                evDenied, evLimited, evSuspectedAccount, evRegQueryFail,
-                                evRegistrationIssue, evHardRegistrationIssue, evCpdump, evCpCrash, evSlot, evOper, evCfun,
-                                evManualCops, evCopsAutoRestore, evRegistrationRecovered,
-                                evManualSelectionCommand,
-                                evNotReady, evOrphanRecovery, evImpossibleRecovery,
-                                evDataCallInitFailed, evDataCallFatalExit, evArteryDataCallCleanup, evArteryDataCallExit,
-                                evDataCallStartFailed, evDataCallAppStop,
-                                evDataCallUnsolicited, evApnLoadFailed, evProgramStart,
-                                evLicenseMissing, evLicensePending, evLicenseTimeout,
-                                evLicenseBackupFailed, evLicenseAtomicallyBackedUp,
-                                evArterySimAbsent, evArterySimLocked, evArterySimOther,
-                                evArterySimQueryFailed,
-                                evV2NoSim, evV2LongUnregistered, evV2PingReinit,
-                                evV2ReadyOffline, evV2ReadyFailed,
-                                evImxFailure, evImxRetry, evImxSimNotReady, evImxRegWait,
-                                evImxPdp, evImxDhcp, evImxNetwork, evImxDevice, evImxAt,
-                                evImxAtTelemetryTimeout, evImxAtProbeFailed,
-                                evImxRecoverPdp, evImxRecoverCfun, evImxRecoverHardware,
-                                evImxConfigError,
-                                evRkRetry, evRkSimNotReady, evRkRegistration, evRkPdp,
-                                evRkNetwork, evRkDeviceAt, evRkPing,
-                                evRkCpinDeadline, evRkSoftRecovery, evRkHardRecovery, evRkGuard,
-                                evRkCacheRejected, evRkCacheWriteFailed, evRkIpcPending,
-                                evRkQueryFallback, evRkHostFallback, evRkInternetReady, evRkPowerUnconfirmed,
-                                evRkSelectionFailed, evRkSelectionVerified, evRkEg912Cycle;
+    std::vector<const LogLine*> evNeverConn, evPolicy, evRecL1, evRecL2, evRecL3, evDenied, evLimited,
+        evSuspectedAccount, evRegQueryFail, evRegistrationIssue, evHardRegistrationIssue, evCpdump, evCpCrash, evSlot,
+        evOper, evCfun, evManualCops, evCopsAutoRestore, evRegistrationRecovered, evManualSelectionCommand, evNotReady,
+        evOrphanRecovery, evImpossibleRecovery, evDataCallInitFailed, evDataCallFatalExit, evArteryDataCallCleanup,
+        evArteryDataCallExit, evDataCallStartFailed, evDataCallAppStop, evDataCallUnsolicited, evApnLoadFailed,
+        evProgramStart, evLicenseMissing, evLicensePending, evLicenseTimeout, evLicenseBackupFailed,
+        evLicenseAtomicallyBackedUp, evArterySimAbsent, evArterySimLocked, evArterySimOther, evArterySimQueryFailed,
+        evV2NoSim, evV2LongUnregistered, evV2PingReinit, evV2ReadyOffline, evV2ReadyFailed, evImxFailure, evImxRetry,
+        evImxSimNotReady, evImxRegWait, evImxPdp, evImxDhcp, evImxNetwork, evImxDevice, evImxAt,
+        evImxAtTelemetryTimeout, evImxAtProbeFailed, evImxRecoverPdp, evImxRecoverCfun, evImxRecoverHardware,
+        evImxConfigError, evRkRetry, evRkSimNotReady, evRkRegistration, evRkPdp, evRkNetwork, evRkDeviceAt, evRkPing,
+        evRkCpinDeadline, evRkSoftRecovery, evRkHardRecovery, evRkGuard, evRkCacheRejected, evRkCacheWriteFailed,
+        evRkIpcPending, evRkQueryFallback, evRkHostFallback, evRkInternetReady, evRkPowerUnconfirmed,
+        evRkSelectionFailed, evRkSelectionVerified, evRkEg912Cycle;
     std::vector<const LogLine*> evTrafficSkipped;
     std::vector<const LogLine*> evNetInterfaceNone, evNetTxWithoutRx;
     std::map<std::string, size_t> appStopReasons, unsolicitedReasons;
@@ -2489,21 +2920,27 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             inserted.first->second.second = std::max(inserted.first->second.second, line.t);
         }
     }
+
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
         const bool rkSource = sourcePlatformAt(rkSourcePlatforms, l) == PLAT_RK3506J;
-        if (modemTrafficSkipped(l)) evTrafficSkipped.push_back(&l);
-        if (isProgramStartBanner(l.msg)) evProgramStart.push_back(&l);
-        if (isCpCrashEvidence(l.msg)) evCpCrash.push_back(&l);
+        if (modemTrafficSkipped(l))
+            evTrafficSkipped.push_back(&l);
+        if (isProgramStartBanner(l.msg))
+            evProgramStart.push_back(&l);
+        if (isCpCrashEvidence(l.msg))
+            evCpCrash.push_back(&l);
+
         // artery 的 license 流程使用固定的 SEAS_LOG 原文。只把“缺失 → 下载等待
         // → 超时降级”这一完整、明确的产品动作作为结论；单条 license missing
         // 可能随后从备份恢复，不能单独当作下载失败。
-        if (icontains(l.msg, "LICENSE_MISSING")) evLicenseMissing.push_back(&l);
+        if (icontains(l.msg, "LICENSE_MISSING"))
+            evLicenseMissing.push_back(&l);
         if (icontains(l.msg, "SIM connected, starting RBMaster for license download"))
             evLicensePending.push_back(&l);
-        if (icontains(l.msg, "license download timeout") &&
-            icontains(l.msg, "FORCE_SIM mode until next reboot"))
+        if (icontains(l.msg, "license download timeout") && icontains(l.msg, "FORCE_SIM mode until next reboot"))
             evLicenseTimeout.push_back(&l);
+
         // artery 与 EG25 均在备份失败时明确说明“延后重启”，而不是下载失败或
         // 已经降级。两种格式分别来自 SEAS_LOG 和 [ROAMLINK]，故只依赖这段
         // 产品共用的完整文案，避免把普通文件写入错误误判为 license 流程。
@@ -2511,6 +2948,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             evLicenseBackupFailed.push_back(&l);
         if (icontains(l.msg, "license atomically backed up to "))
             evLicenseAtomicallyBackedUp.push_back(&l);
+
         // artery 71fe1fa: SIM 句柄查询会输出真实卡态和应用态；按 SDK 枚举值
         // 分类，避免把查询失败、未插卡和需要 PIN/PUK 的卡混为同一种故障。
         // FMT_SEAS 是 artery 的日志包络；合并不同产品日志时，整体平台可能由
@@ -2534,15 +2972,16 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                     evArterySimOther.push_back(&l);
             }
         }
+
         // artery 1.29.18 没有 SD 侧 SDK/FATAL 标签；只接受完整退出文案作为触发，
         // RBMaster 清理文案仅作为补充证据，避免把其他产品误归为进程级退出。
         if (l.fmt == FMT_SEAS &&
-            l.msg.find("DataCall initialization failed; shutting down dial-owned RBMaster before exit(0)")
-                != std::string::npos)
+            l.msg.find("DataCall initialization failed; shutting down dial-owned RBMaster before exit(0)") !=
+                std::string::npos)
             evArteryDataCallCleanup.push_back(&l);
         if (l.fmt == FMT_SEAS &&
-            l.msg.find("DataCall initialization failure: exiting dial with status 0 for supervisor restart")
-                != std::string::npos)
+            l.msg.find("DataCall initialization failure: exiting dial with status 0 for supervisor restart") !=
+                std::string::npos)
             evArteryDataCallExit.push_back(&l);
         if (v2Platform) {
             if (l.msg.find("SIM not inserted (CME ") != std::string::npos)
@@ -2559,134 +2998,159 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             if (l.msg.find("failed to in ready state") != std::string::npos)
                 evV2ReadyFailed.push_back(&l);
         }
+
         // IMX6ULL 的拨号状态机把阶段失败和退避动作拆成固定标签；仅在已经由
         // rtms_imx6ull_ 横幅直接识别的平台上采集，避免把别的平台同名标签混入。
         if (pi.plat == PLAT_IMX) {
             const std::string& tag = l.tagText();
-            if (tag == "FAILURE") evImxFailure.push_back(&l);
-            if (tag == "RETRY") evImxRetry.push_back(&l);
+            if (tag == "FAILURE")
+                evImxFailure.push_back(&l);
+            if (tag == "RETRY")
+                evImxRetry.push_back(&l);
             if (tag == "SIM" && icontains(l.msg, "SIM not ready"))
                 evImxSimNotReady.push_back(&l);
-            if (tag == "REG" && (icontains(l.msg, "wait timed out") ||
-                                 icontains(l.msg, "response unparseable")))
+            if (tag == "REG" && (icontains(l.msg, "wait timed out") || icontains(l.msg, "response unparseable")))
                 evImxRegWait.push_back(&l);
-            if (tag == "PDP" && (icontains(l.msg, "rejected") ||
-                                 icontains(l.msg, "wait exhausted")))
+            if (tag == "PDP" && (icontains(l.msg, "rejected") || icontains(l.msg, "wait exhausted")))
                 evImxPdp.push_back(&l);
-            if (tag == "DHCP" && (icontains(l.msg, "failed") ||
-                                  icontains(l.msg, "ended unexpectedly") ||
+            if (tag == "DHCP" && (icontains(l.msg, "failed") || icontains(l.msg, "ended unexpectedly") ||
                                   icontains(l.msg, "process remains")))
                 evImxDhcp.push_back(&l);
-            if (tag == "NET" && (icontains(l.msg, "no IPv4 address") ||
-                                 icontains(l.msg, "connection failed") ||
+            if (tag == "NET" && (icontains(l.msg, "no IPv4 address") || icontains(l.msg, "connection failed") ||
                                  icontains(l.msg, "default route missing")))
                 evImxNetwork.push_back(&l);
-            if (tag == "DEVICE" && (icontains(l.msg, "initial discovery failed") ||
-                                    icontains(l.msg, "USB enumeration timed out")))
+            if (tag == "DEVICE" &&
+                (icontains(l.msg, "initial discovery failed") || icontains(l.msg, "USB enumeration timed out")))
                 evImxDevice.push_back(&l);
-            if (tag == "AT" && (icontains(l.msg, "open failed") ||
-                                icontains(l.msg, "read EOF") ||
+            if (tag == "AT" && (icontains(l.msg, "open failed") || icontains(l.msg, "read EOF") ||
                                 icontains(l.msg, "basic AT probe failed")))
                 evImxAt.push_back(&l);
-            if ((tag == "HB30" || tag == "HB300") &&
-                dataCallField(l.msg, "at_timeout") == "1")
+            if ((tag == "HB30" || tag == "HB300") && dataCallField(l.msg, "at_timeout") == "1")
                 evImxAtTelemetryTimeout.push_back(&l);
-            if ((tag == "HB30" || tag == "HB300") &&
-                dataCallField(l.msg, "at_probe") == "fail")
+            if ((tag == "HB30" || tag == "HB300") && dataCallField(l.msg, "at_probe") == "fail")
                 evImxAtProbeFailed.push_back(&l);
             if (tag == "AT" && icontains(l.msg, "basic AT probe failed"))
                 evImxAtProbeFailed.push_back(&l);
             if (tag == "RECOVERY") {
                 const std::string level = dataCallField(l.msg, "level");
                 const std::string action = dataCallField(l.msg, "action");
-                if (level == "L2_PDP" &&
-                    (action == "soft-rebuild" || action == "escalate")) evImxRecoverPdp.push_back(&l);
-                if (level == "L3_CFUN" &&
-                    (action == "cycle" || action == "escalate")) evImxRecoverCfun.push_back(&l);
-                if (level == "L4_HARDWARE" &&
-                    (action == "power-cycle" || action == "enter")) evImxRecoverHardware.push_back(&l);
+                if (level == "L2_PDP" && (action == "soft-rebuild" || action == "escalate"))
+                    evImxRecoverPdp.push_back(&l);
+                if (level == "L3_CFUN" && (action == "cycle" || action == "escalate"))
+                    evImxRecoverCfun.push_back(&l);
+                if (level == "L4_HARDWARE" && (action == "power-cycle" || action == "enter"))
+                    evImxRecoverHardware.push_back(&l);
                 if (dataCallField(l.msg, "class") == "CONFIGURATION" ||
                     (action == "enter" && dataCallField(l.msg, "next") == "CONFIG_ERROR"))
                     evImxConfigError.push_back(&l);
             }
         }
+
         // RK3506J 不使用 IMX 的 FAILURE/RETRY/RECOVERY 标签；EC200A 与 EG912
         // 两条实际构建路径均把状态机前缀写入正文。以下均为 rk3506j_dialer.cpp
         // 的固定日志，不以普通 online=0 或 CSQ 值猜测故障。
         if (rkSource) {
             const auto e = rkEvidence(l);
-            if (e.retry) evRkRetry.push_back(&l);
-            if (e.sim) evRkSimNotReady.push_back(&l);
-            if (e.cpinDeadline) evRkCpinDeadline.push_back(&l);
-            if (e.registration) evRkRegistration.push_back(&l);
-            if (e.pdp) evRkPdp.push_back(&l);
-            if (e.host) evRkNetwork.push_back(&l);
-            if (e.at) evRkDeviceAt.push_back(&l);
-            if (e.ping) evRkPing.push_back(&l);
-            if (e.softRecovery) evRkSoftRecovery.push_back(&l);
-            if (e.hardRecovery) evRkHardRecovery.push_back(&l);
-            if (e.guard) evRkGuard.push_back(&l);
-            if (e.cacheRejected) evRkCacheRejected.push_back(&l);
-            if (e.cacheWriteFailed) evRkCacheWriteFailed.push_back(&l);
-            if (e.ipcPending) evRkIpcPending.push_back(&l);
-            if (e.queryFallback) evRkQueryFallback.push_back(&l);
-            if (e.hostFallback) evRkHostFallback.push_back(&l);
-            if (e.powerUnconfirmed) evRkPowerUnconfirmed.push_back(&l);
-            if (e.selectionFailed) evRkSelectionFailed.push_back(&l);
-            if (e.selectionVerified) evRkSelectionVerified.push_back(&l);
-            if (e.eg912Cycle) evRkEg912Cycle.push_back(&l);
-            if (l.tagText() == "INTERNET-READY" && rkInternetUp(l)) evRkInternetReady.push_back(&l);
+            if (e.retry)
+                evRkRetry.push_back(&l);
+            if (e.sim)
+                evRkSimNotReady.push_back(&l);
+            if (e.cpinDeadline)
+                evRkCpinDeadline.push_back(&l);
+            if (e.registration)
+                evRkRegistration.push_back(&l);
+            if (e.pdp)
+                evRkPdp.push_back(&l);
+            if (e.host)
+                evRkNetwork.push_back(&l);
+            if (e.at)
+                evRkDeviceAt.push_back(&l);
+            if (e.ping)
+                evRkPing.push_back(&l);
+            if (e.softRecovery)
+                evRkSoftRecovery.push_back(&l);
+            if (e.hardRecovery)
+                evRkHardRecovery.push_back(&l);
+            if (e.guard)
+                evRkGuard.push_back(&l);
+            if (e.cacheRejected)
+                evRkCacheRejected.push_back(&l);
+            if (e.cacheWriteFailed)
+                evRkCacheWriteFailed.push_back(&l);
+            if (e.ipcPending)
+                evRkIpcPending.push_back(&l);
+            if (e.queryFallback)
+                evRkQueryFallback.push_back(&l);
+            if (e.hostFallback)
+                evRkHostFallback.push_back(&l);
+            if (e.powerUnconfirmed)
+                evRkPowerUnconfirmed.push_back(&l);
+            if (e.selectionFailed)
+                evRkSelectionFailed.push_back(&l);
+            if (e.selectionVerified)
+                evRkSelectionVerified.push_back(&l);
+            if (e.eg912Cycle)
+                evRkEg912Cycle.push_back(&l);
+            if (l.tagText() == "INTERNET-READY" && rkInternetUp(l))
+                evRkInternetReady.push_back(&l);
         }
+
         if (isFaultStart(l.msg)) {
             faultOpen[l.sourceId] = true;
             faultStartTime[l.sourceId] = l.t;
         }
+
         int recoveryDuration = 0;
         if (isRecovered(l.msg, &recoveryDuration)) {
             const auto bound = sourceBounds.find(l.sourceId);
-            const long long sourceSpan = bound == sourceBounds.end() ? 0 :
-                                         bound->second.second - bound->second.first;
+            const long long sourceSpan = bound == sourceBounds.end() ? 0 : bound->second.second - bound->second.first;
             const bool selfContained = isSelfContainedRecovery(l.msg);
-            if (!faultOpen[l.sourceId] && !selfContained) evOrphanRecovery.push_back(&l);
-            else if (faultOpen[l.sourceId] &&
-                     crossesClockBase(faultStartTime[l.sourceId], l.t))
+            if (!faultOpen[l.sourceId] && !selfContained)
+                evOrphanRecovery.push_back(&l);
+            else if (faultOpen[l.sourceId] && crossesClockBase(faultStartTime[l.sourceId], l.t))
                 evImpossibleRecovery.push_back(&l);
-            else if (recoveryDuration < 0 ||
-                     static_cast<long long>(recoveryDuration) > sourceSpan + 60)
+            else if (recoveryDuration < 0 || static_cast<long long>(recoveryDuration) > sourceSpan + 60)
                 evImpossibleRecovery.push_back(&l);
             faultOpen[l.sourceId] = false;
         }
+
         // EC200A 门控日志(ec200a/dial/dial.cpp:1615/1622)。EG25 无对应日志:
         // 其门控是静默的(eg25/dial/dial.c:974 的 has_connected_once 条件)。
-        if (icontains(l.msg, "never-connected"))            evNeverConn.push_back(&l);
+        if (icontains(l.msg, "never-connected"))
+            evNeverConn.push_back(&l);
         bool netUp = false;
-        if (netHeartbeatInterface(l, netUp) && !netUp) evNetInterfaceNone.push_back(&l);
-        if (netHeartbeatTxWithoutRx(l)) evNetTxWithoutRx.push_back(&l);
-        if (icontains(l.msg, "Policy1:") || icontains(l.msg, "Policy2:") ||
-            icontains(l.msg, "policy="))                    evPolicy.push_back(&l);
+        if (netHeartbeatInterface(l, netUp) && !netUp)
+            evNetInterfaceNone.push_back(&l);
+        if (netHeartbeatTxWithoutRx(l))
+            evNetTxWithoutRx.push_back(&l);
+        if (icontains(l.msg, "Policy1:") || icontains(l.msg, "Policy2:") || icontains(l.msg, "policy="))
+            evPolicy.push_back(&l);
+
         // 按**事件**收,不是按行收:一次恢复会打多行。
         // 【样本实证】真机 EG25 1.31.15:一次 L1 打 2 行(LastErr + "REG down, skip redial",同秒);
         // 一次 L2 打 3 行(LastErr + "AT+CFUN=0 rsp" + "AT+CFUN=1 rsp",跨 3 秒)。
         // 按行计数会把 4 次 L1 报成 8 次、1 次 L2 报成 3 次。
         // 用时间邻近合并:恢复阶梯自身有 ≥60s 节流(eg25/dial/dial.c),故 30s 内的同级行必属同一次。
         auto pushEvent = [&l](std::vector<const LogLine*>& v) {
-            if (!v.empty() && l.t - v.back()->t <= 30) return;   // 同一次的后续行,不另计
+            if (!v.empty() && l.t - v.back()->t <= 30)
+                return;  // 同一次的后续行,不另计
             v.push_back(&l);
         };
-        if (l.tagText().compare(0, 11, "RECOVERY L1") == 0) pushEvent(evRecL1);
-        if (l.tagText().compare(0, 11, "RECOVERY L2") == 0) pushEvent(evRecL2);
-        if (l.tagText().compare(0, 11, "RECOVERY L3") == 0) pushEvent(evRecL3);
+
+        if (l.tagText().compare(0, 11, "RECOVERY L1") == 0)
+            pushEvent(evRecL1);
+        if (l.tagText().compare(0, 11, "RECOVERY L2") == 0)
+            pushEvent(evRecL2);
+        if (l.tagText().compare(0, 11, "RECOVERY L3") == 0)
+            pushEvent(evRecL3);
+
         // 2026-08-18 四份产品代码新增首次初始化 SIM 诊断。嵌套标记留在正文中:
         // FMT_SD 的外层标签是 INIT，FMT_SEAS 同样会先剥掉第一个 [INIT]。
         // 必须同时校验嵌套标记和固定措辞，不能见到普通的 "limited service" 就下结论。
-        const bool newNetworkRejected =
-            icontains(l.msg, "[SIM-ACCOUNT]") && icontains(l.msg, "NETWORK REJECTED");
-        const bool limitedService =
-            icontains(l.msg, "[SIM-REG]") && icontains(l.msg, "LIMITED SERVICE");
-        const bool suspectedAccount =
-            icontains(l.msg, "[SIM-ACCOUNT]") && icontains(l.msg, "SUSPECTED subscription");
-        const bool regQueryFailed =
-            icontains(l.msg, "[SIM-REG]") && icontains(l.msg, "CEREG query/parse failed");
+        const bool newNetworkRejected = icontains(l.msg, "[SIM-ACCOUNT]") && icontains(l.msg, "NETWORK REJECTED");
+        const bool limitedService = icontains(l.msg, "[SIM-REG]") && icontains(l.msg, "LIMITED SERVICE");
+        const bool suspectedAccount = icontains(l.msg, "[SIM-ACCOUNT]") && icontains(l.msg, "SUSPECTED subscription");
+        const bool regQueryFailed = icontains(l.msg, "[SIM-REG]") && icontains(l.msg, "CEREG query/parse failed");
 
         // 旧版 EC200A/open_dial 直出 Registration Denied；新版四产品改为带完整 AT
         // 证据的 NETWORK REJECTED。二者都只在明确 REG=3 时产生，属于同一类直证。
@@ -2695,20 +3159,29 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             evRegistrationIssue.push_back(&l);
             evHardRegistrationIssue.push_back(&l);
         }
+
         if (limitedService) {
             evLimited.push_back(&l);
             evRegistrationIssue.push_back(&l);
             evHardRegistrationIssue.push_back(&l);
         }
+
         if (suspectedAccount) {
             evSuspectedAccount.push_back(&l);
             evRegistrationIssue.push_back(&l);
         }
-        if (regQueryFailed) evRegQueryFail.push_back(&l);
-        if (hasCopsMode(l.msg, '1'))              evManualCops.push_back(&l);
-        if (isCopsAutoRestoreOk(l.msg))           evCopsAutoRestore.push_back(&l);
-        if (isRegistrationRecovered(l.msg))       evRegistrationRecovered.push_back(&l);
-        if (isManualSelectionCommand(l.msg))      evManualSelectionCommand.push_back(&l);
+
+        if (regQueryFailed)
+            evRegQueryFail.push_back(&l);
+        if (hasCopsMode(l.msg, '1'))
+            evManualCops.push_back(&l);
+        if (isCopsAutoRestoreOk(l.msg))
+            evCopsAutoRestore.push_back(&l);
+        if (isRegistrationRecovered(l.msg))
+            evRegistrationRecovered.push_back(&l);
+        if (isManualSelectionCommand(l.msg))
+            evManualSelectionCommand.push_back(&l);
+
         /* 数据服务未就绪:AP 侧数据服务(ql_netd)没起来 → ql_data_call_init 失败。
          * 【源码穷举】真代码实际打的就这两句(rtms_sdk HEAD, apps/modem_mng):
          *   "[INIT] data_call_init failed, ret=%d"
@@ -2717,22 +3190,19 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
          *   "data_call_init retrying, remaining=200/180/160..."。
          * 早先 C_NOTREADY 只在 enum 里有名字、**代码里从无任何赋值** —— 是死分支,
          * 永远不可能触发(三种数据源全空不是"没样本",是它根本是死的)。 */
-        if (icontains(l.msg, "data_call_init failed") ||
-            icontains(l.msg, "data_call_init retrying"))    evNotReady.push_back(&l);
+        if (icontains(l.msg, "data_call_init failed") || icontains(l.msg, "data_call_init retrying"))
+            evNotReady.push_back(&l);
 
         // EG25 2026-08 新增的持久化诊断。两行分别钉死 SDK 返回值和退出动作：
         //   [SDK] Initialization data call failure, ret=N
         //   [FATAL][PROCESS EXIT] QL_Data_Call_Init failed | ret=N | pid=P
         // 第二行经 FMT_SD 拆分后 tag=FATAL，msg 仍以 [PROCESS EXIT] 开头。
-        if (l.tagText() == "SDK" &&
-            icontains(l.msg, "Initialization data call failure"))
+        if (l.tagText() == "SDK" && icontains(l.msg, "Initialization data call failure"))
             evDataCallInitFailed.push_back(&l);
-        if (l.tagText() == "FATAL" &&
-            icontains(l.msg, "[PROCESS EXIT]") &&
+        if (l.tagText() == "FATAL" && icontains(l.msg, "[PROCESS EXIT]") &&
             icontains(l.msg, "QL_Data_Call_Init failed"))
             evDataCallFatalExit.push_back(&l);
-        if (l.tagText() == "SDK" &&
-            icontains(l.msg, "start data call failure"))
+        if (l.tagText() == "SDK" && icontains(l.msg, "start data call failure"))
             evDataCallStartFailed.push_back(&l);
         if (l.msg.find("DataCall disconnected") != std::string::npos) {
             const std::string initiator = dataCallField(l.msg, "initiator");
@@ -2745,25 +3215,28 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 ++unsolicitedReasons[reason];
             }
         }
-        if (l.tagText() == "APN" &&
-            (icontains(l.msg, "fp is NULL") ||
-             icontains(l.msg, "fread error") ||
-             icontains(l.msg, "json_root is NULL") ||
-             icontains(l.msg, "json_apn_array error")))
+
+        if (l.tagText() == "APN" && (icontains(l.msg, "fp is NULL") || icontains(l.msg, "fread error") ||
+                                     icontains(l.msg, "json_root is NULL") || icontains(l.msg, "json_apn_array error")))
             evApnLoadFailed.push_back(&l);
+
         // 只认"真的发现了 dump"这一句,不能见 [CPDUMP] 标签就报基带崩溃。
         // 【穷举证明】源码里 [CPDUMP] 共 9 种消息(rtms_sdk + open_dial 的 HEAD),
         // 只有 "Found %d existing CP dump(s)" 表示确实崩过;其余 8 种是例行挂载/卸载/
         // "No existing CP dumps." 等。
         // 【样本实证】真机 EC200A 1.28.4(完全正常的设备)只打了 "Bind mounted ..." 和
         // "No existing CP dumps.",旧实现据此报出 [严重] 基带崩溃 —— 假阳性,会误导排查方向。
-        if (l.tagText() == "CPDUMP" && icontains(l.msg, "existing CP dump") &&
-            !icontains(l.msg, "No existing") && historicalCpInventories.insert(l.msg).second)
+        if (l.tagText() == "CPDUMP" && icontains(l.msg, "existing CP dump") && !icontains(l.msg, "No existing") &&
+            historicalCpInventories.insert(l.msg).second)
             evCpdump.push_back(&l);
-        if (l.tagText() == "SLOT")                          evSlot.push_back(&l);
-        if (l.tagText() == "OPER")                          evOper.push_back(&l);
-        if (l.tagText() == "CFUN")                          evCfun.push_back(&l);
+        if (l.tagText() == "SLOT")
+            evSlot.push_back(&l);
+        if (l.tagText() == "OPER")
+            evOper.push_back(&l);
+        if (l.tagText() == "CFUN")
+            evCfun.push_back(&l);
     }
+
     if (!evOrphanRecovery.empty() || !evImpossibleRecovery.empty()) {
         Finding f;
         f.severity = 1;
@@ -2774,13 +3247,17 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         f.advice = "补充同进程的 unsynced/前序日志并核对系统授时记录；产品持续时间应使用"
                    "CLOCK_MONOTONIC。工具已保留原始恢复值作为异常证据。";
         for (const LogLine* line : evOrphanRecovery) {
-            if (f.ev.size() >= 3) break;
+            if (f.ev.size() >= 3)
+                break;
             f.ev.push_back(mkEv(*line));
         }
+
         for (const LogLine* line : evImpossibleRecovery) {
-            if (f.ev.size() >= 3) break;
+            if (f.ev.size() >= 3)
+                break;
             f.ev.push_back(mkEv(*line));
         }
+
         fs.push_back(std::move(f));
     }
 
@@ -2788,9 +3265,10 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     // v2 没有旧产品的 HEARTBEAT、fault timer 与 L1/L2/L3 阶梯。这里只使用
     // modem.c 的固定动作原文下结论，不从普通 ping fail/低 CSQ 猜根因。
     if (v2Platform) {
-        auto addV2Finding = [&](int severity, std::string title, std::string detail,
-                                std::string advice, const std::vector<const LogLine*>& evidence) {
-            if (evidence.empty()) return;
+        auto addV2Finding = [&](int severity, std::string title, std::string detail, std::string advice,
+                                const std::vector<const LogLine*>& evidence) {
+            if (evidence.empty())
+                return;
             Finding finding;
             finding.severity = severity;
             finding.title = std::move(title);
@@ -2798,85 +3276,73 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             finding.advice = std::move(advice);
             for (size_t i = 0; i < evidence.size() && i < 3; ++i)
                 finding.ev.push_back(mkEv(*evidence[i]));
-            if (!finding.ev.empty()) fs.push_back(std::move(finding));
+            if (!finding.ev.empty())
+                fs.push_back(std::move(finding));
         };
 
-        addV2Finding(
-            2,
-            "SIM 卡未插入，v2 正在低频轮询",
-            "日志明确返回 CME SIM not inserted。v2 对该分支采用 5s→10s→15s 的慢轮询，"
-            "不会因卡缺失耗尽普通 CPIN 重试并复位模组。",
-            "检查 SIM 卡槽、卡片方向和接触；插卡后确认出现 sim ok，再继续排查注网/APN。",
-            evV2NoSim);
-        addV2Finding(
-            2,
-            "网络长期未注册，v2 已触发模组复位",
-            "日志出现 No registered so long 或注册阶段失败后的 Reset modem 固定动作，"
-            "说明不是一次尚在等待的 CEREG/CGREG 采样。",
-            "核对同一时段的 CEREG/CGREG stat、LAC/CI/AcT、SIM 状态和运营商覆盖；"
-            "复位反复出现时优先查注册条件，而不是继续缩短复位周期。",
-            evV2LongUnregistered);
-        addV2Finding(
-            2,
-            "连续 ping 失败触发重初始化",
-            "v2 的 keepalive 重试次数已经达到配置上限，源码随后将状态转入 MD_ERROR，"
-            "重新执行模组初始化；单条 ping failed(x/y) 不会触发本结论。",
-            "结合 WAN down/up 断网区间和 CSQ/CEREG 指标判断是覆盖、注册还是数据面故障；"
-            "若频繁重初始化，保留完整周期日志。",
-            evV2PingReinit);
-        addV2Finding(
-            1,
-            "进入 READY 时 WAN 仍离线",
-            "READY 横幅明确记录 online=0。v2 会继续在 READY 周期内刷新注册、CSQ 和 WAN，"
-            "该行证明当时尚未联网，但不等同于进程初始化失败。",
-            "查看随后是否出现 WAN ping OK；若持续离线，再结合注册状态和 SIM/CSQ 证据处理。",
-            evV2ReadyOffline);
-        addV2Finding(
-            2,
-            "READY 状态失败并复位",
-            "日志出现 failed to in ready state，表明状态机从 MD_READY 进入错误处理并调用模组复位。",
-            "回看此前连续 ping、WAN online、CEREG/CGREG 与 CSQ；区分网络不可达和模组/AT 端口异常。",
-            evV2ReadyFailed);
+        addV2Finding(2, "SIM 卡未插入，v2 正在低频轮询",
+                     "日志明确返回 CME SIM not inserted。v2 对该分支采用 5s→10s→15s 的慢轮询，"
+                     "不会因卡缺失耗尽普通 CPIN 重试并复位模组。",
+                     "检查 SIM 卡槽、卡片方向和接触；插卡后确认出现 sim ok，再继续排查注网/APN。", evV2NoSim);
+        addV2Finding(2, "网络长期未注册，v2 已触发模组复位",
+                     "日志出现 No registered so long 或注册阶段失败后的 Reset modem 固定动作，"
+                     "说明不是一次尚在等待的 CEREG/CGREG 采样。",
+                     "核对同一时段的 CEREG/CGREG stat、LAC/CI/AcT、SIM 状态和运营商覆盖；"
+                     "复位反复出现时优先查注册条件，而不是继续缩短复位周期。",
+                     evV2LongUnregistered);
+        addV2Finding(2, "连续 ping 失败触发重初始化",
+                     "v2 的 keepalive 重试次数已经达到配置上限，源码随后将状态转入 MD_ERROR，"
+                     "重新执行模组初始化；单条 ping failed(x/y) 不会触发本结论。",
+                     "结合 WAN down/up 断网区间和 CSQ/CEREG 指标判断是覆盖、注册还是数据面故障；"
+                     "若频繁重初始化，保留完整周期日志。",
+                     evV2PingReinit);
+        addV2Finding(1, "进入 READY 时 WAN 仍离线",
+                     "READY 横幅明确记录 online=0。v2 会继续在 READY 周期内刷新注册、CSQ 和 WAN，"
+                     "该行证明当时尚未联网，但不等同于进程初始化失败。",
+                     "查看随后是否出现 WAN ping OK；若持续离线，再结合注册状态和 SIM/CSQ 证据处理。", evV2ReadyOffline);
+        addV2Finding(2, "READY 状态失败并复位",
+                     "日志出现 failed to in ready state，表明状态机从 MD_READY 进入错误处理并调用模组复位。",
+                     "回看此前连续 ping、WAN online、CEREG/CGREG 与 CSQ；区分网络不可达和模组/AT 端口异常。",
+                     evV2ReadyFailed);
     }
 
     // IMX6ULL 1.25.x 状态机诊断。每项均对应 imx6ull_dialer.cpp 的固定日志动作；
     // 不从 online=0、低 CSQ 或普通 NET 信息猜测根因。
     if (pi.plat == PLAT_IMX) {
-        auto addImxFinding = [&](int severity, std::string title, std::string detail,
-                                 std::string advice, const std::vector<const LogLine*>& evidence) {
-            if (evidence.empty()) return;
+        auto addImxFinding = [&](int severity, std::string title, std::string detail, std::string advice,
+                                 const std::vector<const LogLine*>& evidence) {
+            if (evidence.empty())
+                return;
             Finding finding;
             finding.severity = severity;
             finding.title = std::move(title);
             finding.detail = std::move(detail);
             finding.advice = std::move(advice);
-            for (size_t i = 0; i < evidence.size() && i < 3; ++i) finding.ev.push_back(mkEv(*evidence[i]));
+            for (size_t i = 0; i < evidence.size() && i < 3; ++i)
+                finding.ev.push_back(mkEv(*evidence[i]));
             fs.push_back(std::move(finding));
         };
+
         if (!evImxFailure.empty() || !evImxRetry.empty()) {
             std::vector<const LogLine*> evidence = evImxFailure;
             for (const LogLine* line : evImxRetry)
-                if (evidence.size() < 3) evidence.push_back(line);
-            addImxFinding(
-                2,
-                "IMX6ULL 拨号失败，已进入退避重试",
-                "【源码直证】旧版以 FAILURE/RETRY 记录退避；1.25.1 以 RECOVERY 的 class、level、"
-                "action、attempt 和 wait_s 记录同一动作。它们是恢复进行中的证据，不是联网恢复。",
-                "按证据中的 state、pdn、if 和 reason 分流排查；保留完整失败—恢复周期，确认重试是否反复耗尽。",
-                evidence);
+                if (evidence.size() < 3)
+                    evidence.push_back(line);
+            addImxFinding(2, "IMX6ULL 拨号失败，已进入退避重试",
+                          "【源码直证】旧版以 FAILURE/RETRY 记录退避；1.25.1 以 RECOVERY 的 class、level、"
+                          "action、attempt 和 wait_s 记录同一动作。它们是恢复进行中的证据，不是联网恢复。",
+                          "按证据中的 state、pdn、if 和 reason 分流排查；保留完整失败—恢复周期，确认重试是否反复耗尽。",
+                          evidence);
         }
-        addImxFinding(2, "IMX6ULL SIM 未就绪",
-                      "【源码直证】AT+CPIN 检查未返回 READY，状态机转入 FAILURE_RETRY。",
-                      "检查卡槽、卡接触、PIN 锁状态和 CPIN 原始响应；SIM 未就绪前继续拨号没有意义。",
-                      evImxSimNotReady);
+
+        addImxFinding(2, "IMX6ULL SIM 未就绪", "【源码直证】AT+CPIN 检查未返回 READY，状态机转入 FAILURE_RETRY。",
+                      "检查卡槽、卡接触、PIN 锁状态和 CPIN 原始响应；SIM 未就绪前继续拨号没有意义。", evImxSimNotReady);
         addImxFinding(2, "IMX6ULL 网络注册等待失败",
                       "【源码直证】CEREG 响应无法解析或在注册等待窗口内超时，状态机未进入正常数据拨号。",
-                      "核对 CEREG、CSQ、运营商选择和 AT 端口响应；区分无注册、响应损坏和覆盖问题。",
-                      evImxRegWait);
+                      "核对 CEREG、CSQ、运营商选择和 AT 端口响应；区分无注册、响应损坏和覆盖问题。", evImxRegWait);
         addImxFinding(2, "IMX6ULL PDP 数据连接失败",
                       "【源码直证】CID1 请求被拒、PDP 等待耗尽或状态不可解析，数据面尚未就绪。",
-                      "核对 APN/PDP 类型、QNETDEVCTL/QNETDEVSTATUS 原始响应和模组侧 PDP 上下文。",
-                      evImxPdp);
+                      "核对 APN/PDP 类型、QNETDEVCTL/QNETDEVSTATUS 原始响应和模组侧 PDP 上下文。", evImxPdp);
         addImxFinding(2, "IMX6ULL DHCP/IPv4/路由配置失败",
                       "【源码直证】DHCP 客户端失败或网卡没有 IPv4/默认路由，问题位于 AP 侧网络配置或链路可达性。",
                       "检查接口是否存在、udhcpc 进程与租约、IP/网关/路由/DNS；再复核探测端点可达性。",
@@ -2901,25 +3367,24 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                       evImxRecoverPdp);
         addImxFinding(1, "IMX6ULL 已执行 CFUN 射频恢复",
                       "【源码直证】RECOVERY level=L3_CFUN action=cycle 执行 CFUN=0/1，并受冷却时间限制。",
-                      "结合注册状态与 cooldown 观察；频繁升级说明 PDP 软重建未解决根因。",
-                      evImxRecoverCfun);
+                      "结合注册状态与 cooldown 观察；频繁升级说明 PDP 软重建未解决根因。", evImxRecoverCfun);
         addImxFinding(2, "IMX6ULL 已升级硬件级模组恢复",
                       "【源码直证】RECOVERY level=L4_HARDWARE 进入后会执行 power-cycle，并持久化冷却时间。",
                       "检查 USB/供电/模组硬件和此前 AT 失败；保留冷却期内的完整日志，避免把延迟动作误判为卡死。",
                       evImxRecoverHardware);
         addImxFinding(2, "IMX6ULL 拨号配置错误，恢复已停止",
                       "【源码直证】CONFIGURATION 类故障进入 CONFIG_ERROR，而非继续重拨或复位模组。",
-                      "修正 APN、PDP 类型等配置后重启服务；重拨、CFUN 和硬件复位不能修复配置值。",
-                      evImxConfigError);
+                      "修正 APN、PDP 类型等配置后重启服务；重拨、CFUN 和硬件复位不能修复配置值。", evImxConfigError);
     }
 
     // RK3506J 的两个实际构建分支（外置 EC200A / EG912 minimal）共用下列
     // bringup 与状态机文案。按来源/启动平台身份输出，避免把其它产品的普通
     // “failed” 文本错归入 RK3506。
     if (!rkSourcePlatforms.empty()) {
-        auto addRkFinding = [&](int severity, std::string title, std::string detail,
-                                std::string advice, const std::vector<const LogLine*>& evidence) {
-            if (evidence.empty()) return;
+        auto addRkFinding = [&](int severity, std::string title, std::string detail, std::string advice,
+                                const std::vector<const LogLine*>& evidence) {
+            if (evidence.empty())
+                return;
             Finding finding;
             finding.severity = severity;
             finding.title = std::move(title);
@@ -2929,34 +3394,33 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 finding.ev.push_back(mkEv(*evidence[index]));
             fs.push_back(std::move(finding));
         };
-        addRkFinding(2, "RK3506J SIM 未就绪",
-                     "【源码直证】CPIN 明确报告非 READY 状态或需要处理的 SIM 锁；初始化 transient 查询不作为永久故障证据。",
-                     "检查卡槽、卡接触和 PIN 锁；保留 CPIN 原始应答，确认不是 AT 通道超时。",
-                     evRkSimNotReady);
+
+        addRkFinding(
+            2, "RK3506J SIM 未就绪",
+            "【源码直证】CPIN 明确报告非 READY 状态或需要处理的 SIM 锁；初始化 transient 查询不作为永久故障证据。",
+            "检查卡槽、卡接触和 PIN 锁；保留 CPIN 原始应答，确认不是 AT 通道超时。", evRkSimNotReady);
         addRkFinding(2, "RK3506J LTE/EPS 未注册",
                      "【源码直证】注册等待耗尽后明确记录 LTE/EPS is not registered，当前尚不能建立数据连接。",
-                     "核对 CEREG、运营商选择、覆盖和 SIM 数据权限；不要仅凭一次 CSQ 数值归因。",
-                     evRkRegistration);
+                     "核对 CEREG、运营商选择、覆盖和 SIM 数据权限；不要仅凭一次 CSQ 数值归因。", evRkRegistration);
         addRkFinding(2, "RK3506J PDP/ECM 数据激活失败",
                      "【源码直证】PDP profile、CGACT 或 QNETDEVCTL 的固定 bringup 失败文案表明模组侧数据面未就绪。",
-                     "核对 APN、PDP 类型、CGACT 与 QNETDEVCTL 原始响应，再检查模组 profile。",
-                     evRkPdp);
+                     "核对 APN、PDP 类型、CGACT 与 QNETDEVCTL 原始响应，再检查模组 profile。", evRkPdp);
         addRkFinding(2, "RK3506J DHCP/IPv4 配置失败",
-                     "【源码直证】主机接口缺失、IP/路由不完整，或 DHCP/CGCONTRDP 明确失败；成功静态 IP 与开始回退不作为最终失败。",
-                     "检查接口存在性、udhcpc、IP/网关/默认路由和 CGCONTRDP 响应。",
-                     evRkNetwork);
+                     "【源码直证】主机接口缺失、IP/路由不完整，或 DHCP/CGCONTRDP 明确失败；成功静态 IP "
+                     "与开始回退不作为最终失败。",
+                     "检查接口存在性、udhcpc、IP/网关/默认路由和 CGCONTRDP 响应。", evRkNetwork);
         addRkFinding(2, "RK3506J 模组拓扑或 AT 通道不可用",
                      "【源码直证】设备发现/AT 端口报告不可用，或基本 AT/CFUN 就绪窗口耗尽、状态机报告传输失败。",
                      "检查 USB 枚举、option 驱动绑定、AT 端口节点及供电，并确认 AT 口和网卡属于同一模组。",
                      evRkDeviceAt);
         addRkFinding(1, "RK3506J 连通性探测失败",
-                     "【日志直证】状态机记录公网 PING 失败，或保留网络接管后 IP/路由完整但 internet=0；单次失败不等同于已完成重拨。",
-                     "结合随后 HB30 的 online、fail_streak/retry 和 FAILURE_RETRY 状态判断是否升级恢复。",
-                     evRkPing);
-        addRkFinding(2, "RK3506J 已进入失败重试状态",
-                     "【源码直证】FULL-DIAL/EC200A/EG912 状态机明确进入或转移到 FAILURE_RETRY；普通 REDIAL_AT 不等同该状态。",
-                     "从同一轮前序 bringup、注册、PDP、DHCP 和 AT 证据定位失败层级，保留恢复完成前的完整日志。",
-                     evRkRetry);
+                     "【日志直证】状态机记录公网 PING 失败，或保留网络接管后 IP/路由完整但 "
+                     "internet=0；单次失败不等同于已完成重拨。",
+                     "结合随后 HB30 的 online、fail_streak/retry 和 FAILURE_RETRY 状态判断是否升级恢复。", evRkPing);
+        addRkFinding(
+            2, "RK3506J 已进入失败重试状态",
+            "【源码直证】FULL-DIAL/EC200A/EG912 状态机明确进入或转移到 FAILURE_RETRY；普通 REDIAL_AT 不等同该状态。",
+            "从同一轮前序 bringup、注册、PDP、DHCP 和 AT 证据定位失败层级，保留恢复完成前的完整日志。", evRkRetry);
         addRkFinding(2, "RK3506J SIM 就绪等待耗尽",
                      "【日志直证】CPIN 的限时就绪窗口结束仍未获得可接受的 READY；单凭该总结不能确认缺卡或 PIN 锁。",
                      "检查前序 CPIN class/state、CME 原码和 AT 传输状态，区分 SIM 初始化、SIM 锁与 AT 不响应。",
@@ -2965,10 +3429,11 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                      "【源码直证】保留网络接管失败后进入 SOFT_RECOVERY，先尝试 AT/ECM 恢复。",
                      "结合前序 retained、CID、ECM、接口和公网结果定位接管失败层级；后续 PING 成功才证明公网恢复。",
                      evRkSoftRecovery);
-        addRkFinding(2, "RK3506J 已进入硬恢复阶段",
-                     "【日志直证】启动软恢复或运行期恢复耗尽，明确进入 HARD_RECOVERY；许可 allowed 本身不算执行动作。",
-                     "继续检查 CFUN、POWER/PWRKEY 和冷却日志，确认软关机或物理关机是否成功；不要仅凭阶段名认定已断电复位。",
-                     evRkHardRecovery);
+        addRkFinding(
+            2, "RK3506J 已进入硬恢复阶段",
+            "【日志直证】启动软恢复或运行期恢复耗尽，明确进入 HARD_RECOVERY；许可 allowed 本身不算执行动作。",
+            "继续检查 CFUN、POWER/PWRKEY 和冷却日志，确认软关机或物理关机是否成功；不要仅凭阶段名认定已断电复位。",
+            evRkHardRecovery);
         addRkFinding(0, "RK3506J 启动保留网络保护",
                      "【日志直证】启动期限制破坏性或硬件恢复以保护已有会话；缺少唤醒事件不证明冷启动。",
                      "结合 MQTT/PDP 保留状态和接管结果判断路径；关注 SOFT_RECOVERY/HARD_RECOVERY 的实际后续动作。",
@@ -2983,55 +3448,65 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                      evRkCacheWriteFailed);
         addRkFinding(0, "RK3506J 本地 IPC 等待就绪，拨号继续",
                      "【源码直证】NANOMSG 的 PUB/REQ-REP 后台重试；本地 IPC 尚不可用不阻塞拨号。",
-                     "检查 loopback 与本地端点；用公网成功、接管 internet 和心跳判断外网状态。",
-                     evRkIpcPending);
+                     "检查 loopback 与本地端点；用公网成功、接管 internet 和心跳判断外网状态。", evRkIpcPending);
         addRkFinding(0, "RK3506J AT 状态查询进入回退验证",
-                     "【日志直证】CGACT 查询不可用或 QNETDEVCTL 启动未确认，转入幂等激活/只读验证；此时尚不能断言最终数据激活失败。",
+                     "【日志直证】CGACT 查询不可用或 QNETDEVCTL "
+                     "启动未确认，转入幂等激活/只读验证；此时尚不能断言最终数据激活失败。",
                      "查看随后 CGACT/QNETDEVCTL 状态和公网 PING；只读完整状态行可能在末尾 OK 超时时仍被接受。",
                      evRkQueryFallback);
         addRkFinding(0, "RK3506J DHCP 尝试失败或进入静态 IP 回退",
                      "【日志直证】单次 DHCP 尝试失败或开始 CGCONTRDP 回退；静态 IP 成功及公网可达可以完成恢复。",
-                     "检查后续静态地址、网关、路由和 PING；仅在明确最终失败时判断主机网络配置故障。",
-                     evRkHostFallback);
-        addRkFinding(0, "RK3506J 首次公网 PING 成功",
-                     "【源码直证】每进程首次 PUBLIC PING OK 公告确认接口绑定的 223.5.5.5 可达，作为首次联网边沿。",
-                     "查看证据中的 path/retained、probe_ms、process_elapsed_ms 和 boot_ms；开机时长与墙钟时间分别解释。",
-                     evRkInternetReady);
+                     "检查后续静态地址、网关、路由和 PING；仅在明确最终失败时判断主机网络配置故障。", evRkHostFallback);
+        addRkFinding(
+            0, "RK3506J 首次公网 PING 成功",
+            "【源码直证】每进程首次 PUBLIC PING OK 公告确认接口绑定的 223.5.5.5 可达，作为首次联网边沿。",
+            "查看证据中的 path/retained、probe_ms、process_elapsed_ms 和 boot_ms；开机时长与墙钟时间分别解释。",
+            evRkInternetReady);
         addRkFinding(1, "RK3506J 模组关机/上电未确认",
                      "【日志直证】CFUN 软关机未确认、PWRKEY 脉冲操作失败或关机结果不明；源码可能跳过300秒上电冷却。",
                      "核对具体失败步骤与后续 USB/AT 枚举；不能将未确认关机或允许硬恢复当作已完成物理断电。",
                      evRkPowerUnconfirmed);
         addRkFinding(1, "RK3506J 选网事务失败或结果未验证",
-                     "【日志直证】CFUN/手动选网/查询事务未完成，或历史/候选 PLMN 未通过验证；历史失败转入扫描，候选失败尝试下一项。",
-                     "检查对应 COPS command/status/ok 与后续候选结果；ECM 停止被拒绝不单独算选网失败，选网失败也不证明公网已掉线。",
+                     "【日志直证】CFUN/手动选网/查询事务未完成，或历史/候选 PLMN "
+                     "未通过验证；历史失败转入扫描，候选失败尝试下一项。",
+                     "检查对应 COPS command/status/ok 与后续候选结果；ECM "
+                     "停止被拒绝不单独算选网失败，选网失败也不证明公网已掉线。",
                      evRkSelectionFailed);
         addRkFinding(0, "RK3506J 历史 PLMN 选网验证成功",
-                     "【源码直证】history PLMN verified 确认指定数字 PLMN 的手动 LTE 查询结果通过严格验证，随后进入 WRITE_TO_MODEM；它不代表已注册或公网已通。",
+                     "【源码直证】history PLMN verified 确认指定数字 PLMN 的手动 LTE 查询结果通过严格验证，随后进入 "
+                     "WRITE_TO_MODEM；它不代表已注册或公网已通。",
                      "结合后续 CEREG、PDP/ECM 和公网 PING；旧版 set operator OK 与单独 AT 命令不能提升为这条验证结论。",
                      evRkSelectionVerified);
-        addRkFinding(0, "RK3506J EG912 恢复循环重新开始",
-                     "【源码直证】EG912 第四级恢复重新进入 FAILURE_RETRY 恢复循环；此事件不是恢复完成。",
-                     "检查随后 FAILURE_RETRY/POWER 日志及公网恢复结果；不要把循环重启当作已经切换运营商或已完成物理复位。",
-                     evRkEg912Cycle);
+        addRkFinding(
+            0, "RK3506J EG912 恢复循环重新开始",
+            "【源码直证】EG912 第四级恢复重新进入 FAILURE_RETRY 恢复循环；此事件不是恢复完成。",
+            "检查随后 FAILURE_RETRY/POWER 日志及公网恢复结果；不要把循环重启当作已经切换运营商或已完成物理复位。",
+            evRkEg912Cycle);
     }
+
     if (!evTrafficSkipped.empty()) {
         Finding finding;
         finding.severity = 1;
         finding.title = "流量采样/持久化已跳过";
-        finding.detail = "【源码直证】共享流量监控跳过采样或数据库持久化；原因可能是接口计数器、数据库、保存记录、时钟或线程异常。count 是监控累计失败次数，日志仅首次和每十次输出；不是丢包数或连续断网次数。";
-        finding.advice = "按 reason 检查接口和存储/时间；落盘失败可保留内存累计值，接口读失败是缺失采样，均不能单独证明公网断网或总流量归零。";
+        finding.detail = "【源码直证】共享流量监控跳过采样或数据库持久化；原因可能是接口计数器、数据库、保存记录、时钟"
+                         "或线程异常。count 是监控累计失败次数，日志仅首次和每十次输出；不是丢包数或连续断网次数。";
+        finding.advice =
+            "按 reason "
+            "检查接口和存储/时间；落盘失败可保留内存累计值，接口读失败是缺失采样，均不能单独证明公网断网或总流量归零。";
         for (size_t i = 0; i < evTrafficSkipped.size() && i < 3; ++i)
             finding.ev.push_back(mkEv(*evTrafficSkipped[i]));
         fs.push_back(std::move(finding));
     }
+
     // SDK 注网摘要是 2026-07/08 四份产品代码新增字段。只有 SRV!=FULL 且 DENY>0
     // 才作为注网异常线索；不能统一当作明确拒绝，SDK 编码表按来源区分。
     std::vector<const MetricRow*> evSdkDeny;
     for (const auto& m : mets)
-        if (m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0) evSdkDeny.push_back(&m);
+        if (m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0)
+            evSdkDeny.push_back(&m);
 
-    const bool metsTimeSorted = std::is_sorted(
-        mets.begin(), mets.end(), [](const MetricRow& a, const MetricRow& b) { return a.t < b.t; });
+    const bool metsTimeSorted =
+        std::is_sorted(mets.begin(), mets.end(), [](const MetricRow& a, const MetricRow& b) { return a.t < b.t; });
     const bool slotTimeSorted = linePtrTimesSorted(evSlot);
     const bool operTimeSorted = linePtrTimesSorted(evOper);
     const bool cfunTimeSorted = linePtrTimesSorted(evCfun);
@@ -3048,6 +3523,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         const LogLine* recovered = nullptr;
         const LogLine* selectCommand = nullptr;
     };
+
     std::vector<ManualCopsCycle> manualCopsCycles;
     std::set<std::uint16_t> manualCopsRecoveredSources;
     for (const LogLine* restored : evCopsAutoRestore) {
@@ -3056,25 +3532,39 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         const LogLine* recovered = nullptr;
         for (const LogLine* candidate : evManualCops)
             if (candidate->sourceId == restored->sourceId && candidate->lineNo < restored->lineNo &&
-                (!manual || candidate->lineNo > manual->lineNo)) manual = candidate;
-        if (!manual) continue;
+                (!manual || candidate->lineNo > manual->lineNo))
+                manual = candidate;
+        if (!manual)
+            continue;
         for (const LogLine* candidate : evManualSelectionCommand)
             if (candidate->sourceId == restored->sourceId && candidate->lineNo < manual->lineNo &&
-                (!selected || candidate->lineNo > selected->lineNo)) selected = candidate;
+                (!selected || candidate->lineNo > selected->lineNo))
+                selected = candidate;
         for (const LogLine* candidate : evRegistrationRecovered)
             if (candidate->sourceId == restored->sourceId && candidate->lineNo > restored->lineNo) {
                 recovered = candidate;
                 break;
             }
         manualCopsCycles.push_back({manual, restored, recovered, selected});
-        if (recovered) manualCopsRecoveredSources.insert(restored->sourceId);
+        if (recovered)
+            manualCopsRecoveredSources.insert(restored->sourceId);
     }
 
     /* Cold-start registration duration and expected reg_check retry logging.
      * This is intentionally separate from an outage: no successful data path
      * has been observed yet. */
-    struct StartupRegistrationBlock { const LogLine* begin; const LogLine* end; long long seconds; };
-    struct RegistrationLogGap { const LogLine* before; const LogLine* after; long long seconds; };
+    struct StartupRegistrationBlock {
+        const LogLine* begin;
+        const LogLine* end;
+        long long seconds;
+    };
+
+    struct RegistrationLogGap {
+        const LogLine* before;
+        const LogLine* after;
+        long long seconds;
+    };
+
     std::vector<StartupRegistrationBlock> startupRegistrationBlocks;
     std::vector<RegistrationLogGap> registrationLogGaps;
     std::map<std::uint16_t, const LogLine*> pendingStart;
@@ -3085,12 +3575,18 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     for (const auto& item : lines) {
         const LogLine& l = lineRef(item);
         if (isProgramStartBanner(l.msg)) {
-            connectedSources.erase(l.sourceId); pendingStart.erase(l.sourceId);
-            activeReg.erase(l.sourceId); previousRegLine.erase(l.sourceId); largestGap.erase(l.sourceId);
-        }
-        if (isRegCheckEntered(l.msg)) {
-            activeReg[l.sourceId] = &l; previousRegLine[l.sourceId] = &l;
+            connectedSources.erase(l.sourceId);
+            pendingStart.erase(l.sourceId);
+            activeReg.erase(l.sourceId);
+            previousRegLine.erase(l.sourceId);
             largestGap.erase(l.sourceId);
+        }
+
+        if (isRegCheckEntered(l.msg)) {
+            activeReg[l.sourceId] = &l;
+            previousRegLine[l.sourceId] = &l;
+            largestGap.erase(l.sourceId);
+
             /* A CFUN retry can enter reg_check again before the first attach.
              * Preserve the very first attempt so the reported cold-start wait
              * is not shortened by an intermediate recovery action. */
@@ -3098,27 +3594,34 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 pendingStart[l.sourceId] = &l;
             continue;
         }
+
         auto active = activeReg.find(l.sourceId);
         if (active != activeReg.end()) {
             const LogLine* previous = previousRegLine[l.sourceId];
             if (previous && l.t >= previous->t && l.t - previous->t > 120) {
                 RegistrationLogGap gap{previous, &l, l.t - previous->t};
                 auto old = largestGap.find(l.sourceId);
-                if (old == largestGap.end() || gap.seconds > old->second.seconds) largestGap[l.sourceId] = gap;
+                if (old == largestGap.end() || gap.seconds > old->second.seconds)
+                    largestGap[l.sourceId] = gap;
             }
+
             previousRegLine[l.sourceId] = &l;
             if (isRegistrationRecovered(l.msg)) {
                 auto start = pendingStart.find(l.sourceId);
-                if (start != pendingStart.end() && l.t >= start->second->t &&
-                    l.t - start->second->t >= 60)
+                if (start != pendingStart.end() && l.t >= start->second->t && l.t - start->second->t >= 60)
                     startupRegistrationBlocks.push_back({start->second, &l, l.t - start->second->t});
                 auto gap = largestGap.find(l.sourceId);
-                if (gap != largestGap.end()) registrationLogGaps.push_back(gap->second);
-                activeReg.erase(l.sourceId); previousRegLine.erase(l.sourceId);
-                largestGap.erase(l.sourceId); pendingStart.erase(l.sourceId);
+                if (gap != largestGap.end())
+                    registrationLogGaps.push_back(gap->second);
+                activeReg.erase(l.sourceId);
+                previousRegLine.erase(l.sourceId);
+                largestGap.erase(l.sourceId);
+                pendingStart.erase(l.sourceId);
             }
         }
-        if (isRegistrationRecovered(l.msg)) connectedSources.insert(l.sourceId);
+
+        if (isRegistrationRecovered(l.msg))
+            connectedSources.insert(l.sourceId);
     }
 
     // ---- 1. 从未联网(SIM/账户问题):恢复阶梯被 has_connected_once 门控 ----
@@ -3127,14 +3630,15 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         const long long firstGate = evNeverConn.front()->t;
         for (const auto& item : lines) {
             const LogLine& line = lineRef(item);
-            if (line.t >= firstGate) break;
+            if (line.t >= firstGate)
+                break;
             bool interfaceUp = false;
-            if (isNetworkConnectedNotification(line.msg) ||
-                (netHeartbeatInterface(line, interfaceUp) && interfaceUp)) {
+            if (isNetworkConnectedNotification(line.msg) || (netHeartbeatInterface(line, interfaceUp) && interfaceUp)) {
                 connectedBeforeGate = true;
                 break;
             }
         }
+
         Finding f;
         f.severity = 2;
         if (connectedBeforeGate) {
@@ -3150,15 +3654,16 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                        "不推断设备历史联网情况；从未 ping 通的进程只停留在 L0。";
             f.advice = "查 SIM 数据权限、APN 和注册状态；补充故障前日志确认设备历史联网状态。";
         }
-        for (size_t i = 0; i < evNeverConn.size() && i < 3; ++i) f.ev.push_back(mkEv(*evNeverConn[i]));
+
+        for (size_t i = 0; i < evNeverConn.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evNeverConn[i]));
         fs.push_back(std::move(f));
     }
 
     if (!evNetInterfaceNone.empty()) {
         Finding f;
         f.severity = 2;
-        f.title = "数据接口不可用: [HEARTBEAT-NET] 记录 IF=(none) " +
-                  std::to_string(evNetInterfaceNone.size()) + " 次";
+        f.title = "数据接口不可用: [HEARTBEAT-NET] 记录 IF=(none) " + std::to_string(evNetInterfaceNone.size()) + " 次";
         f.detail = "【日志直证】SIM/LTE 注册状态与数据接口是不同层次。IF=(none) 表示设备当时"
                    "没有可用数据接口；它可直接证明 PDP/数据呼叫未建立或已释放，不能单独定责"
                    "为运营商、SIM、APN 或模组。";
@@ -3179,9 +3684,12 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         for (const ManualCopsCycle& cycle : manualCopsCycles) {
             if (cycle.recovered) {
                 ++complete;
-                if (!firstComplete) firstComplete = &cycle;
-            } else if (!firstIncomplete) firstIncomplete = &cycle;
+                if (!firstComplete)
+                    firstComplete = &cycle;
+            } else if (!firstIncomplete)
+                firstIncomplete = &cycle;
         }
+
         if (firstComplete) {
             Finding f;
             f.severity = 1;
@@ -3200,11 +3708,11 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.ev.push_back(mkEv(*firstComplete->recovered));
             fs.push_back(std::move(f));
         }
+
         if (firstIncomplete) {
             Finding f;
             f.severity = 0;
-            f.title = "手动选网已解锁但未见后续注册成功 " +
-                      std::to_string(manualCopsCycles.size() - complete) + " 次";
+            f.title = "手动选网已解锁但未见后续注册成功 " + std::to_string(manualCopsCycles.size() - complete) + " 次";
             f.detail = "【日志直证】已确认 mode=1 并收到 COPS=0 成功应答，但当前日志片段之后"
                        "没有注册/连接成功证据；不能把这类周期宣称为已恢复。";
             f.advice = "补充 COPS=0 后的 CEREG、状态迁移和 DataCall 日志；同时检查运营商覆盖与账户状态。";
@@ -3226,13 +3734,14 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     if (!startupRegistrationBlocks.empty()) {
         const StartupRegistrationBlock* longest = &startupRegistrationBlocks.front();
         for (const auto& block : startupRegistrationBlocks)
-            if (block.seconds > longest->seconds) longest = &block;
+            if (block.seconds > longest->seconds)
+                longest = &block;
         Finding f;
         f.severity = longest->seconds >= 300 ? 1 : 0;
-        f.title = "冷启动注册阻塞 " + std::to_string(startupRegistrationBlocks.size()) +
-                  " 次，最长 " + fmtDuration(longest->seconds);
-        f.detail = "【日志直证】从首次 sim_op -> reg_check 到首次注册/连接成功持续 " +
-                   fmtDuration(longest->seconds) + "；此时尚未观察到已联网业务，因此不计为运行期断网。";
+        f.title = "冷启动注册阻塞 " + std::to_string(startupRegistrationBlocks.size()) + " 次，最长 " +
+                  fmtDuration(longest->seconds);
+        f.detail = "【日志直证】从首次 sim_op -> reg_check 到首次注册/连接成功持续 " + fmtDuration(longest->seconds) +
+                   "；此时尚未观察到已联网业务，因此不计为运行期断网。";
         f.advice = "结合 COPS 模式、CEREG、运营商选择与射频恢复动作排查；不要把冷启动注册耗时"
                    "混入已联网后的可用率或断网统计。";
         f.ev.push_back(mkEv(*longest->begin));
@@ -3243,11 +3752,12 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     if (!registrationLogGaps.empty()) {
         const RegistrationLogGap* longest = &registrationLogGaps.front();
         for (const auto& gap : registrationLogGaps)
-            if (gap.seconds > longest->seconds) longest = &gap;
+            if (gap.seconds > longest->seconds)
+                longest = &gap;
         Finding f;
         f.severity = 1;
-        f.title = "注册等待期存在日志空洞 " + std::to_string(registrationLogGaps.size()) +
-                  " 段，最大 " + fmtDuration(longest->seconds);
+        f.title = "注册等待期存在日志空洞 " + std::to_string(registrationLogGaps.size()) + " 段，最大 " +
+                  fmtDuration(longest->seconds);
         f.detail = "【日志直证】reg_check 活动期间相邻已记录行相隔 " + fmtDuration(longest->seconds) +
                    "；无法仅凭该空洞判定进程阻塞、日志丢失或模组命令阻塞，恢复因果链存在观测盲区。";
         f.advice = "补充同时间段系统日志、进程/看门狗日志及存储 I/O 信息；产品侧可为 reg_check 重试"
@@ -3259,37 +3769,52 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
 
     if (!evDenied.empty()) {
         Finding f;
-        f.severity = 2; f.title = "网络注册被明确拒绝(REG=3)";
-        f.detail = "【源码直证】产品输出 NETWORK REJECTED/Registration Denied；这是明确拒绝证据，仍需原始 AT 响应确定具体原因。";
+        f.severity = 2;
+        f.title = "网络注册被明确拒绝(REG=3)";
+        f.detail = "【源码直证】产品输出 NETWORK REJECTED/Registration Denied；这是明确拒绝证据，仍需原始 AT "
+                   "响应确定具体原因。";
         f.advice = "核对 SIM/运营商签约、漫游权限与 COPS 原始响应；明确拒绝本身不能证明欠费。";
-        for (size_t i = 0; i < evDenied.size() && i < 3; ++i) f.ev.push_back(mkEv(*evDenied[i]));
+        for (size_t i = 0; i < evDenied.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evDenied[i]));
         fs.push_back(std::move(f));
     }
+
     if (!evSdkDeny.empty()) {
         Finding f;
-        f.severity = 1; f.title = "SDK 注网异常(SDK DENY)";
-        f.detail = "【日志直证】SDK 摘要存在 SRV!=2(FULL) 且 DENY>0；该组合表示注册/服务异常线索，不能统一提升为 REG=3 明确拒绝，更不能直接判断账户欠费。FULL 状态下的非零原因码可能是残留值。";
-        f.advice = "保留 SRV/RAT/DENY 原码，结合 CEREG/COPS/CEER 与 SDK 版本核验；EG25 SDK 的 DENY=9 为无合适小区、10 为网络失败、21 为消息类型不存在或未实现；勿套用 EC200A 编码表。";
+        f.severity = 1;
+        f.title = "SDK 注网异常(SDK DENY)";
+        f.detail = "【日志直证】SDK 摘要存在 SRV!=2(FULL) 且 DENY>0；该组合表示注册/服务异常线索，不能统一提升为 REG=3 "
+                   "明确拒绝，更不能直接判断账户欠费。FULL 状态下的非零原因码可能是残留值。";
+        f.advice = "保留 SRV/RAT/DENY 原码，结合 CEREG/COPS/CEER 与 SDK 版本核验；EG25 SDK 的 DENY=9 为无合适小区、10 "
+                   "为网络失败、21 为消息类型不存在或未实现；勿套用 EC200A 编码表。";
+
         // 原因名称仅使用有来源证据的 artery/EG25 平台，其他 SDK 保留原码。
         const auto platforms = sourceDisplayPlatforms(lines);
         for (size_t i = 0; i < evSdkDeny.size() && i < 3; ++i) {
             const MetricRow& m = *evSdkDeny[i];
-            Evidence e; e.lineNo = m.lineNo; e.ts = fmtTime(m.t, "MD");
-            e.text = "SDK注网摘要 SRV=" + std::to_string(m.srvVal) +
-                     " RAT=" + (m.rat.empty() ? "-" : m.rat) + " DENY=" + std::to_string(m.denyVal);
+            Evidence e;
+            e.lineNo = m.lineNo;
+            e.ts = fmtTime(m.t, "MD");
+            e.text = "SDK注网摘要 SRV=" + std::to_string(m.srvVal) + " RAT=" + (m.rat.empty() ? "-" : m.rat) +
+                     " DENY=" + std::to_string(m.denyVal);
             auto platform = platforms.find(sourceIdAtLine(lines, m.lineNo));
             auto sourceLine = std::lower_bound(lines.begin(), lines.end(), m.lineNo,
-                [](const auto& item, size_t n) { return lineRef(item).lineNo < n; });
-            const bool arteryEnvelope = sourceLine != lines.end() &&
-                lineRef(*sourceLine).lineNo == m.lineNo && lineRef(*sourceLine).fmt == FMT_SEAS;
-            if (arteryEnvelope || (platform != platforms.end() &&
-                (platform->second == PLAT_ARTERY || platform->second == PLAT_EG25))) {
-                if (m.denyVal == 9) e.text += " (EG25 SDK: NO_SUITABLE_CELLS_IN_LA)";
-                if (m.denyVal == 10) e.text += " (EG25 SDK: NETWORK_FAILURE)";
-                if (m.denyVal == 21) e.text += " (EG25 SDK: MESSAGE_TYPE_NON_EXISTENT_OR_NOT_IMPLEMENTED)";
+                                               [](const auto& item, size_t n) { return lineRef(item).lineNo < n; });
+            const bool arteryEnvelope = sourceLine != lines.end() && lineRef(*sourceLine).lineNo == m.lineNo &&
+                                        lineRef(*sourceLine).fmt == FMT_SEAS;
+            if (arteryEnvelope ||
+                (platform != platforms.end() && (platform->second == PLAT_ARTERY || platform->second == PLAT_EG25))) {
+                if (m.denyVal == 9)
+                    e.text += " (EG25 SDK: NO_SUITABLE_CELLS_IN_LA)";
+                if (m.denyVal == 10)
+                    e.text += " (EG25 SDK: NETWORK_FAILURE)";
+                if (m.denyVal == 21)
+                    e.text += " (EG25 SDK: MESSAGE_TYPE_NON_EXISTENT_OR_NOT_IMPLEMENTED)";
             }
+
             f.ev.push_back(std::move(e));
         }
+
         fs.push_back(std::move(f));
     }
 
@@ -3301,7 +3826,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                    "这表示普通分组数据可能不可用，但不能仅凭该行断言欠费或停机。";
         f.advice = "核对证据中的 CEREG/COPS/CGATT/CEER 原始响应，并向运营商确认业务开通、"
                    "漫游和网络限制状态。";
-        for (size_t i = 0; i < evLimited.size() && i < 3; ++i) f.ev.push_back(mkEv(*evLimited[i]));
+        for (size_t i = 0; i < evLimited.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evLimited[i]));
         fs.push_back(std::move(f));
     }
 
@@ -3327,6 +3853,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.advice = "保留行内 CPIN/CEREG/COPS/CGATT/CEER 证据，向运营商核验账户、数据业务和"
                        "漫游权限；同时排除覆盖与选网问题。";
         }
+
         for (size_t i = 0; i < evSuspectedAccount.size() && i < 3; ++i)
             f.ev.push_back(mkEv(*evSuspectedAccount[i]));
         fs.push_back(std::move(f));
@@ -3344,28 +3871,34 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         fs.push_back(std::move(f));
     }
 
-    auto addArterySimFinding = [&](const std::vector<const LogLine*>& ev,
-                                   int severity, const char* title,
+    auto addArterySimFinding = [&](const std::vector<const LogLine*>& ev, int severity, const char* title,
                                    const char* detail, const char* advice) {
-        if (ev.empty()) return;
+        if (ev.empty())
+            return;
         Finding f;
         f.severity = severity;
         f.title = title;
         f.detail = detail;
         f.advice = advice;
-        for (size_t i = 0; i < ev.size() && i < 3; ++i) f.ev.push_back(mkEv(*ev[i]));
+        for (size_t i = 0; i < ev.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*ev[i]));
         fs.push_back(std::move(f));
     };
-    addArterySimFinding(evArterySimAbsent, 2, "artery SIM 卡未检测到",
+
+    addArterySimFinding(
+        evArterySimAbsent, 2, "artery SIM 卡未检测到",
         "【源码直证】MCM 返回 card_state=0xb02(ABSENT)。重复状态日志每约 60 秒提醒一次，日志条数不是查询次数。",
         "检查 SIM 卡槽、卡片接触和供电；插卡后确认应用状态变为 READY。");
-    addArterySimFinding(evArterySimLocked, 2, "artery SIM 应用需要解锁或已锁定",
+    addArterySimFinding(
+        evArterySimLocked, 2, "artery SIM 应用需要解锁或已锁定",
         "【源码直证】MCM 返回 PIN/PUK、个性化解锁或永久锁定的应用状态；以证据行中的 app_3gpp_state 原码区分具体情况。",
         "核对应用状态原码并按卡的实际锁定类型处理，勿将其归因于运营商账户停机。");
     addArterySimFinding(evArterySimOther, 1, "artery SIM 应用尚未就绪",
-        "【源码直证】MCM 返回非 READY 应用状态；证据行同时保留卡态与应用态。未知态、初始化态或卡错误不能仅凭这一行确定根因。",
-        "检查证据中的 card_state、app_3gpp_state 及后续状态变化；结合模组与卡槽日志排查。");
-    addArterySimFinding(evArterySimQueryFailed, 1, "artery SIM 状态查询失败",
+                        "【源码直证】MCM 返回非 READY "
+                        "应用状态；证据行同时保留卡态与应用态。未知态、初始化态或卡错误不能仅凭这一行确定根因。",
+                        "检查证据中的 card_state、app_3gpp_state 及后续状态变化；结合模组与卡槽日志排查。");
+    addArterySimFinding(
+        evArterySimQueryFailed, 1, "artery SIM 状态查询失败",
         "【源码直证】SIM 客户端未初始化或 MCM 查询返回错误；此时没有可靠卡状态，不能推断未插卡或账户异常。",
         "检查 SIM 客户端初始化及 SDK 返回码，再获取有效卡状态。");
 
@@ -3378,12 +3911,13 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     if (!evNotReady.empty()) {
         Finding f;
         f.severity = 2;
-        f.title  = "数据服务未就绪:ql_data_call_init 失败/重试 " + std::to_string(evNotReady.size()) + " 次";
+        f.title = "数据服务未就绪:ql_data_call_init 失败/重试 " + std::to_string(evNotReady.size()) + " 次";
         f.detail = "AP 侧数据服务(ql_netd)没起来,不是射频或信号问题。此时 AT 命令照样能通"
                    "(那走 ql_atc),但数据业务起不来,表现为\"信号好好的却上不了网\"。";
         f.advice = "查 ql_netd 守护进程是否在跑(ps);重拨/CFUN/换卡对这类故障都无效 —— "
                    "它们治射频侧,而问题在 AP 侧的数据服务。";
-        for (size_t i = 0; i < evNotReady.size() && i < 3; ++i) f.ev.push_back(mkEv(*evNotReady[i]));
+        for (size_t i = 0; i < evNotReady.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evNotReady[i]));
         fs.push_back(std::move(f));
     }
 
@@ -3394,10 +3928,13 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         const LogLine* restartAfterExit = nullptr;
         for (const LogLine* fatal : evDataCallFatalExit) {
             for (const LogLine* started : evProgramStart) {
-                if (started->t <= fatal->t) continue;
+                if (started->t <= fatal->t)
+                    continue;
+
                 // 只关联 5 分钟内的启动。数小时/数天后的启动可能来自维护、整机重启或
                 // 另一轮故障，不能仅凭先后顺序归到本次 Init 退出。
-                if (started->t - fatal->t > 5 * 60) continue;
+                if (started->t - fatal->t > 5 * 60)
+                    continue;
                 if (!restartAfterExit || started->t < restartAfterExit->t)
                     restartAfterExit = started;
             }
@@ -3406,18 +3943,22 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         Finding f;
         f.severity = 2;
         f.title = "QL_Data_Call_Init 初始化失败";
-        if (!evDataCallFatalExit.empty()) f.title += "，进程主动退出";
-        if (restartAfterExit) f.title += "，随后检测到重新启动";
+        if (!evDataCallFatalExit.empty())
+            f.title += "，进程主动退出";
+        if (restartAfterExit)
+            f.title += "，随后检测到重新启动";
         if (!evDataCallFatalExit.empty()) {
             f.detail = "【日志直证】[FATAL][PROCESS EXIT] 明确记录 SDK 初始化返回值和退出进程 PID。";
         } else {
             f.detail = "【日志直证】SDK 明确记录 Initialization data call failure；本段未见紧随其后的"
                        " [FATAL][PROCESS EXIT]，可能是旧固件或日志在两行之间截断。";
         }
+
         if (restartAfterExit) {
             f.detail += " 后续又出现版本启动横幅，证明进程后来重新启动；这与上层守护拉起路径相符，"
                         "但仅凭拨号日志不能证明守护进程名称。";
         }
+
         f.detail += " 【源码直证】当前 EG25 路径随后 log_close() 并 exit(EXIT_FAILURE)，"
                     "sw_mng 在进程缺失时启动 /usr/bin/modem_mng。";
         f.advice = "先查 AP 侧 ql_netd/数据服务是否就绪及 SDK 返回码；再对照 sw_mng 日志确认"
@@ -3426,7 +3967,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.ev.push_back(mkEv(*evDataCallInitFailed[i]));
         for (size_t i = 0; i < evDataCallFatalExit.size() && f.ev.size() < 3; ++i)
             f.ev.push_back(mkEv(*evDataCallFatalExit[i]));
-        if (restartAfterExit && f.ev.size() < 3) f.ev.push_back(mkEv(*restartAfterExit));
+        if (restartAfterExit && f.ev.size() < 3)
+            f.ev.push_back(mkEv(*restartAfterExit));
         fs.push_back(std::move(f));
     }
 
@@ -3437,8 +3979,10 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         for (const LogLine* exited : evArteryDataCallExit) {
             for (const LogLine* started : evProgramStart) {
                 // 多文件合并时不能把另一来源的版本横幅关联到本次退出。
-                if (started->sourceId != exited->sourceId || started->t <= exited->t) continue;
-                if (started->t - exited->t > 5 * 60) continue;
+                if (started->sourceId != exited->sourceId || started->t <= exited->t)
+                    continue;
+                if (started->t - exited->t > 5 * 60)
+                    continue;
                 if (!restartAfterExit || started->t < restartAfterExit->t)
                     restartAfterExit = started;
             }
@@ -3446,9 +3990,9 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
 
         Finding f;
         f.severity = 2;
-        f.title = "artery DataCall 初始化失败，进程主动退出 " +
-                  std::to_string(evArteryDataCallExit.size()) + " 次";
-        if (restartAfterExit) f.title += "，随后检测到重新启动";
+        f.title = "artery DataCall 初始化失败，进程主动退出 " + std::to_string(evArteryDataCallExit.size()) + " 次";
+        if (restartAfterExit)
+            f.title += "，随后检测到重新启动";
         f.detail = "【日志直证】artery 明确记录 DataCall 初始化失败后以 status 0 退出，"
                    "交由 supervisor 重启；该版本会先尝试回收本进程启动的 RBMaster。";
         if (restartAfterExit)
@@ -3461,47 +4005,54 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 break;
             }
         }
+
         for (const LogLine* exited : evArteryDataCallExit) {
-            if (f.ev.size() >= 3) break;
+            if (f.ev.size() >= 3)
+                break;
             f.ev.push_back(mkEv(*exited));
         }
-        if (restartAfterExit && f.ev.size() < 3) f.ev.push_back(mkEv(*restartAfterExit));
+
+        if (restartAfterExit && f.ev.size() < 3)
+            f.ev.push_back(mkEv(*restartAfterExit));
         fs.push_back(std::move(f));
     }
 
     if (!evLicenseBackupFailed.empty()) {
         Finding f;
         f.severity = 1;
-        f.title = "Roamlink license 备份失败，重启已延后 " +
-                  std::to_string(evLicenseBackupFailed.size()) + " 次";
+        f.title = "Roamlink license 备份失败，重启已延后 " + std::to_string(evLicenseBackupFailed.size()) + " 次";
         f.detail = "【日志直证】license 备份失败后，程序明确记录已延后重启。"
                    "【源码直证】当前 artery/EG25 会保留原有有效备份，并在 300 秒激活"
                    "窗口内每 30 秒重新检测和尝试备份；这不是已完成激活，也不是已降级"
                    " FORCE_SIM。";
         f.advice = "检查 license 主文件与备份目录的挂载、剩余空间、读写权限和文件系统 I/O"
                    " 错误；保留同一激活窗口内后续的备份成功、重启或超时降级日志。";
-        if (!evLicensePending.empty()) f.ev.push_back(mkEv(*evLicensePending.back()));
+        if (!evLicensePending.empty())
+            f.ev.push_back(mkEv(*evLicensePending.back()));
         for (const LogLine* line : evLicenseBackupFailed) {
-            if (f.ev.size() >= 3) break;
+            if (f.ev.size() >= 3)
+                break;
             f.ev.push_back(mkEv(*line));
         }
+
         fs.push_back(std::move(f));
     }
 
     if (!evLicenseAtomicallyBackedUp.empty()) {
         Finding f;
         f.severity = 0;
-        f.title = "Roamlink license 已原子备份 " +
-                  std::to_string(evLicenseAtomicallyBackedUp.size()) + " 次";
+        f.title = "Roamlink license 已原子备份 " + std::to_string(evLicenseAtomicallyBackedUp.size()) + " 次";
         f.detail = "【日志直证】license 已记录为原子备份完成。"
                    "【源码直证】当前实现先写入同目录临时文件并 fsync，再 rename 到正式"
                    "备份路径并同步父目录，因而写入中断不会截断既有有效备份。";
         f.advice = "这是备份持久化成功信息；若它属于首次下载激活流程，可继续查看随后"
                    "的重启及启动后的 license probe 日志确认完整闭环。";
         for (const LogLine* line : evLicenseAtomicallyBackedUp) {
-            if (f.ev.size() >= 3) break;
+            if (f.ev.size() >= 3)
+                break;
             f.ev.push_back(mkEv(*line));
         }
+
         fs.push_back(std::move(f));
     }
 
@@ -3512,8 +4063,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     if (!evLicenseTimeout.empty()) {
         Finding f;
         f.severity = 2;
-        f.title = "Roamlink license 下载超时，已降级 FORCE_SIM " +
-                  std::to_string(evLicenseTimeout.size()) + " 次";
+        f.title = "Roamlink license 下载超时，已降级 FORCE_SIM " + std::to_string(evLicenseTimeout.size()) + " 次";
         f.detail = "【日志直证】license 缺失且无可用备份后，设备先通过物理 SIM 联网并启动 "
                    "RBMaster 下载；日志明确记录等待上限届满后放弃下载。"
                    "【源码直证】此分支保持 FORCE_SIM、停止 RBMaster 释放 SIM 通道，并主动"
@@ -3521,12 +4071,16 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                    "Net disconnected 是应用处置动作，不作为非预期网络断线统计。";
         f.advice = "采集同一时间窗的 RBMaster、DNS/resolv.conf、许可证下载 URL 的 HTTP/TLS"
                    " 错误及服务端请求日志；同时检查 license 主文件和备份文件的写入、挂载与持久化。";
-        if (!evLicenseMissing.empty()) f.ev.push_back(mkEv(*evLicenseMissing.front()));
-        if (!evLicensePending.empty() && f.ev.size() < 3) f.ev.push_back(mkEv(*evLicensePending.back()));
+        if (!evLicenseMissing.empty())
+            f.ev.push_back(mkEv(*evLicenseMissing.front()));
+        if (!evLicensePending.empty() && f.ev.size() < 3)
+            f.ev.push_back(mkEv(*evLicensePending.back()));
         for (const LogLine* line : evLicenseTimeout) {
-            if (f.ev.size() >= 3) break;
+            if (f.ev.size() >= 3)
+                break;
             f.ev.push_back(mkEv(*line));
         }
+
         fs.push_back(std::move(f));
     }
 
@@ -3546,9 +4100,11 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     auto summarizeReasons = [](const std::map<std::string, size_t>& counts) {
         std::string text;
         for (const auto& entry : counts) {
-            if (!text.empty()) text += ", ";
+            if (!text.empty())
+                text += ", ";
             text += entry.first + "=" + std::to_string(entry.second);
         }
+
         return text.empty() ? std::string("无 reason 字段") : text;
     };
 
@@ -3558,8 +4114,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         f.title = "应用主动停止 DataCall " + std::to_string(evDataCallAppStop.size()) + " 次";
         f.detail = "【源码直证】当前 artery 在调用 QL_Data_Call_Stop 前保存 reason，并在 30 秒内按"
                    " profile/IP family 匹配断开回调后输出 initiator=APP_STOP。reason 汇总: " +
-                   summarizeReasons(appStopReasons) +
-                   "。这些事件是应用主动动作，不作为 SDK 非预期掉线或网络故障证据。";
+                   summarizeReasons(appStopReasons) + "。这些事件是应用主动动作，不作为 SDK 非预期掉线或网络故障证据。";
         f.advice = "按 reason 回看对应状态机动作；START_CALL_TIMEOUT 重点检查拨号建立阶段，"
                    "其余切换/重拨原因结合 ROAMLINK、REG 和 TCP 诊断。";
         for (size_t i = 0; i < evDataCallAppStop.size() && i < 3; ++i)
@@ -3570,8 +4125,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     if (!evDataCallUnsolicited.empty()) {
         Finding f;
         f.severity = 1;
-        f.title = "SDK 非预期断线(SDK_URC/UNSOLICITED) " +
-                  std::to_string(evDataCallUnsolicited.size()) + " 次";
+        f.title = "SDK 非预期断线(SDK_URC/UNSOLICITED) " + std::to_string(evDataCallUnsolicited.size()) + " 次";
         f.detail = "【日志直证】断开回调明确记录 initiator=SDK_URC reason=UNSOLICITED。"
                    "【源码直证】当前 artery 仅在回调未命中 30 秒内同 profile/IP family 的应用 Stop"
                    " 原因时输出该组合，因此它是非预期链路断开证据；reason 汇总: " +
@@ -3603,17 +4157,20 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         f.detail = "快照中出现 CP down、DSP_COM_ERR、MSOCKET_DOWN 或 CP-ASSERT。该证据可确认"
                    "基带通信异常/重置，但不能仅凭文本确定固件、硬件、供电、射频或网络侧根因。";
         f.advice = "保留同一时段的 CP dump、SEH/内核日志和供电/射频记录，交由模组厂商按符号表解析。";
-        for (size_t i = 0; i < evCpCrash.size() && i < 4; ++i) f.ev.push_back(mkEv(*evCpCrash[i]));
+        for (size_t i = 0; i < evCpCrash.size() && i < 4; ++i)
+            f.ev.push_back(mkEv(*evCpCrash[i]));
         fs.push_back(std::move(f));
     }
+
     if (!evCpdump.empty()) {
         Finding f;
         f.severity = 1;
-        f.title  = "检测到历史 CP dump 库存（不能定为当前崩溃）";
+        f.title = "检测到历史 CP dump 库存（不能定为当前崩溃）";
         f.detail = "[CPDUMP] Found N existing CP dump(s) 只说明启动时存储中已有转储；它不提供本次"
                    "启动内的崩溃时刻，也不能作为当前事故或独立崩溃次数。相同库存文本已去重。";
         f.advice = "如需定责，请以 CP down/CP-ASSERT 等当前事件及对应 dump 文件为准，并让模组厂商解析。";
-        for (size_t i = 0; i < evCpdump.size() && i < 3; ++i) f.ev.push_back(mkEv(*evCpdump[i]));
+        for (size_t i = 0; i < evCpdump.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evCpdump[i]));
         fs.push_back(std::move(f));
     }
 
@@ -3623,6 +4180,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
         if (outage.recovered && (!longestRecovered || outage.dur > longestRecovered->dur))
             longestRecovered = &outage;
     }
+
     if (longestRecovered && longestRecovered->dur >= 30 * 60) {
         Finding f;
         f.severity = 2;
@@ -3633,10 +4191,14 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                    "不要用其他日期的短时弱信号或注册事件替代本事故定责。";
         for (const auto& item : lines) {
             const LogLine& line = lineRef(item);
-            if (line.lineNo == longestRecovered->startLine && f.ev.empty()) f.ev.push_back(mkEv(line));
-            if (line.lineNo == longestRecovered->endLine && f.ev.size() < 2) f.ev.push_back(mkEv(line));
+            if (line.lineNo == longestRecovered->startLine && f.ev.empty())
+                f.ev.push_back(mkEv(line));
+            if (line.lineNo == longestRecovered->endLine && f.ev.size() < 2)
+                f.ev.push_back(mkEv(line));
         }
-        if (!f.ev.empty()) fs.push_back(std::move(f));
+
+        if (!f.ev.empty())
+            fs.push_back(std::move(f));
     }
 
     // ---- 5. 逐次断网根因分类（全量历史汇总，不替代主事故定责） ----
@@ -3648,134 +4210,183 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     //                 或产品有边界的 SUSPECTED subscription issue；查询失败不作为根因。
     size_t causeCnt[C_N] = {0};
     std::vector<Evidence> causeEv[C_N];
-    if (!v2Platform) for (const auto& o : outs) {
-        long long lo = o.start - 90, hi = o.recovered ? o.end : lineRef(lines.back()).t;
-        const std::uint16_t outageSourceId = sourceIdAtLine(lines, o.startLine);
-        int  minCsq = 999; bool sawZeroRx = false;
-        int  minRsrp = 9999;                              // 窗口内最低 RSRP(dBm,越低越差)
-        const MetricRow* mZero = nullptr; const MetricRow* mWeak = nullptr;
-        const MetricRow* mRsrp = nullptr; const MetricRow* mDeny = nullptr;
-        auto mb = mets.begin(), me = mets.end();
-        if (metsTimeSorted) {
-            mb = std::lower_bound(mets.begin(), mets.end(), lo,
-                                  [](const MetricRow& m, long long t) { return m.t < t; });
-            me = std::upper_bound(mb, mets.end(), hi,
-                                  [](long long t, const MetricRow& m) { return t < m.t; });
-        }
-        for (auto it = mb; it != me; ++it) {
-            const auto& m = *it;
-            if (!metsTimeSorted && (m.t < lo || m.t > hi)) continue;
-            const bool lteReference = usesLteEngineeringReference(m.rat);
-            if (lteReference && m.csqVal >= 0 && m.csqVal < minCsq) { minCsq = m.csqVal; mWeak = &m; }
-            if (lteReference && m.rsrp < 0 && m.rsrp < minRsrp) { minRsrp = m.rsrp; mRsrp = &m; }
-            if (m.drx == 0) { sawZeroRx = true; if (!mZero) mZero = &m; }
-            if (!mDeny && m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0) mDeny = &m;
-        }
-        // RSRP ≤ -110 dBm 是本项目的 LTE 弱覆盖工程观察线。它比 CSQ<10 更灵敏:
-        // CSQ 是 0-31 粗档,可能读到中间值,而 RSRP 已探底 —— 覆盖问题此时才现形。
-        bool weakByRsrp = (minRsrp <= -110);
-        bool weakByCsq  = (minCsq < 10 && mWeak);
-        const LogLine* sw = nullptr;
-        const std::vector<const LogLine*>* switchEvents[] = { &evSlot, &evOper, &evCfun };
-        const bool switchSorted[] = { slotTimeSorted, operTimeSorted, cfunTimeSorted };
-        // 保持旧证据选择顺序:后面的类别覆盖前面(SLOT < OPER < CFUN)。
-        for (size_t i = 0; i < 3; ++i) {
-            const LogLine* candidate =
-                firstLineInWindow(*switchEvents[i], lo, hi, switchSorted[i]);
-            if (candidate) sw = candidate;
-        }
-        /* An explicit DENY/limited-service indication remains authoritative.
-         * A heuristic SUSPECTED account message does not: when the same outage
-         * overlaps a complete manual-COPS -> COPS=0 -> recovery chain, report
-         * that conflict instead of making SUSPECTED the root cause. */
-        const LogLine* dn = firstLineInWindow(evHardRegistrationIssue, lo, hi,
-                                              hardRegistrationIssueTimeSorted);
-        const LogLine* suspected = firstLineInWindow(evSuspectedAccount, lo, hi,
-                                                     suspectedAccountTimeSorted);
-        bool completedManualCycleInWindow = false;
-        for (const ManualCopsCycle& cycle : manualCopsCycles) {
-            if (cycle.manual && cycle.recovered && cycle.manual->sourceId == outageSourceId &&
-                cycle.manual->t <= hi && cycle.recovered->t >= lo) {
-                completedManualCycleInWindow = true;
-                break;
+    if (!v2Platform)
+        for (const auto& o : outs) {
+            long long lo = o.start - 90, hi = o.recovered ? o.end : lineRef(lines.back()).t;
+            const std::uint16_t outageSourceId = sourceIdAtLine(lines, o.startLine);
+            int minCsq = 999;
+            bool sawZeroRx = false;
+            int minRsrp = 9999;  // 窗口内最低 RSRP(dBm,越低越差)
+            const MetricRow* mZero = nullptr;
+            const MetricRow* mWeak = nullptr;
+            const MetricRow* mRsrp = nullptr;
+            const MetricRow* mDeny = nullptr;
+            auto mb = mets.begin(), me = mets.end();
+            if (metsTimeSorted) {
+                mb = std::lower_bound(mets.begin(), mets.end(), lo,
+                                      [](const MetricRow& m, long long t) { return m.t < t; });
+                me = std::upper_bound(mb, mets.end(), hi, [](long long t, const MetricRow& m) { return t < m.t; });
             }
-        }
-        if (!dn && suspected && !completedManualCycleInWindow) dn = suspected;
-        const LogLine* nr = firstLineInWindow(evNotReady, lo, hi, notReadyTimeSorted);
 
-        Cause c = C_UNKNOWN;
-        const LogLine* evl = nullptr;
-        const MetricRow* evm = nullptr;
-        if (dn)                          { c = C_DENIED;    evl = dn; }
-        else if (mDeny)                  { c = C_DENIED;    evm = mDeny; }
-        /* 服务未就绪排在信号/假死之前:数据服务没起来时,CSQ 再好也拨不上,
-         * 归因成"弱信号"会把排查引偏(见 ec200a 数据服务未就绪诊断的教训)。 */
-        else if (nr)                     { c = C_NOTREADY;  evl = nr; }
-        else if (sw)                     { c = C_SWITCHING; evl = sw; }
-        else if (weakByCsq || weakByRsrp) {
-            c = C_WEAK;
-            evm = weakByCsq ? mWeak : mRsrp;   // CSQ 命中优先用 CSQ 证据,否则用 RSRP
-        }
-        else if (sawZeroRx && mZero)     { c = C_DATADEAD;  evm = mZero; }
-        // L0 自愈 + 无上述特征 → SDK 短断网(链路抖动)。区别于"未能归类":
-        // 未能归类是"查不出",这里是"查出来了——SDK 在 L0 就自愈,是网络侧瞬时抖动"。
-        else if (o.l0Recovered)          { c = C_SDK_L0; }
-        causeCnt[c]++;
-        if (causeEv[c].size() < 3) {
-            Evidence e;
-            if (evl) e = mkEv(*evl);
-            else if (evm) {
-                e.lineNo = evm->lineNo; e.ts = fmtTime(evm->t, "MD");
-                if (c == C_DENIED) {
-                    e.text = "SDK注网摘要 SRV=" + std::to_string(evm->srvVal) +
-                             " RAT=" + (evm->rat.empty() ? "-" : evm->rat) +
-                             " DENY=" + std::to_string(evm->denyVal) +
-                             " (断网 " + fmtTime(o.start, "MD") + " 起)";
-                } else {
-                    std::string sig = "心跳 CSQ=" +
-                                      (evm->csqRaw >= 0 ? std::to_string(evm->csqRaw) : "-");
-                    if (evm->rssiVal < 0) sig += " RSSI=" + std::to_string(evm->rssiVal) + "dBm";
-                    if (evm->rsrp < 0) sig += " RSRP=" + std::to_string(evm->rsrp) + "dBm";
-                    if (evm->snr10 != 100000) sig += " SNR=" + fmtSnr10(evm->snr10) + "dB";
-                    sig += " ΔRX=" +
-                           (evm->drx != LLONG_MIN ? std::to_string(evm->drx) : "-");
-                    e.text = sig + " (断网 " + fmtTime(o.start, "MD") + " 起)";
+            for (auto it = mb; it != me; ++it) {
+                const auto& m = *it;
+                if (!metsTimeSorted && (m.t < lo || m.t > hi))
+                    continue;
+                const bool lteReference = usesLteEngineeringReference(m.rat);
+                if (lteReference && m.csqVal >= 0 && m.csqVal < minCsq) {
+                    minCsq = m.csqVal;
+                    mWeak = &m;
                 }
-            } else {
-                e.lineNo = o.startLine; e.ts = fmtTime(o.start, "FULL");
-                e.text = "断网起点(无弱信号/无 ΔRX=0/无切卡选网痕迹)";
+
+                if (lteReference && m.rsrp < 0 && m.rsrp < minRsrp) {
+                    minRsrp = m.rsrp;
+                    mRsrp = &m;
+                }
+
+                if (m.drx == 0) {
+                    sawZeroRx = true;
+                    if (!mZero)
+                        mZero = &m;
+                }
+
+                if (!mDeny && m.srvVal >= 0 && m.srvVal != 2 && m.denyVal > 0)
+                    mDeny = &m;
             }
-            causeEv[c].push_back(e);
+
+            // RSRP ≤ -110 dBm 是本项目的 LTE 弱覆盖工程观察线。它比 CSQ<10 更灵敏:
+            // CSQ 是 0-31 粗档,可能读到中间值,而 RSRP 已探底 —— 覆盖问题此时才现形。
+            bool weakByRsrp = (minRsrp <= -110);
+            bool weakByCsq = (minCsq < 10 && mWeak);
+            const LogLine* sw = nullptr;
+            const std::vector<const LogLine*>* switchEvents[] = {&evSlot, &evOper, &evCfun};
+            const bool switchSorted[] = {slotTimeSorted, operTimeSorted, cfunTimeSorted};
+
+            // 保持旧证据选择顺序:后面的类别覆盖前面(SLOT < OPER < CFUN)。
+            for (size_t i = 0; i < 3; ++i) {
+                const LogLine* candidate = firstLineInWindow(*switchEvents[i], lo, hi, switchSorted[i]);
+                if (candidate)
+                    sw = candidate;
+            }
+
+            /* An explicit DENY/limited-service indication remains authoritative.
+             * A heuristic SUSPECTED account message does not: when the same outage
+             * overlaps a complete manual-COPS -> COPS=0 -> recovery chain, report
+             * that conflict instead of making SUSPECTED the root cause. */
+            const LogLine* dn = firstLineInWindow(evHardRegistrationIssue, lo, hi, hardRegistrationIssueTimeSorted);
+            const LogLine* suspected = firstLineInWindow(evSuspectedAccount, lo, hi, suspectedAccountTimeSorted);
+            bool completedManualCycleInWindow = false;
+            for (const ManualCopsCycle& cycle : manualCopsCycles) {
+                if (cycle.manual && cycle.recovered && cycle.manual->sourceId == outageSourceId &&
+                    cycle.manual->t <= hi && cycle.recovered->t >= lo) {
+                    completedManualCycleInWindow = true;
+                    break;
+                }
+            }
+
+            if (!dn && suspected && !completedManualCycleInWindow)
+                dn = suspected;
+            const LogLine* nr = firstLineInWindow(evNotReady, lo, hi, notReadyTimeSorted);
+
+            Cause c = C_UNKNOWN;
+            const LogLine* evl = nullptr;
+            const MetricRow* evm = nullptr;
+            if (dn) {
+                c = C_DENIED;
+                evl = dn;
+            } else if (mDeny) {
+                c = C_DENIED;
+                evm = mDeny;
+            }
+
+            /* 服务未就绪排在信号/假死之前:数据服务没起来时,CSQ 再好也拨不上,
+             * 归因成"弱信号"会把排查引偏(见 ec200a 数据服务未就绪诊断的教训)。 */
+            else if (nr) {
+                c = C_NOTREADY;
+                evl = nr;
+            } else if (sw) {
+                c = C_SWITCHING;
+                evl = sw;
+            } else if (weakByCsq || weakByRsrp) {
+                c = C_WEAK;
+                evm = weakByCsq ? mWeak : mRsrp;  // CSQ 命中优先用 CSQ 证据,否则用 RSRP
+            } else if (sawZeroRx && mZero) {
+                c = C_DATADEAD;
+                evm = mZero;
+            }
+
+            // L0 自愈 + 无上述特征 → SDK 短断网(链路抖动)。区别于"未能归类":
+            // 未能归类是"查不出",这里是"查出来了——SDK 在 L0 就自愈,是网络侧瞬时抖动"。
+            else if (o.l0Recovered) {
+                c = C_SDK_L0;
+            }
+
+            causeCnt[c]++;
+            if (causeEv[c].size() < 3) {
+                Evidence e;
+                if (evl)
+                    e = mkEv(*evl);
+                else if (evm) {
+                    e.lineNo = evm->lineNo;
+                    e.ts = fmtTime(evm->t, "MD");
+                    if (c == C_DENIED) {
+                        e.text = "SDK注网摘要 SRV=" + std::to_string(evm->srvVal) +
+                                 " RAT=" + (evm->rat.empty() ? "-" : evm->rat) +
+                                 " DENY=" + std::to_string(evm->denyVal) + " (断网 " + fmtTime(o.start, "MD") + " 起)";
+                    } else {
+                        std::string sig = "心跳 CSQ=" + (evm->csqRaw >= 0 ? std::to_string(evm->csqRaw) : "-");
+                        if (evm->rssiVal < 0)
+                            sig += " RSSI=" + std::to_string(evm->rssiVal) + "dBm";
+                        if (evm->rsrp < 0)
+                            sig += " RSRP=" + std::to_string(evm->rsrp) + "dBm";
+                        if (evm->snr10 != 100000)
+                            sig += " SNR=" + fmtSnr10(evm->snr10) + "dB";
+                        sig += " ΔRX=" + (evm->drx != LLONG_MIN ? std::to_string(evm->drx) : "-");
+                        e.text = sig + " (断网 " + fmtTime(o.start, "MD") + " 起)";
+                    }
+                } else {
+                    e.lineNo = o.startLine;
+                    e.ts = fmtTime(o.start, "FULL");
+                    e.text = "断网起点(无弱信号/无 ΔRX=0/无切卡选网痕迹)";
+                }
+
+                causeEv[c].push_back(e);
+            }
         }
-    }
     for (int c = 0; c < C_N; ++c) {
-        if (!causeCnt[c] || causeEv[c].empty()) continue;
+        if (!causeCnt[c] || causeEv[c].empty())
+            continue;
         Finding f;
         f.severity = (c == C_UNKNOWN) ? 0 : 1;
-        f.title = "全量日志历史汇总:断网根因分类:" + std::string(kCauseName[c]) + " —— " +
-                  std::to_string(causeCnt[c]) + " 次 / 共 " + std::to_string(outs.size()) + " 次";
+        f.title = "全量日志历史汇总:断网根因分类:" + std::string(kCauseName[c]) + " —— " + std::to_string(causeCnt[c]) +
+                  " 次 / 共 " + std::to_string(outs.size()) + " 次";
         switch (c) {
+
         case C_WEAK:
             f.detail = "断网窗口内 LTE 心跳 CSQ 最小值 < 10,或 RSRP ≤ -110dBm,"
                        "命中本项目的弱覆盖工程观察线；该线不是 3GPP 统一故障等级。";
             f.advice = "查天线连接/馈线/安装位置;确认是否处于覆盖边缘或屏蔽环境。重拨无法解决覆盖问题。";
             break;
+
         case C_DATADEAD:
             f.detail = "断网窗口内 RX_PKT 不增长(ΔRX=0)但链路仍在,典型的数据面假死:"
                        "控制面看似正常,业务无数据。";
             f.advice = "这类故障靠软重拨(L1)通常无效,需射频重置(L2 CFUN=0/1)或切通道;"
                        "确认恢复阶梯是否被门控(见本页其它结论)。";
             break;
+
         case C_SWITCHING:
             f.detail = "断网窗口内出现 [SLOT]/[OPER]/[CFUN] 动作,断网发生在切卡/选网/射频重置期间,"
                        "属该动作的预期代价(切卡实测 ~6-8s 数据中断)。";
             f.advice = "若次数不多可视为正常;频繁发生则查切卡触发条件是否过于敏感。";
             break;
+
         case C_DENIED:
             f.detail = "断网窗口内出现注册明确拒绝、受限服务、产品有边界的疑似账户诊断，"
                        "或 SDK 摘要为 SRV!=2 且 DENY>0。证据等级以上方对应独立结论为准。";
-            f.advice = "按对应注册/服务异常证据核查网络、SIM 与运营商，并保留原始 AT 响应；SDK DENY 不等于明确拒绝，SUSPECTED 不能当成停机实锤。";
+            f.advice = "按对应注册/服务异常证据核查网络、SIM 与运营商，并保留原始 AT 响应；SDK DENY "
+                       "不等于明确拒绝，SUSPECTED 不能当成停机实锤。";
             break;
+
         case C_NOTREADY:
             f.detail = "断网窗口内出现 data_call_init 失败/重试 —— **AP 侧数据服务(ql_netd)没起来**,"
                        "不是射频或信号问题。此时 AT 命令照样能通(那走 ql_atc),但数据业务起不来,"
@@ -3783,6 +4394,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.advice = "查 ql_netd 守护进程是否在跑(ps);这类故障靠重拨/CFUN/换卡都无效 —— "
                        "它们治的是射频侧,而问题在 AP 侧的数据服务。";
             break;
+
         case C_SDK_L0:
             f.detail = "断网短暂,SDK auto-reconnect 在 L0 阶段即自愈(未升级到 L1 软重拨/L2 射频重置),"
                        "且窗口内信号正常、无数据假死、无切卡。这类是网络侧瞬时抖动(基站释放/PDP "
@@ -3790,12 +4402,14 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.advice = "无需排查设备:设备已自愈。若频率高或影响业务,查网络侧 —— 运营商专网策略、"
                        "基站 inactivity timer、PDP/承载超时;可要求运营商侧排查周期性断连。";
             break;
+
         default:
             f.detail = "该次断网窗口内未见弱信号、ΔRX=0、切卡/选网或注册被拒的痕迹,"
                        "证据不足以归类(工具不臆测根因)。";
             f.advice = "结合“时间线”页人工查看该时段;必要时提高日志级别复现。";
             break;
         }
+
         f.ev = causeEv[c];
         fs.push_back(std::move(f));
     }
@@ -3806,37 +4420,45 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     if (!v2Platform && !evRecL3.empty()) {
         Finding f;
         f.severity = 2;
-        f.title  = "L3 已触发:进程主动 exit,交由 watchdog/init 重启";
+        f.title = "L3 已触发:进程主动 exit,交由 watchdog/init 重启";
         const int loggedThreshold = loggedL3ThresholdSeconds(evRecL3.front()->msg);
-        f.detail = loggedThreshold > 0
-                   ? "该事件日志实际写明 L3 阈值为 " + fmtDuration(loggedThreshold) +
-                     "；阶梯已走到尽头。L3 只是纯进程退出，清不掉挂死的 CP 固件。"
-                   : "该事件已触发 L3；日志未提供可解析的实际阈值，工具不套用平台默认值。"
-                     "L3 只是纯进程退出，清不掉挂死的 CP 固件。";
+        f.detail = loggedThreshold > 0 ? "该事件日志实际写明 L3 阈值为 " + fmtDuration(loggedThreshold) +
+                                             "；阶梯已走到尽头。L3 只是纯进程退出，清不掉挂死的 CP 固件。"
+                                       : "该事件已触发 L3；日志未提供可解析的实际阈值，工具不套用平台默认值。"
+                                         "L3 只是纯进程退出，清不掉挂死的 CP 固件。";
         f.advice = "若 L3 反复出现,说明重启无法解决,应查 SIM/账户/覆盖或模组固件。";
-        for (size_t i = 0; i < evRecL3.size() && i < 3; ++i) f.ev.push_back(mkEv(*evRecL3[i]));
+        for (size_t i = 0; i < evRecL3.size() && i < 3; ++i)
+            f.ev.push_back(mkEv(*evRecL3[i]));
         fs.push_back(std::move(f));
     }
+
     if (!v2Platform && (!evRecL1.empty() || !evRecL2.empty())) {
         Finding f;
         f.severity = 1;
-        f.title  = "恢复阶梯已生效:L1 触发 " + std::to_string(evRecL1.size()) +
-                   " 次,L2 触发 " + std::to_string(evRecL2.size()) + " 次";
+        f.title = "恢复阶梯已生效:L1 触发 " + std::to_string(evRecL1.size()) + " 次,L2 触发 " +
+                  std::to_string(evRecL2.size()) + " 次";
         f.detail = "阶梯按断网时长逐级升级(L1 软重拨 → L2 射频重置 → L3 退出)。";
         f.advice = "若 L1 频繁但每次都靠 L2 才恢复,说明软重拨无效,可考虑下调 L2 阈值。";
-        for (size_t i = 0; i < evRecL1.size() && i < 2; ++i) f.ev.push_back(mkEv(*evRecL1[i]));
-        for (size_t i = 0; i < evRecL2.size() && i < 2; ++i) f.ev.push_back(mkEv(*evRecL2[i]));
+        for (size_t i = 0; i < evRecL1.size() && i < 2; ++i)
+            f.ev.push_back(mkEv(*evRecL1[i]));
+        for (size_t i = 0; i < evRecL2.size() && i < 2; ++i)
+            f.ev.push_back(mkEv(*evRecL2[i]));
         fs.push_back(std::move(f));
     }
+
     // 有"够长"的断网却一条恢复日志都没有 → 找出被什么挡住了
     if (!v2Platform && evRecL1.empty() && evRecL2.empty() && evRecL3.empty()) {
         long long thr = (pi.plat == PLAT_EG25) ? 60 : 5 * 60;
         const Outage* lng = nullptr;
-        for (const auto& o : outs) if (o.recovered && o.dur >= thr) { lng = &o; break; }
+        for (const auto& o : outs)
+            if (o.recovered && o.dur >= thr) {
+                lng = &o;
+                break;
+            }
         if (lng) {
             Finding f;
             f.severity = 1;
-            f.title  = "恢复阶梯一次都没触发,但存在超过 L1 阈值的断网";
+            f.title = "恢复阶梯一次都没触发,但存在超过 L1 阈值的断网";
             f.detail = "有断网时长 ≥ L1 阈值(EG25 60s / EC200A 5min)却无任何 [RECOVERY] 日志。";
             if (pi.plat == PLAT_EG25) {
                 const std::uint16_t outageSource = sourceIdAtLine(lines, lng->startLine);
@@ -3847,28 +4469,34 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 const LogLine* channelEvidence = nullptr;
                 for (const auto& item : lines) {
                     const LogLine& line = lineRef(item);
-                    if (line.sourceId != outageSource || line.lineNo > lng->startLine) continue;
+                    if (line.sourceId != outageSource || line.lineNo > lng->startLine)
+                        continue;
                     std::string lowerMessage = lower(line.msg);
                     size_t policyPos = lowerMessage.rfind("policy=");
-                    if (policyPos == std::string::npos) policyPos = lowerMessage.rfind("policy:");
+                    if (policyPos == std::string::npos)
+                        policyPos = lowerMessage.rfind("policy:");
                     if (policyPos != std::string::npos) {
                         policyPos += 7;
-                        while (policyPos < lowerMessage.size() && lowerMessage[policyPos] == ' ') ++policyPos;
+                        while (policyPos < lowerMessage.size() && lowerMessage[policyPos] == ' ')
+                            ++policyPos;
                         if (policyPos < lowerMessage.size() && std::isdigit((unsigned char)lowerMessage[policyPos])) {
                             policy = lowerMessage[policyPos] - '0';
                             policyEvidence = &line;
                         }
                     }
+
                     const auto fields = hbFields(line.msg);
                     auto ch = fields.find("CH");
                     if (ch != fields.end() && !ch->second.empty()) {
                         channel = ch->second;
                         channelEvidence = &line;
                     }
-                    if (icontains(line.msg, "DataCall connected") ||
-                        icontains(line.msg, "net_connected") ||
-                        icontains(line.msg, "Network recovered")) connectedBefore = true;
+
+                    if (icontains(line.msg, "DataCall connected") || icontains(line.msg, "net_connected") ||
+                        icontains(line.msg, "Network recovered"))
+                        connectedBefore = true;
                 }
+
                 const bool forceSim = policy == 4;
                 const bool simChannel = channel == "SIM" || channel == "sim";
                 if ((policy >= 0 && !forceSim) || (!channel.empty() && !simChannel)) {
@@ -3887,14 +4515,19 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                                 "has_connected_once，不能推断为结构性关闭。";
                     f.advice = "补充该进程启动与故障前日志，确认 policy、CH 和首次联网证据。";
                 }
-                if (policyEvidence) f.ev.push_back(mkEv(*policyEvidence));
+
+                if (policyEvidence)
+                    f.ev.push_back(mkEv(*policyEvidence));
                 if (channelEvidence && channelEvidence != policyEvidence)
                     f.ev.push_back(mkEv(*channelEvidence));
             } else {
                 f.detail += " 未能从日志证据判定被何条件门控。";
                 f.advice = "确认 has_connected_once、平台策略和故障期间状态机条件。";
             }
-            Evidence e; e.lineNo = lng->startLine; e.ts = fmtTime(lng->start, "FULL");
+
+            Evidence e;
+            e.lineNo = lng->startLine;
+            e.ts = fmtTime(lng->start, "FULL");
             e.text = "该次断网时长 " + fmtDur(lng->dur) + ",已超过 L1 阈值 " + fmtDur(thr);
             f.ev.push_back(e);
             fs.push_back(std::move(f));
@@ -3904,19 +4537,27 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     // ---- 6. 温度 ----
     // 阈值 75℃ 为经验值(非源码常量),故仅作提示,不作判定
     {
-        const MetricRow* hot = nullptr; int best = -999;
+        const MetricRow* hot = nullptr;
+        int best = -999;
         for (const auto& m : mets) {
-            if (m.tempMax == INT_MIN) continue;
+            if (m.tempMax == INT_MIN)
+                continue;
             int v = m.tempMax;
-            if (v > best) { best = v; hot = &m; }
+            if (v > best) {
+                best = v;
+                hot = &m;
+            }
         }
+
         if (hot && best >= 75) {
             Finding f;
             f.severity = 1;
-            f.title  = "模组/CPU 温度偏高:峰值 " + std::to_string(best) + "℃";
+            f.title = "模组/CPU 温度偏高:峰值 " + std::to_string(best) + "℃";
             f.detail = "高温会导致射频性能下降甚至模组保护性降频。(75℃ 为经验提示阈值,非源码常量)";
             f.advice = "查散热与安装环境;若高温与断网时间吻合,优先排散热。";
-            Evidence e; e.lineNo = hot->lineNo; e.ts = fmtTime(hot->t, "MD");
+            Evidence e;
+            e.lineNo = hot->lineNo;
+            e.ts = fmtTime(hot->t, "MD");
             e.text = "心跳温度峰值 " + std::to_string(hot->tempMax) + "℃";
             f.ev.push_back(e);
             fs.push_back(std::move(f));
@@ -3927,25 +4568,34 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     // RSRP 是比 CSQ 更精确的信号指标。若整体均值就偏低,说明设备长期处于覆盖边缘,
     // 不只是偶发弱信号 —— 这是安装位置/天线的系统性问题,值得单独提示。
     {
-        long long sum = 0; int n = 0, worst = 9999; const MetricRow* mWorst = nullptr;
+        long long sum = 0;
+        int n = 0, worst = 9999;
+        const MetricRow* mWorst = nullptr;
         for (const auto& m : mets) {
             if (usesLteEngineeringReference(m.rat) && m.rsrp < 0) {
-                sum += m.rsrp; n++;
-                if (m.rsrp < worst) { worst = m.rsrp; mWorst = &m; }
+                sum += m.rsrp;
+                n++;
+                if (m.rsrp < worst) {
+                    worst = m.rsrp;
+                    mWorst = &m;
+                }
             }
         }
-        if (n >= 5) {                              // 需足够样本才下结论,不臆测
+
+        if (n >= 5) {  // 需足够样本才下结论,不臆测
             int avg = (int)(sum / n);
-            if (avg <= -100 && mWorst) {           // 均值 ≤ -100 命中 LTE 工程参考较差档
+            if (avg <= -100 && mWorst) {  // 均值 ≤ -100 命中 LTE 工程参考较差档
                 Finding f;
                 f.severity = 1;
-                f.title  = "信号质量长期偏低:RSRP 均值 " + std::to_string(avg) + " dBm(共 " +
-                           std::to_string(n) + " 样本)";
+                f.title =
+                    "信号质量长期偏低:RSRP 均值 " + std::to_string(avg) + " dBm(共 " + std::to_string(n) + " 样本)";
                 f.detail = "RSRP 均值命中 LTE 工程参考较差档(≤-100dBm),最低 " + std::to_string(worst) +
                            " dBm。该分档不是 3GPP 统一故障等级；持续弱覆盖可能与断网/低速相关。";
                 f.advice = "系统性排查:天线选型/安装位置/朝向、是否室内深处或金属屏蔽;"
                            "必要时加装外置天线或选覆盖更好的运营商。";
-                Evidence e; e.lineNo = mWorst->lineNo; e.ts = fmtTime(mWorst->t, "MD");
+                Evidence e;
+                e.lineNo = mWorst->lineNo;
+                e.ts = fmtTime(mWorst->t, "MD");
                 e.text = "最低 RSRP=" + std::to_string(worst) + "dBm (均值 " + std::to_string(avg) + "dBm)";
                 f.ev.push_back(e);
                 fs.push_back(std::move(f));
@@ -3958,27 +4608,37 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     // 【推断】SNR<=0dB 表示期望信号功率不高于噪声+干扰；“至少5样本且半数命中”是
     // 工程提示门槛,不是产品源码/SDK 常量。无新版真机日志前不把它单独归为断网根因。
     {
-        long long sum = 0; int n = 0, nonPositive = 0, worst = 100000;
+        long long sum = 0;
+        int n = 0, nonPositive = 0, worst = 100000;
         const MetricRow* mWorst = nullptr;
         for (const auto& m : mets) {
-            if (!usesLteEngineeringReference(m.rat) || m.snr10 == 100000) continue;
-            sum += m.snr10; n++;
-            if (m.snr10 <= 0) nonPositive++;
-            if (m.snr10 < worst) { worst = m.snr10; mWorst = &m; }
+            if (!usesLteEngineeringReference(m.rat) || m.snr10 == 100000)
+                continue;
+            sum += m.snr10;
+            n++;
+            if (m.snr10 <= 0)
+                nonPositive++;
+            if (m.snr10 < worst) {
+                worst = m.snr10;
+                mWorst = &m;
+            }
         }
+
         if (n >= 5 && nonPositive * 2 >= n && mWorst) {
             int avg10 = (int)(sum / n);
             Finding f;
             f.severity = 0;
-            f.title = "LTE SNR偏低提示:非正值 " + std::to_string(nonPositive) + "/" +
-                      std::to_string(n) + " 样本,均值 " + fmtSnr10(avg10) + " dB";
+            f.title = "LTE SNR偏低提示:非正值 " + std::to_string(nonPositive) + "/" + std::to_string(n) +
+                      " 样本,均值 " + fmtSnr10(avg10) + " dB";
             f.detail = "【推断】至少5个有效样本且半数以上 SNR≤0dB。该门槛用于提示噪声/同频干扰,"
                        "不是 SDK 或产品源码故障阈值；尚无新版真机日志验证,不单独据此归因断网。";
             f.advice = "结合 RSRP/RSRQ、断网时段和安装环境复核；若 RSRP尚可但SNR持续非正,"
                        "重点排查同频干扰、天线位置及馈线。";
-            Evidence e; e.lineNo = mWorst->lineNo; e.ts = fmtTime(mWorst->t, "MD");
-            e.text = "最低 SNR=" + fmtSnr10(worst) + "dB (原值 " + std::to_string(worst) +
-                     ",均值 " + fmtSnr10(avg10) + "dB)";
+            Evidence e;
+            e.lineNo = mWorst->lineNo;
+            e.ts = fmtTime(mWorst->t, "MD");
+            e.text = "最低 SNR=" + fmtSnr10(worst) + "dB (原值 " + std::to_string(worst) + ",均值 " + fmtSnr10(avg10) +
+                     "dB)";
             f.ev.push_back(std::move(e));
             fs.push_back(std::move(f));
         }
@@ -3988,11 +4648,11 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     // 这些规则用于把“现象”和原始证据连起来，不把无线侧相关性冒充确定根因。
     {
         CellAnalysis computedCells;
-        if (!precomputedCells) computedCells = analyzeCellsImpl(lines, mets, outs);
+        if (!precomputedCells)
+            computedCells = analyzeCellsImpl(lines, mets, outs);
         const CellAnalysis& cells = precomputedCells ? *precomputedCells : computedCells;
         const long long span = cells.last > cells.first ? cells.last - cells.first : 0;
-        const long long switchRate10 = span > 0
-            ? static_cast<long long>(cells.switchCount) * 36000 / span : 0;
+        const long long switchRate10 = span > 0 ? static_cast<long long>(cells.switchCount) * 36000 / span : 0;
         if (cells.switchCount >= 6 && switchRate10 >= 60 && !cells.transitions.empty()) {
             const CellTransition& top = cells.transitions.front();
             Finding f;
@@ -4000,8 +4660,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.title = "频繁小区切换:" + std::to_string(cells.switchCount) + " 次,约 " +
                       fmtSnr10(static_cast<int>(switchRate10)) + " 次/小时";
             f.detail = "【工程观察】已排除跨日志来源的伪切换；短时高频切换可能放大链路抖动，"
-                       "但不能单凭该统计认定为断网根因。最常见方向 " + top.fromCell + " → " +
-                       top.toCell + " 共 " + std::to_string(top.count) + " 次。";
+                       "但不能单凭该统计认定为断网根因。最常见方向 " +
+                       top.fromCell + " → " + top.toCell + " 共 " + std::to_string(top.count) + " 次。";
             f.advice = "结合小区分析页的 RSRP/RSRQ/SNR、断网关联数和切换方向，复核覆盖边缘、"
                        "天线位置及运营商邻区配置。";
             Evidence e;
@@ -4011,6 +4671,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             f.ev.push_back(std::move(e));
             fs.push_back(std::move(f));
         }
+
         if (cells.pingPongCount >= 2) {
             const CellTransition* top = nullptr;
             for (const CellTransition& transition : cells.transitions)
@@ -4027,8 +4688,8 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 Evidence e;
                 e.lineNo = top->pingPongEvidenceLine;
                 e.ts = fmtTime(top->pingPongEvidenceTime, "MD");
-                e.text = "5 分钟内往返 " + top->fromCell + " → " + top->toCell +
-                         ",该方向累计 " + std::to_string(top->pingPongCount) + " 次";
+                e.text = "5 分钟内往返 " + top->fromCell + " → " + top->toCell + ",该方向累计 " +
+                         std::to_string(top->pingPongCount) + " 次";
                 f.ev.push_back(std::move(e));
                 fs.push_back(std::move(f));
             }
@@ -4041,6 +4702,7 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
             if (cell.samples >= 5 && cell.outageStarts > 0 && (weakRsrp || poorSnr))
                 weakCells.push_back(&cell);
         }
+
         if (!weakCells.empty()) {
             Finding f;
             f.severity = 1;
@@ -4054,16 +4716,18 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
                 Evidence e;
                 e.lineNo = cell.firstOutageLine ? cell.firstOutageLine : cell.firstEvidenceLine;
                 e.ts = fmtTime(cell.firstOutageTime ? cell.firstOutageTime : cell.first, "MD");
-                e.text = "Cell " + cell.cellId + ":断网关联 " + std::to_string(cell.outageStarts) +
-                         " 次,RSRP均值 " + (cell.rsrpSamples ? fmtSnr10(cell.rsrpAvg10) : "-") +
-                         "dBm,SNR均值 " + (cell.snrSamples ? fmtSnr10(cell.snrAvg10) : "-") + "dB";
+                e.text = "Cell " + cell.cellId + ":断网关联 " + std::to_string(cell.outageStarts) + " 次,RSRP均值 " +
+                         (cell.rsrpSamples ? fmtSnr10(cell.rsrpAvg10) : "-") + "dBm,SNR均值 " +
+                         (cell.snrSamples ? fmtSnr10(cell.snrAvg10) : "-") + "dB";
                 if (cell.rssi.samples) {
                     char mean[32]{};
                     std::snprintf(mean, sizeof(mean), "%.1f", cell.rssi.mean());
                     e.text += ",RSSI均值 " + std::string(mean) + "dBm (" + std::to_string(cell.rssi.samples) + " 样本)";
                 }
+
                 f.ev.push_back(std::move(e));
             }
+
             fs.push_back(std::move(f));
         }
     }
@@ -4072,41 +4736,35 @@ static std::vector<Finding> analyzeImpl(const Lines& lines,
     if (audit.unparsed > 0 && audit.unparsedRatio() > 0.01 && !audit.samples.empty()) {
         Finding f;
         f.severity = 1;
-        f.title  = "有 " + std::to_string(audit.unparsed) + " 行未被解析(占 " +
-                   std::to_string((int)(audit.unparsedRatio() * 100 + 0.5)) + "%),以上结论可能不完整";
+        f.title = "有 " + std::to_string(audit.unparsed) + " 行未被解析(占 " +
+                  std::to_string((int)(audit.unparsedRatio() * 100 + 0.5)) + "%),以上结论可能不完整";
         f.detail = "解析器跳过了这些行,它们不参与任何统计与结论。占比越高,结论的覆盖面越窄。";
         f.advice = "到“未识别行”页查看样例;若是新格式或新标签,需要扩展解析器。";
         for (size_t i = 0; i < audit.samples.size() && i < 3; ++i) {
-            Evidence e; e.lineNo = audit.samples[i].lineNo; e.ts = "-";
+            Evidence e;
+            e.lineNo = audit.samples[i].lineNo;
+            e.ts = "-";
             e.text = audit.samples[i].text.substr(0, 120);
             f.ev.push_back(e);
         }
+
         fs.push_back(std::move(f));
     }
 
     // 严重度降序(稳定排序,保留同级内的生成顺序)
-    std::stable_sort(fs.begin(), fs.end(),
-                     [](const Finding& a, const Finding& b) { return a.severity > b.severity; });
+    std::stable_sort(fs.begin(), fs.end(), [](const Finding& a, const Finding& b) { return a.severity > b.severity; });
     return fs;
 }
 
-std::vector<Finding> analyze(const std::vector<LogLine>& lines,
-                             const std::vector<Outage>& outs,
-                             const std::vector<MetricRow>& mets,
-                             const PlatformInfo& pi,
-                             const ParseAudit& audit,
+std::vector<Finding> analyze(const std::vector<LogLine>& lines, const std::vector<Outage>& outs,
+                             const std::vector<MetricRow>& mets, const PlatformInfo& pi, const ParseAudit& audit,
                              const CellAnalysis* precomputedCells) {
     return analyzeImpl(lines, outs, mets, pi, audit, precomputedCells);
 }
 
-std::vector<Finding> analyze(const LogView& lines,
-                             const std::vector<Outage>& outs,
-                             const std::vector<MetricRow>& mets,
-                             const PlatformInfo& pi,
-                             const ParseAudit& audit,
-                             const CellAnalysis* precomputedCells) {
+std::vector<Finding> analyze(const LogView& lines, const std::vector<Outage>& outs, const std::vector<MetricRow>& mets,
+                             const PlatformInfo& pi, const ParseAudit& audit, const CellAnalysis* precomputedCells) {
     return analyzeImpl(lines, outs, mets, pi, audit, precomputedCells);
 }
 
-
-} // namespace dl
+}  // namespace dl

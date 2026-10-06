@@ -13,4 +13,4 @@ void SetChartFocusTime(long long time);
 int PreferredChartHeight();
 bool CancelChartSelection();
 
-} // namespace dl
+}  // namespace dl

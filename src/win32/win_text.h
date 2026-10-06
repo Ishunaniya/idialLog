@@ -12,4 +12,4 @@ std::string WToU8(const std::wstring& text);
 std::wstring GetText(HWND window);
 std::wstring FmtW(const wchar_t* format, ...);
 
-} // namespace dl
+}  // namespace dl

@@ -10,7 +10,6 @@
 
 #include "archive_reader.h"
 
-
 namespace dl {
 struct ImportedEvidencePackage;
 
@@ -18,7 +17,11 @@ inline constexpr std::size_t kMaxInputBytes = 512ULL * 1024 * 1024;
 inline constexpr std::size_t kMaxBatchTextBytes = 512ULL * 1024 * 1024;
 
 // 一次加载中的单个来源。普通文件保留路径并流式读取；压缩包条目持有已展开的行。
-struct OriginalSource {std::wstring path;std::string entry,hash;};
+struct OriginalSource {
+    std::wstring path;
+    std::string entry, hash;
+};
+
 struct LoadSource {
     bool streamPlain = false;
     std::wstring path;
@@ -34,40 +37,33 @@ using ReadObserver = bool (*)(void*, std::size_t, std::size_t);
 
 // ReadPlainLines 的非模板实现。公开模板只负责把调用方的 lambda 转成无分配回调，
 // 避免百万行日志逐行经过 std::function。
-bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines,
-                        void* sinkContext, PlainLineSink sink,
-                        std::size_t* fileBytes, std::wstring& err,
-                        void* observerContext = nullptr, ReadObserver observer = nullptr, std::string* hash = nullptr);
+bool ReadPlainLinesImpl(const std::wstring& path, std::size_t maxLines, void* sinkContext, PlainLineSink sink,
+                        std::size_t* fileBytes, std::wstring& err, void* observerContext = nullptr,
+                        ReadObserver observer = nullptr, std::string* hash = nullptr);
 
 template <class Sink>
-bool ReadPlainLines(const std::wstring& path, std::size_t maxLines, Sink&& sink,
-                    std::size_t* fileBytes, std::wstring& err,
-                    void* observerContext = nullptr, ReadObserver observer = nullptr, std::string* hash = nullptr) {
+bool ReadPlainLines(const std::wstring& path, std::size_t maxLines, Sink&& sink, std::size_t* fileBytes,
+                    std::wstring& err, void* observerContext = nullptr, ReadObserver observer = nullptr,
+                    std::string* hash = nullptr) {
     using SinkType = typename std::remove_reference<Sink>::type;
     return ReadPlainLinesImpl(
         path, maxLines, std::addressof(sink),
-        [](void* context, std::string&& line) {
-            (*static_cast<SinkType*>(context))(std::move(line));
-        },
-        fileBytes, err, observerContext, observer, hash);
+        [](void* context, std::string&& line) { (*static_cast<SinkType*>(context))(std::move(line)); }, fileBytes, err,
+        observerContext, observer, hash);
 }
 
-bool InspectFile(const std::wstring& path, ArchiveKind& kind,
-                 std::size_t& fileBytes, std::wstring& err);
+bool InspectFile(const std::wstring& path, ArchiveKind& kind, std::size_t& fileBytes, std::wstring& err);
 
-bool WriteFileBytesAtomic(const std::wstring& path, const std::string& data,
-                          std::wstring& err);
+bool WriteFileBytesAtomic(const std::wstring& path, const std::string& data, std::wstring& err);
 
-bool ReadPathExpand(const std::wstring& path,
-                    std::vector<std::vector<std::string>>& chunks,
-                    std::vector<std::wstring>& labels,
-                    std::size_t& textBytes,
-                    std::wstring& err,
-                    void* observerContext = nullptr, ReadObserver observer = nullptr, std::vector<OriginalSource>* originals = nullptr, ImportedEvidencePackage* package = nullptr);
+bool ReadPathExpand(const std::wstring& path, std::vector<std::vector<std::string>>& chunks,
+                    std::vector<std::wstring>& labels, std::size_t& textBytes, std::wstring& err,
+                    void* observerContext = nullptr, ReadObserver observer = nullptr,
+                    std::vector<OriginalSource>* originals = nullptr, ImportedEvidencePackage* package = nullptr);
 
-bool ReadOriginalBytes(const OriginalSource& source,std::string& bytes,std::wstring& error);
-bool ReadBoundedFile(const std::wstring& path,std::string& bytes,std::wstring& error,std::size_t limit);
+bool ReadOriginalBytes(const OriginalSource& source, std::string& bytes, std::wstring& error);
+bool ReadBoundedFile(const std::wstring& path, std::string& bytes, std::wstring& error, std::size_t limit);
 
 std::wstring FileNameOf(const std::wstring& path);
 
-} // namespace dl
+}  // namespace dl

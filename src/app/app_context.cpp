@@ -8,4 +8,4 @@ AppContext& App() {
     return context;
 }
 
-} // namespace dl
+}  // namespace dl

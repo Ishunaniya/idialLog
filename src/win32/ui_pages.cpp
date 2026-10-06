@@ -38,7 +38,7 @@
 namespace dl {
 
 static int g_curPage = 0;
-static bool g_pageDirty[9] = { true, true, true, true, true, true, true, true, true };
+static bool g_pageDirty[10] = {true, true, true, true, true, true, true, true, true, true};
 static size_t g_rawTargetLine = 0;
 static LogView g_rawContext;
 static std::vector<const CellSummary*> g_cellRows;
@@ -62,12 +62,15 @@ struct MetricQuickFilter {
     int deny = -1;
     bool hasDeny = false;
 };
+
 static MetricQuickFilter g_metricFilter;
 
 void RefreshBookmarkButton() {
-    if (!App().hBookmarks) return;
+    if (!App().hBookmarks)
+        return;
     std::wstring label = UiText(TextId::ui_0170);
-    if (!g_bookmarks.empty()) label += L" (" + std::to_wstring(g_bookmarks.size()) + L")";
+    if (!g_bookmarks.empty())
+        label += L" (" + std::to_wstring(g_bookmarks.size()) + L")";
     SetWindowTextW(App().hBookmarks, label.c_str());
     EnableWindow(App().hBookmarks, !g_bookmarks.empty());
 }
@@ -80,6 +83,7 @@ void LvAddCol(HWND lv, int i, const wchar_t* text, int w) {
     c.cx = w;
     ListView_InsertColumn(lv, i, &c);
 }
+
 static int LvAddRow(HWND lv, int row, const std::wstring& first) {
     LVITEMW it{};
     it.mask = LVIF_TEXT;
@@ -88,6 +92,7 @@ static int LvAddRow(HWND lv, int row, const std::wstring& first) {
     it.pszText = (LPWSTR)first.c_str();
     return ListView_InsertItem(lv, &it);
 }
+
 static void LvSet(HWND lv, int row, int col, const std::wstring& s) {
     ListView_SetItemText(lv, row, col, (LPWSTR)s.c_str());
 }
@@ -96,10 +101,13 @@ static void SetSortIndicator(HWND list, int sortedColumn, bool ascending) {
     HWND header = ListView_GetHeader(list);
     const int count = header ? Header_GetItemCount(header) : 0;
     for (int column = 0; column < count; ++column) {
-        HDITEMW item{}; item.mask = HDI_FORMAT;
-        if (!Header_GetItem(header, column, &item)) continue;
+        HDITEMW item{};
+        item.mask = HDI_FORMAT;
+        if (!Header_GetItem(header, column, &item))
+            continue;
         item.fmt &= ~(HDF_SORTUP | HDF_SORTDOWN);
-        if (column == sortedColumn) item.fmt |= ascending ? HDF_SORTUP : HDF_SORTDOWN;
+        if (column == sortedColumn)
+            item.fmt |= ascending ? HDF_SORTUP : HDF_SORTDOWN;
         Header_SetItem(header, column, &item);
     }
 }
@@ -112,34 +120,58 @@ static COLORREF RowColor(const LogLine& l) {
     // 主线是 "Network Recovered in SDK phase"、"Snapshot ..._fault_/_recovery_"、[RECOVERY*],
     // 只按 tag 上色会把它们漏成黑色。**只影响颜色,不影响任何统计**。
     const std::string& m = l.msg;
-    auto has = [&](const char* k){ return m.find(k) != std::string::npos; };
+    auto has = [&](const char* k) { return m.find(k) != std::string::npos; };
 
     // 恢复(绿):断网引擎认的 + SDK 相 + recovery 快照 + RECOVERY 动作 tag
     if (isRecovered(m, nullptr) || has("Network Recovered") || has("_recovery_") ||
         l.tagText().compare(0, 8, "RECOVERY") == 0)
         return th::rowRecovered;
+
     // 故障(红):断网引擎认的 + fault 快照 + 硬告警
     if (isFaultStart(m) || has("_fault_") || has("Net Fail Duration"))
         return th::rowFault;
 
     std::string t = l.tagText();
-    if (t == "ERROR" || t == "FATAL" || t == "CFUN") return th::rowErr;
-    if (t == "WARN" || t == "WARNING" || t == "ALARM" || t == "SLOT" || t == "OPER") return th::rowWarn;
-    if (t == "ROAMLINK") return th::rowRoamlink;
-    if (t == "STATE")    return th::rowState;
-    if (t == "SDK")      return th::rowSdk;
+    if (t == "ERROR" || t == "FATAL" || t == "CFUN")
+        return th::rowErr;
+    if (t == "WARN" || t == "WARNING" || t == "ALARM" || t == "SLOT" || t == "OPER")
+        return th::rowWarn;
+    if (t == "ROAMLINK")
+        return th::rowRoamlink;
+    if (t == "STATE")
+        return th::rowState;
+    if (t == "SDK")
+        return th::rowSdk;
     return th::inkPri;
 }
 
 static COLORREF EventBackground(const LogLine& line, COLORREF normal) {
     switch (logEventKind(line)) {
-    case LogEventKind::Fault: case LogEventKind::Error: return th::qualityPoor;
-    case LogEventKind::Recovered: case LogEventKind::RecoveryAction: return th::qualityExcellent;
-    case LogEventKind::Warning: return th::qualityFair;
-    case LogEventKind::State: return th::qualityGood;
-    case LogEventKind::Cell: return th::eventCell;
-    case LogEventKind::Sdk: return th::eventSdk;
-    default: return normal;
+
+    case LogEventKind::Fault:
+
+    case LogEventKind::Error:
+        return th::qualityPoor;
+
+    case LogEventKind::Recovered:
+
+    case LogEventKind::RecoveryAction:
+        return th::qualityExcellent;
+
+    case LogEventKind::Warning:
+        return th::qualityFair;
+
+    case LogEventKind::State:
+        return th::qualityGood;
+
+    case LogEventKind::Cell:
+        return th::eventCell;
+
+    case LogEventKind::Sdk:
+        return th::eventSdk;
+
+    default:
+        return normal;
     }
 }
 
@@ -151,37 +183,52 @@ static void RenderTimeline() {
 }
 
 static void RenderOutages() {
-    if (CurrentPage() == 3) SetWindowTextW(App().hPageHint, HasAnalysisTimeFilter() ?
-        UiText(TextId::ui_0275) :
-        UiText(TextId::ui_0276));
+    if (CurrentPage() == 3)
+        SetWindowTextW(App().hPageHint, HasAnalysisTimeFilter() ? UiText(TextId::ui_0275) : UiText(TextId::ui_0276));
     ListView_DeleteAllItems(App().hOutage);
     g_outageOrder.resize(App().document.outages.size());
-    for (std::size_t i = 0; i < g_outageOrder.size(); ++i) g_outageOrder[i] = i;
+    for (std::size_t i = 0; i < g_outageOrder.size(); ++i)
+        g_outageOrder[i] = i;
     if (g_outageSortColumn >= 0) {
         std::stable_sort(g_outageOrder.begin(), g_outageOrder.end(), [](std::size_t left, std::size_t right) {
             const Outage& a = App().document.outages[left];
             const Outage& b = App().document.outages[right];
             long long av = 0, bv = 0;
-            if (g_outageSortColumn == 0) { av = static_cast<long long>(left); bv = static_cast<long long>(right); }
-            else if (g_outageSortColumn == 1) {
+            if (g_outageSortColumn == 0) {
+                av = static_cast<long long>(left);
+                bv = static_cast<long long>(right);
+            } else if (g_outageSortColumn == 1) {
                 auto rank = [](const Outage& outage) {
                     return !outage.recovered ? 0 : outage.dur > 60 ? 1 : outage.dur > 30 ? 2 : 3;
                 };
-                av = rank(a); bv = rank(b);
+
+                av = rank(a);
+                bv = rank(b);
+            } else if (g_outageSortColumn == 2) {
+                av = a.start;
+                bv = b.start;
+            } else if (g_outageSortColumn == 3) {
+                av = a.recovered ? a.end : LLONG_MAX;
+                bv = b.recovered ? b.end : LLONG_MAX;
+            } else if (g_outageSortColumn == 4) {
+                av = a.recovered ? a.dur : LLONG_MAX;
+                bv = b.recovered ? b.dur : LLONG_MAX;
+            } else {
+                av = a.reportedDuration;
+                bv = b.reportedDuration;
             }
-            else if (g_outageSortColumn == 2) { av = a.start; bv = b.start; }
-            else if (g_outageSortColumn == 3) { av = a.recovered ? a.end : LLONG_MAX; bv = b.recovered ? b.end : LLONG_MAX; }
-            else if (g_outageSortColumn == 4) { av = a.recovered ? a.dur : LLONG_MAX; bv = b.recovered ? b.dur : LLONG_MAX; }
-            else { av = a.reportedDuration; bv = b.reportedDuration; }
+
             return g_outageSortAscending ? av < bv : av > bv;
         });
     }
+
     int row = 0;
     for (std::size_t original : g_outageOrder) {
         const Outage& o = App().document.outages[original];
         LvAddRow(App().hOutage, row, FmtW(L"%d", static_cast<int>(original + 1)));
         const bool unseenRecovery = !o.recovered && HasAnalysisTimeFilter();
-        LvSet(App().hOutage, row, 1, unseenRecovery ? UiText(TextId::ui_0251) : U8ToW(GeneratedText(outageStatusText(o))));
+        LvSet(App().hOutage, row, 1,
+              unseenRecovery ? UiText(TextId::ui_0251) : U8ToW(GeneratedText(outageStatusText(o))));
         LvSet(App().hOutage, row, 2, U8ToW(fmtTime(o.start, "FULL")));
         if (o.recovered) {
             LvSet(App().hOutage, row, 3, U8ToW(fmtTime(o.end, "FULL")));
@@ -192,6 +239,7 @@ static void RenderOutages() {
             LvSet(App().hOutage, row, 4, L"?");
             LvSet(App().hOutage, row, 5, UiText(TextId::ui_0280));
         }
+
         row++;
     }
 }
@@ -203,12 +251,16 @@ static void RenderTags() {
         const std::string& tag = l->tagText();
         tc[tag.empty() ? UiText8(TextId::ui_0537) : tag]++;
     }
+
     int mx = 1;
-    for (auto& kv : tc) mx = std::max(mx, kv.second);
+    for (auto& kv : tc)
+        mx = std::max(mx, kv.second);
     g_tagRows.assign(tc.begin(), tc.end());
     std::stable_sort(g_tagRows.begin(), g_tagRows.end(), [](const auto& a, const auto& b) {
-        if (g_tagSortColumn == 0) return g_tagSortAscending ? a.first < b.first : a.first > b.first;
-        if (a.second != b.second) return g_tagSortAscending ? a.second < b.second : a.second > b.second;
+        if (g_tagSortColumn == 0)
+            return g_tagSortAscending ? a.first < b.first : a.first > b.first;
+        if (a.second != b.second)
+            return g_tagSortAscending ? a.second < b.second : a.second > b.second;
         return a.first < b.first;
     });
     int row = 0;
@@ -229,83 +281,121 @@ static void RenderRaw() {
     std::size_t targetRow = std::numeric_limits<std::size_t>::max();
     if (g_rawTargetLine) {
         const auto filtered = std::find_if(App().document.filtered.begin(), App().document.filtered.end(),
-            [](const LogLine* line) { return line->lineNo == g_rawTargetLine; });
+                                           [](const LogLine* line) { return line->lineNo == g_rawTargetLine; });
         if (filtered != App().document.filtered.end()) {
             targetRow = static_cast<std::size_t>(filtered - App().document.filtered.begin());
         } else {
             const auto found = std::find_if(App().document.lines.begin(), App().document.lines.end(),
-                [](const LogLine& line) { return line.lineNo == g_rawTargetLine; });
+                                            [](const LogLine& line) { return line.lineNo == g_rawTargetLine; });
             if (found != App().document.lines.end()) {
                 const std::size_t index = static_cast<std::size_t>(found - App().document.lines.begin());
                 const std::size_t first = index > 40 ? index - 40 : 0;
                 const std::size_t last = std::min(App().document.lines.size(), index + 41);
                 g_rawContext.reserve(last - first);
-                for (std::size_t i = first; i < last; ++i) g_rawContext.push_back(&App().document.lines[i]);
+                for (std::size_t i = first; i < last; ++i)
+                    g_rawContext.push_back(&App().document.lines[i]);
                 targetRow = index - first;
             }
         }
     }
-    ListView_SetItemCountEx(App().hRaw, static_cast<int>(RawRows().size()),
-                            LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
+
+    ListView_SetItemCountEx(App().hRaw, static_cast<int>(RawRows().size()), LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
     if (targetRow < RawRows().size()) {
         ListView_SetItemState(App().hRaw, -1, 0, LVIS_SELECTED | LVIS_FOCUSED);
         ListView_SetItemState(App().hRaw, static_cast<int>(targetRow), LVIS_SELECTED | LVIS_FOCUSED,
                               LVIS_SELECTED | LVIS_FOCUSED);
         ListView_EnsureVisible(App().hRaw, static_cast<int>(targetRow), FALSE);
     }
+
     InvalidateRect(App().hRaw, nullptr, TRUE);
 }
 
 static void RenderCells() {
     g_cellRows.clear();
     g_cellRows.reserve(App().document.cellAnalysis.cells.size());
-    for (const CellSummary& cell : App().document.cellAnalysis.cells) g_cellRows.push_back(&cell);
+    for (const CellSummary& cell : App().document.cellAnalysis.cells)
+        g_cellRows.push_back(&cell);
     if (g_cellSortColumn >= 0) {
         std::stable_sort(g_cellRows.begin(), g_cellRows.end(), [](const CellSummary* a, const CellSummary* b) {
             const std::string av = cellSummaryCellText(*a, static_cast<std::size_t>(g_cellSortColumn));
             const std::string bv = cellSummaryCellText(*b, static_cast<std::size_t>(g_cellSortColumn));
             if (g_cellSortColumn == 15) {
-                if (bool(a->rssi.samples) != bool(b->rssi.samples)) return bool(a->rssi.samples);
+                if (bool(a->rssi.samples) != bool(b->rssi.samples))
+                    return bool(a->rssi.samples);
                 return g_cellSortAscending ? a->rssi.mean() < b->rssi.mean() : a->rssi.mean() > b->rssi.mean();
             }
+
             if (g_cellSortColumn == 16)
                 return g_cellSortAscending ? a->rssi.samples < b->rssi.samples : a->rssi.samples > b->rssi.samples;
             if (g_cellSortColumn >= 1 && g_cellSortColumn <= 13) {
                 auto numeric = [](const CellSummary& cell, int column) -> long long {
                     switch (column) {
-                    case 1: return cell.pci;
-                    case 2: return cell.tac == UINT32_MAX ? -1 : cell.tac;
-                    case 3: return cell.samples;
-                    case 4: return cell.sampleSharePermille;
-                    case 5: return cell.observedDwellSec;
-                    case 6: return cell.rsrpAvg10;
-                    case 7: return cell.rsrpMin;
-                    case 8: return cell.rsrqAvg10;
-                    case 9: return cell.snrAvg10;
-                    case 10: return cell.csqAvg10;
-                    case 11: return cell.switchesIn;
-                    case 12: return cell.switchesOut;
-                    case 13: return cell.outageStarts;
-                    default: return 0;
+
+                    case 1:
+                        return cell.pci;
+
+                    case 2:
+                        return cell.tac == UINT32_MAX ? -1 : cell.tac;
+
+                    case 3:
+                        return cell.samples;
+
+                    case 4:
+                        return cell.sampleSharePermille;
+
+                    case 5:
+                        return cell.observedDwellSec;
+
+                    case 6:
+                        return cell.rsrpAvg10;
+
+                    case 7:
+                        return cell.rsrpMin;
+
+                    case 8:
+                        return cell.rsrqAvg10;
+
+                    case 9:
+                        return cell.snrAvg10;
+
+                    case 10:
+                        return cell.csqAvg10;
+
+                    case 11:
+                        return cell.switchesIn;
+
+                    case 12:
+                        return cell.switchesOut;
+
+                    case 13:
+                        return cell.outageStarts;
+
+                    default:
+                        return 0;
                     }
                 };
+
                 const long long an = numeric(*a, g_cellSortColumn), bn = numeric(*b, g_cellSortColumn);
                 return g_cellSortAscending ? an < bn : an > bn;
             }
+
             return g_cellSortAscending ? av < bv : av > bv;
         });
     }
+
     ListView_SetItemCountEx(App().hCells, static_cast<int>(g_cellRows.size()),
                             LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
     InvalidateRect(App().hCells, nullptr, TRUE);
 }
 
 static void UpdateMetricFilterButton() {
-    if (!App().hMetricFilter) return;
-    int count = !g_metricFilter.cell.empty() + !g_metricFilter.rat.empty() +
-                !g_metricFilter.ch.empty() + g_metricFilter.hasDeny;
+    if (!App().hMetricFilter)
+        return;
+    int count = !g_metricFilter.cell.empty() + !g_metricFilter.rat.empty() + !g_metricFilter.ch.empty() +
+                g_metricFilter.hasDeny;
     std::wstring text = UiText(TextId::ui_0182);
-    if (count) text = UiText(TextId::ui_0281) + std::to_wstring(count) + L") ▾";
+    if (count)
+        text = UiText(TextId::ui_0281) + std::to_wstring(count) + L") ▾";
     SetWindowTextW(App().hMetricFilter, text.c_str());
     SetModernButtonActive(App().hMetricFilter, count > 0);
 }
@@ -316,22 +406,54 @@ static bool sameText(const std::string& left, const std::string& right) {
 
 static long long metricNumericValue(const MetricRow& metric, int column) {
     switch (column) {
-    case 3: return metric.pci;
-    case 4: return metric.tac == UINT32_MAX ? -1 : metric.tac;
-    case 5: return metric.csqRaw;
-    case 6: return metric.tempMax;
-    case 7: return metric.consecFail;
-    case 8: return metric.rx;
-    case 9: return metric.drx;
-    case 10: return metric.rsrp;
-    case 11: return metric.rsrq;
-    case 12: return metric.snr10;
-    case 13: return metric.rssiVal;
-    case 14: return metric.srvVal;
-    case 16: return metric.denyVal;
-    case 19: return metric.atTelemetryTimeout;
-    case 20: return metric.atBasicProbe;
-    default: return 0;
+
+    case 3:
+        return metric.pci;
+
+    case 4:
+        return metric.tac == UINT32_MAX ? -1 : metric.tac;
+
+    case 5:
+        return metric.csqRaw;
+
+    case 6:
+        return metric.tempMax;
+
+    case 7:
+        return metric.consecFail;
+
+    case 8:
+        return metric.rx;
+
+    case 9:
+        return metric.drx;
+
+    case 10:
+        return metric.rsrp;
+
+    case 11:
+        return metric.rsrq;
+
+    case 12:
+        return metric.snr10;
+
+    case 13:
+        return metric.rssiVal;
+
+    case 14:
+        return metric.srvVal;
+
+    case 16:
+        return metric.denyVal;
+
+    case 19:
+        return metric.atTelemetryTimeout;
+
+    case 20:
+        return metric.atBasicProbe;
+
+    default:
+        return 0;
     }
 }
 
@@ -339,30 +461,38 @@ void RebuildMetricQuickFilterView() {
     App().document.metricView.clear();
     App().document.metricView.reserve(App().document.metrics.size());
     for (const MetricRow& metric : App().document.metrics) {
-        if (!g_metricFilter.cell.empty() && !sameText(metric.cellId.str(), g_metricFilter.cell)) continue;
-        if (!g_metricFilter.rat.empty() && !sameText(metric.rat, g_metricFilter.rat)) continue;
-        if (!g_metricFilter.ch.empty() && !sameText(metric.ch, g_metricFilter.ch)) continue;
-        if (g_metricFilter.hasDeny && metric.denyVal != g_metricFilter.deny) continue;
+        if (!g_metricFilter.cell.empty() && !sameText(metric.cellId.str(), g_metricFilter.cell))
+            continue;
+        if (!g_metricFilter.rat.empty() && !sameText(metric.rat, g_metricFilter.rat))
+            continue;
+        if (!g_metricFilter.ch.empty() && !sameText(metric.ch, g_metricFilter.ch))
+            continue;
+        if (g_metricFilter.hasDeny && metric.denyVal != g_metricFilter.deny)
+            continue;
         App().document.metricView.push_back(&metric);
     }
+
     if (g_metricSortColumn >= 0) {
         std::stable_sort(App().document.metricView.begin(), App().document.metricView.end(),
-            [](const MetricRow* a, const MetricRow* b) {
-                if (g_metricSortColumn == 0)
-                    return g_metricSortAscending ? a->t < b->t : a->t > b->t;
-                const std::string av = metricCellText(*a, static_cast<std::size_t>(g_metricSortColumn));
-                const std::string bv = metricCellText(*b, static_cast<std::size_t>(g_metricSortColumn));
-                const bool numeric = (g_metricSortColumn >= 3 && g_metricSortColumn <= 14) ||
-                                     g_metricSortColumn == 16 || g_metricSortColumn == 19 ||
-                                     g_metricSortColumn == 20;
-                if (numeric) {
-                    const long long an = metricNumericValue(*a, g_metricSortColumn);
-                    const long long bn = metricNumericValue(*b, g_metricSortColumn);
-                    if (an != bn) return g_metricSortAscending ? an < bn : an > bn;
-                }
-                return g_metricSortAscending ? av < bv : av > bv;
-            });
+                         [](const MetricRow* a, const MetricRow* b) {
+                             if (g_metricSortColumn == 0)
+                                 return g_metricSortAscending ? a->t < b->t : a->t > b->t;
+                             const std::string av = metricCellText(*a, static_cast<std::size_t>(g_metricSortColumn));
+                             const std::string bv = metricCellText(*b, static_cast<std::size_t>(g_metricSortColumn));
+                             const bool numeric = (g_metricSortColumn >= 3 && g_metricSortColumn <= 14) ||
+                                                  g_metricSortColumn == 16 || g_metricSortColumn == 19 ||
+                                                  g_metricSortColumn == 20;
+                             if (numeric) {
+                                 const long long an = metricNumericValue(*a, g_metricSortColumn);
+                                 const long long bn = metricNumericValue(*b, g_metricSortColumn);
+                                 if (an != bn)
+                                     return g_metricSortAscending ? an < bn : an > bn;
+                             }
+
+                             return g_metricSortAscending ? av < bv : av > bv;
+                         });
     }
+
     UpdateMetricFilterButton();
 }
 
@@ -375,7 +505,8 @@ void ApplyMetricColumnSettings() {
 
 void ShowMetricColumnMenu(HWND anchor) {
     HMENU menu = CreatePopupMenu();
-    const wchar_t* names[] = {UiText(TextId::ui_0282), UiText(TextId::ui_0283), UiText(TextId::ui_0284), UiText(TextId::ui_0285), UiText(TextId::ui_0286), UiText(TextId::ui_0287)};
+    const wchar_t* names[] = {UiText(TextId::ui_0282), UiText(TextId::ui_0283), UiText(TextId::ui_0284),
+                              UiText(TextId::ui_0285), UiText(TextId::ui_0286), UiText(TextId::ui_0287)};
     const unsigned mask = GetAppSettings().metricColumns;
     for (int i = 0; i < 6; ++i)
         AppendMenuW(menu, MF_STRING | (mask == metricColumnMask(static_cast<MetricColumnPreset>(i)) ? MF_CHECKED : 0),
@@ -383,13 +514,19 @@ void ShowMetricColumnMenu(HWND anchor) {
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING | MF_DISABLED, 0, UiText(TextId::ui_0288));
     for (int column = 1; column < 22; ++column) {
-        wchar_t text[128]{}; LVCOLUMNW item{}; item.mask = LVCF_TEXT; item.pszText = text; item.cchTextMax = 128;
+        wchar_t text[128]{};
+        LVCOLUMNW item{};
+        item.mask = LVCF_TEXT;
+        item.pszText = text;
+        item.cchTextMax = 128;
         ListView_GetColumn(App().hMetric, column, &item);
         AppendMenuW(menu, MF_STRING | ((mask & (1u << column)) ? MF_CHECKED : 0), 32100 + column, text);
     }
-    RECT rect{}; GetWindowRect(anchor, &rect);
-    const auto command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTALIGN, rect.right, rect.bottom,
-                                        0, App().hMain, nullptr);
+
+    RECT rect{};
+    GetWindowRect(anchor, &rect);
+    const auto command =
+        TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTALIGN, rect.right, rect.bottom, 0, App().hMain, nullptr);
     DestroyMenu(menu);
     ApplyMetricColumnCommand(command);
 }
@@ -399,8 +536,25 @@ bool ApplyMetricColumnCommand(UINT command) {
         MutableAppSettings().metricColumns = metricColumnMask(static_cast<MetricColumnPreset>(command - 32000));
     else if (command > 32100 && command < 32122)
         MutableAppSettings().metricColumns ^= 1u << (command - 32100);
-    else return false;
-    SaveAppSettings(); ApplyMetricColumnSettings(); return true;
+    else
+        return false;
+    SaveAppSettings();
+    ApplyMetricColumnSettings();
+    return true;
+}
+
+MetricFilterState CaptureMetricFilters() {
+    return {g_metricFilter.cell, g_metricFilter.rat, g_metricFilter.ch, g_metricFilter.hasDeny, g_metricFilter.deny};
+}
+
+void RestoreMetricFilters(const MetricFilterState& s) {
+    g_metricFilter.cell = s.cell;
+    g_metricFilter.rat = s.rat;
+    g_metricFilter.ch = s.channel;
+    g_metricFilter.hasDeny = s.hasDeny;
+    g_metricFilter.deny = s.deny;
+    RebuildMetricQuickFilterView();
+    UpdateMetricFilterButton();
 }
 
 void ClearMetricQuickFilters(bool refresh) {
@@ -408,7 +562,8 @@ void ClearMetricQuickFilters(bool refresh) {
     RebuildMetricQuickFilterView();
     if (refresh) {
         g_pageDirty[4] = true;
-        if (CurrentPage() == 4) RenderPage(4);
+        if (CurrentPage() == 4)
+            RenderPage(4);
     }
 }
 
@@ -416,11 +571,16 @@ void ShowMetricQuickFilterMenu(HWND anchor) {
     std::set<std::string> cellSet, ratSet, chSet;
     std::set<int> denySet;
     for (const MetricRow& metric : App().document.metrics) {
-        if (!metric.cellId.empty()) cellSet.insert(metric.cellId.str());
-        if (!metric.rat.empty()) ratSet.insert(metric.rat);
-        if (!metric.ch.empty()) chSet.insert(metric.ch);
-        if (metric.denyVal >= 0) denySet.insert(metric.denyVal);
+        if (!metric.cellId.empty())
+            cellSet.insert(metric.cellId.str());
+        if (!metric.rat.empty())
+            ratSet.insert(metric.rat);
+        if (!metric.ch.empty())
+            chSet.insert(metric.ch);
+        if (metric.denyVal >= 0)
+            denySet.insert(metric.denyVal);
     }
+
     std::vector<std::string> cells(cellSet.begin(), cellSet.end());
     std::vector<std::string> rats(ratSet.begin(), ratSet.end());
     std::vector<std::string> channels(chSet.begin(), chSet.end());
@@ -434,25 +594,30 @@ void ShowMetricQuickFilterMenu(HWND anchor) {
         for (std::size_t i = 0; i < count; ++i)
             AppendMenuW(target, MF_STRING | (values[i] == selected ? MF_CHECKED : 0), base + i,
                         U8ToW(values[i]).c_str());
-        if (values.empty()) AppendMenuW(target, MF_STRING | MF_DISABLED, 0, UiText(TextId::ui_0289));
+        if (values.empty())
+            AppendMenuW(target, MF_STRING | MF_DISABLED, 0, UiText(TextId::ui_0289));
     };
+
     appendStrings(cellMenu, cells, 30100, g_metricFilter.cell);
     appendStrings(ratMenu, rats, 30200, g_metricFilter.rat);
     appendStrings(channelMenu, channels, 30300, g_metricFilter.ch);
     for (std::size_t i = 0; i < denies.size() && i < 80; ++i)
         AppendMenuW(denyMenu, MF_STRING | (g_metricFilter.hasDeny && denies[i] == g_metricFilter.deny ? MF_CHECKED : 0),
                     30400 + i, std::to_wstring(denies[i]).c_str());
-    if (denies.empty()) AppendMenuW(denyMenu, MF_STRING | MF_DISABLED, 0, UiText(TextId::ui_0289));
+    if (denies.empty())
+        AppendMenuW(denyMenu, MF_STRING | MF_DISABLED, 0, UiText(TextId::ui_0289));
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(cellMenu), L"Cell ID");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(ratMenu), L"RAT");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(channelMenu), L"CH");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(denyMenu), L"DENY");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, 30000, UiText(TextId::ui_0290));
-    RECT rect{}; GetWindowRect(anchor, &rect);
-    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
-                                        rect.left, rect.bottom + S(4), 0, App().hMain, nullptr);
-    if (command == 30000) g_metricFilter = MetricQuickFilter{};
+    RECT rect{};
+    GetWindowRect(anchor, &rect);
+    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, rect.left,
+                                        rect.bottom + S(4), 0, App().hMain, nullptr);
+    if (command == 30000)
+        g_metricFilter = MetricQuickFilter{};
     else if (command >= 30100 && command < 30180 && command - 30100 < cells.size()) {
         const std::string& value = cells[command - 30100];
         g_metricFilter.cell = g_metricFilter.cell == value ? std::string{} : value;
@@ -465,11 +630,14 @@ void ShowMetricQuickFilterMenu(HWND anchor) {
     } else if (command >= 30400 && command < 30480 && command - 30400 < denies.size()) {
         const int value = denies[command - 30400];
         if (g_metricFilter.hasDeny && g_metricFilter.deny == value) {
-            g_metricFilter.hasDeny = false; g_metricFilter.deny = -1;
+            g_metricFilter.hasDeny = false;
+            g_metricFilter.deny = -1;
         } else {
-            g_metricFilter.deny = value; g_metricFilter.hasDeny = true;
+            g_metricFilter.deny = value;
+            g_metricFilter.hasDeny = true;
         }
     }
+
     DestroyMenu(menu);
     if (command) {
         RebuildMetricQuickFilterView();
@@ -499,10 +667,14 @@ void MarkAllPagesDirty() {
 // OWNERDATA 控件只保存行数,数据仍属于下列 C++ 模型。模型即将重建/释放时必须先把
 // 行数归零,避免控件在重绘通知中索引已经失效的 App().document.metrics / App().document.timelineRows。
 void ResetVirtualTables() {
-    if (App().hTimeline) ListView_SetItemCountEx(App().hTimeline, 0, LVSICF_NOSCROLL);
-    if (App().hMetric)   ListView_SetItemCountEx(App().hMetric,   0, LVSICF_NOSCROLL);
-    if (App().hRaw)      ListView_SetItemCountEx(App().hRaw,      0, LVSICF_NOSCROLL);
-    if (App().hCells)    ListView_SetItemCountEx(App().hCells,    0, LVSICF_NOSCROLL);
+    if (App().hTimeline)
+        ListView_SetItemCountEx(App().hTimeline, 0, LVSICF_NOSCROLL);
+    if (App().hMetric)
+        ListView_SetItemCountEx(App().hMetric, 0, LVSICF_NOSCROLL);
+    if (App().hRaw)
+        ListView_SetItemCountEx(App().hRaw, 0, LVSICF_NOSCROLL);
+    if (App().hCells)
+        ListView_SetItemCountEx(App().hCells, 0, LVSICF_NOSCROLL);
     App().document.timelineRows.clear();
     App().document.metricView.clear();
     g_rawContext.clear();
@@ -514,16 +686,23 @@ void ResetVirtualTables() {
 // App().document.lines。普通筛选仍使用 clear()/赋值复用容量,避免每次点击“应用”都重新分配。
 void ReleaseLoadedData() {
     g_rawTargetLine = 0;
-    if (PageDetailVisible()) ClosePageDetail();
+    if (PageDetailVisible())
+        ClosePageDetail();
     ResetVirtualTables();
 
     // 非 OWNERDATA 控件自己持有单元格文本；替换日志前也立即丢掉旧内容，避免隐藏页
     // 一直保留到用户下次切换页签才释放。
-    if (App().hOutage)   ListView_DeleteAllItems(App().hOutage);
-    if (App().hTags)     ListView_DeleteAllItems(App().hTags);
-    if (App().hUnparsed) ListView_DeleteAllItems(App().hUnparsed);
+    if (App().hOutage)
+        ListView_DeleteAllItems(App().hOutage);
+    if (App().hTags)
+        ListView_DeleteAllItems(App().hTags);
+    if (App().hUnparsed)
+        ListView_DeleteAllItems(App().hUnparsed);
 
-    CloseWorkspaceWindows(); CloseSourceComparison(); CloseIncidentReview(); CloseSelectableText();
+    CloseWorkspaceWindows(true);
+    CloseSourceComparison();
+    CloseIncidentReview();
+    CloseSelectableText();
     App().document.release();
     UpdateSourceControls();
     g_metricFilter = MetricQuickFilter{};
@@ -537,107 +716,156 @@ void ReleaseLoadedData() {
 // 数据更新时只刷新当前页；其它页保留脏标记,用户首次切过去时再生成控件内容。
 // 时间线/指标还使用 OWNERDATA 虚拟表,这里只设置行数,滚动到可见单元格时才转 UTF-16。
 void RenderPage(int page) {
-    if (page < 0 || page >= 9 || !g_pageDirty[page]) return;
+    if (page < 0 || page >= 10 || !g_pageDirty[page])
+        return;
     switch (page) {
-    case 0: RenderSummary(); InvalidateRect(App().hDash, nullptr, TRUE); break;
-    case 1: RenderFindings(); break;
-    case 2: RenderTimeline(); break;
-    case 3: RenderOutages(); break;
-    case 4: RenderMetrics(); break;
-    case 5: RenderTags(); break;
-    case 6: RenderRaw(); break;
-    case 7: RenderUnparsed(); break;
-    case 8: RenderCells(); break;
+
+    case 0:
+        RenderSummary();
+        InvalidateRect(App().hDash, nullptr, TRUE);
+        break;
+
+    case 1:
+        RenderFindings();
+        break;
+
+    case 2:
+        RenderTimeline();
+        break;
+
+    case 3:
+        RenderOutages();
+        break;
+
+    case 4:
+        RenderMetrics();
+        break;
+
+    case 5:
+        RenderTags();
+        break;
+
+    case 6:
+        RenderRaw();
+        break;
+
+    case 7:
+        RenderUnparsed();
+        break;
+
+    case 8:
+        RenderCells();
+        break;
+
+    case 9:
+        EnsureReviewWorkbench();
+        break;
     }
+
     g_pageDirty[page] = false;
 }
 
 void ReviewSelectedOutage() {
-    const int row=ListView_GetNextItem(App().hOutage,-1,LVNI_SELECTED);
-    if(row>=0 && static_cast<std::size_t>(row)<g_outageOrder.size())
+    const int row = ListView_GetNextItem(App().hOutage, -1, LVNI_SELECTED);
+    if (row >= 0 && static_cast<std::size_t>(row) < g_outageOrder.size())
         ShowIncidentReview(App().document.outages[g_outageOrder[row]]);
-    else ShowModernNotice(UiText(TextId::incident_title),UiText(TextId::incident_no_selection),ModernNoticeKind::Info);
+    else
+        ShowModernNotice(UiText(TextId::incident_title), UiText(TextId::incident_no_selection), ModernNoticeKind::Info);
 }
 
 void ShowPage(int page) {
     // 页序:0总览 1结论 2时间线 3断网 4指标 5标签 6原始行 7未识别行 8小区分析
-    if (page < 0 || page >= 9) return;
-    HWND detailOwner = page == 2 ? App().hTimeline : page == 4 ? App().hMetric :
-                       page == 6 ? App().hRaw : nullptr;
-    if (PageDetailVisible() && PageDetailOwner() != detailOwner) ClosePageDetail();
+    if (page < 0 || page >= 10)
+        return;
+    HWND detailOwner = page == 2 ? App().hTimeline : page == 4 ? App().hMetric : page == 6 ? App().hRaw : nullptr;
+    if (PageDetailVisible() && PageDetailOwner() != detailOwner)
+        ClosePageDetail();
     g_curPage = page;
-    const wchar_t* titles[] = {UiText(TextId::ui_0164), UiText(TextId::ui_0222), UiText(TextId::ui_0228), UiText(TextId::ui_0224),
-                               UiText(TextId::ui_0230), UiText(TextId::ui_0232), UiText(TextId::ui_0234), UiText(TextId::ui_0236), UiText(TextId::ui_0226)};
-    if (App().hPageTitle) SetWindowTextW(App().hPageTitle, titles[page]);
-    const wchar_t* hint = page == 2 ? UiText(TextId::ui_0291) :
-        page == 3 ? (HasAnalysisTimeFilter() ? UiText(TextId::ui_0275) :
-                     UiText(TextId::ui_0276)) :
-        UiText(TextId::ui_0292);
+    const wchar_t* titles[] = {UiText(TextId::ui_0164), UiText(TextId::ui_0222), UiText(TextId::ui_0228),
+                               UiText(TextId::ui_0224), UiText(TextId::ui_0230), UiText(TextId::ui_0232),
+                               UiText(TextId::ui_0234), UiText(TextId::ui_0236), UiText(TextId::ui_0226),
+                               UiText(TextId::wb_title)};
+    if (App().hPageTitle)
+        SetWindowTextW(App().hPageTitle, titles[page]);
+    const wchar_t* hint = page == 2   ? UiText(TextId::ui_0291)
+                          : page == 3 ? (HasAnalysisTimeFilter() ? UiText(TextId::ui_0275) : UiText(TextId::ui_0276))
+                                      : UiText(TextId::ui_0292);
     SetWindowTextW(App().hPageHint, hint);
     ShowWindow(App().hPageHint, page == 2 || page == 3 || page == 6 ? SW_SHOW : SW_HIDE);
-    ShowWindow(App().hIncidentReview,page==3?SW_SHOW:SW_HIDE);
+    ShowWindow(App().hIncidentReview, page == 3 ? SW_SHOW : SW_HIDE);
     SetNavigationPage(page);
-    RenderPage(page);   // 页仍隐藏时填充,减少 ListView 大批插入时的可见闪烁
-    struct { HWND* h; int page; } items[] = {
-        { &App().hDash, 0 }, { &App().hSummary, 0 }, { &App().hFindings, 1 }, { &App().hTimeline, 2 }, { &App().hOutage, 3 },
-        { &App().hChart, 4 }, { &App().hMetric, 4 },
-        { &App().hTags, 5 }, { &App().hRaw, 6 }, { &App().hUnparsed, 7 },
-        { &App().hCells, 8 },
+    if (page == 9)
+        EnsureReviewWorkbench();
+    RenderPage(page);  // 页仍隐藏时填充,减少 ListView 大批插入时的可见闪烁
+
+    struct {
+        HWND* h;
+        int page;
+    } items[] = {
+        {&App().hDash, 0},   {&App().hSummary, 0},  {&App().hFindings, 1}, {&App().hTimeline, 2},
+        {&App().hOutage, 3}, {&App().hChart, 4},    {&App().hMetric, 4},   {&App().hTags, 5},
+        {&App().hRaw, 6},    {&App().hUnparsed, 7}, {&App().hCells, 8},    {&App().hReviewWorkbench, 9},
     };
+
     for (auto& it : items) {
         bool on = (it.page == page);
         ShowWindow(*it.h, on ? SW_SHOW : SW_HIDE);
-        if (on) SetWindowPos(*it.h, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        if (on)
+            SetWindowPos(*it.h, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
+
     if (PageDetailVisible()) {
-        for (HWND control : {App().hDetailSplitter, App().hDetailLabel,
-                             App().hDetailText, App().hDetailClose}) {
+        for (HWND control : {App().hDetailSplitter, App().hDetailLabel, App().hDetailText, App().hDetailClose}) {
             ShowWindow(control, SW_SHOW);
             SetWindowPos(control, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
         }
     }
+
     const bool metrics = page == 4;
-    for (HWND control : {App().hMetricToolbar, App().hMetricViewChart,
-                         App().hMetricViewSplit, App().hMetricViewTable, App().hMetricColumns, App().hSignalGuide})
-        if (control) ShowWindow(control, metrics ? SW_SHOW : SW_HIDE);
+    for (HWND control : {App().hMetricToolbar, App().hMetricViewChart, App().hMetricViewSplit, App().hMetricViewTable,
+                         App().hMetricColumns, App().hSignalGuide})
+        if (control)
+            ShowWindow(control, metrics ? SW_SHOW : SW_HIDE);
     ShowWindow(App().hExport, SW_SHOW);
     SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
 }
-
 
 int CurrentPage() {
     return g_curPage;
 }
 
 void JumpToRawLine(size_t lineNo) {
-    if (!lineNo || App().document.lines.empty()) return;
+    if (!lineNo || App().document.lines.empty())
+        return;
     const auto found = std::find_if(App().document.lines.begin(), App().document.lines.end(),
-        [lineNo](const LogLine& line) { return line.lineNo == lineNo; });
+                                    [lineNo](const LogLine& line) { return line.lineNo == lineNo; });
     if (found == App().document.lines.end()) {
-        ShowModernNotice(UiText(TextId::ui_0293), UiText(TextId::ui_0294),
-                         ModernNoticeKind::Warning);
+        ShowModernNotice(UiText(TextId::ui_0293), UiText(TextId::ui_0294), ModernNoticeKind::Warning);
         return;
     }
+
     g_rawTargetLine = lineNo;
     g_pageDirty[6] = true;
     ShowPage(6);
     SetFocus(App().hRaw);
-    ShowModernNotice(UiText(TextId::ui_0295),
-                     FmtW(UiText(TextId::ui_0296), static_cast<int>(lineNo)).c_str(),
+    ShowModernNotice(UiText(TextId::ui_0295), FmtW(UiText(TextId::ui_0296), static_cast<int>(lineNo)).c_str(),
                      ModernNoticeKind::Info, 4500);
 }
 
 bool ToggleEvidenceBookmark(size_t lineNo, const std::wstring& text) {
-    if (!lineNo) return false;
+    if (!lineNo)
+        return false;
     const auto found = std::find_if(g_bookmarks.begin(), g_bookmarks.end(),
-        [lineNo](const EvidenceBookmark& bookmark) { return bookmark.lineNo == lineNo; });
+                                    [lineNo](const EvidenceBookmark& bookmark) { return bookmark.lineNo == lineNo; });
     bool added = found == g_bookmarks.end();
     if (added) {
-        if (g_bookmarks.size() >= 30) g_bookmarks.erase(g_bookmarks.begin());
+        if (g_bookmarks.size() >= 30)
+            g_bookmarks.erase(g_bookmarks.begin());
         g_bookmarks.push_back(EvidenceBookmark{lineNo, text});
     } else {
         g_bookmarks.erase(found);
     }
+
     RefreshBookmarkButton();
     return added;
 }
@@ -648,14 +876,16 @@ bool ToggleCurrentRawBookmark() {
         if (row >= 0 && static_cast<std::size_t>(row) < RawRows().size())
             g_rawTargetLine = RawRows()[row]->lineNo;
     }
+
     if (!g_rawTargetLine) {
-        ShowModernNotice(UiText(TextId::ui_0297), UiText(TextId::ui_0298),
-                         ModernNoticeKind::Info);
+        ShowModernNotice(UiText(TextId::ui_0297), UiText(TextId::ui_0298), ModernNoticeKind::Info);
         return false;
     }
+
     auto found = std::find_if(App().document.lines.begin(), App().document.lines.end(),
-        [](const LogLine& line) { return line.lineNo == g_rawTargetLine; });
-    if (found == App().document.lines.end()) return false;
+                              [](const LogLine& line) { return line.lineNo == g_rawTargetLine; });
+    if (found == App().document.lines.end())
+        return false;
     std::wstring text = U8ToW(found->ts + " [" + found->tagText() + "] " + found->msg);
     const bool added = ToggleEvidenceBookmark(g_rawTargetLine, text);
     ShowModernNotice(added ? UiText(TextId::ui_0299) : UiText(TextId::ui_0300),
@@ -669,12 +899,13 @@ void ClearEvidenceBookmarks() {
     RefreshBookmarkButton();
 }
 
-const std::vector<EvidenceBookmark>& EvidenceBookmarks() { return g_bookmarks; }
+const std::vector<EvidenceBookmark>& EvidenceBookmarks() {
+    return g_bookmarks;
+}
 
 static bool IsPageList(HWND list) {
-    return list == App().hMetric || list == App().hOutage || list == App().hTags ||
-           list == App().hRaw || list == App().hCells || list == App().hTimeline ||
-           list == App().hUnparsed;
+    return list == App().hMetric || list == App().hOutage || list == App().hTags || list == App().hRaw ||
+           list == App().hCells || list == App().hTimeline || list == App().hUnparsed;
 }
 
 static bool SupportsFullDetail(HWND list) {
@@ -682,18 +913,21 @@ static bool SupportsFullDetail(HWND list) {
 }
 
 static std::string PageCellText(HWND list, int row, int column) {
-    if (row < 0 || column < 0) return {};
+    if (row < 0 || column < 0)
+        return {};
     const std::size_t index = static_cast<std::size_t>(row);
     if (list == App().hMetric && index < App().document.metricView.size())
-        return column == 18 || column == 19 || column == 20 || column == 21 ?
-            GeneratedText(metricCellText(*App().document.metricView[index], static_cast<std::size_t>(column))) :
-            metricCellText(*App().document.metricView[index], static_cast<std::size_t>(column));
+        return column == 18 || column == 19 || column == 20 || column == 21
+                   ? GeneratedText(metricCellText(*App().document.metricView[index], static_cast<std::size_t>(column)))
+                   : metricCellText(*App().document.metricView[index], static_cast<std::size_t>(column));
     if (list == App().hRaw && index < RawRows().size())
         return rawCellText(*RawRows()[index], static_cast<std::size_t>(column));
     if (list == App().hCells && index < g_cellRows.size())
-        return column == 14 ? GeneratedText(cellSummaryCellText(*g_cellRows[index], 14)) : cellSummaryCellText(*g_cellRows[index], static_cast<std::size_t>(column));
+        return column == 14 ? GeneratedText(cellSummaryCellText(*g_cellRows[index], 14))
+                            : cellSummaryCellText(*g_cellRows[index], static_cast<std::size_t>(column));
     if (list == App().hTimeline && index < App().document.timelineRows.size())
-        return column == 1 ? GeneratedText(timelineCellText(*App().document.timelineRows[index], 1)) : timelineCellText(*App().document.timelineRows[index], static_cast<std::size_t>(column));
+        return column == 1 ? GeneratedText(timelineCellText(*App().document.timelineRows[index], 1))
+                           : timelineCellText(*App().document.timelineRows[index], static_cast<std::size_t>(column));
     std::vector<wchar_t> value(8192, L'\0');
     ListView_GetItemText(list, row, column, value.data(), static_cast<int>(value.size()));
     return WToU8(value.data());
@@ -703,7 +937,9 @@ static std::wstring ColumnTitle(HWND list, int column) {
     HWND header = ListView_GetHeader(list);
     wchar_t text[128]{};
     HDITEMW item{};
-    item.mask = HDI_TEXT; item.pszText = text; item.cchTextMax = 128;
+    item.mask = HDI_TEXT;
+    item.pszText = text;
+    item.cchTextMax = 128;
     return header && Header_GetItem(header, column, &item) ? text : UiText(TextId::ui_0302);
 }
 
@@ -717,86 +953,119 @@ static std::wstring DetailText(HWND list, int row) {
             output += U8ToW(PageCellText(list, row, column));
             output += L"\r\n";
         }
+
         return output;
     }
+
     const int messageColumn = list == App().hRaw ? 4 : 3;
     for (int column = 0; column < std::min(columns, messageColumn); ++column) {
-        if (column) output += L"    ";
+        if (column)
+            output += L"    ";
         output += ColumnTitle(list, column) + L"：" + U8ToW(PageCellText(list, row, column));
     }
+
     output += L"\r\n\r\n";
     output += U8ToW(PageCellText(list, row, messageColumn));
     return output;
 }
 
 static void ShowPageDetail(HWND list, int row, bool focus = true) {
-    if (!SupportsFullDetail(list) || row < 0 || !App().hDetailText) return;
+    if (!SupportsFullDetail(list) || row < 0 || !App().hDetailText)
+        return;
     g_detailOwner = list;
     g_detailRow = row;
-    const wchar_t* page = list == App().hRaw ? UiText(TextId::ui_0234) :
-                          list == App().hTimeline ? UiText(TextId::ui_0228) : UiText(TextId::ui_0230);
-    std::wstring label = std::wstring(page) + UiText(TextId::ui_0303) + std::to_wstring(row + 1) +
-                         UiText(TextId::ui_0304);
+    const wchar_t* page = list == App().hRaw        ? UiText(TextId::ui_0234)
+                          : list == App().hTimeline ? UiText(TextId::ui_0228)
+                                                    : UiText(TextId::ui_0230);
+    std::wstring label =
+        std::wstring(page) + UiText(TextId::ui_0303) + std::to_wstring(row + 1) + UiText(TextId::ui_0304);
     SetWindowTextW(App().hDetailLabel, label.c_str());
     const std::wstring text = DetailText(list, row);
     SetWindowTextW(App().hDetailText, text.c_str());
     SendMessageW(App().hDetailText, EM_SETSEL, 0, 0);
-    for (HWND control : {App().hDetailSplitter, App().hDetailLabel,
-                         App().hDetailText, App().hDetailClose}) {
-        if (!control) continue;
+    for (HWND control : {App().hDetailSplitter, App().hDetailLabel, App().hDetailText, App().hDetailClose}) {
+        if (!control)
+            continue;
         ShowWindow(control, SW_SHOW);
-        SetWindowPos(control, HWND_TOP, 0, 0, 0, 0,
-                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        SetWindowPos(control, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
+
     SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
-    if (focus) SetFocus(App().hDetailText);
+    if (focus)
+        SetFocus(App().hDetailText);
 }
 
-bool PageDetailVisible() { return g_detailOwner != nullptr; }
-HWND PageDetailOwner() { return g_detailOwner; }
+bool PageDetailVisible() {
+    return g_detailOwner != nullptr;
+}
+
+HWND PageDetailOwner() {
+    return g_detailOwner;
+}
 
 void ClosePageDetail() {
     g_detailOwner = nullptr;
     g_detailRow = -1;
-    for (HWND control : {App().hDetailSplitter, App().hDetailLabel,
-                         App().hDetailText, App().hDetailClose})
-        if (control) ShowWindow(control, SW_HIDE);
-    if (App().hMain) SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
+    for (HWND control : {App().hDetailSplitter, App().hDetailLabel, App().hDetailText, App().hDetailClose})
+        if (control)
+            ShowWindow(control, SW_HIDE);
+    if (App().hMain)
+        SendMessageW(App().hMain, WM_APP_SHELL_LAYOUT, 0, 0);
 }
 
 static bool CopyTextToClipboard(const std::wstring& text) {
-    if (!OpenClipboard(App().hMain)) return false;
+    if (!OpenClipboard(App().hMain))
+        return false;
     EmptyClipboard();
     const SIZE_T bytes = (text.size() + 1) * sizeof(wchar_t);
     HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, bytes);
-    if (!memory) { CloseClipboard(); return false; }
+    if (!memory) {
+        CloseClipboard();
+        return false;
+    }
+
     void* output = GlobalLock(memory);
-    if (!output) { GlobalFree(memory); CloseClipboard(); return false; }
+    if (!output) {
+        GlobalFree(memory);
+        CloseClipboard();
+        return false;
+    }
+
     std::memcpy(output, text.c_str(), bytes);
     GlobalUnlock(memory);
     if (!SetClipboardData(CF_UNICODETEXT, memory)) {
-        GlobalFree(memory); CloseClipboard(); return false;
+        GlobalFree(memory);
+        CloseClipboard();
+        return false;
     }
+
     CloseClipboard();
     return true;
 }
 
 static bool CopySelectedRows(HWND list) {
-    if (!IsPageList(list)) return false;
+    if (!IsPageList(list))
+        return false;
     const int columns = Header_GetItemCount(ListView_GetHeader(list));
     std::wstring output;
     int row = -1, copied = 0;
     while ((row = ListView_GetNextItem(list, row, LVNI_SELECTED)) >= 0) {
         for (int column = 0; column < columns; ++column) {
             std::string text = PageCellText(list, row, column);
-            for (char& ch : text) if (ch == '\r' || ch == '\n' || ch == '\t') ch = ' ';
-            if (column) output += L'\t';
+            for (char& ch : text)
+                if (ch == '\r' || ch == '\n' || ch == '\t')
+                    ch = ' ';
+            if (column)
+                output += L'\t';
             output += U8ToW(text);
         }
+
         output += L"\r\n";
         ++copied;
     }
-    if (!copied) return false;
+
+    if (!copied)
+        return false;
     const bool success = CopyTextToClipboard(output);
     if (success)
         ShowModernNotice(UiText(TextId::ui_0305), FmtW(UiText(TextId::ui_0306), copied).c_str(),
@@ -804,11 +1073,14 @@ static bool CopySelectedRows(HWND list) {
     return success;
 }
 
-bool CopySelectedPageRows() { return CopySelectedRows(GetFocus()); }
+bool CopySelectedPageRows() {
+    return CopySelectedRows(GetFocus());
+}
 
 static size_t RowSourceLine(HWND list, int row) {
     const std::size_t index = static_cast<std::size_t>(std::max(0, row));
-    if (list == App().hRaw && index < RawRows().size()) return RawRows()[index]->lineNo;
+    if (list == App().hRaw && index < RawRows().size())
+        return RawRows()[index]->lineNo;
     if (list == App().hTimeline && index < App().document.timelineRows.size())
         return App().document.timelineRows[index]->lineNo;
     if (list == App().hMetric && index < App().document.metricView.size())
@@ -817,53 +1089,57 @@ static size_t RowSourceLine(HWND list, int row) {
 }
 
 static void ShowPageContextMenu(HWND list, POINT screenPoint) {
-    if (!IsPageList(list)) return;
+    if (!IsPageList(list))
+        return;
     SetFocus(list);
     POINT clientPoint = screenPoint;
     int row = ListView_GetNextItem(list, -1, LVNI_SELECTED), column = 0;
     if (screenPoint.x != -1 || screenPoint.y != -1) {
         ScreenToClient(list, &clientPoint);
-        LVHITTESTINFO hit{}; hit.pt = clientPoint;
+        LVHITTESTINFO hit{};
+        hit.pt = clientPoint;
         row = ListView_SubItemHitTest(list, &hit);
         column = std::max(0, hit.iSubItem);
         if (row >= 0 && !(ListView_GetItemState(list, row, LVIS_SELECTED) & LVIS_SELECTED)) {
             ListView_SetItemState(list, -1, 0, LVIS_SELECTED | LVIS_FOCUSED);
-            ListView_SetItemState(list, row, LVIS_SELECTED | LVIS_FOCUSED,
-                                  LVIS_SELECTED | LVIS_FOCUSED);
+            ListView_SetItemState(list, row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
         }
     } else if (row >= 0) {
-        RECT item{}; ListView_GetItemRect(list, row, &item, LVIR_BOUNDS);
+        RECT item{};
+        ListView_GetItemRect(list, row, &item, LVIR_BOUNDS);
         clientPoint = POINT{item.left + S(18), item.bottom};
         ClientToScreen(list, &clientPoint);
         screenPoint = clientPoint;
     }
-    if (row < 0) return;
+
+    if (row < 0)
+        return;
 
     HMENU menu = CreatePopupMenu();
-    const bool messageCell = (list == App().hRaw && column == 4) ||
-                             (list == App().hTimeline && column == 3);
-    AppendMenuW(menu, MF_STRING, kCopyCellCommand,
-                messageCell ? UiText(TextId::ui_0307) : UiText(TextId::ui_0308));
+    const bool messageCell = (list == App().hRaw && column == 4) || (list == App().hTimeline && column == 3);
+    AppendMenuW(menu, MF_STRING, kCopyCellCommand, messageCell ? UiText(TextId::ui_0307) : UiText(TextId::ui_0308));
     const int selected = ListView_GetSelectedCount(list);
-    AppendMenuW(menu, MF_STRING, kCopyRowsCommand,
-                selected > 1 ? UiText(TextId::ui_0309) : UiText(TextId::ui_0310));
-    if(list==App().hOutage)AppendMenuW(menu,MF_STRING,kIncidentReviewCommand,UiText(TextId::incident_title));
+    AppendMenuW(menu, MF_STRING, kCopyRowsCommand, selected > 1 ? UiText(TextId::ui_0309) : UiText(TextId::ui_0310));
+    if (list == App().hOutage)
+        AppendMenuW(menu, MF_STRING, kIncidentReviewCommand, UiText(TextId::incident_title));
     if (SupportsFullDetail(list)) {
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(menu, MF_STRING, kShowDetailCommand, UiText(TextId::ui_0311));
     }
+
     if (list == App().hMetric || list == App().hTimeline)
         AppendMenuW(menu, MF_STRING, kJumpRawCommand, UiText(TextId::ui_0312));
     if (list == App().hRaw)
         AppendMenuW(menu, MF_STRING, kBookmarkCommand, UiText(TextId::ui_0313));
-    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
-                                        screenPoint.x, screenPoint.y, 0, App().hMain, nullptr);
+    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, screenPoint.x,
+                                        screenPoint.y, 0, App().hMain, nullptr);
     DestroyMenu(menu);
-    if(command==kIncidentReviewCommand){ReviewSelectedOutage();}
-    else if (command == kCopyCellCommand) {
+    if (command == kIncidentReviewCommand) {
+        ReviewSelectedOutage();
+    } else if (command == kCopyCellCommand) {
         if (CopyTextToClipboard(U8ToW(PageCellText(list, row, column))))
-            ShowModernNotice(UiText(TextId::ui_0314), ColumnTitle(list, column).c_str(),
-                             ModernNoticeKind::Success, 2500);
+            ShowModernNotice(UiText(TextId::ui_0314), ColumnTitle(list, column).c_str(), ModernNoticeKind::Success,
+                             2500);
     } else if (command == kCopyRowsCommand) {
         CopySelectedRows(list);
     } else if (command == kShowDetailCommand) {
@@ -875,47 +1151,61 @@ static void ShowPageContextMenu(HWND list, POINT screenPoint) {
     }
 }
 
-static LRESULT CALLBACK PageListSubclass(HWND list, UINT message, WPARAM wparam, LPARAM lparam,
-                                         UINT_PTR, DWORD_PTR) {
-    if(message==WM_GETDLGCODE && wparam==VK_RETURN && (SupportsFullDetail(list)||list==App().hOutage))
-        return DefSubclassProc(list,message,wparam,lparam)|DLGC_WANTMESSAGE;
+static LRESULT CALLBACK PageListSubclass(HWND list, UINT message, WPARAM wparam, LPARAM lparam, UINT_PTR, DWORD_PTR) {
+    if (message == WM_GETDLGCODE && wparam == VK_RETURN && (SupportsFullDetail(list) || list == App().hOutage))
+        return DefSubclassProc(list, message, wparam, lparam) | DLGC_WANTMESSAGE;
     if (message == WM_COPY) {
         CopySelectedRows(list);
         return 0;
     }
+
     if (message == WM_CONTEXTMENU) {
         ShowPageContextMenu(list, POINT{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)});
         return 0;
     }
+
     if (message == WM_MOUSEWHEEL && (GET_KEYSTATE_WPARAM(wparam) & MK_SHIFT)) {
         int steps = std::max(1, std::abs(GET_WHEEL_DELTA_WPARAM(wparam)) / WHEEL_DELTA) * 3;
         const WPARAM command = GET_WHEEL_DELTA_WPARAM(wparam) > 0 ? SB_LINELEFT : SB_LINERIGHT;
-        while (steps--) SendMessageW(list, WM_HSCROLL, command, 0);
+        while (steps--)
+            SendMessageW(list, WM_HSCROLL, command, 0);
         return 0;
     }
-    if(message==WM_KEYDOWN && wparam==VK_RETURN && list==App().hOutage){ReviewSelectedOutage();return 0;}
+
+    if (message == WM_KEYDOWN && wparam == VK_RETURN && list == App().hOutage) {
+        ReviewSelectedOutage();
+        return 0;
+    }
+
     if (message == WM_KEYDOWN && wparam == VK_RETURN && SupportsFullDetail(list)) {
         const int row = ListView_GetNextItem(list, -1, LVNI_SELECTED);
-        if (row >= 0) { ShowPageDetail(list, row); return 0; }
+        if (row >= 0) {
+            ShowPageDetail(list, row);
+            return 0;
+        }
     }
-    if (message == WM_NCDESTROY) RemoveWindowSubclass(list, PageListSubclass, 1);
+
+    if (message == WM_NCDESTROY)
+        RemoveWindowSubclass(list, PageListSubclass, 1);
     return DefSubclassProc(list, message, wparam, lparam);
 }
 
 void ConfigurePageList(HWND list) {
-    if (list) SetWindowSubclass(list, PageListSubclass, 1, 0);
+    if (list)
+        SetWindowSubclass(list, PageListSubclass, 1, 0);
 }
 
 void FitPrimaryTableColumns(int contentWidth) {
     auto fitLast = [contentWidth](HWND list, int lastColumn, int minimum) {
-        if (!list) return;
+        if (!list)
+            return;
         int fixed = 0;
         for (int column = 0; column < lastColumn; ++column)
             fixed += ListView_GetColumnWidth(list, column);
         const int scrollbar = GetSystemMetrics(SM_CXVSCROLL) + S(4);
-        ListView_SetColumnWidth(list, lastColumn,
-                                std::max(S(minimum), contentWidth - fixed - scrollbar));
+        ListView_SetColumnWidth(list, lastColumn, std::max(S(minimum), contentWidth - fixed - scrollbar));
     };
+
     fitLast(App().hTimeline, 3, 760);
     fitLast(App().hOutage, 5, 160);
     fitLast(App().hTags, 2, 240);
@@ -925,30 +1215,42 @@ void FitPrimaryTableColumns(int contentWidth) {
 static void DrawListEmptyState(HWND list, HDC dc) {
     const bool loaded = !App().document.lines.empty();
     const wchar_t* title = loaded ? UiText(TextId::ui_0315) : UiText(TextId::ui_0316);
-    const wchar_t* detail = loaded ? UiText(TextId::ui_0317)
-                                    : UiText(TextId::ui_0318);
+    const wchar_t* detail = loaded ? UiText(TextId::ui_0317) : UiText(TextId::ui_0318);
     bool success = false;
     if (list == App().hOutage && loaded) {
-        title = UiText(TextId::ui_0319); detail = UiText(TextId::ui_0320); success = true;
+        title = UiText(TextId::ui_0319);
+        detail = UiText(TextId::ui_0320);
+        success = true;
     } else if (list == App().hMetric && loaded) {
-        title = UiText(TextId::ui_0321); detail = UiText(TextId::ui_0322);
+        title = UiText(TextId::ui_0321);
+        detail = UiText(TextId::ui_0322);
     } else if (list == App().hTimeline && loaded) {
-        title = UiText(TextId::ui_0323); detail = UiText(TextId::ui_0324); success = true;
+        title = UiText(TextId::ui_0323);
+        detail = UiText(TextId::ui_0324);
+        success = true;
     } else if (list == App().hTags && loaded) {
-        title = UiText(TextId::ui_0325); detail = UiText(TextId::ui_0326);
+        title = UiText(TextId::ui_0325);
+        detail = UiText(TextId::ui_0326);
     } else if (list == App().hUnparsed && loaded) {
-        title = UiText(TextId::ui_0327); detail = UiText(TextId::ui_0328); success = true;
+        title = UiText(TextId::ui_0327);
+        detail = UiText(TextId::ui_0328);
+        success = true;
     } else if (list == App().hCells && loaded) {
-        title = UiText(TextId::ui_0329); detail = UiText(TextId::ui_0330);
+        title = UiText(TextId::ui_0329);
+        detail = UiText(TextId::ui_0330);
     } else if (list == App().hRaw && loaded) {
-        title = UiText(TextId::ui_0331); detail = UiText(TextId::ui_0332);
+        title = UiText(TextId::ui_0331);
+        detail = UiText(TextId::ui_0332);
     }
 
-    RECT client{}; GetClientRect(list, &client);
+    RECT client{};
+    GetClientRect(list, &client);
     if (HWND header = ListView_GetHeader(list)) {
-        RECT hr{}; GetWindowRect(header, &hr);
+        RECT hr{};
+        GetWindowRect(header, &hr);
         client.top += hr.bottom - hr.top;
     }
+
     const int width = std::min(S(440), std::max(S(260), static_cast<int>(client.right) - S(64)));
     const int height = S(126);
     const int x = (client.right - width) / 2;
@@ -959,13 +1261,16 @@ static void DrawListEmptyState(HWND list, HDC dc) {
     RECT icon{x + S(22), y + S(31), x + S(66), y + S(75)};
     FillRound(dc, icon, S(22), th::accentSoft, th::accentSoft);
     HGDIOBJ oldFont = SelectObject(dc, App().hFontSect);
-    SetBkMode(dc, TRANSPARENT); SetTextColor(dc, tone);
+    SetBkMode(dc, TRANSPARENT);
+    SetTextColor(dc, tone);
     DrawTextW(dc, success ? L"✓" : L"…", -1, &icon, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
     RECT titleRect{x + S(82), y + S(26), card.right - S(18), y + S(53)};
-    SelectObject(dc, App().hFontSect); SetTextColor(dc, th::inkPri);
+    SelectObject(dc, App().hFontSect);
+    SetTextColor(dc, th::inkPri);
     DrawTextW(dc, title, -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
     RECT detailRect{x + S(82), y + S(57), card.right - S(18), y + S(100)};
-    SelectObject(dc, App().hFontUI); SetTextColor(dc, th::inkSec);
+    SelectObject(dc, App().hFontUI);
+    SetTextColor(dc, th::inkSec);
     DrawTextW(dc, detail, -1, &detailRect, DT_LEFT | DT_TOP | DT_WORDBREAK);
     SelectObject(dc, oldFont);
 }
@@ -975,66 +1280,82 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
     if (hdr->code == LVN_COLUMNCLICK) {
         const int column = reinterpret_cast<NMLISTVIEW*>(lparam)->iSubItem;
         auto toggle = [column](int& current, bool& ascending) {
-            if (current == column) ascending = !ascending;
-            else { current = column; ascending = true; }
+            if (current == column)
+                ascending = !ascending;
+            else {
+                current = column;
+                ascending = true;
+            }
         };
+
         if (hdr->hwndFrom == App().hMetric) {
             toggle(g_metricSortColumn, g_metricSortAscending);
             SetSortIndicator(App().hMetric, g_metricSortColumn, g_metricSortAscending);
-            RebuildMetricQuickFilterView(); RenderMetrics();
+            RebuildMetricQuickFilterView();
+            RenderMetrics();
         } else if (hdr->hwndFrom == App().hOutage) {
             toggle(g_outageSortColumn, g_outageSortAscending);
-            SetSortIndicator(App().hOutage, g_outageSortColumn, g_outageSortAscending); RenderOutages();
+            SetSortIndicator(App().hOutage, g_outageSortColumn, g_outageSortAscending);
+            RenderOutages();
         } else if (hdr->hwndFrom == App().hTags) {
             toggle(g_tagSortColumn, g_tagSortAscending);
-            SetSortIndicator(App().hTags, g_tagSortColumn, g_tagSortAscending); RenderTags();
+            SetSortIndicator(App().hTags, g_tagSortColumn, g_tagSortAscending);
+            RenderTags();
         } else if (hdr->hwndFrom == App().hCells) {
             toggle(g_cellSortColumn, g_cellSortAscending);
-            SetSortIndicator(App().hCells, g_cellSortColumn, g_cellSortAscending); RenderCells();
-        } else return false;
-        result = 0; return true;
+            SetSortIndicator(App().hCells, g_cellSortColumn, g_cellSortAscending);
+            RenderCells();
+        } else
+            return false;
+        result = 0;
+        return true;
     }
+
     if (hdr->code == LVN_ITEMCHANGED && SupportsFullDetail(hdr->hwndFrom)) {
         const NMLISTVIEW* change = reinterpret_cast<NMLISTVIEW*>(lparam);
-        if ((change->uNewState & LVIS_SELECTED) && change->iItem >= 0 &&
-            hdr->hwndFrom == App().hMetric &&
+        if ((change->uNewState & LVIS_SELECTED) && change->iItem >= 0 && hdr->hwndFrom == App().hMetric &&
             static_cast<std::size_t>(change->iItem) < App().document.metricView.size())
             SetChartFocusTime(App().document.metricView[change->iItem]->t);
-        if ((change->uNewState & LVIS_SELECTED) && change->iItem >= 0 &&
-            PageDetailOwner() == hdr->hwndFrom)
+        if ((change->uNewState & LVIS_SELECTED) && change->iItem >= 0 && PageDetailOwner() == hdr->hwndFrom)
             ShowPageDetail(hdr->hwndFrom, change->iItem, false);
         return false;
     }
+
     if (hdr->code == NM_CLICK && hdr->hwndFrom == App().hOutage) {
         const int row = reinterpret_cast<NMITEMACTIVATE*>(lparam)->iItem;
         if (row >= 0 && static_cast<std::size_t>(row) < g_outageOrder.size())
             SetChartFocusTime(App().document.outages[g_outageOrder[row]].start);
         return false;
     }
+
     if (hdr->code == NM_DBLCLK) {
         const int row = reinterpret_cast<NMITEMACTIVATE*>(lparam)->iItem;
-        if (row < 0) return false;
+        if (row < 0)
+            return false;
         if (hdr->hwndFrom == App().hMetric && static_cast<std::size_t>(row) < App().document.metricView.size())
             ShowPageDetail(App().hMetric, row);
         else if (hdr->hwndFrom == App().hOutage && static_cast<std::size_t>(row) < g_outageOrder.size())
             JumpToRawLine(App().document.outages[g_outageOrder[row]].startLine);
         else if (hdr->hwndFrom == App().hCells && static_cast<std::size_t>(row) < g_cellRows.size()) {
             g_metricFilter.cell = g_cellRows[row]->cellId;
-            RebuildMetricQuickFilterView(); g_pageDirty[4] = true; ShowPage(4);
+            RebuildMetricQuickFilterView();
+            g_pageDirty[4] = true;
+            ShowPage(4);
         } else if (hdr->hwndFrom == App().hRaw && static_cast<std::size_t>(row) < RawRows().size())
             ShowPageDetail(App().hRaw, row);
-        else if (hdr->hwndFrom == App().hTimeline &&
-                 static_cast<std::size_t>(row) < App().document.timelineRows.size())
+        else if (hdr->hwndFrom == App().hTimeline && static_cast<std::size_t>(row) < App().document.timelineRows.size())
             ShowPageDetail(App().hTimeline, row);
-        else return false;
-        result = 0; return true;
+        else
+            return false;
+        result = 0;
+        return true;
     }
-    if (hdr->code == LVN_GETDISPINFOW &&
-        (hdr->hwndFrom == App().hTimeline || hdr->hwndFrom == App().hMetric ||
-         hdr->hwndFrom == App().hRaw || hdr->hwndFrom == App().hCells)) {
+
+    if (hdr->code == LVN_GETDISPINFOW && (hdr->hwndFrom == App().hTimeline || hdr->hwndFrom == App().hMetric ||
+                                          hdr->hwndFrom == App().hRaw || hdr->hwndFrom == App().hCells)) {
         NMLVDISPINFOW* di = reinterpret_cast<NMLVDISPINFOW*>(lparam);
-        if ((di->item.mask & LVIF_TEXT) && di->item.pszText && di->item.cchTextMax > 0 &&
-            di->item.iItem >= 0 && di->item.iSubItem >= 0) {
+        if ((di->item.mask & LVIF_TEXT) && di->item.pszText && di->item.cchTextMax > 0 && di->item.iItem >= 0 &&
+            di->item.iSubItem >= 0) {
             const size_t row = static_cast<size_t>(di->item.iItem);
             const size_t col = static_cast<size_t>(di->item.iSubItem);
             std::string text;
@@ -1044,27 +1365,26 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
             } else if (hdr->hwndFrom == App().hMetric && row < App().document.metricView.size() &&
                        col < kMetricColumnCount) {
                 text = metricCellText(*App().document.metricView[row], col);
-            } else if (hdr->hwndFrom == App().hRaw && row < RawRows().size() &&
-                       col < kRawColumnCount) {
+            } else if (hdr->hwndFrom == App().hRaw && row < RawRows().size() && col < kRawColumnCount) {
                 text = rawCellText(*RawRows()[row], col);
-            } else if (hdr->hwndFrom == App().hCells && row < g_cellRows.size() &&
-                       col < kCellColumnCount) {
+            } else if (hdr->hwndFrom == App().hCells && row < g_cellRows.size() && col < kCellColumnCount) {
                 text = cellSummaryCellText(*g_cellRows[row], col);
             }
-            if ((hdr->hwndFrom==App().hTimeline && col==1) ||
-                (hdr->hwndFrom==App().hMetric && col>=18) ||
-                (hdr->hwndFrom==App().hCells && col==14)) text=GeneratedText(text);
+
+            if ((hdr->hwndFrom == App().hTimeline && col == 1) || (hdr->hwndFrom == App().hMetric && col >= 18) ||
+                (hdr->hwndFrom == App().hCells && col == 14))
+                text = GeneratedText(text);
             const std::wstring wide = U8ToW(text);
             lstrcpynW(di->item.pszText, wide.c_str(), di->item.cchTextMax);
         }
+
         result = 0;
         return true;
     }
 
     if (hdr->code != NM_CUSTOMDRAW ||
-        (hdr->hwndFrom != App().hTimeline && hdr->hwndFrom != App().hOutage &&
-         hdr->hwndFrom != App().hMetric && hdr->hwndFrom != App().hTags &&
-         hdr->hwndFrom != App().hUnparsed && hdr->hwndFrom != App().hRaw &&
+        (hdr->hwndFrom != App().hTimeline && hdr->hwndFrom != App().hOutage && hdr->hwndFrom != App().hMetric &&
+         hdr->hwndFrom != App().hTags && hdr->hwndFrom != App().hUnparsed && hdr->hwndFrom != App().hRaw &&
          hdr->hwndFrom != App().hCells)) {
         return false;
     }
@@ -1072,16 +1392,18 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
     LPNMLVCUSTOMDRAW draw = reinterpret_cast<LPNMLVCUSTOMDRAW>(lparam);
     if (draw->nmcd.dwDrawStage == CDDS_PREPAINT) {
         result = CDRF_NOTIFYITEMDRAW;
-        if (ListView_GetItemCount(hdr->hwndFrom) == 0) result |= CDRF_NOTIFYPOSTPAINT;
+        if (ListView_GetItemCount(hdr->hwndFrom) == 0)
+            result |= CDRF_NOTIFYPOSTPAINT;
         return true;
     }
+
     if (draw->nmcd.dwDrawStage == CDDS_POSTPAINT && ListView_GetItemCount(hdr->hwndFrom) == 0) {
         DrawListEmptyState(hdr->hwndFrom, draw->nmcd.hdc);
         result = CDRF_DODEFAULT;
         return true;
     }
-    if (hdr->hwndFrom == App().hTimeline || hdr->hwndFrom == App().hOutage ||
-        hdr->hwndFrom == App().hRaw) {
+
+    if (hdr->hwndFrom == App().hTimeline || hdr->hwndFrom == App().hOutage || hdr->hwndFrom == App().hRaw) {
         if (draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) {
             const size_t row = static_cast<size_t>(draw->nmcd.dwItemSpec);
             draw->clrText = th::inkPri;
@@ -1091,18 +1413,19 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
                     draw->clrTextBk = EventBackground(*App().document.timelineRows[row], draw->clrTextBk);
             } else if (hdr->hwndFrom == App().hOutage && row < g_outageOrder.size()) {
                 const auto& outage = App().document.outages[g_outageOrder[row]];
-                draw->clrTextBk = !outage.recovered || outage.dur > 60 ? th::qualityPoor :
-                                  outage.dur > 30 ? th::qualityFair : th::qualityExcellent;
+                draw->clrTextBk = !outage.recovered || outage.dur > 60 ? th::qualityPoor
+                                  : outage.dur > 30                    ? th::qualityFair
+                                                                       : th::qualityExcellent;
             } else if (hdr->hwndFrom == App().hRaw && row < RawRows().size()) {
                 draw->clrText = RowColor(*RawRows()[row]);
             }
         }
+
         result = CDRF_DODEFAULT;
         return true;
     }
 
-    if (hdr->hwndFrom == App().hTags || hdr->hwndFrom == App().hUnparsed ||
-        hdr->hwndFrom == App().hCells) {
+    if (hdr->hwndFrom == App().hTags || hdr->hwndFrom == App().hUnparsed || hdr->hwndFrom == App().hCells) {
         if (draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) {
             const size_t row = static_cast<size_t>(draw->nmcd.dwItemSpec);
             draw->clrText = th::inkPri;
@@ -1114,6 +1437,7 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
                     draw->clrTextBk = th::cellWeak;
             }
         }
+
         result = CDRF_DODEFAULT;
         return true;
     }
@@ -1122,6 +1446,7 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
         result = CDRF_NOTIFYSUBITEMDRAW;
         return true;
     }
+
     if (draw->nmcd.dwDrawStage == (CDDS_ITEMPREPAINT | CDDS_SUBITEM)) {
         const size_t row = static_cast<size_t>(draw->nmcd.dwItemSpec);
         const int column = draw->iSubItem;
@@ -1131,13 +1456,24 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
             const MetricRow& metric = *App().document.metricView[row];
             auto qualityBackground = [](SignalQuality quality) {
                 switch (quality) {
-                case SignalQuality::Excellent: return th::qualityExcellent;
-                case SignalQuality::Good:      return th::qualityGood;
-                case SignalQuality::Fair:      return th::qualityFair;
-                case SignalQuality::Poor:      return th::qualityPoor;
-                default:                       return th::surface;
+
+                case SignalQuality::Excellent:
+                    return th::qualityExcellent;
+
+                case SignalQuality::Good:
+                    return th::qualityGood;
+
+                case SignalQuality::Fair:
+                    return th::qualityFair;
+
+                case SignalQuality::Poor:
+                    return th::qualityPoor;
+
+                default:
+                    return th::surface;
                 }
             };
+
             if (column == 9 && metric.drx == 0)
                 draw->clrTextBk = th::cellStall;
             else if (column == 18)
@@ -1149,8 +1485,9 @@ bool HandlePageNotify(LPARAM lparam, LRESULT& result) {
             }
         }
     }
+
     result = CDRF_DODEFAULT;
     return true;
 }
 
-} // namespace dl
+}  // namespace dl

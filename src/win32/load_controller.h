@@ -19,7 +19,7 @@ bool HasAnalysisTimeFilter();
 std::wstring AnalysisTimeRangeText();
 std::wstring AnalysisScopedText(const std::string& text);
 void UpdateAnalysisTimeRangeControls();
-void LoadFiles(const std::vector<std::wstring>& paths);
+void LoadFiles(const std::vector<std::wstring>& paths, bool requireSession = false);
 void DoPaste();
 void DoOpen();
 void DoExportCsv();
@@ -31,4 +31,4 @@ void CancelLoad();
 bool ConsumeLoadActionClick();
 void ShutdownLoadController();
 
-} // namespace dl
+}  // namespace dl

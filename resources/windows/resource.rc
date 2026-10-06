@@ -3,7 +3,12 @@
 
 /* 1 = CREATEPROCESS_MANIFEST_RESOURCE_ID, 24 = RT_MANIFEST
    嵌入清单以启用 comctl32 v6(现代控件外观)与 DPI 感知 */
-1 24 "resources/windows/app.manifest"
+/* Makefile 传入 build/ 内的版本同步清单；只在编译时读取，最终嵌入 exe。
+   独立编译资源文件时可使用源码清单，或自行定义生成清单的路径。 */
+#ifndef DL_APP_MANIFEST_PATH
+#define DL_APP_MANIFEST_PATH "resources/windows/app.manifest"
+#endif
+1 24 DL_APP_MANIFEST_PATH
 
 /* 应用图标:数字最小的 ICON 资源即 exe 在资源管理器/任务栏显示的图标。
    IDI_APPICON=101,与 src/win32/ui.cpp 的 LoadIconW 对应。图标为多尺寸(16..256)。 */

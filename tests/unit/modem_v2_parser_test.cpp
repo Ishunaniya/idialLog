@@ -17,7 +17,8 @@ static int failures = 0;
 
 static void ok(bool condition, const char* message) {
     std::printf("%s %s\n", condition ? "[OK]" : "[FAIL]", message);
-    if (!condition) ++failures;
+    if (!condition)
+        ++failures;
 }
 
 static void testRfc3164Envelope() {
@@ -36,27 +37,21 @@ static void testRfc3164Envelope() {
     parseLines(raw, lines, sessions, &audit);
 
     ok(lines.size() == raw.size(), "所有输入仍完整保留");
-    ok(audit.parsed == 4 && audit.unparsed == 2,
-       "4 条合法 RFC3164 结构化，2 条伪包络诚实计未识别");
-    ok(lines[0].fmt == FMT_SYSLOG && lines[0].tagText() == "MODEM_MNG_V2" &&
-       lines[0].level == LEVEL_INFO && lines[0].msg == "Version 2.1",
+    ok(audit.parsed == 4 && audit.unparsed == 2, "4 条合法 RFC3164 结构化，2 条伪包络诚实计未识别");
+    ok(lines[0].fmt == FMT_SYSLOG && lines[0].tagText() == "MODEM_MNG_V2" && lines[0].level == LEVEL_INFO &&
+           lines[0].msg == "Version 2.1",
        "facility.severity、v2 app 与正文正确提取");
     ok(lines[0].inferredTime && !lines[0].ts.empty() && lines[0].ts[0] == '~',
        "RFC3164 推定年份显式标记为 ~ / inferredTime");
-    ok(lines[1].fmt == FMT_SYSLOG && lines[1].tagText() == "MODEM_MNG_V2" &&
-       lines[1].level == LEVEL_NONE,
+    ok(lines[1].fmt == FMT_SYSLOG && lines[1].tagText() == "MODEM_MNG_V2" && lines[1].level == LEVEL_NONE,
        "无 facility 的 v2 syslog 仍可解析，不伪造级别");
-    ok(lines[2].level == LEVEL_ERROR && lines[2].tagText() == "MODEM_MNG_V2",
-       "<PRI> 在 facility 缺失时提供 severity");
-    ok(lines[3].fmt == FMT_SYSLOG && lines[3].tagText() == "SYSLOG" &&
-       lines[3].level == LEVEL_WARNING,
+    ok(lines[2].level == LEVEL_ERROR && lines[2].tagText() == "MODEM_MNG_V2", "<PRI> 在 facility 缺失时提供 severity");
+    ok(lines[3].fmt == FMT_SYSLOG && lines[3].tagText() == "SYSLOG" && lines[3].level == LEVEL_WARNING,
        "generic RFC3164 可解析但不会误标成 modem_mng_v2");
-    ok(lines[4].fmt == FMT_CONSOLE && lines[5].fmt == FMT_CONSOLE,
-       "普通月份文本和非法空 PID 不被误收为 syslog");
+    ok(lines[4].fmt == FMT_CONSOLE && lines[5].fmt == FMT_CONSOLE, "普通月份文本和非法空 PID 不被误收为 syslog");
 
     long long first = 0;
-    ok(firstTimestamp(raw, &first) && first == lines[0].t,
-       "firstTimestamp 已接入 RFC3164");
+    ok(firstTimestamp(raw, &first) && first == lines[0].t, "firstTimestamp 已接入 RFC3164");
 }
 
 static void testYearAnchorAndRollover() {
@@ -72,11 +67,8 @@ static void testYearAnchorAndRollover() {
     parseLines(raw, lines, sessions, &audit);
 
     ok(audit.parsed == 3 && audit.unparsed == 0, "全年时间与 RFC3164 可混合解析");
-    ok(lines[1].ts == "~2024-12-31 23:59:59",
-       "优先采用同文件明确年份作为 RFC3164 锚点");
-    ok(lines[2].ts == "~2025-01-01 00:00:01" &&
-       lines[2].t - lines[1].t == 2,
-       "Dec -> Jan 单调递增一年且秒差正确");
+    ok(lines[1].ts == "~2024-12-31 23:59:59", "优先采用同文件明确年份作为 RFC3164 锚点");
+    ok(lines[2].ts == "~2025-01-01 00:00:01" && lines[2].t - lines[1].t == 2, "Dec -> Jan 单调递增一年且秒差正确");
 }
 
 static void testInferredTimeFilter() {
@@ -91,10 +83,8 @@ static void testInferredTimeFilter() {
     parseLines(raw, lines, sessions);
 
     bool regexBad = false;
-    LogView filtered = applyFilterView(lines, "", "", "12:34:57", "12:34:57",
-                                       &regexBad);
-    ok(!regexBad && filtered.size() == 1 &&
-       filtered.front()->msg == "inside window",
+    LogView filtered = applyFilterView(lines, "", "", "12:34:57", "12:34:57", &regexBad);
+    ok(!regexBad && filtered.size() == 1 && filtered.front()->msg == "inside window",
        "前导 ~ 不会让 since/until 时间窗静默失效");
 }
 
@@ -109,13 +99,10 @@ static void testV2OuterAppIdentity() {
     ParseAudit audit;
     parseLines(raw, lines, sessions, &audit);
 
-    ok(audit.parsed == 2 && audit.unparsed == 0,
-       "RFC3164 与 RFC3339 v2 包络均结构化");
-    ok(lines[0].tagText() == "MODEM_MNG_V2" &&
-       lines[1].tagText() == "MODEM_MNG_V2",
+    ok(audit.parsed == 2 && audit.unparsed == 0, "RFC3164 与 RFC3339 v2 包络均结构化");
+    ok(lines[0].tagText() == "MODEM_MNG_V2" && lines[1].tagText() == "MODEM_MNG_V2",
        "正文 where 前缀不会覆盖可靠的外层 app 身份");
-    ok(lines[0].msg.find("[ready] CSQ:") == 0 &&
-       lines[1].msg.find("[ready] WAN ping fail") == 0,
+    ok(lines[0].msg.find("[ready] CSQ:") == 0 && lines[1].msg.find("[ready] WAN ping fail") == 0,
        "v2 正文原文（含 where 前缀）完整保留");
 }
 
@@ -137,20 +124,16 @@ static void testConsoleEnvelope() {
     parseLines(raw, lines, sessions, &audit);
 
     ok(lines.size() == raw.size(), "stderr 与不合法相似行全部保留");
-    ok(audit.parsed == 7 && audit.unparsed == 1,
-       "只接受五种精确宏前缀；缺固定空格的相似行不误收");
-    ok(lines[0].fmt == FMT_CONSOLE && lines[0].tagText() == "CONSOLE" &&
-       lines[0].level == LEVEL_INFO && lines[0].msg == "ordinary program started",
+    ok(audit.parsed == 7 && audit.unparsed == 1, "只接受五种精确宏前缀；缺固定空格的相似行不误收");
+    ok(lines[0].fmt == FMT_CONSOLE && lines[0].tagText() == "CONSOLE" && lines[0].level == LEVEL_INFO &&
+           lines[0].msg == "ordinary program started",
        "普通 [INFO] 只结构化 level，不无据判定 v2");
-    ok(lines[1].tagText() == "CONSOLE",
-       "通用 Version 2.1 文本本身不足以证明 v2 身份");
-    ok(lines[2].level == LEVEL_WARNING && lines[3].level == LEVEL_ERROR &&
-       lines[4].level == LEVEL_NOTICE && lines[5].level == LEVEL_DEBUG,
+    ok(lines[1].tagText() == "CONSOLE", "通用 Version 2.1 文本本身不足以证明 v2 身份");
+    ok(lines[2].level == LEVEL_WARNING && lines[3].level == LEVEL_ERROR && lines[4].level == LEVEL_NOTICE &&
+           lines[5].level == LEVEL_DEBUG,
        "WARN/ERR/NOTICE/DBG 映射正确");
-    ok(lines[6].tagText() == "MODEM_MNG_V2",
-       "包含应用名的 start 横幅可作为强 v2 证据");
-    ok(audit.programStarted == 1 && sessions.empty(),
-       "无时间 stderr 只计启动信号，不伪造 1970 session");
+    ok(lines[6].tagText() == "MODEM_MNG_V2", "包含应用名的 start 横幅可作为强 v2 证据");
+    ok(audit.programStarted == 1 && sessions.empty(), "无时间 stderr 只计启动信号，不伪造 1970 session");
 }
 
 static void testConsoleTimeBackfillAndSyslogRestart() {
@@ -165,11 +148,10 @@ static void testConsoleTimeBackfillAndSyslogRestart() {
     ParseAudit audit;
     parseLines(raw, lines, sessions, &audit);
 
-    ok(lines[0].inferredTime && lines[0].t == lines[1].t &&
-       lines[0].ts == lines[1].ts && lines[0].ts.compare(0, 2, "~~") != 0,
+    ok(lines[0].inferredTime && lines[0].t == lines[1].t && lines[0].ts == lines[1].ts &&
+           lines[0].ts.compare(0, 2, "~~") != 0,
        "首行无时间控制台由首个真实包络回填，且不会产生双 ~");
-    ok(audit.programStarted == 1 && sessions.size() == 1,
-       "syslog Version + start 横幅只形成一次启动证据/session");
+    ok(audit.programStarted == 1 && sessions.size() == 1, "syslog Version + start 横幅只形成一次启动证据/session");
 }
 
 int main() {

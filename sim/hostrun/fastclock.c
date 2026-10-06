@@ -24,7 +24,8 @@ static double scale(void) {
     if (s < 0) {
         const char* v = getenv("SIM_TIME_SCALE");
         s = v ? atof(v) : 1.0;
-        if (s < 1.0) s = 1.0;
+        if (s < 1.0)
+            s = 1.0;
     }
     return s;
 }
@@ -36,9 +37,9 @@ static int t0_init = 0;
 
 static void init_once(void) {
     if (!real_clock_gettime)
-        real_clock_gettime = (int(*)(clockid_t, struct timespec*))dlsym(RTLD_NEXT, "clock_gettime");
+        real_clock_gettime = (int (*)(clockid_t, struct timespec*))dlsym(RTLD_NEXT, "clock_gettime");
     if (!real_time)
-        real_time = (time_t(*)(time_t*))dlsym(RTLD_NEXT, "time");
+        real_time = (time_t (*)(time_t*))dlsym(RTLD_NEXT, "time");
     if (!t0_init && real_clock_gettime) {
         real_clock_gettime(CLOCK_MONOTONIC, &t0);
         t0_init = 1;
@@ -48,13 +49,17 @@ static void init_once(void) {
 int clock_gettime(clockid_t clk, struct timespec* ts) {
     init_once();
     int r = real_clock_gettime(clk, ts);
-    if (r != 0 || scale() == 1.0) return r;
+    if (r != 0 || scale() == 1.0)
+        return r;
     if (clk == CLOCK_MONOTONIC || clk == CLOCK_MONOTONIC_RAW || clk == CLOCK_BOOTTIME) {
         double el = (ts->tv_sec - t0.tv_sec) + (ts->tv_nsec - t0.tv_nsec) / 1e9;
         double fast = el * scale();
-        ts->tv_sec  = t0.tv_sec + (time_t)fast;
+        ts->tv_sec = t0.tv_sec + (time_t)fast;
         ts->tv_nsec = t0.tv_nsec + (long)((fast - (long)fast) * 1e9);
-        if (ts->tv_nsec >= 1000000000L) { ts->tv_sec++; ts->tv_nsec -= 1000000000L; }
+        if (ts->tv_nsec >= 1000000000L) {
+            ts->tv_sec++;
+            ts->tv_nsec -= 1000000000L;
+        }
     }
     return r;
 }
@@ -64,10 +69,12 @@ time_t time(time_t* tloc) {
     time_t now = real_time(NULL);
     if (scale() != 1.0) {
         static time_t wall0 = 0;
-        if (!wall0) wall0 = now;
+        if (!wall0)
+            wall0 = now;
         now = wall0 + (time_t)((now - wall0) * scale());
     }
-    if (tloc) *tloc = now;
+    if (tloc)
+        *tloc = now;
     return now;
 }
 
@@ -87,33 +94,40 @@ static int (*real_usleep)(useconds_t) = NULL;
 static int (*real_nanosleep)(const struct timespec*, struct timespec*) = NULL;
 
 unsigned int sleep(unsigned int sec) {
-    if (!real_sleep) real_sleep = (unsigned(*)(unsigned))dlsym(RTLD_NEXT, "sleep");
+    if (!real_sleep)
+        real_sleep = (unsigned (*)(unsigned))dlsym(RTLD_NEXT, "sleep");
     double s = scale();
-    if (s <= 1.0) return real_sleep(sec);
-    double want = sec / s;                       /* 缩短后的真实秒 */
+    if (s <= 1.0)
+        return real_sleep(sec);
+    double want = sec / s; /* 缩短后的真实秒 */
     struct timespec ts;
-    ts.tv_sec  = (time_t)want;
+    ts.tv_sec = (time_t)want;
     ts.tv_nsec = (long)((want - ts.tv_sec) * 1e9);
-    if (!real_nanosleep) real_nanosleep = (int(*)(const struct timespec*, struct timespec*))dlsym(RTLD_NEXT, "nanosleep");
+    if (!real_nanosleep)
+        real_nanosleep = (int (*)(const struct timespec*, struct timespec*))dlsym(RTLD_NEXT, "nanosleep");
     real_nanosleep(&ts, NULL);
     return 0;
 }
 
 int usleep(useconds_t us) {
-    if (!real_usleep) real_usleep = (int(*)(useconds_t))dlsym(RTLD_NEXT, "usleep");
+    if (!real_usleep)
+        real_usleep = (int (*)(useconds_t))dlsym(RTLD_NEXT, "usleep");
     double s = scale();
-    if (s <= 1.0) return real_usleep(us);
+    if (s <= 1.0)
+        return real_usleep(us);
     useconds_t u = (useconds_t)(us / s);
     return real_usleep(u ? u : 1);
 }
 
 int nanosleep(const struct timespec* req, struct timespec* rem) {
-    if (!real_nanosleep) real_nanosleep = (int(*)(const struct timespec*, struct timespec*))dlsym(RTLD_NEXT, "nanosleep");
+    if (!real_nanosleep)
+        real_nanosleep = (int (*)(const struct timespec*, struct timespec*))dlsym(RTLD_NEXT, "nanosleep");
     double s = scale();
-    if (s <= 1.0 || !req) return real_nanosleep(req, rem);
+    if (s <= 1.0 || !req)
+        return real_nanosleep(req, rem);
     double want = (req->tv_sec + req->tv_nsec / 1e9) / s;
     struct timespec ts;
-    ts.tv_sec  = (time_t)want;
+    ts.tv_sec = (time_t)want;
     ts.tv_nsec = (long)((want - ts.tv_sec) * 1e9);
     return real_nanosleep(&ts, rem);
 }

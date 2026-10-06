@@ -10,22 +10,24 @@ struct IncidentCatalog {
     PlatformInfo platform;
     std::vector<MetricRow> metrics;
 };
+
 struct IncidentReview {
     bool valid = false, resolvedOutsideFilter = false, inferredTime = false, clockLimited = false;
     std::size_t index = 0;
     Outage outage;
     PlatformInfo platform;
-    const LogLine* platformEvidence=nullptr; // May be outside the observation window.
+    const LogLine* platformEvidence = nullptr;  // May be outside the observation window.
     long long start = 0, end = 0;
     LogView rows, events;
     std::vector<MetricRow> metrics;
-    std::vector<Finding> findings; // Observation-window rules, not incident attribution.
+    std::vector<Finding> findings;  // Observation-window rules, not incident attribution.
 };
+
 IncidentCatalog buildIncidentCatalog(LogView fullScope);
 std::size_t findIncident(const IncidentCatalog& catalog, const Outage& selected);
-IncidentReview reviewIncident(const IncidentCatalog& catalog, std::size_t index,
-                             int beforeSeconds = 300, int afterSeconds = 300);
+IncidentReview reviewIncident(const IncidentCatalog& catalog, std::size_t index, int beforeSeconds = 300,
+                              int afterSeconds = 300);
 bool incidentContainsLine(const IncidentReview& review, std::size_t line);
 enum class IncidentPhase { Before, During, After };
-IncidentPhase incidentSamplePhase(const IncidentReview& review,const MetricRow& sample);
-} // namespace dl
+IncidentPhase incidentSamplePhase(const IncidentReview& review, const MetricRow& sample);
+}  // namespace dl

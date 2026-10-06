@@ -5,16 +5,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-extern void dial_loop(void (*on_connected)(void *user), void *user_data);
-static void on_conn(void* u) { (void)u; }
-static void* run(void* a) { (void)a; dial_loop(on_conn, NULL); return NULL; }
+extern void dial_loop(void (*on_connected)(void* user), void* user_data);
+
+static void on_conn(void* u) {
+    (void)u;
+}
+
+static void* run(void* a) {
+    (void)a;
+    dial_loop(on_conn, NULL);
+    return NULL;
+}
+
 int main(int argc, char** argv) {
-    int logical = (argc > 1) ? atoi(argv[1]) : 3000;   /* 逻辑秒(sleep 已被 fastclock 加速) */
+    int logical = (argc > 1) ? atoi(argv[1]) : 3000; /* 逻辑秒(sleep 已被 fastclock 加速) */
     const char* sc = getenv("SIM_TIME_SCALE");
-    fprintf(stderr, "[driver] open_dial 逻辑运行 %ds(%.0f 分钟),加速 ×%s\n",
-            logical, logical/60.0, sc ? sc : "1");
-    pthread_t t; pthread_create(&t, NULL, run, NULL);
-    sleep((unsigned)logical);          /* 被 fastclock 缩短成 logical/scale 真实秒 */
+    fprintf(stderr, "[driver] open_dial 逻辑运行 %ds(%.0f 分钟),加速 ×%s\n", logical, logical / 60.0, sc ? sc : "1");
+    pthread_t t;
+    pthread_create(&t, NULL, run, NULL);
+    sleep((unsigned)logical); /* 被 fastclock 缩短成 logical/scale 真实秒 */
     fprintf(stderr, "[driver] 时间到,退出\n");
     fflush(stdout);
     _exit(0);

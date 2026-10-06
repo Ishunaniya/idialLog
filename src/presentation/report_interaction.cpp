@@ -1,7 +1,8 @@
 #include "report_chart.h"
+
 namespace dl {
 std::string reportChartScript(bool english) {
-    return std::string("<script>(()=>{const en=")+(english?"true":"false")+R"JS(;
+    return std::string("<script>(()=>{const en=") + (english ? "true" : "false") + R"JS(;
 'use strict';
 const figures=[...document.querySelectorAll('.signal-chart')].filter(f=>f.querySelector('.chart-data'));
 if(!figures.length)return;
@@ -20,7 +21,7 @@ function render(){message();for(const c of charts){const svg=c.svg,d=c.d;if(!svg
     const g=element('g',{class:'interactive-curves'});svg.append(g);let n=0;
     for(const data of [d.points,d.second]){const from=lower(data,range[0]);let to=lower(data,range[1]);while(to<data.length&&data[to][0]===range[1])to++;const visible=data.slice(from,to);const points=[];
         if(visible.length<=8194)points.push(...visible);else{const buckets=new Map;for(let i=0;i<visible.length;i++){const p=visible[i],k=Math.min(4095,Math.floor((p[0]-range[0])/Math.max(1,range[1]-range[0])*4096));let b=buckets.get(k);if(!b){b={min:i,max:i};buckets.set(k,b);}if(p[1]<visible[b.min][1])b.min=i;if(p[1]>visible[b.max][1])b.max=i;}const indices=new Set([0,visible.length-1]);for(const b of buckets.values()){indices.add(b.min);indices.add(b.max);}for(const i of [...indices].sort((a,b)=>a-b))points.push(visible[i]);}
-        const gaps=[];for(let i=1;i<visible.length;i++)if(visible[i][0]-visible[i-1][0]>600)gaps.push([visible[i-1][0],visible[i][0]]);let path='',previous=null,gap=0;const color=n?'#008300':d.color;
+        const gaps=[];for(let i=1;i<visible.length;i++)if(visible[i][0]-visible[i-1][0]>(d.gap??600))gaps.push([visible[i-1][0],visible[i][0]]);let path='',previous=null,gap=0;const color=n?'#008300':d.color;
         for(let i=0;i<points.length;i++){const p=points[i],x=64+(p[0]-range[0])/Math.max(1,range[1]-range[0])*750,y=246-(Math.max(d.low,Math.min(d.high,p[1]))-d.low)/(d.high-d.low)*228;while(gap<gaps.length&&previous!==null&&gaps[gap][0]<previous)gap++;const begin=previous===null||(gap<gaps.length&&gaps[gap][0]<p[0]);path+=(begin?'M':'L')+x.toFixed(2)+','+y.toFixed(2)+' ';if(begin||points.length<=60||i===points.length-1)g.append(element('circle',{cx:x,cy:y,r:points.length===1?4:2.5,fill:color}));previous=p[0];}
         g.append(element('path',{d:path,fill:'none',stroke:color,'stroke-width':1.8,'stroke-dasharray':n?'7 4':'','stroke-linejoin':'round'}));n++;}
     let ticks=svg.querySelector('.interactive-ticks');if(ticks)ticks.remove();ticks=element('g',{class:'interactive-ticks'});svg.append(ticks);for(const t of svg.querySelectorAll('text[y="268"]'))t.style.display='none';for(let i=0;i<=4;i++){const x=64+750*i/4,t=range[0]+(range[1]-range[0])*i/4;let text=element('text',{class:'chart-label',x,y:268,'text-anchor':i===0?'start':i===4?'end':'middle'});const time=format(t,d.relative),split=d.relative?-1:time.indexOf(' ');let a=element('tspan');a.textContent=split<0?time:time.slice(0,split);text.append(a);if(split>=0){let b=element('tspan',{x,dy:17});b.textContent=time.slice(split+1);text.append(b);}ticks.append(text);}
@@ -33,7 +34,11 @@ function eventSelect(band){for(const row of document.querySelectorAll('tr[data-e
 for(const c of charts){const svg=c.svg;if(!svg)continue;svg.addEventListener('wheel',e=>{const p=position(c,e);if(p.x<64||p.x>814||p.y<18||p.y>246)return;e.preventDefault();const width=range[1]-range[0],t=range[0]+(p.x-64)/750*width;if(e.shiftKey){update(range[0]+Math.sign(e.deltaY)*width*.15,range[1]+Math.sign(e.deltaY)*width*.15);}else{const factor=e.deltaY<0?.8:1.25;update(t-(t-range[0])*factor,t+(range[1]-t)*factor);}}, {passive:false});
     svg.addEventListener('pointerdown',e=>{const p=position(c,e);if(p.x<64||p.x>814||p.y<18||p.y>246||!(e.button===0||e.button===1))return;drag={c,x:p.x,last:p.x,range:[...range],middle:e.button===1,band:e.target.closest('.outage-band')};try{svg.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();tip.style.display='none';});
     svg.addEventListener('pointermove',e=>{const p=position(c,e);if(drag&&drag.c===c){drag.last=Math.max(64,Math.min(814,p.x));let rect=svg.querySelector('.chart-selection');if(!rect){rect=element('rect',{class:'chart-selection',y:18,height:228});svg.append(rect);}rect.setAttribute('x',Math.min(drag.x,drag.last));rect.setAttribute('width',Math.abs(drag.last-drag.x));return;}if(p.x<64||p.x>814||p.y<18||p.y>246){tip.style.display='none';return;}
-        const time=range[0]+(p.x-64)/750*(range[1]-range[0]);let text=format(time,c.d.relative);for(const other of charts){for(let index=0;index<2;index++){const data=index?other.d.second:other.d.points;if(!data.length&&index&&!other.d.compare)continue;const point=nearest(data,time),title=other.f.querySelector('strong').textContent;const prefix=other.d.compare?(index?'B ':'A '):'';text+='\n'+prefix+title+': '+(point?(point[1]/other.d.scale)+' '+other.d.unit+' · '+format(point[0]+(other.d.relative?(index?other.d.secondStart:other.d.originalStart):0)):(en?'No nearby sample':'附近无采样'));}}
+        const time=range[0]+(p.x-64)/750*(range[1]-range[0]);let text=format(time,c.d.relative);for(const other of charts){const title=other.f.querySelector('strong').textContent;
+            if(other.d.periods?.length){let i=lower(other.d.periods,time);if(i===other.d.periods.length||other.d.periods[i][0]>time)i--;const period=other.d.periods[i];text+='\n'+title+': '+(period&&time<=period[1]?(period[2]?period[3]/other.d.scale+' '+other.d.unit+' · P50 (n='+period[2]+')':(en?'No samples':'无采样'))+' · '+format(period[0])+' → '+format(period[1]):(en?'Outside periods':'不在统计时期内'));continue;}
+            const matched=[];for(let index=0;index<2;index++){const data=index?other.d.second:other.d.points;if(!data.length&&index&&!other.d.compare)continue;const point=nearest(data,time);matched[index]=point;const prefix=other.d.compare?(index?'B ':'A '):'';text+='\n'+prefix+title+': '+(point?(point[1]/other.d.scale)+' '+other.d.unit+' · '+format(point[0]+(other.d.relative?(index?other.d.secondStart:other.d.originalStart):0)):(en?'No nearby sample':'附近无采样'));}
+            if(other.d.compare&&matched[0]&&matched[1])text+='\nΔ(B−A) '+title+': '+((matched[1][1]-matched[0][1])/other.d.scale)+' '+other.d.unit;}
+
         tip.textContent=text;tip.style.display='block';tip.style.left=Math.max(4,Math.min(e.clientX+14,innerWidth-tip.offsetWidth-8))+'px';tip.style.top=Math.max(4,Math.min(e.clientY+14,innerHeight-tip.offsetHeight-8))+'px';});
     svg.addEventListener('pointerup',e=>{if(!drag||drag.c!==c)return;const d=drag;drag=null;svg.querySelector('.chart-selection')?.remove();if(svg.hasPointerCapture(e.pointerId))svg.releasePointerCapture(e.pointerId);const delta=(d.last-d.x)/750*(d.range[1]-d.range[0]);if(d.middle){update(d.range[0]-delta,d.range[1]-delta);}else if(Math.abs(d.last-d.x)>=6){let a=d.range[0]+(Math.min(d.x,d.last)-64)/750*(d.range[1]-d.range[0]),b=d.range[0]+(Math.max(d.x,d.last)-64)/750*(d.range[1]-d.range[0]);update(a,b);}else if(d.band)eventSelect(d.band);});
     svg.addEventListener('pointercancel',()=>{drag=null;svg.querySelector('.chart-selection')?.remove();});svg.addEventListener('pointerleave',()=>{tip.style.display='none';});
@@ -42,4 +47,4 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){drag=null;for(const
 message();
 })();</script>)JS";
 }
-}
+}  // namespace dl

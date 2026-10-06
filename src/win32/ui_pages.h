@@ -27,6 +27,8 @@ void ShowPage(int page);
 void ReviewSelectedOutage();
 // Clear edit conditions and cancel their deferred refresh as one UI operation.
 void ClearMainFilters(bool refresh = true);
+void SetSessionFilters(const std::string& tag, const std::string& message, const std::string& since,
+                       const std::string& until);
 int CurrentPage();
 void JumpToRawLine(size_t lineNo);
 bool ToggleEvidenceBookmark(size_t lineNo, const std::wstring& text);
@@ -38,6 +40,15 @@ void ShowMetricColumnMenu(HWND anchor);
 void ApplyMetricColumnSettings();
 bool ApplyMetricColumnCommand(UINT command);
 void ClearMetricQuickFilters(bool refresh = true);
+
+struct MetricFilterState {
+    std::string cell, rat, channel;
+    bool hasDeny = false;
+    int deny = -1;
+};
+
+MetricFilterState CaptureMetricFilters();
+void RestoreMetricFilters(const MetricFilterState& state);
 void RebuildMetricQuickFilterView();
 bool CopySelectedPageRows();
 void ConfigurePageList(HWND list);
@@ -49,4 +60,4 @@ void ClosePageDetail();
 // 处理虚拟列表取数与页面表格自绘；返回 true 表示通知已消费。
 bool HandlePageNotify(LPARAM lparam, LRESULT& result);
 
-} // namespace dl
+}  // namespace dl

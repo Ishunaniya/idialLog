@@ -1,0 +1,23 @@
+# Project C/C++ formatting policy. Apply to handwritten sources; do not format generated
+# text_catalog.inc, text_ids.h or third_party/miniz. This does not change compiler behavior.
+BasedOnStyle: LLVM
+IndentWidth: 4
+ContinuationIndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+BreakBeforeBraces: Attach
+IndentCaseLabels: false
+NamespaceIndentation: None
+PointerAlignment: Left
+DerivePointerAlignment: false
+SortIncludes: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+SpaceBeforeParens: ControlStatements
+Cpp11BracedListStyle: true
+Standard: c++17
+SeparateDefinitionBlocks: Always
+MaxEmptyLinesToKeep: 1
+SpacesBeforeTrailingComments: 2

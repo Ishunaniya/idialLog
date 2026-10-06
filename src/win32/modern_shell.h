@@ -22,8 +22,8 @@ bool DrawModernButton(const DRAWITEMSTRUCT& item);
 void SetNavigationPage(int page);
 void RefreshNavigation();
 
-void ShowModernNotice(const wchar_t* title, const wchar_t* detail,
-                      ModernNoticeKind kind = ModernNoticeKind::Info, UINT durationMs = 5000);
+void ShowModernNotice(const wchar_t* title, const wchar_t* detail, ModernNoticeKind kind = ModernNoticeKind::Info,
+                      UINT durationMs = 5000);
 void LayoutModernOverlays();
 void SetShellBusy(bool busy, const wchar_t* text = nullptr);
 void SetShellProgress(int percent, const wchar_t* text = nullptr);
@@ -37,4 +37,4 @@ HBRUSH ModernControlBrush(UINT message, HDC dc, HWND control);
 void FillSolid(HDC dc, const RECT& rect, COLORREF color);
 void FillRound(HDC dc, const RECT& rect, int radius, COLORREF fill, COLORREF border);
 
-} // namespace dl
+}  // namespace dl
